@@ -1,0 +1,57 @@
+[
+  {
+    "id": "pitch-001",
+    "title": "AI-Powered Bug Prediction",
+    "details": {
+      "problem": "Developers waste time debugging issues that follow predictable patterns.",
+      "ideaForSolution": "Use ML to identify bug-prone code patterns and suggest fixes before they cause problems.",
+      "characteristics": "Requires training on our codebase history and integration with IDE.",
+      "whyNow": "We now have enough historical data to train effective models.",
+      "smartToolsFit": "Perfect application of ML for developer productivity.",
+      "epicFit": "Aligns with our goal to improve developer experience.",
+      "success": "20% reduction in bug reports for identified patterns.",
+      "maintenance": "Model would need quarterly retraining."
+    }
+  },
+  {
+    "id": "pitch-002",
+    "title": "User Session Replay",
+    "details": {
+      "problem": "Hard to diagnose UX issues without seeing what users actually experienced.",
+      "ideaForSolution": "Privacy-focused session recording for web and mobile apps.",
+      "whyNow": "Recent user complaints about confusing flows we can't reproduce.",
+      "maintenance": "Storage costs increase with user base."
+    }
+  },
+  {
+    "id": "pitch-003",
+    "title": "GraphQL API Gateway",
+    "details": {
+      "problem": "Multiple API endpoints cause client complexity and performance issues.",
+      "ideaForSolution": "Unified GraphQL layer to consolidate all backend services.",
+      "characteristics": "Would require schema design and service adaptors.",
+      "epicFit": "Strategic investment in API architecture.",
+      "internCandidate": true
+    }
+  },
+  {
+    "id": "pitch-004",
+    "title": "Accessibility Audit & Fixes",
+    "details": {
+      "problem": "Our products aren't fully WCAG compliant, limiting our market reach.",
+      "ideaForSolution": "Comprehensive audit and remediation plan with automated tests.",
+      "whyNow": "Legal requirements increasing in our target market.",
+      "success": "WCAG 2.1 AA compliance across all products."
+    }
+  },
+  {
+    "id": "pitch-005",
+    "title": "Design System Expansion",
+    "details": {
+      "problem": "Inconsistent component usage across teams leads to UX debt.",
+      "ideaForSolution": "Expand our design system with new components and improved documentation.",
+      "characteristics": "Collaborative effort between design and engineering.",
+      "maintenance": "Requires dedicated maintainer long-term."
+    }
+  }
+]
