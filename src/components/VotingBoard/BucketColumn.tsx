@@ -44,9 +44,9 @@ const BucketColumn = ({ tier, pitches, votes, onAppetiteChange }: BucketColumnPr
   return (
     <Box 
       sx={{ 
-        width: 280, 
-        minWidth: 280, 
-        mr: 2, 
+        width: 'calc((100% - 18px) / 9)', // 9 columns (8 tiers + unsorted) with 2px margin between
+        minWidth: '200px', // Minimum usable width
+        mx: 1, // Margin on both sides for spacing
         height: '100%',
         display: 'flex',
         flexDirection: 'column'

@@ -52,12 +52,12 @@ const KanbanContainer = ({
         Using dropdown selection mode for tier assignment since drag-and-drop functionality isn't available in your environment.
       </Alert>
       
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, justifyContent: 'space-between' }}>
         {pitches.map((pitch) => (
           <Box 
             key={pitch.id} 
             sx={{ 
-              width: 280, 
+              width: { xs: '100%', sm: 'calc(50% - 16px)', md: 'calc(33.33% - 16px)', lg: 'calc(25% - 16px)' },
               p: 2, 
               bgcolor: 'background.paper',
               borderRadius: 1,
@@ -161,12 +161,17 @@ const KanbanContainer = ({
           <Box 
             sx={{ 
               display: 'flex', 
-              overflowX: 'auto',
+              flexWrap: { xs: 'wrap', lg: 'nowrap' }, // Wrap on smaller screens, no wrap on large screens
+              justifyContent: 'space-between',
               p: 2,
               pb: 4, // Extra padding at bottom for better scrolling experience
-              height: 'calc(100vh - 148px)', // Adjust height to account for AppBar and padding
+              height: { xs: 'auto', lg: 'calc(100vh - 148px)' }, // Full height on large screens
+              maxWidth: '100%', // Ensure it doesn't exceed viewport width
+              overflowX: { xs: 'hidden', lg: 'auto' }, // Only allow horizontal scroll on large screens if needed
+              overflowY: { xs: 'auto', lg: 'hidden' }, // Allow vertical scroll on small screens
               '&::-webkit-scrollbar': {
-                height: '10px',
+                height: '8px',
+                width: '8px',
               },
               '&::-webkit-scrollbar-thumb': {
                 backgroundColor: 'rgba(255, 255, 255, 0.2)',
