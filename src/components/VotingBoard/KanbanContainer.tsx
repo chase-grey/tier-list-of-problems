@@ -87,11 +87,28 @@ const KanbanContainer = ({
                 <MenuItem value="">
                   <em>Unsorted</em>
                 </MenuItem>
-                {tiers.map(tier => (
-                  <MenuItem key={tier} value={tier}>
-                    Tier {tier}
-                  </MenuItem>
-                ))}
+                {tiers.map(tier => {
+                  // Get descriptive priority name for each tier
+                  const priorityName = (() => {
+                    switch (tier) {
+                      case 1: return 'Highest Priority';
+                      case 2: return 'Very High Priority';
+                      case 3: return 'High Priority';
+                      case 4: return 'Moderate Priority';
+                      case 5: return 'Low-Moderate Priority';
+                      case 6: return 'Low Priority';
+                      case 7: return 'Very Low Priority';
+                      case 8: return 'Not a Priority';
+                      default: return `Tier ${tier}`;
+                    }
+                  })();
+                  
+                  return (
+                    <MenuItem key={tier} value={tier}>
+                      {priorityName}
+                    </MenuItem>
+                  );
+                })}
               </Select>
             </FormControl>
             

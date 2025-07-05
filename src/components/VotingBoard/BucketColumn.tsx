@@ -19,7 +19,25 @@ interface BucketColumnProps {
 const BucketColumn = ({ tier, pitches, votes, onAppetiteChange }: BucketColumnProps) => {
   const isUnsorted = tier === null;
   const columnId = isUnsorted ? 'unsorted' : `tier-${tier}`;
-  const title = isUnsorted ? 'Unsorted' : `Tier ${tier}`;
+  
+  // Get the priority label based on tier number
+  const getPriorityLabel = (tierNumber: number | null): string => {
+    if (tierNumber === null) return 'Unsorted';
+    
+    switch (tierNumber) {
+      case 1: return 'Highest Priority';
+      case 2: return 'Very High Priority';
+      case 3: return 'High Priority';
+      case 4: return 'Moderate Priority';
+      case 5: return 'Low-Moderate Priority';
+      case 6: return 'Low Priority';
+      case 7: return 'Very Low Priority';
+      case 8: return 'Not a Priority';
+      default: return `Tier ${tierNumber}`;
+    }
+  };
+  
+  const title = getPriorityLabel(tier);
   
   // Get background color for the column header
   const getHeaderColor = () => {
