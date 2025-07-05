@@ -1,4 +1,4 @@
-import React, { useEffect, useReducer } from 'react';
+import React, { useEffect, useReducer, memo } from 'react';
 import { ThemeProvider, CssBaseline, Box } from '@mui/material';
 import { darkTheme } from '../theme';
 import { NameGate } from './NameGate/NameGate';
@@ -6,10 +6,11 @@ import { TopBar } from './TopBar/TopBar';
 import KanbanContainer from './VotingBoard/KanbanContainer';
 import SnackbarProvider, { useSnackbar } from './SnackbarProvider';
 import { useLocalStorage } from '../hooks/useLocalStorage';
+import { exportVotes } from '../utils/csv';
 import type { DropResult } from '@hello-pangea/dnd';
 import type { AppState, AppAction, Pitch, Vote, Appetite, Tier } from '../types/models';
 
-// Import sample pitch data
+// Import pitch data
 import pitchesData from '../assets/pitches.json';
 
 // Initial state
@@ -31,7 +32,7 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
           ...state.votes,
           [action.id]: {
             ...state.votes[action.id] || { pitchId: action.id },
-            appetite: action.appetite,
+            appetite: action.appetite as Appetite,
           } as Vote,
         },
       };
@@ -53,7 +54,7 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
       const syncedVotes = Object.fromEntries(
         action.pitchIds.map(id => [
           id, 
-          state.votes[id] || { pitchId: id }
+          state.votes[id] ?? { pitchId: id, appetite: undefined!, tier: undefined! }
         ])
       );
       
@@ -76,13 +77,17 @@ const AppContent: React.FC = () => {
   const TOTAL = pitches.length;
   
   // Use localStorage for persistence
-  const [savedState, setSavedState] = useLocalStorage<{
-    voterName: string | null;
-    votes: Record<string, Vote>;
-  }>('polling.appState', initialState);
+  const [savedState, setSavedState] = useLocalStorage<AppState>('polling.appState', initialState);
   
   // Set up reducer with saved state
   const [state, dispatch] = useReducer(appReducer, savedState);
+
+  // Additionally store the voter name in a separate key as per spec ('polling.voterName')
+  useEffect(() => {
+    if (state.voterName) {
+      localStorage.setItem('polling.voterName', state.voterName);
+    }
+  }, [state.voterName]);
   
   // Access snackbar
   const { showSnackbar } = useSnackbar();
@@ -101,6 +106,13 @@ const AppContent: React.FC = () => {
     const pitchIds = pitches.map(pitch => pitch.id);
     dispatch({ type: 'RESET_FROM_PITCHES', pitchIds });
   }, [pitches]);
+  
+  // Calculate completion counters
+  const appetiteCount = Object.values(state.votes).filter(v => v.appetite).length;
+  const rankCount = Object.values(state.votes).filter(v => v.tier).length;
+  
+  // Check if export is enabled
+  const isExportEnabled = appetiteCount === TOTAL && rankCount === TOTAL;
   
   // Handle name submission
   const handleNameSubmit = (name: string) => {
@@ -128,6 +140,19 @@ const AppContent: React.FC = () => {
   // Handle appetite change
   const handleAppetiteChange = (pitchId: string, appetite: Appetite | null) => {
     dispatch({ type: 'SET_APPETITE', id: pitchId, appetite });
+    if (appetite) {
+      showSnackbar(`Appetite set to ${appetite === 'S' ? 'Small' : appetite === 'M' ? 'Medium' : 'Large'}`, 'info');
+    }
+  };
+  
+  // Handle export
+  const handleExport = () => {
+    if (state.voterName && isExportEnabled) {
+      exportVotes(state.voterName, state.votes);
+      showSnackbar('Votes exported successfully!', 'success');
+    } else {
+      showSnackbar('Complete all appetites and rankings first', 'error');
+    }
   };
   
   return (
@@ -142,9 +167,13 @@ const AppContent: React.FC = () => {
           voterName={state.voterName || 'User'}
           votes={state.votes}
           totalPitchCount={TOTAL}
+          appetiteCount={appetiteCount}
+          rankCount={rankCount}
+          onExport={handleExport}
+          isExportEnabled={isExportEnabled}
         />
         
-        <Box component="main" sx={{ flexGrow: 1, overflow: 'hidden' }}>
+        <Box component="main" sx={{ flexGrow: 1, overflow: 'hidden', p: 1 }}>
           <KanbanContainer
             pitches={pitches}
             votes={state.votes}
@@ -161,7 +190,6 @@ const AppContent: React.FC = () => {
  * Wrapped app with providers
  */
 const App: React.FC = () => {
-  console.log('App rendering');
   return (
     <ThemeProvider theme={darkTheme}>
       <CssBaseline />
@@ -172,4 +200,4 @@ const App: React.FC = () => {
   );
 };
 
-export default App;
+export default memo(App);

@@ -15,7 +15,7 @@ interface PitchCardProps {
   pitch: Pitch;
   vote: Vote | undefined;
   index: number;
-  onAppetiteChange: (pitchId: string, appetite: Appetite) => void;
+  onAppetiteChange: (pitchId: string, appetite: Appetite | null) => void;
 }
 
 /**
@@ -23,25 +23,32 @@ interface PitchCardProps {
  */
 const PitchCard = ({ pitch, vote, index, onAppetiteChange }: PitchCardProps) => {
   const [detailsAnchor, setDetailsAnchor] = useState<HTMLElement | null>(null);
-  const cardRef = useRef<HTMLDivElement>(null);
+  // Using HTMLElement type to match what Draggable provides
+  const cardRef = useRef<HTMLElement>(null);
   
   // Current appetite and tier
   const currentAppetite = vote?.appetite || null;
   const currentTier = vote?.tier || null;
 
-  // Get next appetite in the sequence (unset -> S -> M -> L -> unset)
-  const getNextAppetite = (current: string | null): Appetite | null => {
-    if (!current) return 'S';
-    if (current === 'S') return 'M';
-    if (current === 'M') return 'L';
-    return null; // L -> unset (null)
+  // Get color for appetite dot
+  const getAppetiteColor = (dot: Appetite, current: Appetite | null) => {
+    if (dot === current) {
+      switch (dot) {
+        case 'S': return colorTokens.appetites.small;
+        case 'M': return colorTokens.appetites.medium;
+        case 'L': return colorTokens.appetites.large;
+      }
+    }
+    return colorTokens.appetites.unset;
   };
 
-  // Toggle appetite dot
-  const handleAppetiteToggle = (e: React.MouseEvent) => {
+  // Handle appetite dot click
+  const handleAppetiteClick = (clickedAppetite: Appetite, e: React.MouseEvent) => {
     e.stopPropagation();
-    const nextAppetite = getNextAppetite(currentAppetite);
-    onAppetiteChange(pitch.id, nextAppetite as Appetite);
+    // If this appetite is already selected, clear it (set to null)
+    // otherwise set it to the clicked appetite
+    const nextAppetite = currentAppetite === clickedAppetite ? null : clickedAppetite;
+    onAppetiteChange(pitch.id, nextAppetite);
   };
 
   // Toggle details bubble
@@ -66,26 +73,16 @@ const PitchCard = ({ pitch, vote, index, onAppetiteChange }: PitchCardProps) => 
     setDetailsAnchor(null);
   };
 
-  // Get color for appetite dot
-  const getAppetiteColor = (dot: Appetite | null, current: Appetite | null) => {
-    if (dot === current) {
-      switch (dot) {
-        case 'S': return colorTokens.appetites.small;
-        case 'M': return colorTokens.appetites.medium;
-        case 'L': return colorTokens.appetites.large;
-      }
-    }
-    return colorTokens.appetites.unset;
-  };
-
   return (
     <Draggable draggableId={pitch.id} index={index}>
       {(provided: DraggableProvided, snapshot: DraggableStateSnapshot) => (
         <Paper
           ref={(el: HTMLElement | null) => {
-            provided.innerRef(el);
-            // @ts-ignore - combining refs
-            cardRef.current = el;
+            // Properly handle both refs without @ts-ignore
+            if (el) {
+              provided.innerRef(el);
+              cardRef.current = el;
+            }
           }}
           {...provided.draggableProps}
           {...provided.dragHandleProps}
@@ -135,7 +132,7 @@ const PitchCard = ({ pitch, vote, index, onAppetiteChange }: PitchCardProps) => 
               >
                 <IconButton
                   size="small"
-                  onClick={handleAppetiteToggle}
+                  onClick={(e) => handleAppetiteClick(appetite, e)}
                   className="appetite-dot"
                   aria-label={getAppetiteAriaLabel(appetite)}
                   sx={{

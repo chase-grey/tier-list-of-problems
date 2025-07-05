@@ -1,4 +1,3 @@
-import React from 'react';
 import {
   Popover,
   Typography,
@@ -6,7 +5,7 @@ import {
   Divider,
   Paper
 } from '@mui/material';
-import { Pitch } from '../../../types/models';
+import type { Pitch } from '../../../types/models';
 
 interface DetailsBubbleProps {
   pitch: Pitch;
@@ -86,5 +85,4 @@ const DetailsBubble = ({ pitch, anchorEl, onClose }: DetailsBubbleProps) => {
   );
 };
 
-// Using React.lazy for code splitting as specified
 export default DetailsBubble;

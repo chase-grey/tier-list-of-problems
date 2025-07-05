@@ -16,11 +16,11 @@ const AppetiteLegend: React.FC = () => {
   return (
     <Paper 
       sx={{ 
-        p: 2, 
+        p: 1.5, 
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
-        gap: 2,
+        gap: 3,
         mb: 2,
         width: 'fit-content',
         mx: 'auto'
@@ -37,14 +37,16 @@ const AppetiteLegend: React.FC = () => {
         >
           <Box 
             sx={{ 
-              width: 16, 
-              height: 16, 
+              width: 12, 
+              height: 12, 
               borderRadius: '50%', 
               backgroundColor: item.color 
             }}
             aria-hidden="true"
           />
-          <Typography variant="body2">{item.label}</Typography>
+          <Typography variant="body2">
+            {item.label}
+          </Typography>
         </Box>
       ))}
     </Paper>

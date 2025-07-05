@@ -6,32 +6,29 @@ import {
   Box,
 } from '@mui/material';
 import { GetApp as DownloadIcon } from '@mui/icons-material';
-import { exportVotes } from '../../utils/csv';
-import { Vote } from '../../types/models';
+import type { Vote } from '../../types/models';
 
 interface TopBarProps {
   voterName: string;
   votes: Record<string, Vote>;
   totalPitchCount: number;
+  appetiteCount: number;
+  rankCount: number;
+  onExport: () => void;
+  isExportEnabled: boolean;
 }
 
 /**
  * Application header with progress stats and export functionality
  */
-export const TopBar = ({ voterName, votes, totalPitchCount }: TopBarProps) => {
-  // Count the number of pitches with appetites set
-  const appetiteCount = Object.values(votes).filter(vote => vote.appetite).length;
-  
-  // Count the number of pitches with tiers assigned (dragged to a bucket)
-  const rankCount = Object.values(votes).filter(vote => vote.tier).length;
-  
-  // CSV export is enabled only when all pitches have both appetite and tier set
-  const isExportEnabled = appetiteCount === totalPitchCount && rankCount === totalPitchCount;
-
-  const handleExport = () => {
-    exportVotes(voterName, votes);
-  };
-
+export const TopBar = ({ 
+  voterName, 
+  totalPitchCount, 
+  appetiteCount, 
+  rankCount, 
+  onExport, 
+  isExportEnabled 
+}: TopBarProps) => {
   return (
     <AppBar position="sticky" sx={{ height: 64 }}>
       <Toolbar>
@@ -48,8 +45,15 @@ export const TopBar = ({ voterName, votes, totalPitchCount }: TopBarProps) => {
           color="secondary"
           startIcon={<DownloadIcon />}
           disabled={!isExportEnabled}
-          onClick={handleExport}
+          onClick={onExport}
           aria-label="Export results to CSV"
+          sx={{
+            fontWeight: isExportEnabled ? 'bold' : 'normal',
+            transition: 'all 0.2s ease',
+            '&:not(:disabled)': {
+              boxShadow: 3
+            }
+          }}
         >
           Export CSV
         </Button>

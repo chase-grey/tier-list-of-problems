@@ -24,8 +24,12 @@ const BucketColumn = ({ tier, pitches, votes, onAppetiteChange }: BucketColumnPr
   // Get background color for the column header
   const getHeaderColor = () => {
     if (isUnsorted) return 'background.paper'; // Use default paper color
+    // Use the tier colors from the spec
     return colorTokens.tiers[tier as keyof typeof colorTokens.tiers];
   };
+  
+  // Get text color for the header - always white for tier columns
+  const getHeaderTextColor = () => isUnsorted ? 'text.primary' : 'white';
 
   // Filter pitches that belong to this column
   const filteredPitches = pitches.filter(pitch => {
@@ -43,7 +47,7 @@ const BucketColumn = ({ tier, pitches, votes, onAppetiteChange }: BucketColumnPr
         width: 280, 
         minWidth: 280, 
         mr: 2, 
-        height: 'calc(100vh - 136px)',
+        height: '100%',
         display: 'flex',
         flexDirection: 'column'
       }}
@@ -56,7 +60,7 @@ const BucketColumn = ({ tier, pitches, votes, onAppetiteChange }: BucketColumnPr
           p: 1.5,
           mb: 2,
           backgroundColor: getHeaderColor(),
-          color: 'white',
+          color: getHeaderTextColor(),
           textAlign: 'center',
           fontWeight: 'bold'
         }}

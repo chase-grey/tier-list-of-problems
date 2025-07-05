@@ -1,3 +1,5 @@
+import type { Appetite, Tier } from '../types/models';
+
 /**
  * Utility functions for accessibility support
  */
@@ -7,7 +9,7 @@
  * @param appetite The appetite value ('S', 'M', 'L')
  * @returns Appropriate aria-label for the button
  */
-export const getAppetiteAriaLabel = (appetite: string | null): string => {
+export const getAppetiteAriaLabel = (appetite: Appetite): string => {
   switch (appetite) {
     case 'S': return 'Mark as Small effort';
     case 'M': return 'Mark as Medium effort';
@@ -25,8 +27,8 @@ export const getAppetiteAriaLabel = (appetite: string | null): string => {
  */
 export const getPitchCardDescription = (
   title: string, 
-  appetite: string | null, 
-  tier: number | null
+  appetite: Appetite | null, 
+  tier: Tier | null
 ): string => {
   const appetiteText = appetite 
     ? `Appetite: ${appetite === 'S' ? 'Small' : appetite === 'M' ? 'Medium' : 'Large'}` 

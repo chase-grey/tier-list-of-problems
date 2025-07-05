@@ -1,5 +1,5 @@
 import { unparse } from 'papaparse';
-import { Vote } from '../types/models';
+import type { Vote } from '../types/models';
 
 /**
  * Exports the current votes to a CSV file and triggers download
