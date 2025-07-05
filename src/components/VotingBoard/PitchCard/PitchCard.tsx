@@ -1,5 +1,6 @@
 import React, { useState, useRef, memo } from 'react';
 import { Paper, Typography, Box, IconButton, Tooltip } from '@mui/material';
+import { InfoOutlined } from '@mui/icons-material';
 import { Draggable } from '@hello-pangea/dnd';
 import type { DraggableProvided, DraggableStateSnapshot } from '@hello-pangea/dnd';
 import type { Pitch, Appetite, Vote } from '../../../types/models';
@@ -52,11 +53,8 @@ const PitchCard = ({ pitch, vote, index, onAppetiteChange }: PitchCardProps) => 
   };
 
   // Toggle details bubble
-  const handleCardClick = (event: React.MouseEvent<HTMLDivElement>) => {
-    // Don't open details if clicking on an appetite dot
-    if ((event.target as HTMLElement).closest('.appetite-dot')) {
-      return;
-    }
+  const handleInfoButtonClick = (event: React.MouseEvent) => {
+    event.stopPropagation();
     setDetailsAnchor(cardRef.current);
   };
 
@@ -87,7 +85,6 @@ const PitchCard = ({ pitch, vote, index, onAppetiteChange }: PitchCardProps) => 
           {...provided.draggableProps}
           {...provided.dragHandleProps}
           elevation={snapshot.isDragging ? 6 : 1}
-          onClick={handleCardClick}
           onKeyDown={handleKeyDown}
           sx={{
             p: 1.5,
@@ -109,9 +106,28 @@ const PitchCard = ({ pitch, vote, index, onAppetiteChange }: PitchCardProps) => 
           aria-expanded={Boolean(detailsAnchor)}
           aria-label={getPitchCardDescription(pitch.title, currentAppetite, currentTier)}
         >
-          <Typography variant="subtitle2" gutterBottom>
-            {pitch.title}
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+            <Typography variant="subtitle2" sx={{ mr: 1 }}>
+              {pitch.title}
+            </Typography>
+            <Tooltip title="View details">
+              <IconButton 
+                size="small" 
+                onClick={handleInfoButtonClick}
+                aria-label="View pitch details"
+                sx={{ 
+                  color: 'primary.main',
+                  p: 0.5,
+                  mt: -0.5,
+                  '&:hover': {
+                    backgroundColor: 'rgba(25, 118, 210, 0.04)'
+                  }
+                }}
+              >
+                <InfoOutlined fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          </Box>
           
           {/* Appetite dots */}
           <Box
