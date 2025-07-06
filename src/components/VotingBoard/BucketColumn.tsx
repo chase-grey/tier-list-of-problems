@@ -11,12 +11,13 @@ interface BucketColumnProps {
   pitches: Pitch[];
   votes: Record<string, Vote>;
   onAppetiteChange: (pitchId: string, appetite: Appetite | null) => void;
+  columnCount?: number; // Total number of visible columns (9 with unsorted, 8 without)
 }
 
 /**
  * Represents a tier bucket column in the voting board
  */
-const BucketColumn = ({ tier, pitches, votes, onAppetiteChange }: BucketColumnProps) => {
+const BucketColumn = ({ tier, pitches, votes, onAppetiteChange, columnCount = 9 }: BucketColumnProps) => {
   const isUnsorted = tier === null;
   const columnId = isUnsorted ? 'unsorted' : `tier-${tier}`;
   
@@ -69,7 +70,7 @@ const BucketColumn = ({ tier, pitches, votes, onAppetiteChange }: BucketColumnPr
   return (
     <Box 
       sx={{ 
-        width: 'calc((100% - 18px) / 9)', // 9 columns (8 tiers + unsorted) with 2px margin between
+        width: `calc((100% - ${(columnCount - 1) * 2}px) / ${columnCount})`, // Dynamic width based on column count with 2px margin between
         minWidth: '200px', // Minimum usable width
         mx: 1, // Margin on both sides for spacing
         height: '100%',

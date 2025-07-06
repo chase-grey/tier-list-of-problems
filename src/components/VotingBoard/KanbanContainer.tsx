@@ -34,6 +34,9 @@ const KanbanContainer = ({
   
   // Show total pitch count for validation
   const TOTAL = pitches.length;
+  
+  // Check if there are any uncategorized pitches
+  const hasUncategorizedPitches = pitches.some(pitch => !votes[pitch.id]?.tier);
 
   // Detect drag-and-drop support on mount
   useEffect(() => {
@@ -200,13 +203,16 @@ const KanbanContainer = ({
             }}
             aria-label={`Kanban board with ${TOTAL} pitches to categorize`}
           >
-            {/* Unsorted column first */}
-            <BucketColumn
-              tier={null}
-              pitches={pitches}
-              votes={votes}
-              onAppetiteChange={onAppetiteChange}
-            />
+            {/* Unsorted column - only show if there are uncategorized pitches */}
+            {hasUncategorizedPitches && (
+              <BucketColumn
+                tier={null}
+                pitches={pitches}
+                votes={votes}
+                onAppetiteChange={onAppetiteChange}
+                columnCount={hasUncategorizedPitches ? 9 : 8} // 9 columns if showing unsorted, 8 otherwise
+              />
+            )}
             
             {/* Tier columns 1-8 */}
             {tiers.map(tier => (
@@ -216,6 +222,7 @@ const KanbanContainer = ({
                 pitches={pitches}
                 votes={votes}
                 onAppetiteChange={onAppetiteChange}
+                columnCount={hasUncategorizedPitches ? 9 : 8} // 9 columns if showing unsorted, 8 otherwise
               />
             ))}
           </Box>
