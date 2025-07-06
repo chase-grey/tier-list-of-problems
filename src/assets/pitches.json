@@ -1,5 +1,60 @@
 [
   {
+    "id": "7882764",
+    "title": "Improve Reporting and Auditing on Custom Text Actions",
+    "details": {
+      "problem": "Analysts and AI project managers will not have good insight into how custom text actions are being used once they go live. To get more details, they will have to reach out to TS to pull data from the global tracking all prompts that are written, then manually go through this data. This is tedious, slow, and will not scale well. Currently, organizations default to saving off each prompt that is sent for 30 days.",
+      "ideaForSolution": "Provide better analytics and auditing tools for custom text actions to allow organizations to monitor usage, safeguard triggers, and maintain records for compliance.",
+      "characteristics": "Analysts and AI project managers can get details on who is using custom text actions, rates of accepted/adjusted/reverted, and where they are using them without reaching out to TS. Analysts and AI project managers can get details on how often safeguards are being hit by different users without reaching out to TS. Ideally, analysts and AI project managers can get details on how custom text actions are being used without reaching out to a TS. From talking to Brian Jacobson and Katie, a lawyer at Mercy, auditing this tool, including customers ability to save prompts longer than 30 days, is important.",
+      "whyNow": "Custom text actions are now live in prod at a few orgs. Not having good reporting and auditing could be a barrier to rolling this feature out more broadly. If there are litigations, organizations or clinicians may be in legal trouble if they are not able to show that they used this tool responsibly.",
+      "smartToolsFit": "We want to make it easy for our users to do the right thing. Improving reporting and auditing of custom text actions makes it easier for our customers to roll out this powerful tool in a more ethical and safe way.",
+      "epicFit": "This aligns with Epic's priorities to innovate with system intelligence to reduce clinician burnout and improve user efficiency. This aligns with SmartTools' team priorities to continue making progress on the AI Text Assistant."
+    }
+  },
+  {
+    "id": "7879768",
+    "title": "Create Feedback Buttons in AI SmartSections",
+    "details": {
+      "problem": "Currently, users don't have a way to give feedback on AI generated text. This is inconsistent with other AI features and is a highly requested features from customers. This will improve transparency, safety, and monitoring of these AI tools. This would be useful for defined text actions, shared custom text actions, and app team created AI workflows that use AI SmartSections. For custom text actions, it would also be useful if users have a way of giving feedback when they hit our safeguards and think they should not have.",
+      "ideaForSolution": "Indicate to folks that are monitoring these AI projects stats on thumbs up/thumbs down, such as in our text assistant dashboard. For shared custom text actions, surface stats on these to the user who wrote the prompt. This could then let them get a sense for how well their custom text action is performing and make adjustments if needed. For shared custom text actions, surface stats on these to the user who is being shared to. This could then let them get a sense for how well this custom text action performs and make a more informed decision on whether or not to use it.",
+      "whyNow": "From talking to customers at AI office hours, this was their highest priority enhancement for us to work on next. Here's the enhancements we talked about in order: 1. Feedback buttons, 2. Drill down in the dashboard, 3. Better auditing and reporting for custom text actions, 4. Share custom text actions."
+    }
+  },
+  {
+    "id": "7774673",
+    "title": "Text Actions / Support Summary Levels in the Dashboard",
+    "details": {
+      "problem": "Currently, analysts, CMIOs, and other leaders of AI projects at customer sites cannot drill down to see service areas, departments, or individual user stats with the text assistant. This is how other dashboards, like the IB Art dashboard, work and is now a base expectation from the reporting core group here at Epic.",
+      "ideaForSolution": "Allow for drilling down in the text assistant dashboard.",
+      "whyNow": "At office hours, this was the second highest request from customers for us to work on next. Here's the list of enhancements and order we discussed: 1. Feedback buttons, 2. Drill down in the dashboard, 3. Better auditing and reporting for custom text actions, 4. Share custom text actions."
+    }
+  },
+  {
+    "id": "7691740",
+    "title": "Use AI to Evaluate Reading Level in Letter Review",
+    "details": {
+      "problem": "Many payers have recently made a commitment to provide simple explanations and easy-to-access assistance for any prior authorizations that were denied. Users that are attempting to write these explanations may struggle to know if what they are writing is simple and easy enough to understand for a patient. Users at Sutter were copying & pasting their letters into Word, using Word's Editor functionality to determine the text's reading level, then copying that info & pasting it into a note to document the reading level. This is a clunky copy/paste workflow that makes it clear Epic is missing functionality these clinicians need.",
+      "ideaForSolution": "A simple wave 1: As users type into a textbox, they have an option to view stats on what the reading level is of what they are writing. A potential wave 2: If a user clicks on these stats, they could also click to have AI lower this reading level and rewrite the content.",
+      "whyNow": "Payers just announced this commitment last week (week of 6/23/2025). This is also important for improving a painful friction point in US healthcare.",
+      "smartToolsFit": "Aligns with our values to make it easy for users to do the right thing.",
+      "epicFit": "Aligns with efforts to improve system intelligence to improve efficiency and patient outcomes."
+    }
+  },
+  {
+    "id": "7663584",
+    "title": "Add Ability to Hide/Collapse/Reorder Columns in SmartPhrase Manager",
+    "details": {
+      "problem": "Clinicians are growing increasingly frustrated and burnt out by managing and maintaining their growing lists of SmartPhrases. Users have reported through immersions, user interviews, and ideas.epic.com that there is a lot of bloat in the SmartPhrase Manager. Proposed ideas like a last edited column or a last used column (among others) aim to help alleviate this problem by making maintenance easier, but adding additional columns further bloats the manager which makes the problem even worse.",
+      "ideaForSolution": "Make it easier for clinicians to do the right thing by giving them the ability to reorganize, hide, or collapse their columns in the SmartPhrase Manager. This will simplify their screens and remove another source of burnout.",
+      "characteristics": "Allows users to move their columns and hide the ones they don't need.",
+      "whyNow": "We have requests to add more information to the SmartPhrase Manager, but have run out of space. Users cannot change the order/visibility of unused columns.",
+      "epicFit": "5. Software must work, maintain high quality. 8. Solving existing pain points, such as ideas frequently reported during immersion, submitted through ideas.epic.com, or from other forms of feedback.",
+      "success": "Immersions, customer calls, and user surveys.",
+      "maintenance": "Low",
+      "internCandidate": false
+    }
+  },
+  {
     "id": "7462287",
     "title": "Add SmartPhrase Usage Information to SmartPhrase Manager",
     "details": {
