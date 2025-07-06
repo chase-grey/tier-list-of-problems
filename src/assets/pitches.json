@@ -62,5 +62,43 @@
       "maintenance": "Shouldn't have maintenance, might need regression testing checks when changes are made to STB accessibility or certain types of copy/pasting changes.",
       "internCandidate": false
     }
+  },
+  {
+    "id": "1123619",
+    "title": "SmartTool Admin: Add Ability to Map/Link a SmartPhrase to a SmartData Element",
+    "details": {
+      "problem": "Analysts add SDEs to SmartTexts and SmartLists so compliance officers can track all kinds of metrics and to pull in data for reporting. Since SmartPhrases can't have SDEs, analysts are having to build workarounds with SmartTexts in SmartLinks to allow for SDE use in SmartPhrases, requiring some analysts to spend extra time making those records. This can also prevent some analysts from adding SDEs if they don't know about this work around and compliance officers not getting all of the data they need for meaningful use analysis.",
+      "ideaForSolution": "Allow analysts to add SDEs to system SmartPhrases in the SmartPhrase editor so SmartPhrases will add SDEs when end users add those SmartPhrases to their notes.",
+      "characteristics": "SDEs are applied when the SmartPhrase is used, removed if the SmartPhrase text is removed, and can be used to track usage for reporting.",
+      "whyNow": "It's still being requested regularly.",
+      "smartToolsFit": "Make it easy to do the right thing.",
+      "epicFit": "This fits ST priorities because it would solve long standing existing pain points."
+    }
+  },
+  {
+    "id": "2005922",
+    "title": "Prevent Parts of a Note Template from Being Deleted",
+    "details": {
+      "problem": "Organizational leads and compliance officers often have required SmartLists or documentation that they add for legal reasons. These sections must be filled out but end users can just delete it from any note and not have to do the documentation.",
+      "ideaForSolution": "Add a SmartLink that could be used similarly to a sectioning SmartLink but nothing in that section can be deleted in the note. This allows it to be more flexible and only added to certain parts of a template. We could also make the section more like a warn on delete SmartLink so that if any part of it is about to get deleted, there is a warning saying something like 'this is required documentation, are you sure you want to delete this?' to allow more flexibility for end users. Or maybe have both options with different SmartLinks.",
+      "characteristics": "Allow sections of a SmartText to be required in a note in a way that makes deleting it difficult.",
+      "smartToolsFit": "This would be a part of making it easy for users to do the right thing so that required documentation is actually filled out.",
+      "epicFit": "This fits ST priorities because it would solve long standing existing pain points.",
+      "success": "Parts of a template can be restricted from being deleted when added to a STB."
+    }
+  },
+  {
+    "id": "2058026",
+    "title": "SmartTool Editors Should Have a Preview Option",
+    "details": {
+      "problem": "Currently, the SmartPhrase/Link Editors do not have preview options, so end users are unable to see how the SmartTools they are creating will look when actually inserted into a SmartTextBox. It would be awesome if we provided them with a way to preview how their SmartTools would look, similar to the Barcode preview. As a physician builder who consistently creating template to be shared, I would expect SmartPhrase to has same feature that SmartText had, preview is the big one. Also a lot of organization feels SmartPhrase actually provides more flexibility and easy to update template with urgent need so they lean toward using SmartPhrase more than SmartText.",
+      "ideaForSolution": "Support similar preview we did in ETX editor.",
+      "characteristics": "First fill the need and ensure consistent user experience on other similar feature they familiar with. Easy to use and flexible enough.",
+      "whyNow": "A long standing pain point.",
+      "epicFit": "Solving existing pain points, such as ideas frequently reported during immersion, submitted through ideas.epic.com, or from other forms of feedback.",
+      "success": "User satisfaction based on directly feedback/immersion. We can have feature tracking on usage of the preview feature which can be done in both POC and PRD.",
+      "maintenance": "low",
+      "internCandidate": true
+    }
   }
 ]
