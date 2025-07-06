@@ -73,6 +73,13 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
         ...state,
         votes: {}
       };
+      
+    case 'RESET_ALL':
+      // Reset everything including voter name
+      return {
+        voterName: null,
+        votes: {}
+      };
     
     default:
       return state;
@@ -191,12 +198,14 @@ const AppContent: React.FC = () => {
   
   // Handle reset confirmation
   const handleResetConfirm = () => {
-    // Reset all votes
-    dispatch({ type: 'RESET_ALL_VOTES' });
+    // Reset all votes and clear voter name
+    dispatch({ type: 'RESET_ALL' });
     // Close confirmation dialog
     setShowResetConfirmation(false);
+    // Reset first login flag to show instructions again
+    setIsFirstLogin(true);
     // Show success message
-    showSnackbar('All votes have been reset', 'success');
+    showSnackbar('All data has been reset. Please enter your name to continue.', 'success');
   };
 
   // Handle export
@@ -243,11 +252,11 @@ const AppContent: React.FC = () => {
           {/* Reset Confirmation Dialog */}
           <ConfirmationDialog
             open={showResetConfirmation}
-            title="Reset All Votes"
-            message="Are you sure you want to reset all your votes? This action cannot be undone."
+            title="Reset Everything"
+            message="Are you sure you want to reset everything? This will clear all your votes and allow you to change your name. You'll also see the instructions page again. This action cannot be undone."
             onConfirm={handleResetConfirm}
             onCancel={() => setShowResetConfirmation(false)}
-            confirmText="Yes, Reset All"
+            confirmText="Yes, Reset Everything"
             severity="warning"
           />
         </Box>
