@@ -99,15 +99,26 @@ const PitchCard = ({ pitch, vote, index, onAppetiteChange }: PitchCardProps) => 
               cursor: 'grabbing',
             },
             position: 'relative',
-            minHeight: '70px',
+            minHeight: '90px',
           }}
           role="button"
           tabIndex={0}
           aria-expanded={Boolean(detailsAnchor)}
           aria-label={getPitchCardDescription(pitch.title, currentAppetite, currentTier)}
         >
+          {/* Top section with title and info button */}
           <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-            <Typography variant="subtitle2" sx={{ mr: 1 }}>
+            <Typography 
+              variant="subtitle2" 
+              sx={{ 
+                mr: 1,
+                // Ensure text wraps to avoid overflow
+                overflowWrap: 'break-word',
+                wordBreak: 'break-word',
+                // Add bottom padding to avoid overlap with appetite buttons
+                paddingBottom: '28px' 
+              }}
+            >
               {pitch.title}
             </Typography>
             <Tooltip title="View details">
@@ -119,6 +130,7 @@ const PitchCard = ({ pitch, vote, index, onAppetiteChange }: PitchCardProps) => 
                   color: 'primary.main',
                   p: 0.5,
                   mt: -0.5,
+                  flexShrink: 0, // Prevent button from shrinking
                   '&:hover': {
                     backgroundColor: 'rgba(25, 118, 210, 0.04)'
                   }
@@ -136,7 +148,8 @@ const PitchCard = ({ pitch, vote, index, onAppetiteChange }: PitchCardProps) => 
               bottom: 4,
               right: 4,
               display: 'flex',
-              gap: 0.5
+              gap: 0.5,
+              zIndex: 1 // Ensure buttons are above text if there's any overlap
             }}
             onClick={(e: React.MouseEvent) => e.stopPropagation()}
             className="appetite-dots"
