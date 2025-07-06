@@ -11,7 +11,8 @@ import {
   GetApp as DownloadIcon,
   HelpOutline as HelpIcon,
   RestaurantMenu as AppetiteIcon,
-  FormatListNumbered as RankedIcon
+  FormatListNumbered as RankedIcon,
+  RestartAlt as ResetIcon
 } from '@mui/icons-material';
 import type { Vote } from '../../types/models';
 
@@ -24,6 +25,7 @@ interface TopBarProps {
   onExport: () => void;
   isExportEnabled: boolean;
   onHelpClick: () => void;
+  onResetClick: () => void;
 }
 
 /**
@@ -36,7 +38,8 @@ export const TopBar = ({
   rankCount, 
   onExport, 
   isExportEnabled,
-  onHelpClick 
+  onHelpClick,
+  onResetClick 
 }: TopBarProps) => {
   return (
     <AppBar position="sticky" sx={{ height: 64 }}>
@@ -105,6 +108,22 @@ export const TopBar = ({
           }}
         >
           Export CSV
+        </Button>
+        <Button
+          variant="outlined"
+          color="error"
+          startIcon={<ResetIcon />}
+          onClick={onResetClick}
+          aria-label="Reset all votes"
+          size="small"
+          sx={{
+            ml: 1,
+            '&:hover': {
+              bgcolor: 'rgba(244, 67, 54, 0.08)'
+            }
+          }}
+        >
+          Reset
         </Button>
       </Toolbar>
     </AppBar>

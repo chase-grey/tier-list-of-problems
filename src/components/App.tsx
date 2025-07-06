@@ -6,6 +6,7 @@ import { TopBar } from './TopBar/TopBar';
 import KanbanContainer from './VotingBoard/KanbanContainer';
 import SnackbarProvider, { useSnackbar } from './SnackbarProvider';
 import HelpDialog from './HelpDialog/HelpDialog';
+import ConfirmationDialog from './ConfirmationDialog/ConfirmationDialog';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { exportVotes } from '../utils/csv';
 import type { DropResult } from '@hello-pangea/dnd';
@@ -65,6 +66,13 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
         ...state,
         votes: syncedVotes,
       };
+      
+    case 'RESET_ALL_VOTES':
+      // Reset all votes while keeping voter name
+      return {
+        ...state,
+        votes: {}
+      };
     
     default:
       return state;
@@ -79,6 +87,8 @@ const AppContent: React.FC = () => {
   const [showHelp, setShowHelp] = useState(false);
   // State to track if this is first login
   const [isFirstLogin, setIsFirstLogin] = useState(true);
+  // State to control reset confirmation dialog
+  const [showResetConfirmation, setShowResetConfirmation] = useState(false);
   // Get pitches from JSON
   const pitches = pitchesData as Pitch[];
   const TOTAL = pitches.length;
@@ -173,6 +183,21 @@ const AppContent: React.FC = () => {
   const handleHelpClick = () => {
     setShowHelp(true);
   };
+  
+  // Handle reset button click
+  const handleResetClick = () => {
+    setShowResetConfirmation(true);
+  };
+  
+  // Handle reset confirmation
+  const handleResetConfirm = () => {
+    // Reset all votes
+    dispatch({ type: 'RESET_ALL_VOTES' });
+    // Close confirmation dialog
+    setShowResetConfirmation(false);
+    // Show success message
+    showSnackbar('All votes have been reset', 'success');
+  };
 
   // Handle export
   const handleExport = () => {
@@ -201,6 +226,7 @@ const AppContent: React.FC = () => {
           onExport={handleExport}
           isExportEnabled={isExportEnabled}
           onHelpClick={handleHelpClick}
+          onResetClick={handleResetClick}
         />
         
         <Box component="main" sx={{ flexGrow: 1, overflow: 'hidden', p: 1 }}>
@@ -213,6 +239,17 @@ const AppContent: React.FC = () => {
 
           {/* Help Dialog */}
           <HelpDialog open={showHelp} onClose={() => setShowHelp(false)} />
+          
+          {/* Reset Confirmation Dialog */}
+          <ConfirmationDialog
+            open={showResetConfirmation}
+            title="Reset All Votes"
+            message="Are you sure you want to reset all your votes? This action cannot be undone."
+            onConfirm={handleResetConfirm}
+            onCancel={() => setShowResetConfirmation(false)}
+            confirmText="Yes, Reset All"
+            severity="warning"
+          />
         </Box>
       </Box>
     </>

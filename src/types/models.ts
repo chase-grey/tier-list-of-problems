@@ -42,4 +42,5 @@ export type AppAction =
   | { type: 'SET_NAME'; name: string }
   | { type: 'SET_APPETITE'; id: string; appetite: Appetite | null }
   | { type: 'SET_TIER'; id: string; tier: Tier; timestamp?: number }
-  | { type: 'RESET_FROM_PITCHES'; pitchIds: string[] };  // sync when JSON changes
+  | { type: 'RESET_FROM_PITCHES'; pitchIds: string[] }  // sync when JSON changes
+  | { type: 'RESET_ALL_VOTES' };  // reset all votes but keep voter name
