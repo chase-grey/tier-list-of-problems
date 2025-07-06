@@ -1,5 +1,20 @@
 [
   {
+    "id": "7989552",
+    "title": "RTF/HTML - Lightweight RTF Component for Views",
+    "details": {
+      "problem": "Developers do not have a complete set of options for easily displaying RTF-backed content in their views. The wiki calls out that the ReportViewer is an ideal container because of the extra functionality it provides. Without the ability to use one (which is sometimes the case), developers have to fall back to setting something like \"dangerouslySetInnerHTML\" on a component and dealing with the risks (and shortcomings) of native HTML rendering.",
+      "ideaForSolution": "Ideally, we could provide a lightweight component which is somewhere between a full ReportViewer and a simple DOM element wrapped around a string. This would remove a large amount of duplicative/boilerplate code and make it simpler for new views to include RTF-backed content.",
+      "characteristics": "Being able to simply render RTF as HTML by setting a string value on a component would be a huge win. If we could also pull in all/most of the extra bells and whistles we are able to support in ReportViewer workflows (attribution, low vision, etc.) that would be a complete package.",
+      "whyNow": "Now that web transitions are done, people are looking for ways to do new things and have already started reaching out (Varghese Mathew would be interested in hearing about any updates here). Additionally, now that we are no longer bound by IE limitations, we could start looking on implementing PRJ 287784 to optimize/simplify the HTML we output. By adding an extra level of abstraction we can get around a lot of the struggles we have had fighting against CSPs.",
+      "smartToolsFit": "This fits our mission on several levels. First, it helps create a consistency between different implementations of RTF viewing in Hyperspace by avoiding app-specific implementation discrepancies. It will help improve efficiency of others by avoiding duplicative/boilerplate code in all of the application codebases. By adding this functionality, we make it easier for developers to consume RTF-backed content and make it easier to do the \"right thing\". Lastly, this helps make out tools easier to access by other Epic developers.",
+      "epicFit": "This aligns with Epic's priorities to innovate with system intelligence to reduce developer overhead and frustration. This aligns with SmartTools' team priorities to solve existing pain points.",
+      "success": "Success will be measured by being able to remove all (or at least almost all) direct implementations of the RTF-to-HTML APIs and instead route them through components which we control (and can, therefore, standardize).",
+      "maintenance": "This will definitely require more testing/maintenance, as it will essentially be a new \"product\" for developers. However, it will also help alleviate some of the app-specific issues we encounter and allow us an easy way to test \"realistic\" setups by avoiding one-off situations.",
+      "internCandidate": true
+    }
+  },
+  {
     "id": "7987877",
     "title": "Text Actions to Use Patient's Name and Preferred Pronouns",
     "details": {
