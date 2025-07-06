@@ -66,7 +66,7 @@ const DetailsBubble = ({ pitch, anchorEl, onClose }: DetailsBubbleProps) => {
         }}
       >
         <Typography variant="h6" gutterBottom>
-          {pitch.title}
+          {pitch.id} - {pitch.title}
         </Typography>
         
         <Divider />
