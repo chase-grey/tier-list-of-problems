@@ -81,6 +81,34 @@ const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose }) => {
           Once you've ranked all problems and set an appetite for each one, the Export button will become active.
           Click it to download your rankings and appetites as a CSV file.
         </Typography>
+
+        <Typography variant="body1" paragraph>
+          After downloading, please save your file to this SharePoint site using your guru name as the filename:
+        </Typography>
+        
+        <Box sx={{ p: 2, bgcolor: 'rgba(0, 0, 0, 0.07)', borderRadius: 1, mb: 2, overflowX: 'auto' }}>
+          <Typography 
+            variant="body2" 
+            component="a" 
+            href="https://epic1.sharepoint.com/:f:/s/SmartTools-Docs/EodUOVUDhwxKhuMUK3OeY2IBV_dj5j41GYqsqgu45MMEmQ?e=BYGkur"
+            target="_blank"
+            rel="noopener noreferrer"
+            sx={{ 
+              color: 'primary.main',
+              wordBreak: 'break-all',
+              textDecoration: 'none',
+              '&:hover': {
+                textDecoration: 'underline'
+              }
+            }}
+          >
+            https://epic1.sharepoint.com/:f:/s/SmartTools-Docs/EodUOVUDhwxKhuMUK3OeY2IBV_dj5j41GYqsqgu45MMEmQ?e=BYGkur
+          </Typography>
+        </Box>
+        
+        <Typography variant="body1" paragraph>
+          If you have trouble accessing or uploading to the SharePoint link, you can also email your results to Chase Grey (<strong>cgrey@epic.com</strong>).
+        </Typography>
         
         <Box sx={{ mt: 2, p: 2, bgcolor: 'rgba(33, 150, 243, 0.08)', borderRadius: 1 }}>
           <Typography variant="body2" color="primary">
