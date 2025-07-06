@@ -36,8 +36,28 @@ export const TopBar = ({
           Problem Polling: {voterName}
         </Typography>
         <Box sx={{ display: 'flex', alignItems: 'center', mr: 2 }}>
-          <Typography variant="subtitle1">
-            🍽 Appetites {appetiteCount}/{totalPitchCount} • 🗂 Ranked {rankCount}/{totalPitchCount}
+          <Typography variant="subtitle1" sx={{ display: 'flex', gap: 1 }}>
+            <Box 
+              component="span" 
+              sx={{ 
+                color: appetiteCount === totalPitchCount ? '#4caf50' : 'inherit',
+                fontWeight: appetiteCount === totalPitchCount ? 'bold' : 'normal',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              🍽 Appetites {appetiteCount}/{totalPitchCount}
+            </Box>
+            <Box component="span">•</Box>
+            <Box 
+              component="span" 
+              sx={{ 
+                color: rankCount === totalPitchCount ? '#4caf50' : 'inherit',
+                fontWeight: rankCount === totalPitchCount ? 'bold' : 'normal',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              🗂 Ranked {rankCount}/{totalPitchCount}
+            </Box>
           </Typography>
         </Box>
         <Button
