@@ -4,7 +4,6 @@ import { DragDropContext } from '@hello-pangea/dnd';
 import type { DropResult } from '@hello-pangea/dnd';
 import type { Pitch, Vote, Tier, Appetite } from '../../types/models';
 import BucketColumn from './BucketColumn';
-import AppetiteLegend from './AppetiteLegend';
 import ErrorBoundary from '../ErrorBoundary';
 import { isDragAndDropSupported } from '../../utils/dndDetection';
 
@@ -160,19 +159,12 @@ const KanbanContainer = ({
 
   // If we've detected that drag-and-drop isn't supported or an error occurred, show fallback UI
   if (isDndSupported === false || hasDndError) {
-    return (
-      <>
-        <AppetiteLegend />
-        {renderFallbackUI()}
-      </>
-    );
+    return renderFallbackUI();
   }
 
   // Main drag-and-drop UI with error boundary
   return (
     <>
-      <AppetiteLegend />
-      
       <ErrorBoundary 
         fallback={renderFallbackUI()}
         onReset={() => setHasDndError(false)}
