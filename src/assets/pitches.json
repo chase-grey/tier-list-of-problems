@@ -1,5 +1,13 @@
 [
   {
+    "id": "7992604",
+    "title": "Spell Check - Compile Wintertree from Source for Windows Version of Hyperdrive Plugin",
+    "details": {
+      "problem": "When we first created the Spell Check Plugin for Hyperdrive, we used the pre-compiled Sentry Spell Check Engine (SSCE) from Wintertree. This same component was already in use in the VB Spell Checker. When we added support for macOS, we couldn't use the pre-compiled DLL because it is specific to Windows. So we purchased a new, more expensive license to obtain Wintertree's source code so that we could compile SSCE from source for macOS. Currently, we have both licenses, and we are still using the pre-compiled DLL for Windows. Our older license for the pre-compiled Windows-specific DLL will soon lapse. But it doesn't make sense to renew that license because we can just compile SSCE from source for Windows like we do for macOS. As an added bonus, compiling SSCE from source gives us more control. For instance, it opens the door for supporting unicode in the future.",
+      "internCandidate": false
+    }
+  },
+  {
     "id": "7989552",
     "title": "RTF/HTML - Lightweight RTF Component for Views",
     "details": {
@@ -402,6 +410,190 @@
       "success": "Customer happiness. We know for sure this would make them happy.",
       "maintenance": "Low",
       "internCandidate": true
+    }
+  },
+  {
+    "id": "7991592",
+    "title": "Citations for text actions",
+    "details": {
+      "problem": "As a user, when I've used the AI Text Assistant, I would like to be able to know what pertinent pieces of content were left in, what was left out, and where pieces of included content came from.",
+      "ideaForSolution": "As a user, I'd like to have citations that match the UI seen in summaries for text actions so I can consistently find my source content.",
+      "characteristics": "Provide useful information but not interruptive.",
+      "whyNow": "Citation in AI gen content becomes more common with upcoming app workflow starting in Nov 25.",
+      "epicFit": "Continue making progress on the AI Text Assistant as it's one of the starter kit AI features that is quickly being broadly adopted across the Epic community. Innovate with infrastructure for system intelligence, such as building new agent components and UI for app teams to leverage.",
+      "internCandidate": false
+    }
+  },
+  {
+    "id": "7991593",
+    "title": "Forager for custom text actions",
+    "details": {
+      "problem": "As a user, I expect that custom text actions to know information about my patient, but they do not.",
+      "ideaForSolution": "As a user, I would want my text actions to be able to look up the required information from the chart.",
+      "characteristics": "Make it easy for user to create custom text action without needing to provide all the patient context each time manually. Save time on creating build.",
+      "epicFit": "Continue making progress on the AI Text Assistant as it's one of the starter kit AI features that is quickly being broadly adopted across the Epic community. Innovate with infrastructure for system intelligence, such as building new agent components and UI for app teams to leverage.",
+      "success": "Probably can track accept rate and maybe time spent on building the custom action.",
+      "maintenance": "Relatively high because patient information is more sensitive information that we need to take extra cautious and effort to verify the accuracy.",
+      "internCandidate": false
+    }
+  },
+  {
+    "id": "7991596",
+    "title": "Move AITA to Sous",
+    "details": {
+      "problem": "As an analyst, if Epic released an update to a text assistant prompt, I must wait to get an SU. As a developer, the existing infrastructure for AITA is not reusable such that I can take advantage of the prompt AITA offers for my agents.",
+      "ideaForSolution": "As an analyst, I would like the actions to live in Nebula so they can update with the model. As a developer, I would like the actions to be in Sous so they are reusable.",
+      "characteristics": "No end user behavior change. Faster or as fast.",
+      "whyNow": "greatly making prompt engineering update faster and save dev and QM time by reducing SU overhead.",
+      "epicFit": "Continue making progress on the AI Text Assistant as it's one of the starter kit AI features that is quickly being broadly adopted across the Epic community. Innovate with infrastructure for system intelligence, such as building new agent components and UI for app teams to leverage. Software must work, maintain high quality.",
+      "success": "Faster prompt change turn around.",
+      "maintenance": "Much lower maintenance cost going forward.",
+      "internCandidate": false
+    }
+  },
+  {
+    "id": "7991597",
+    "title": "Documentation agent",
+    "details": {
+      "problem": "As a user, it is challenging to find SmartTools because they have poor descriptions. As a user, it is challenging to know what a SmartTool does because it may have a low quality description.",
+      "ideaForSolution": "As a builder, I'd expect that I can get suggestions or improvements for my SmartTool descriptions with minimal effort.",
+      "characteristics": "Make it easy to find SmartTools and how to use it without too much knowledge on SmartTools and how each type of SmartTools structured.",
+      "whyNow": "The benefits of universal search will be lessened without better documentation throughout Epic. This will also help AI tools to be able to find content more easily.",
+      "epicFit": "Continue making progress on the AI Text Assistant as it's one of the starter kit AI features that is quickly being broadly adopted across the Epic community. Innovate with infrastructure for system intelligence, such as building new agent components and UI for app teams to leverage. Software must work, maintain high quality. Innovate with system intelligence for new SmartTools AI features. Solving existing pain points, such as ideas frequently reported during immersion, submitted through ideas.epic.com, or from other forms of feedback.",
+      "success": "This is one of the main pain point and has been requested for a better solution for a very long time. So we should be able to get a lot of direct feedback.",
+      "internCandidate": false
+    }
+  },
+  {
+    "id": "7991598",
+    "title": "Refreshability for AI SmartSections",
+    "details": {
+      "problem": "As a user, my use of AI nukes refreshability from my notes, preventing me from seeing the most up-to-date information if the refreshable content should be able to update. As a user of templated text actions and AI SmartLinks, information summarized will not update past the initial resolution of AI content.",
+      "ideaForSolution": "As a user, I'd like to be notified if content may be out of date and be given the option to refresh and regenerate content.",
+      "characteristics": "Flexible and scalable. Consistent UI with existing AI feature.",
+      "whyNow": "Templated text actions will make this more necessary, as will AI SmartLinks. This is also very similar to what we've seen teams do to modify existing content in the event that they are acting upon the existing text box contents.",
+      "epicFit": "As part of template text action, this is sort of needed since otherwise, it is loss of functionality. So fit in Software must work, maintain high quality.",
+      "internCandidate": false
+    }
+  },
+  {
+    "id": "7991600",
+    "title": "Accessibility agent",
+    "details": {
+      "problem": "As a builder, ensuring that my content is easily accessible via tagging is a lot of effort: it requires a lot of highlighting and clicking. As a builder, I rarely add captions to my images because that also requires a lot of clicking.",
+      "ideaForSolution": "As a builder, I'd like the system to do most of the heavy lifting of tagging and captioning for me. As a developer, I'd like these things to be agents that are reusable for my team which also desires to make documents or images accessible.",
+      "characteristics": "Reduce the time spent on doing accessibility related template build.",
+      "whyNow": "There might be regulation requirements coming up in future to support more accessibility features in SmartTools build and/or reduce the burden to maintain the build.",
+      "epicFit": "Continue making progress on the AI Text Assistant as it's one of the starter kit AI features that is quickly being broadly adopted across the Epic community. Innovate with infrastructure for system intelligence, such as building new agent components and UI for app teams to leverage. Software must work, maintain high quality. Innovate with system intelligence for new SmartTools AI features. Solving existing pain points, such as ideas frequently reported during immersion, submitted through ideas.epic.com, or from other forms of feedback.",
+      "success": "Time saved on making SmartTools change.",
+      "internCandidate": false
+    }
+  },
+  {
+    "id": "7991974",
+    "title": "Support SmartList reset in SmartSections",
+    "details": {
+      "problem": "DAN provides streamlined documentation -- for many notes, the primary documentation is in the Assessment and Plan note. As a place of heavy review/editing, autoreset SmartLists would allow for quicker documentation, and less need for manual combing through contents and manually reselecting SmartLinks. This would be a particular win in IP workflows where Diagnosis Aware Notes auto-copy forward, but we do not reset SmartLists.",
+      "ideaForSolution": "Reset auto-reset SmartList in SmartSection (DAN) workflows). This would mean that in DAN, users could have a set of SmartLists that they need to automatically re-complete when their A+P notes are copy forwarded...less accidentally old data, easier updates.",
+      "characteristics": "Consistent with current SmartList reset feature. Properly define what valid case to allow reset. Easy for customer to setup the workflow.",
+      "whyNow": "Without this, the whole SmartList reset feature could make it feel like incomplete. However, we also don't know if this would be pushed from customer until we have the first wave of the resetting feature out.",
+      "epicFit": "Solving existing pain points, such as ideas frequently reported during immersion, submitted through ideas.epic.com, or from other forms of feedback",
+      "success": "Direct feedback",
+      "maintenance": "This requires build on ELT records but should be relatively small effort.",
+      "internCandidate": false
+    }
+  },
+  {
+    "id": "7992270",
+    "title": "Create custom autocomplete model for EMC2",
+    "details": {
+      "problem": "EMC2 users will soon see autocomplete predictions as they type in SmartTextBoxes throughout the software. However, the word completion piece of the current autocomplete model was built using data from Cosmos Notes, meaning that the predictions are often for medical terms that are less relevant in EMC2 workflows.",
+      "ideaForSolution": "As an EMC2 user, it would be great to see autocomplete suggestions as I type that are relevant to the language and structure used by Epic while writing designs, QA notes, or QA instructions. To accomplish this, we could collect data from EMC2 sources such as DLGs, QANs, SLGs, XDSs, etc. to create a new word completion model specific to EMC2 workflows.",
+      "characteristics": "EMC2 users get better autocomplete suggestions within SmartTextBoxes.",
+      "whyNow": "We're planning to turn autocomplete on for all users in the November 25 version. If users find the suggestions unhelpful, they will likely turn off the functionality entirely, meaning they would miss out on any future improvements.",
+      "internCandidate": false
+    }
+  },
+  {
+    "id": "7992275",
+    "title": "Improve touch mode support",
+    "details": {
+      "problem": "As a user who utilizes the SmartText Box (STB) in touch mode, I want the ability to seamlessly use STB on tablets and other touch screen devices, so that I can efficiently document skin exams and other workflows as they become available on these platforms. Although my current day-to-day workflow does not heavily rely on tablets, I anticipate a shift with the upcoming release of Derm's first workflow designed for tablet use, which will enhance my documentation process.",
+      "ideaForSolution": "Address all ITF issues on PRJ 308851. The user would like to have similar experience in touch mode as if they were in hyperspace on desktop, this means to provide good experience with hover behavior, handle UX better on a relatively small screen, provide good user interaction with touch mode specific feature like virtual keyboard.",
+      "characteristics": "Feature complete and good usability and accessibility",
+      "whyNow": "This is soon impacting customer when the first touch mode customer facing feature: Derm skin exam gets released.",
+      "internCandidate": false
+    }
+  },
+  {
+    "id": "7992375",
+    "title": "Organizations cannot disable individual text actions",
+    "details": {
+      "problem": "Currently, analysts and TS cannot disable certain text actions, only the entire AI Text Assistant. This means that if a text action is misbehaving, they are stuck between two unpleasant options, disable the text assistant or attempt to educate all users to not use this text action until we at Epic release a solution.",
+      "ideaForSolution": "Allow customers to work with TS to temporarily disable text actions.",
+      "whyNow": "Highly requested enhancement from customers that would allow them to feel more confident rolling out broadly across their organization. LJ has already done much of the dev to create a TS utility to do this in DLG 2117627. We just need someone to finish this.",
+      "internCandidate": false
+    }
+  },
+  {
+    "id": "7992394",
+    "title": "Agents don't have an easy way to write text to a textbox",
+    "details": {
+      "problem": "Developers who are creating agents here at Epic are missing a key tool for agents to use, the ability to write to a textbox. With AI SmartSections, we have great UI and infrastructure setup for handling unreviewed AI generated text being placed in a textbox. What's missing is exposing these APIs to agents to allow an agent to put this unreviewed AI generated text in a textbox.",
+      "whyNow": "Based on this 6/24/25 GenAI strategy monthly, a key way that agents will interact with the rest of the Epic system is through tools, which are: An API to do one thing, Usually deterministic, Has a structured input & output contract, Is used by agents, often via function calling. Exposing an API to allow agents to use function calling to write text to a textbox seems like an obvious foundation agent that would be useful in many workflows across Epic. Most of the work here is already done with AI SmartSections, we just need to expose it to agents now.",
+      "internCandidate": false
+    }
+  },
+  {
+    "id": "7992395",
+    "title": "Personalization Station - Allow multiple versions of SmartPhrases on download",
+    "details": {
+      "problem": "From the perspective of a doctor working at two organizations each week: When I upload SmartPhrases from St Elsewhere Health, then go to download them at the second hospital, PPTH, that works fine. However, when I make changes to these SmartPhrases and upload from PPTH, it creates a second copy at St Elsewhere when I re-download. I would prefer if making changes at PPTH would carry over back to St Elsewhere. Additionally, if I re-upload at St Elsewhere and re-download at PPTH, it overwrote my build changes which wasted hours of work.",
+      "ideaForSolution": "It would be useful to have multiple versions of a SmartPhrase record, so the different versions are still logically linked, and the list of SmartPhrases isn't bloated. Regarding the second use case, this would also give a way to recover previous versions of the SmartPhrase when I re-download.",
+      "characteristics": "Allows users to avoid losing changes. Avoid duplication of SmartPhrases for providers working at multiple organizations.",
+      "whyNow": "Losing changes to SmartPhrases could lead to severe provider frustration. Avoiding duplication makes the process less confusing and more cleanly aligns with the mental model of a single source of truth, even if there are still different versions of the SmartPhrase.",
+      "epicFit": "Cleaner experience, prevents frustrating mistakes, higher perceived quality since mental model is more intuitive and isn't creating bloat with extra copies of SmartPhrases.",
+      "success": "Useful feature tracking metrics: How often we create multiple versions on a download, How often a user has changed the active version of a SmartPhrase. Would also be good to revisit estimated numbers for how many providers have used this feature at multiple locations (could probably check Epic Earth database).",
+      "maintenance": "Requires some additional handling for multiple contacts for SmartPhrases, requires considering this. Technically, not required, since our solution doesn't have to be to treat these as different contacts.",
+      "internCandidate": false
+    }
+  },
+  {
+    "id": "7992406",
+    "title": "Using ctrl+A does not pull up the text assistant like some folks expect it would",
+    "details": {
+      "problem": "When a user highlights all text using the keyboard shortcut, Ctrl+A, the AI Text Assistant does not appear. Some clinicians, Dr. Velasco in particular and others on office hours calls agreed, that this is confusing and slows them down in their keyboard workflows.",
+      "ideaForSolution": "A user selects all with Ctrl+A intending to take action on all the text in their text box, and the AI Text Assistant to give them options to reformat, rephrase, etc.",
+      "characteristics": "Make highlight all text -> pick or write a text action -> resolve the text action an easy all keyboard workflow. Make sure that focus isn't confusing or disruptive, for both non-screen reader and scree reader users.",
+      "whyNow": "This seems like a potential quick win. Ctrl+F6 to open the text assistant is not likely to be a commonly used keyboard shortcut. Ctrl+A is far more common. Please note though that some more thought is worth putting into this. For example, in word, Ctrl+A does not open a mini toolbar, perhaps there is good reason for this.",
+      "epicFit": "Making progress on AI text assistant",
+      "internCandidate": false
+    }
+  },
+  {
+    "id": "7992420",
+    "title": "People can click looks good without reviewing all AI text",
+    "details": {
+      "problem": "Currently, users can click looks good on unreviewed AI generated text without even having seen all of the AI content. This means they could be accepting text that is inaccurate.",
+      "ideaForSolution": "Users could be guided by the UI to scroll down throughout the full unreviewed AI generated text before they can click looks good.",
+      "characteristics": "Make this intuitive, easy, and as friction free as possible. Feature tracking on this seems valuable to know more about the reading habits of users using the text assistant and other AI features with unreviewed text.",
+      "whyNow": "Folks at office hours were a big fan of this idea, even though it does reduce usability. This is the same group that was on board with off-by-default for SDE safeguards, so to see them prioritize safety over usability here is quite telling of how important at least some folks in the community view this as.",
+      "epicFit": "Making progress on AI Text Assistant",
+      "internCandidate": false
+    }
+  },
+  {
+    "id": "7992424",
+    "title": "Personalization Station - Create editor card to highlight reconciliation issues",
+    "details": {
+      "problem": "From perspective of a doctor who has moved to a new organization: I have downloaded my SmartPhrases, but some build is missing. I don't understand what I need to do to fix it. This is especially difficult for large SmartPhrases that use a lot of SmartLinks.",
+      "ideaForSolution": "Improve the upload/download actions card in the SmartPhrase editor to highlight with clickable links which parts of the SmartPhrase need to be resolved.",
+      "characteristics": "Streamlines the process of resolving SmartPhrases.",
+      "whyNow": "Avoids confusion when build is removed from downloaded SmartPhrases.",
+      "epicFit": "Improves quality and helps an existing pain point, sets us up to improve finding build in the further future (e.g., relating to Peter Wei Lin or Tim's project).",
+      "success": "Feature track how often this card is interacted with, detect how many SmartPhrases have been marked as reviewed.",
+      "maintenance": "New UI to maintain, could be useful candidate for automated scripts.",
+      "internCandidate": false
     }
   },
   {
