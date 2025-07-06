@@ -1,5 +1,19 @@
 [
   {
+    "id": "7462287",
+    "title": "Add SmartPhrase Usage Information to SmartPhrase Manager",
+    "details": {
+      "problem": "As a physician, I created many SmartPhrases over the years and often forgot about how I named those. I end up recreating a lot duplicates on the fly and now I have several similar SmartPhrases with different names. When I update my template, I updated one but end up not being the one I recently used. Users often ask how they can easily tell which SmartPhrase have been used and what they can delete since those are not used.",
+      "ideaForSolution": "When users open SmartPhrase, it would be nice to see a column of how often a SmartPhrase is used so that they can clean up the SmartPhrases that are rarely used. As a physician builder, I'd also like to see what are the SmartPhrases used most often by my colleagues when I shared those phrases with them so that I know which ones I should keep up to date.",
+      "characteristics": "Intuitive to use but not overwhelming. Also possibly having personalization options so that the users can customize the view a bit.",
+      "whyNow": "Top requested feature. Often brought up in customer feedback.",
+      "epicFit": "Solving existing pain points, such as ideas frequently reported during immersion, submitted through ideas.epic.com, or from other forms of feedback.",
+      "success": "Feature tracking on usage and possibly the deletion on phrases with usage under certain threshold.",
+      "maintenance": "Low",
+      "internCandidate": true
+    }
+  },
+  {
     "id": "349115",
     "title": "SmartList Wildcard Entry Box Not SmartTool Enabled When List Is Refreshable",
     "details": {
