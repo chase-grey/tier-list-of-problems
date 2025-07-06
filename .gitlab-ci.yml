@@ -1,4 +1,5 @@
-image: node:lts
+# Use specific Node.js version (16) that's likely available in most GitLab environments
+image: node:16-alpine
 
 cache:
   paths:
@@ -12,6 +13,8 @@ stages:
 build:
   stage: build
   script:
+    # Install necessary packages for alpine-based image
+    - apk add --no-cache git
     - npm ci
     - npm run build
   artifacts:
