@@ -1,5 +1,66 @@
 [
   {
+    "id": "7983035",
+    "title": "Display SmartLists with Few Options as Option List in SmartTextBox",
+    "details": {
+      "problem": "SmartList require users to click into the list, and then make a selection. It would be much more efficient if for short lists, particularly Yes/No, or similar, we had the options inline, similar to an option list.",
+      "ideaForSolution": "Users will be able to see and pick SmartList options with a single click.",
+      "characteristics": "Good UX.",
+      "whyNow": "Simplifies the end user workflow for common workflows."
+    }
+  },
+  {
+    "id": "7975409",
+    "title": "SmartTextBox - Improved Shape Support",
+    "details": {
+      "problem": "Shapes (notably positioned shapes) are sometimes a crucial piece of the puzzle for users to solve a problem at hand. Sometimes it is to meet governmental requirements while other times it is simply finding the best way to fit the necessary content into the limited space available to them. While we support displaying and maintaining some types of shapes which already exist, we have limited options available for actively creating them from scratch, or even simply moving them around within the document. This means that users need to copy and paste from external sources and hope that things copy over correctly, as they are largely unable to modify them after-the-fact.",
+      "ideaForSolution": "A user may need to take a document from a third party (such as an insurance provider) and implement it as a SmartText record to be able to integrate it into other Epic workflows such as letters or other communication methods. Once it is inside of the SmartTextBox, we can allow the user to click-and-drag to move the shape around on-screen, support more advanced wrapping styles, provide mechanisms for editing inner-content, and introduce the ability to create new shapes from scratch.",
+      "characteristics": "Ideally, we would be able to construct any document which a user can do in MS Word, to avoid the dependence on that 3rd party product. A more likely situation is that we would be able to properly handle any document which our users receive from their vendors, or at least be able to take it in and bend it to our will in terms of layout.",
+      "whyNow": "With the migration of the SmartText editor to web, we are regularly running into situations where users attempt to perform workflows which were previously possible (albeit a bit buggy in some situations) with the SubSystems-backed control.",
+      "smartToolsFit": "This fits our mission on several levels. First, it helps create a consistency between our editor and MS Word (as well as other similar tools). It will help improve efficiency by allowing edits to happen directly within the SmartTextBox instead of requiring sending back and forth between the STB and a 3rd party application. By adding this functionality, we make it easier for users to build and expand on existing SmartTools, simplifying the steps involved and making it easier to do the right thing. Lastly, this helps make users' SmartTools more of a joy to use because they can create more user-friendly, modern content.",
+      "epicFit": "This aligns with Epic's priorities to innovate with system intelligence to reduce clinician burnout and improve user efficiency. This aligns with SmartTools' team priorities to solve existing pain points.",
+      "success": "Success can be measured in levels; we may need to iterate on this across multiple versions to reach the ideal end result. Being able to support documents which customers are encountering will be a great start.",
+      "maintenance": "This will likely require a lot of additional testing/maintenance, as the majority of the features needed here are net-new concepts for the SmartTextBox control - that is why they haven't been implemented yet.",
+      "internCandidate": false
+    }
+  },
+  {
+    "id": "7974873",
+    "title": "SmartTextBox - Manual Jagged Table Cell Creation",
+    "details": {
+      "characteristics": "We should be able to re-create any jagged table we find in our test documents from scratch within a web STB. If we can choose a random existing document and recreate it reliably (and without an unnecessary amount of effort compared to other editors), we will be in a good spot.",
+      "whyNow": "We have received many concerns over users struggling to recreate 3rd party documents for things such as insurance or governmental forms, where matching styling is very important. Similarly, label-based workflows have encountered struggles when attempting to best-utilize the limited space available on their size of labels.",
+      "smartToolsFit": "This fits our mission on several levels. First, it helps create a consistency between our editor and MS Word (as well as other similar tools). It will help improve efficiency by avoiding the need for users to migrate their content between Epic and a 3rd party application to make (seemingly) minor edits. By improving this functionality, we make it easy for users to expand on existing SmartTools, as many templates (ETX, HH1) involve tables and many of those tables are jagged in some way. Lastly, this helps make users' SmartTools easier to build and hopefully more of a joy to use because of that.",
+      "epicFit": "This aligns with Epic's priorities to innovate with system intelligence to reduce clinician burnout and improve user efficiency. This aligns with SmartTools' team priorities to solve existing pain points.",
+      "success": "We should be able to re-create any jagged table we find in our test documents from scratch within a web STB. If we can choose a random existing document and recreate it reliably (and without an unnecessary amount of effort compared to other editors), we will be in a good spot.",
+      "maintenance": "This will add some new options for testing moving forward. Realistically, these types of workflows should probably be tested now - we will just be changing the expected behaviors to be more helpful ones.",
+      "internCandidate": false
+    }
+  },
+  {
+    "id": "7968764",
+    "title": "Make the Text Assistant Context Aware",
+    "details": {
+      "problem": "When a clinician uses the AI text assistant, it will give responses that clearly do not pay attention to the surrounding context. This means responses are less useful than they could be and it makes the tool less useful and usable. An example is in In Basket, where the model doesn't understand most information about the patient or what the last patient message was, making it difficult for it to suggest useful responses to the patient.",
+      "ideaForSolution": "Build a generic infrastructure that allows app team devs to pass relevant context for their workflows to the AI Text Assistant. For IB, this could look like devs passing IB Insights and the last patient message. For OP Notes, this could look like passing the patient chart summary. For IP and ED notes, this could look like passing IP and ED insights. Clinicians using the text assistant would then likely get far better and more tailored responses.",
+      "whyNow": "This gives us a chance to stand on our hill of having a deeply integrated system. No other AI editing tool can integrate with the rest of the patient's chart in the way we can. This is a clear differentiator and potentially makes using the text assistant consistently more useful than going to ChatGPT, not just more convenient and safer.",
+      "epicFit": "System intelligence improvements.",
+      "success": "Consider feature tracking logging once for each context aware text action that is available and another for each time it gets used. Consider logging / reporting for the individual text action for more granular data."
+    }
+  },
+  {
+    "id": "7968293",
+    "title": "Use MFT Data to Autofit/Simplify Rich Text STB Toolbar",
+    "details": {
+      "problem": "Fred views Hyperspace as being complex and cluttered, since there are features onscreen that he doesn't need to use. One way to simplify the system for Fred would be to tuck away low-use actions. While Fred clicks some of the buttons in the rich text STB toolbar during his workday, he uses hotkeys for some others and does not regularly click them all. He sees the STB toolbar less frequently around Hyperspace now that they have been tucked away in plain text SmartTextBoxes, but buttons in the rich-text STB toolbar that he doesn't use still add clutter.",
+      "ideaForSolution": "Now that we have feature tracking data of STB buttons (SmartTextbox - Power BI Report Server), we should consider adjusting the default rich-text STB toolbar for users we don't have usage data for, and to leverage the auto-fit dev to auto-fit the toolbar when we do have data available for a user. We have been able to collect usage data for Fred, which shows that there are four buttons he clicks regularly but that he clicks other buttons very infrequently. Depending on how we want to approach the design, we could consider removing all other buttons from his toolbars so that he only has those four buttons in them (while giving him the option to decline the autofit suggestion if he would prefer).",
+      "characteristics": "Our current default options actually look quite good based on usage data. This makes sense if you assume most people don't customize their toolbar to add buttons to it that are tucked away. Some initial ideas: Create SmartPhrases is one that might not be used as frequently as the others, but it could be kept in the default toolbar because it doesn't have a hotkey. It doesn't seem necessary to add any well-used formatting options since we have the floating formatting toolbar. This would be a good opportunity to evaluate if we can get rid of Next/Last to push users to use other ways of moving between SmartLists.",
+      "whyNow": "We're already planning to incorporate auto-fit into our plain text STB project by auto-pinning a users' most frequently used buttons. This would be a good opportunity to leverage the functionality further for the rich text STB.",
+      "smartToolsFit": "It will be consistent with implementing auto-fit for the plain text STB and our mission to simplify SmartTextBoxes in general.",
+      "success": "Reduced clutter scores in the report, feedback from users adopting autofit."
+    }
+  },
+  {
     "id": "7967434",
     "title": "Show Where SmartTexts Are Configured Beyond SmartTool Records",
     "details": {
