@@ -85,6 +85,34 @@ The application persists user state in localStorage under the key `polling.appSt
 3. Click the colored dots on each card to assign S/M/L appetite
 4. When all cards are classified and ranked, export to CSV
 
+## Deployment with GitLab Pages
+
+This application is configured for easy deployment to GitLab Pages, making it available at the URL: `https://<your-username>.gitlab.io/tier-list-of-problems/`
+
+### Automatic Deployment
+
+The repository includes a CI/CD configuration file (`.gitlab-ci.yml`) that will automatically build and deploy the application whenever changes are pushed to the main branch:
+
+1. The pipeline will run automatically when you push to the main branch
+2. It will install dependencies, build the application, and deploy it to GitLab Pages
+3. Once complete, your site will be available at `https://<your-username>.gitlab.io/tier-list-of-problems/`
+
+### Manual Deployment
+
+If you need to deploy manually:
+
+1. Build the application: `npm run build`
+2. The built files will be in the `build/` directory
+3. You can then upload these files to your hosting provider of choice
+
+### LibLab Integration
+
+For internal Epic LibLab deployment:
+
+1. The application is fully configured for GitLab Pages deployment
+2. Once deployed to GitLab Pages, it will be available through LibLab
+3. No additional configuration is needed as this is a frontend-only application
+
 ## Roadmap / Future Enhancements
 
 - Light mode theme option

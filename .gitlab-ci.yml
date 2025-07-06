@@ -1,0 +1,30 @@
+image: node:lts
+
+cache:
+  paths:
+    - node_modules/
+  key: ${CI_COMMIT_REF_SLUG}
+
+stages:
+  - build
+  - deploy
+
+build:
+  stage: build
+  script:
+    - npm ci
+    - npm run build
+  artifacts:
+    paths:
+      - build/
+
+pages:
+  stage: deploy
+  script:
+    - mkdir -p public
+    - cp -r build/* public/
+  artifacts:
+    paths:
+      - public
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
