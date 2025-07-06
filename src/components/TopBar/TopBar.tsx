@@ -4,8 +4,13 @@ import {
   Typography,
   Button,
   Box,
+  IconButton,
+  Tooltip,
 } from '@mui/material';
-import { GetApp as DownloadIcon } from '@mui/icons-material';
+import { 
+  GetApp as DownloadIcon,
+  HelpOutline as HelpIcon 
+} from '@mui/icons-material';
 import type { Vote } from '../../types/models';
 
 interface TopBarProps {
@@ -16,6 +21,7 @@ interface TopBarProps {
   rankCount: number;
   onExport: () => void;
   isExportEnabled: boolean;
+  onHelpClick: () => void;
 }
 
 /**
@@ -27,14 +33,27 @@ export const TopBar = ({
   appetiteCount, 
   rankCount, 
   onExport, 
-  isExportEnabled 
+  isExportEnabled,
+  onHelpClick 
 }: TopBarProps) => {
   return (
     <AppBar position="sticky" sx={{ height: 64 }}>
       <Toolbar>
-        <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-          Problem Polling: {voterName}
-        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', flexGrow: 1 }}>
+          <Typography variant="h6" component="div">
+            Problem Polling: {voterName}
+          </Typography>
+          <Tooltip title="View Instructions">
+            <IconButton 
+              color="inherit" 
+              onClick={onHelpClick}
+              sx={{ ml: 2 }}
+              aria-label="Help"
+            >
+              <HelpIcon />
+            </IconButton>
+          </Tooltip>
+        </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', mr: 2 }}>
           <Typography variant="subtitle1" sx={{ display: 'flex', gap: 1 }}>
             <Box 

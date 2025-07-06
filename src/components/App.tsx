@@ -1,10 +1,11 @@
-import React, { useEffect, useReducer, memo } from 'react';
+import React, { useEffect, useReducer, memo, useState } from 'react';
 import { ThemeProvider, CssBaseline, Box } from '@mui/material';
 import { darkTheme } from '../theme';
 import { NameGate } from './NameGate/NameGate';
 import { TopBar } from './TopBar/TopBar';
 import KanbanContainer from './VotingBoard/KanbanContainer';
 import SnackbarProvider, { useSnackbar } from './SnackbarProvider';
+import HelpDialog from './HelpDialog/HelpDialog';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { exportVotes } from '../utils/csv';
 import type { DropResult } from '@hello-pangea/dnd';
@@ -74,6 +75,10 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
  * Main App component
  */
 const AppContent: React.FC = () => {
+  // State to control help dialog
+  const [showHelp, setShowHelp] = useState(false);
+  // State to track if this is first login
+  const [isFirstLogin, setIsFirstLogin] = useState(true);
   // Get pitches from JSON
   const pitches = pitchesData as Pitch[];
   const TOTAL = pitches.length;
@@ -120,6 +125,12 @@ const AppContent: React.FC = () => {
   const handleNameSubmit = (name: string) => {
     dispatch({ type: 'SET_NAME', name });
     showSnackbar(`Welcome, ${name}!`, 'success');
+    
+    // Show help dialog after name is submitted for first time users
+    if (isFirstLogin) {
+      setTimeout(() => setShowHelp(true), 500); // Small delay for better UX
+      setIsFirstLogin(false);
+    }
   };
   
   // Handle drag end
@@ -158,6 +169,11 @@ const AppContent: React.FC = () => {
     }
   };
   
+  // Handle showing help dialog
+  const handleHelpClick = () => {
+    setShowHelp(true);
+  };
+
   // Handle export
   const handleExport = () => {
     if (state.voterName && isExportEnabled) {
@@ -184,6 +200,7 @@ const AppContent: React.FC = () => {
           rankCount={rankCount}
           onExport={handleExport}
           isExportEnabled={isExportEnabled}
+          onHelpClick={handleHelpClick}
         />
         
         <Box component="main" sx={{ flexGrow: 1, overflow: 'hidden', p: 1 }}>
@@ -193,6 +210,9 @@ const AppContent: React.FC = () => {
             onDragEnd={handleDragEnd}
             onAppetiteChange={handleAppetiteChange}
           />
+
+          {/* Help Dialog */}
+          <HelpDialog open={showHelp} onClose={() => setShowHelp(false)} />
         </Box>
       </Box>
     </>
