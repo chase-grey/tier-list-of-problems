@@ -100,5 +100,58 @@
       "maintenance": "low",
       "internCandidate": true
     }
+  },
+  {
+    "id": "2430009",
+    "title": "SmartLists to Use Capitalization for Sentence Case",
+    "details": {
+      "problem": "Multi-select SmartLists are common in STBs but they cause sentences to be gramatically incorrect because the selections may have the first letter capitalized of the word, which makes the sentence look wrong. If the end user is normally a big stickler about grammar, this would probably drive them nuts. If they want to change the letter to fit the sentence, they would have to have a non-refreshable SmartList or remove the reselectability, which makes the tool less efficient to use in the future.",
+      "ideaForSolution": "If the SmartList is multiselect, only respect sentence case in the SmartList for the first selection but not the others. Optionally, add a button in the SmartList editor in case the capitalization should be respected so this option can be opted in or out. Ideally, the SmartList would also remove the capitalization of the first selection if it wasn't the beginning of a paragraph but that might not be feasible.",
+      "characteristics": "Customizable, allows for proper grammar without the builder having to anticipate where or how the SmartList options will be used.",
+      "smartToolsFit": "Makes SmartLists more of a joy to use because end users don't have grammatically incorrect sentences all over their notes with no way to correct it.",
+      "epicFit": "This fits ST priorities because it would solve long standing existing pain points."
+    }
+  },
+  {
+    "id": "3892341",
+    "title": "SmartPhrase Manager List - Add Column to Display the Last Contact Time",
+    "details": {
+      "problem": "As a physician, I want to have a \"last edited\" column for my SmartPhrases, so that I can easily track which phrases I am actively maintaining and identify those that haven't been updated in a long time, allowing me to efficiently manage and clean up my collection of SmartPhrases.",
+      "ideaForSolution": "Users could open the SmartPhrase manager and see a column showing when each SmartPhrase was last edited. Users would then know which SmartPhrases they have been maintaining and which ones they haven't touched for a long time.",
+      "characteristics": "Efficiently and clearly display the information they want.",
+      "whyNow": "Top requested feature on idea.com and constantly mentioned from customer feedback.",
+      "epicFit": "Well fit in almost all of our values.",
+      "smartToolsFit": "Solving existing pain points, such as ideas frequently reported during immersion, submitted through ideas.epic.com, or from other forms of feedback.",
+      "success": "Customer happiness. We know for sure this would make them happy.",
+      "maintenance": "Low",
+      "internCandidate": true
+    }
+  },
+  {
+    "id": "5094667",
+    "title": "Handle SmartLink Parameters that Undergo Translation in Higher Versions but Not in Lower Versions",
+    "details": {
+      "problem": "As a customer builder, I am frustrated that SmartLink user parameters have issues when moved via Data Courier where the ID is converted to a CID, but fails to convert back. Further more, I am frustrated that copies of CERMSG (and other SmartLinks) don't automatically update the embedded record IDs, although that is a future problem to fix according to my Epic TS (QAN 4694963).",
+      "ideaForSolution": "It would be nice if we had a way to just use the original values I configure in cases where the Epic system doesn't know how to process the SmartLink user parameters.",
+      "characteristics": "Works automatically!",
+      "whyNow": "Makes development and customer support easier since custom handling doesn't need to be made for each affected SmartLinks, updates for customer created copies of these SmartLinks, etc. This is a pre-req needed for addressing QAN 4694963 which would fully automate Data Courier / Turbocharger dependency calculation, EMFI/DC/TC ID translation, etc which is where the biggest benefit will be seen.",
+      "epicFit": "Solving existing pain points, such as ideas frequently reported during immersion, submitted through ideas.epic.com, or from other forms of feedback. Other types of app team support.",
+      "smartToolsFit": "Tools we develop should be easy to build.",
+      "maintenance": "Overall a decrease for maintenance.",
+      "internCandidate": false
+    }
+  },
+  {
+    "id": "6360073",
+    "title": "Allow User To Switch Spell Check Language Ad-Hoc",
+    "details": {
+      "problem": "As a physician who is fluent in multiple languages, I meet with patients that speak a variety of languages. When I type out patient instructions for my patients, many words are marked as misspelled because spell checking only works for the default language used for the Epic system.",
+      "ideaForSolution": "If I could switch the language I use for spell checking on the fly I can entire the notes and letters I create include words that are spelled correctly.",
+      "characteristics": "Allow user specific default used across all SmartTextBoxes. Allow user level overrides for a given SmartTextBox (on the fly). Allow app teams to specify the language (via locale ID) building off of the change made in DLG 2127300.",
+      "whyNow": "We increasingly see more and more content being created across a variety of languages. Translation workflows are also becoming increasingly an area of focus for R&D.",
+      "success": "Feature tracking around users changing these settings, especially for the on the fly case.",
+      "maintenance": "Expected to be low since these would be user settings.",
+      "internCandidate": false
+    }
   }
 ]
