@@ -4,7 +4,8 @@ import { darkTheme } from '../theme';
 import { NameGate } from './NameGate/NameGate';
 import { TopBar } from './TopBar/TopBar';
 import KanbanContainer from './VotingBoard/KanbanContainer';
-import SnackbarProvider, { useSnackbar } from './SnackbarProvider';
+import SnackbarProvider from './SnackbarProvider';
+import { useSnackbar } from '../hooks/useSnackbar';
 import HelpDialog from './HelpDialog/HelpDialog';
 import ConfirmationDialog from './ConfirmationDialog/ConfirmationDialog';
 import { useLocalStorage } from '../hooks/useLocalStorage';
@@ -53,7 +54,7 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
         },
       };
     
-    case 'RESET_FROM_PITCHES':
+    case 'RESET_FROM_PITCHES': {
       // Sync votes with current pitch IDs
       const syncedVotes = Object.fromEntries(
         action.pitchIds.map(id => [
@@ -66,6 +67,7 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
         ...state,
         votes: syncedVotes,
       };
+    }
       
     case 'RESET_ALL_VOTES':
       // Reset all votes while keeping voter name

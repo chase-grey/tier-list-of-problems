@@ -45,7 +45,7 @@ declare module '@hello-pangea/dnd' {
     innerRef: (element: HTMLElement | null) => void;
     draggableProps: {
       style?: React.CSSProperties;
-      [key: string]: any;
+      [key: string]: unknown;
     };
     dragHandleProps: {
       onMouseDown: (event: React.MouseEvent<HTMLElement>) => void;
@@ -56,7 +56,7 @@ declare module '@hello-pangea/dnd' {
       draggable: boolean;
       onDragStart: () => void;
       role: string;
-      [key: string]: any;
+      [key: string]: unknown;
     } | null;
   }
   
@@ -85,7 +85,7 @@ declare module '@hello-pangea/dnd' {
     isCombineEnabled?: boolean;
     direction?: 'horizontal' | 'vertical';
     ignoreContainerClipping?: boolean;
-    renderClone?: (provided: DraggableProvided, snapshot: DraggableStateSnapshot, rubric: any) => React.ReactNode;
+    renderClone?: (provided: DraggableProvided, snapshot: DraggableStateSnapshot, rubric: Record<string, unknown>) => React.ReactNode;
     getContainerForClone?: () => HTMLElement;
     children: (provided: DroppableProvided, snapshot: DroppableStateSnapshot) => React.ReactNode;
   }
@@ -93,7 +93,7 @@ declare module '@hello-pangea/dnd' {
   export interface DroppableProvided {
     innerRef: (element: HTMLElement | null) => void;
     droppableProps: {
-      [key: string]: any;
+      [key: string]: unknown;
     };
     placeholder?: React.ReactNode;
   }
