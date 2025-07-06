@@ -33,14 +33,14 @@ export const colorTokens = {
     unset: '#7f8c8d',   // Gray
   },
   tiers: {
-    // Neutral, subtle color palette with smooth progression and good contrast
-    1: '#4338ca',      // Highest Priority (Indigo dark)
-    2: '#4f46e5',      // Very High Priority (Indigo medium)
-    3: '#6366f1',      // High Priority (Indigo light)
-    4: '#6b7280',      // Moderate Priority (Cool gray)
-    5: '#71717a',      // Low-Moderate Priority (Gray)
-    6: '#78716c',      // Low Priority (Stone gray)
-    7: '#825a8e',      // Very Low Priority (Muted purple)
-    8: '#9333ea',      // Not a Priority (Medium purple)
+    // Consistent blue palette with different shades for all tiers
+    1: '#1e40af',      // Highest Priority (Darkest blue)
+    2: '#1d4ed8',      // Very High Priority (Very dark blue)
+    3: '#2563eb',      // High Priority (Dark blue)
+    4: '#3b82f6',      // Moderate Priority (Medium blue)
+    5: '#60a5fa',      // Low-Moderate Priority (Blue)
+    6: '#93c5fd',      // Low Priority (Light blue - darkened for contrast)
+    7: '#3b5998',      // Very Low Priority (Facebook blue - good contrast)
+    8: '#0369a1',      // Not a Priority (Dark sky blue)
   }
 };
