@@ -1,5 +1,62 @@
 [
   {
+    "id": "7987877",
+    "title": "Text Actions to Use Patient's Name and Preferred Pronouns",
+    "details": {
+      "problem": "Clinicians using ambient often get a response that does not use the patient's correct pronouns. Other times, clinicians writing text, such as in a note, use sterile language like \"Patient presents for multiple conditions. They are accompanied by their father\". Other times, a clinician uses pronouns and/or names for the patient, but may not be using the patient's preferred name or pronouns. All this means the patient is not being referred to in the way they want to be, which has an impact on trust, bias, and quality of health care received.",
+      "ideaForSolution": "Make it so that whenever a user runs a text action over text, the model will automatically swap in the patient's preferred name and pronouns, making it easy for the clinician to do the right thing. With DLG 2153040, we now send the patient's preferred name and pronouns with all defined and custom text actions. We have a line in the prompt that reads as The patient's name is <preferred first name> and the patient's pronouns are <subject><object><possessive>. This means the AI model will use the correct names and pronouns if generating from scratch or acting on text without names/pronouns. What we actually want though is for the AI model to be more assertive and always use the correct name and pronouns.",
+      "characteristics": "Correctly changes the patient's name and pronouns to their preferred name and pronouns. Doesn't change other person's name/pronoun if mentioned in the content. Meet other criteria we had for text action to ensure safety.",
+      "whyNow": "A top request from Mayo is for a text action to update patient's pronouns. We could accomplish this in a more generic way than a dedicated text action though.",
+      "epicFit": "Continue making progress on the AI Text Assistant as it's one of the starter kit AI features that is quickly being broadly adopted across the Epic community.",
+      "success": "Direct feedback. Feature tracking metrics on accept rate and usage.",
+      "maintenance": "Testing is likely pretty involved. Maintain can potentially be high if we are adding this extra piece to all prompt meaning we need to verify it for model upgrade/and other changes.",
+      "internCandidate": false
+    }
+  },
+  {
+    "id": "7987855",
+    "title": "Improve Context Menu Usability",
+    "details": {
+      "problem": "As a physician, I want a streamlined context menu with only the most relevant options, so that I can quickly and easily find and use the features I need most often without being overwhelmed by unnecessary choices.",
+      "ideaForSolution": "As a physician, I would recommend implementing a system that intelligently tracks and analyzes user habits to optimize their experience. By monitoring usage patterns, the system can automatically tailor the available options to align with the individual's preferences and needs. This personalized approach not only enhances user satisfaction but also promotes more efficient and effective utilization of resources.",
+      "characteristics": "Show less options but also reduce the need of digging into deeper menus to find the option.",
+      "whyNow": "Saving time, reduce cluster, meet the simplification goal.",
+      "epicFit": "Solving existing pain points, such as ideas frequently reported during immersion, submitted through ideas.epic.com, or from other forms of feedback.",
+      "success": "Measure by clicking and time the user goes to submenu.",
+      "internCandidate": true
+    }
+  },
+  {
+    "id": "7983256",
+    "title": "SmartTextBox - RTL Update and TS Migration",
+    "details": {
+      "problem": "As a developer, I want the TextLine.js component of the SmartTextBox codebase to be converted from raw JavaScript to TypeScript, so that it aligns with the rest of the codebase. This will ensure type safety, improve code readability, and facilitate easier maintenance and implementation of RTL-related updates, ultimately enhancing the functionality and usability of the templates for end users.",
+      "ideaForSolution": "As a developer, I want to convert the existing TextLine logic into one or more TypeScript files before implementing numerous functional changes, so that I can ensure type safety and avoid unnecessary complications that arise from the lack of type safety in other parts of the codebase.",
+      "characteristics": "Having all of the RTL-related logic included in TypeScript instead of JavaScript should be sufficient to solve this completely.",
+      "whyNow": "We are actively pursuing new RTL changes in the near future (touched on in QAN 7938948), and this type of restructuring is better to be done before any large functional changes.",
+      "smartToolsFit": "It will help improve efficiency and code stability by providing more structure around one of our most-sensitive areas.",
+      "epicFit": "This aligns with Epic's priorities to innovate with system intelligence to improve user/developer efficiency. This aligns with SmartTools' team priorities to help maintain our high quality product by enforcing type safety like we do elsewhere in our codebase.",
+      "success": "Having all of the RTL-related logic included in TypeScript instead of JavaScript should be sufficient to solve this completely.",
+      "maintenance": "Theoretically this should help with lowering long-term maintenance costs as we will get more for free with the TypeScript platform.",
+      "internCandidate": false
+    }
+  },
+  {
+    "id": "7983072",
+    "title": "SmartTextBox - Inline Header/Footer Support",
+    "details": {
+      "problem": "Complex documents, such as letters, may desire to leverage header and/or footer segments to meet their needs. Sometimes this is due to external requirements (3rd party content, governmental forms, etc.) while other times it is just to make things look better for their users/patients. Managing these headers and footers is currently a bit cumbersome, as the SubSystem component did not provide a good mechanism for what was needed. Sometimes the header/footer content is specific to that unique template record while other times it may be shared across records. In either case, current templates support only the disjointed header/footer records.",
+      "ideaForSolution": "One potential solution would be to leverage this existing implementation and simply echo the content back to the underlying SmartText records which stores the \"body\" of the header/footer. Another option would be to leverage SmartSections, as that already has a concept for a single document which is maintained in multiple locations.",
+      "characteristics": "A good solution would allow users to always view the most up-to-date rendering of the header/footer content while still allowing them to hot-swap with a different record and share that header/footer information across templates without duplicate records.",
+      "whyNow": "The recent push to allow Tapestry to embed header/footer information within the templates themselves (PRJ 338470) illustrates that there is a need which we are not fully meeting. Part of the hesitation around implementing this outside of Tapestry is that downstream workflows may not be able to function without expecting the header/footer content to be defined externally.",
+      "smartToolsFit": "This fits our mission on several levels. First, it helps create a consistency between our editor and MS Word (as well as other similar tools). It will help improve efficiency by allowing edits to happen directly within the SmartTextBox instead of requiring sending back and forth between the STB and a 3rd party application (for the embedded header/footer cases). By adding this functionality, we make it easier for users to build and expand on existing SmartTools, simplifying the steps involved and making it easier to do the right thing. Lastly, this helps make users' SmartTools more of a joy to use because they can create more user-friendly, modern content.",
+      "epicFit": "This aligns with Epic's priorities to innovate with system intelligence to reduce clinician burnout and improve user efficiency. This aligns with SmartTools' team priorities to solve existing pain points.",
+      "success": "Success could be measured by ensuring that we can properly render header/footer content using both the historical implementation (separate ETX records) as well as the new implementation being worked up for Tapestry.",
+      "maintenance": "In a way this would require additional maintenance/testing, since this will be additional logic, but ultimately it will be similar to what we would already have. We are simply going to make the content render similarly regardless of your decisions around storage/interoperability.",
+      "internCandidate": false
+    }
+  },
+  {
     "id": "7983035",
     "title": "Display SmartLists with Few Options as Option List in SmartTextBox",
     "details": {
