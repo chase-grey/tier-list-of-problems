@@ -1,5 +1,85 @@
 [
   {
+    "id": "7993629",
+    "title": "SmartTool Editors / Use AI to swap out placeholders for SmartLinks",
+    "details": {
+      "problem": "As a SmartTool builder in the Tapestry space, I have content imported from the 3rd party payors that needs to be updated to swap out placeholders with Epic's SmartLinks. This is a very time consuming process to identify these placeholders (which are formatted differently from document to document) and also find the correct SmartLink to use instead. As an end user, after importing my SmartPhrases from another organization I need to replace non-Epic released SmartLinks and non-user SmartLists with the correct SmartTool for the new organization. This is a tedious and time consuming process that takes time away from caring for patients.",
+      "ideaForSolution": "AI can help me both identify the placeholders in the imported content along with the replacement.",
+      "characteristics": "There might be a confidence score or something for automatic swaps vs something that needs manual review.",
+      "whyNow": "This change could be a big time saver for builders and end users (depending on who uses it).",
+      "epicFit": "Solving existing pain points",
+      "success": "We might want to develop/SU something for tracking time it takes to make these updates without any big changes. However, that is not something that has a really obvious thing to measure besides time in activity until placeholders are resolved.",
+      "internCandidate": false
+    }
+  },
+  {
+    "id": "7993631",
+    "title": "Infrastructure / CREATE MASTERFILE FOR SMARTTOOLS CONTEXTS",
+    "details": {
+      "problem": "As a builder within the Epic system, SmartTool contexts make my life harder than it needs to be: Epic releases SmartLinks, but they aren't available in the fields I want them to be. They are available in some activities within the patient chart, but not others that it should be. I then need to create copies of the Epic SmartLinks with makes future maintenance harder with more records fall out of sync with other changes Epic has made. I have a hard time figuring out what context to list on a SmartText so it shows up in the activity within the patient chart but not in other places where it doesn't make sense. When building SmartTexts, I don't have the options available to me that I always want to configure and instead need to switch between different SmartText Editor activities to do everything I want. For example, I can use the Letter Template Editor to build a letter template and configure headers/footers. However, I need to switch to the SmartText Editor to be able to configure overrides to use a different letter template when the letter is created for a child instead of an adult. As an Epic developer / TS: Creating a new SmartTool context is time consuming because I need to update many SmartLinks to include that new context so I instead typically just use MR Charting / IP Charting because its quick and easy for clinical focused SmartLinks. I don't know what SmartTool contexts I should all list when creating a new SmartLinks so I just copy something from an existing SmartLink or mark it as being available to all contexts even though it doesn't make sense to be used to billing / patient access workflows.",
+      "ideaForSolution": "Create a new INI for storing SmartTools contexts. Have that include a hierarchy so SmartLinks available to \"patient\" (ex: DOB, patient name, etc) are automatically available to anything more specific. Have the SmartText Editor change what cards are available based on the chosen contexts so header/footer configuration options are available when someone is building a letter template no matter how they opened the SmartText Editor.",
+      "whyNow": "Saves time / mental load for Epic and customers.",
+      "internCandidate": false
+    }
+  },
+  {
+    "id": "7993912",
+    "title": "Improve comparison with original text",
+    "details": {
+      "problem": "Currently, when a user runs a text action on a selected block of text, they are able to view the original text in a bubble for comparison. However, in the case of text actions that make minimal changes (e.g. Fix spelling and grammar), it can be difficult to spot the differences. This makes it more likely that a user would click Looks Good without thoroughly reviewing the generated text, allowing hallucinations or other discrepancies to slip through. The same holds true for text actions that are geared towards reformatting the text (e.g. Format as list). Additionally, for text actions that make larger changes to the text (e.g. Summarize), it can be painstaking to match each piece of generated text to the corresponding original text in the bubble. This either results in users taking longer than ideal to verify the summary or forgo proper review to save time. In the latter case, not only could hallucinations slip through, but also key omissions.",
+      "ideaForSolution": "We have three ideas for fixing this: Highlight key medical terms between the original content and the AI generated content when viewing the two side by side. This could look like highlighting the word \"concussion\" so a clinician can see if this key word was preserved, omitted, or added through a hallucination. Highlight numbers between the original content and the AI generated content when viewing the two side by side. This could look like highlighting key lab values, vitals, dates, or other numbers so a clinician can see if these numbers were preserved, omitted, or added through a hallucination. Create a \"metal detector\" option. The idea here is a user could hover over a word in either the AI generated content or the original content. All instances of that word between the AI generated content and original content would then be highlighted, making it easier for users to spot what was preserved, omitted, or added through a hallucination.",
+      "characteristics": "Seamless integration with our current comparison UI. Discoverable without being intrusive. Facilitates accurate and more efficient review of generated text.",
+      "whyNow": "Users have requested this in demos and usability testing sessions.",
+      "internCandidate": false
+    }
+  },
+  {
+    "id": "7993933",
+    "title": "Support pinning as quick button",
+    "details": {
+      "problem": "Currently, users have the ability to pin text actions such that they appear at the top of the drop down menu for text actions. Beyond requiring a minimum of two clicks to run such text actions, we currently limit the pinned list to five entries before additional items fall into a More menu, all but eliminating the point of pinning them.",
+      "ideaForSolution": "Allow users the option to pin text actions to the SmartTextBox toolbar as a quick button, similar how items under the Epic button work. Once pinned this way, users would be able to run these text actions with a single click, rather than needing to open the text action drop down menu first. To save space, we could use the icon of the category the text action falls under (one of the 4 below), only showing the display name if multiple pinned buttons are present for a single category.",
+      "characteristics": "Discoverable. Allows users quick access to the text actions they use most. Space efficient.",
+      "whyNow": "Requested in usability testing sessions. The current behavior of pinned items beyond the fifth falling into a More menu was particularly disliked.",
+      "internCandidate": false
+    }
+  },
+  {
+    "id": "7993935",
+    "title": "AI Text Assistant / Switch to two-column menu",
+    "details": {
+      "problem": "Currently, as the user begins running and pinning text actions, the drop down menu can grow very tall. Pinning a sixth item then collapses Recent into a submenu while introducing a More menu to the Pinned section, making these items less accessible. In either case, the menu is tall enough that it limits are ability to add more categories in the future (such as Shared Text Actions) without further obstructing the surrounding UI.",
+      "ideaForSolution": "We should make the menu two columns that span the width of the search field, similar to the Epic button. This would also facilitate us fixing QAN 7881495 by turning the main toolbar and Adjust split buttons into regular submenus.",
+      "characteristics": "Space efficient. Allows for quick access to the most possible text actions. Extensible.",
+      "whyNow": "Usability testing showed people disliked having pinned items beyond the fifth fall into a More menu, yet letting this list grow unbounded would causes other usability issues. Additionally, with our plan to support sharing text actions, a new category submenu will likely soon be needed, growing our current one column menu beyond what we deemed its limit. We're also now introducing the ability for individual workflows to add their own categories, further increasing the need to move categories to their own column.",
+      "internCandidate": false
+    }
+  },
+  {
+    "id": "6191585",
+    "title": "Support spell check in standalone",
+    "details": {
+      "problem": "As an end user, I like using the Epic system directly from a web browser because it is quicker to log in to and I don't need to keep the Hyperdrive app updated. I know I can't use Dragon and some other non-Epic apps like tap badgers for authentication, but I also can't use the spell checker which Epic provides. This means my notes have a lot of misspellings making me look unprofessional. I also can't use simple text expansions so when I type \"afib\" it gets expanded to \"Atrial fibrillation\" so the patients reading my notes in MyChart know what I'm talking about.",
+      "ideaForSolution": "Add the spell checker to work in a browser!",
+      "characteristics": "Likely using Wintertree to keep things consistent.",
+      "whyNow": "Standalone use will likely pick up whether that is directly in a browser on a Windows or Mac (instead of using the Hyperdrive app), Chromebooks, or other platforms. Training will start using Standalone very soon and Standalone could possibly help get users back on the system earlier after malware attacks where spell checking would be missing functionality.",
+      "epicFit": "Solve pain points, software must work",
+      "internCandidate": false
+    }
+  },
+  {
+    "id": "6855847",
+    "title": "Create an easier way to have vanishing tips",
+    "details": {
+      "problem": "As a physician builder for my specialty, I want to provide hints, tips, or other types of information that show up in a note when it is being edited, but disappear when the note is signed to not clutter the note. I can use an optional SmartList, but there are a number of issues with this: The SmartLinks I want to pull in sometimes include colons in the text which prevents signing the note. My analysts tell me there are issues with my build when they try to move it to production using Data Courier when I use a colon in the text where Data Courier finds the wrong SmartList or doesn't update the optional SmartList's record ID correctly.",
+      "ideaForSolution": "If Epic created a new way to adding disappearing help text to a note that would allow me, and the analysts that help me, be more efficient.",
+      "characteristics": "SmartSection!",
+      "whyNow": "Questions about this come up every couple weeks which means it happens more frequently and aren't getting reported to the development team.",
+      "maintenance": "Overall improvement.",
+      "internCandidate": false
+    }
+  },
+  {
     "id": "7992604",
     "title": "Spell Check - Compile Wintertree from Source for Windows Version of Hyperdrive Plugin",
     "details": {
