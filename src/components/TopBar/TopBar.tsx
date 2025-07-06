@@ -58,6 +58,23 @@ export const TopBar = ({
               <HelpIcon />
             </IconButton>
           </Tooltip>
+          
+          <Button
+            variant="outlined"
+            color="error"
+            startIcon={<ResetIcon />}
+            onClick={onResetClick}
+            aria-label="Reset all votes"
+            sx={{
+              ml: 2,
+              height: 36, // Match export button height
+              '&:hover': {
+                bgcolor: 'rgba(244, 67, 54, 0.08)'
+              }
+            }}
+          >
+            Reset
+          </Button>
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', mr: 2 }}>
           <Typography variant="subtitle1" sx={{ display: 'flex', gap: 1 }}>
@@ -108,22 +125,6 @@ export const TopBar = ({
           }}
         >
           Export CSV
-        </Button>
-        <Button
-          variant="outlined"
-          color="error"
-          startIcon={<ResetIcon />}
-          onClick={onResetClick}
-          aria-label="Reset all votes"
-          size="small"
-          sx={{
-            ml: 1,
-            '&:hover': {
-              bgcolor: 'rgba(244, 67, 54, 0.08)'
-            }
-          }}
-        >
-          Reset
         </Button>
       </Toolbar>
     </AppBar>
