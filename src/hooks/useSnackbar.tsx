@@ -1,6 +1,5 @@
 import { useContext } from 'react';
-import { SnackbarContext } from '../components/SnackbarProvider';
-import type { SnackbarContextType } from '../components/SnackbarProvider';
+import { SnackbarContext, type SnackbarContextType } from '../context/SnackbarContext';
 
 /**
  * Hook to use the snackbar functionality

@@ -1,13 +1,8 @@
-import React, { createContext, useState } from 'react';
+import React, { useState } from 'react';
 import type { ReactNode } from 'react';
 import { Snackbar, Alert } from '@mui/material';
 import type { AlertProps } from '@mui/material';
-
-export interface SnackbarContextType {
-  showSnackbar: (message: string, severity?: AlertProps['severity']) => void;
-}
-
-export const SnackbarContext = createContext<SnackbarContextType | undefined>(undefined);
+import { SnackbarContext } from '../context/SnackbarContext';
 
 interface SnackbarProviderProps {
   children: ReactNode;
