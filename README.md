@@ -87,7 +87,7 @@ The application persists user state in localStorage under the key `polling.appSt
 
 ## Deployment with GitLab Pages
 
-This application is configured for easy deployment to GitLab Pages, making it available at the URL: `https://<your-username>.gitlab.io/tier-list-of-problems/`
+This application is configured for easy deployment to GitLab Pages, making it available at the URL: `https://cgrey.gitlab.io/tier-list-of-problems/`
 
 ### Automatic Deployment
 
@@ -95,7 +95,7 @@ The repository includes a CI/CD configuration file (`.gitlab-ci.yml`) that will 
 
 1. The pipeline will run automatically when you push to the main branch
 2. It will install dependencies, build the application, and deploy it to GitLab Pages
-3. Once complete, your site will be available at `https://<your-username>.gitlab.io/tier-list-of-problems/`
+3. Once complete, your site will be available at `https://cgrey.gitlab.io/tier-list-of-problems/`
 
 ### Manual Deployment
 

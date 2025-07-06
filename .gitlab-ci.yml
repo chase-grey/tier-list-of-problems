@@ -26,8 +26,11 @@ pages:
   script:
     - mkdir -p public
     - cp -r build/* public/
+    # Add a small info file about deployment
+    - echo "Tier List of Problems - Deployed for cgrey on $(date)" > public/deployment-info.txt
   artifacts:
     paths:
       - public
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  # Site will be deployed to https://cgrey.gitlab.io/tier-list-of-problems/
