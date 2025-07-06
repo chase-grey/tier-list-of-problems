@@ -46,20 +46,21 @@ export const NameGate = ({ onNameSubmit, open }: NameGateProps) => {
         <DialogContent>
           <Box my={2}>
             <Typography variant="body1" gutterBottom>
-              Please enter your name to begin ranking problem pitches.
+              Please enter your full name to begin ranking problem pitches.
             </Typography>
             <TextField
               autoFocus
               margin="dense"
               id="name"
-              label="Your Name"
+              label="Your Full Name"
               type="text"
               fullWidth
               variant="outlined"
               value={name}
               onChange={(e) => setName(e.target.value)}
+              placeholder="John Doe"
               inputProps={{
-                'aria-label': 'Enter your name',
+                'aria-label': 'Enter your full name',
               }}
             />
           </Box>

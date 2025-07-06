@@ -8,8 +8,10 @@ import SnackbarProvider from './SnackbarProvider';
 import { useSnackbar } from '../hooks/useSnackbar';
 import HelpDialog from './HelpDialog/HelpDialog';
 import ConfirmationDialog from './ConfirmationDialog/ConfirmationDialog';
+import DevAutoPopulate from './DevAutoPopulate';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { exportVotes } from '../utils/csv';
+import { isDevelopmentMode } from '../utils/testUtils';
 import type { DropResult } from '@hello-pangea/dnd';
 import type { AppState, AppAction, Pitch, Vote, Appetite, Tier } from '../types/models';
 
@@ -220,6 +222,39 @@ const AppContent: React.FC = () => {
     }
   };
   
+  // Dev only: Handle auto-populate
+  const handleAutoPopulate = (name: string, votes: Record<string, any>, complete?: boolean) => {
+    // Set the name if not already set
+    if (!state.voterName) {
+      dispatch({ type: 'SET_NAME', name });
+    }
+    
+    // Apply each vote
+    Object.entries(votes).forEach(([pitchId, vote]) => {
+      // Set appetite if present
+      if (vote.appetite) {
+        dispatch({ 
+          type: 'SET_APPETITE', 
+          id: pitchId, 
+          appetite: vote.appetite 
+        });
+      }
+      
+      // Set tier if present
+      if (vote.tier) {
+        dispatch({ 
+          type: 'SET_TIER', 
+          id: pitchId, 
+          tier: vote.tier,
+          timestamp: vote.timestamp || new Date().getTime()
+        });
+      }
+    });
+    
+    // Show success message
+    showSnackbar(`Auto-populated with ${name} and ${complete ? 'complete' : 'partial'} votes!`, 'success');
+  };
+  
   return (
     <>
       <NameGate 
@@ -261,6 +296,14 @@ const AppContent: React.FC = () => {
             confirmText="Yes, Reset Everything"
             severity="warning"
           />
+          
+          {/* Development-only Auto-Populate Tool */}
+          {isDevelopmentMode() && (
+            <DevAutoPopulate 
+              onPopulate={handleAutoPopulate}
+              pitchIds={pitches.map(pitch => pitch.id)}
+            />
+          )}
         </Box>
       </Box>
     </>

@@ -83,7 +83,7 @@ const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose }) => {
         </Typography>
 
         <Typography variant="body1" paragraph>
-          After downloading, please save your file to this SharePoint site using your guru name as the filename:
+          After downloading, please save your file to this SharePoint site using your full name as the filename:
         </Typography>
         
         <Box sx={{ p: 2, bgcolor: 'rgba(0, 0, 0, 0.07)', borderRadius: 1, mb: 2, overflowX: 'auto' }}>
