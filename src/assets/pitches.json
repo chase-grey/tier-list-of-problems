@@ -1,5 +1,80 @@
 [
   {
+    "id": "7967434",
+    "title": "Show Where SmartTexts Are Configured Beyond SmartTool Records",
+    "details": {
+      "problem": "As an analyst, I find SmartText maintenance difficult because I have a hard time finding where a given SmartText is all used when looking outside of other SmartTool records.",
+      "ideaForSolution": "A generic report that can show any place a SmartText is used (within certain limitations -- code/static INI, item must be networked to ETX, etc) will make my life easier because I can find places a SmartText is plugged in within needing to maintain a tracker spreadsheet.",
+      "characteristics": "Automatically works for any new item that networks to ETX. Works with the INI/record ID pairs used for E3P values.",
+      "whyNow": "Ease of maintenance is a focus area to allow analysts to do more.",
+      "epicFit": "Solving existing pain points, such as ideas frequently reported during immersion, submitted through ideas.epic.com, or from other forms of feedback.",
+      "success": "Probably direct feedback.",
+      "maintenance": "None, but can make maintenance quicker and easier overall.",
+      "internCandidate": false
+    }
+  },
+  {
+    "id": "7964399",
+    "title": "Mac / Accessibility APIs Can't Detect Text in SmartTextBox",
+    "details": {
+      "problem": "As a user, I can't use Nabla or Abridge to dictate into SmartTextBoxes within Hyperspace for MacOS. This means Hyperspace for MacOS isn't as usable as Hyperdrive for Windows is because I, and my colleagues, greatly prefer to use speech to text over typing.",
+      "ideaForSolution": "One relatively quick fix for this issue of \"opaqueness\" of the smart note editor would be to have the note editor surface a representation of its contents to the AX API, e.g. by setting the value of its aria-description attribute to a JSON serialization of its content and current selection.",
+      "characteristics": "Ideally vendor agnostic.",
+      "whyNow": "This is a key reason that physicians at Emory switched back to using Hyperdrive for Windows instead of Hyperspace for MacOS.",
+      "success": "Physicians at Emory, Cedars, and others start using Hyperspace for MacOS instead of Hyperdrive for Windows.",
+      "maintenance": "Low once developed.",
+      "internCandidate": false
+    }
+  },
+  {
+    "id": "7963374",
+    "title": "Support Render Rich Text Content in Plain Text STB",
+    "details": {
+      "problem": "Some teams would like to use AI SmartLink with AI citations but in plain text STB. We already support rendering AI SmartLink return as AI SmartSection in plain text STB. However, citation itself is a rich text concept in SmartText Box and based on RTF markup. Currently plain text STB won't really process raw RTF and render as rich text content. It is something needed to allow AI SmartLink with citation to use in plain text STB. It is a growing needs and start with Cupid PRJ PRJ 322135: CV / Cath / LLM / Citations Support for Narrative Generation.",
+      "ideaForSolution": "Ideally, we would have a way to load, parse and render rich text content in plain text STB so that AI citation workflow won't really rely on rich text STB and application can use the general AI citation RTF API for their use cases.",
+      "characteristics": "Flexible and safe. Don't open a loop hole of allow any random rich text to be inserted into plain text STB.",
+      "whyNow": "A pre-requisite of app's AI project (PRJ CV / LLM / Citations Support for Narrative Generation [338354], relating to in flight PRJ CV / LLM / Consolidate Workflows for Draft Invasive Procedure Narrative LLM Feature + Framework Update [322135]).",
+      "smartToolsFit": "Infrastructure -> Generalize to benefit more -> Scalability -> Make SmartTools infrastructure salable to future use cases.",
+      "epicFit": "Support app team commitments, including pair programming, PQA, charters, QA passes, design review, or dev. Continue making progress on the AI Text Assistant as it's one of the starter kit AI features that is quickly being broadly adopted across the Epic community.",
+      "success": "Success of App team's project.",
+      "maintenance": "Full ST owned infrastructure.",
+      "internCandidate": false
+    }
+  },
+  {
+    "id": "7963351",
+    "title": "Enhance SmartLink User Parameter for Segmented Parameter Validation",
+    "details": {
+      "problem": "DLG 2049486 is proposing a new SmartLink to allow building EpicCommand link using SmartLink user entered parameter. Because of technical limitations of the SmartLink user parameter popup, user still need to manually build the delimited string for the EpicCommand link parameter.",
+      "ideaForSolution": "On a high level, we would like to enhance the SmartLink that can build all types of EpicCommand link with good validation and simple UI so it's easier for average user to build a link without having to build out the delimited string manually. For the generic SmartLink we will have two parameters: EpicCommand type - custom search type parameter that returns the available EpicCommand(This is done in DLG 2049486), and Parameters - segmented parameter with two segments: parameterType and parameterValue with dynamic validation.",
+      "whyNow": "Saves build time for EpicCommand link. Work is being done in this area right now, but it is fairly bare bones without this proposed development."
+    }
+  },
+  {
+    "id": "7945918",
+    "title": "Improve Automated Testing for Model Responses for the Text Assistant",
+    "details": {
+      "problem": "Each time Microsoft upgrades their AI models or we want to switch to a new model, QMs and devs on Notes and SmartTools spend time manually reviewing and testing our prompts to see if they perform well or need any changes. This problem will only increase in magnitude as we aim to support all primary languages.",
+      "ideaForSolution": "Build out the same type of testing for our two custom text action prompts. Expand the testing for defined text actions and this new testing for custom text actions to work for all other primary locales. Clearly document how to generate these outputs, so when devs are making prompt changes in the future, they can easily run this automated testing to see the impact of the changes they've made. Work with translators and other AI projects to build an example of how this can scale and work well across other AI features.",
+      "characteristics": "Devs and QMs can easily test new prompts and spot issues with prompt changes. Devs and QMs have limited manual work to do for each quarterly upgrade. We build a good example for other AI projects to follow. We have good systems built out for testing internationalized prompts.",
+      "whyNow": "SmartTools is taking over more prompt ownership, meaning it's important for us to support our QM with better automated testing.",
+      "smartToolsFit": "Software must work - our prompts are designed to work as well as possible and we catch issues before they get to our customers. Generalize to benefit more - we can set precedent here for other teams across Epic to follow in building out good automated testing.",
+      "epicFit": "First, do no harm - have better systems in place to catch glaring issues that may arrise. Innovate with system intelligence. Continue making progress on the text assistant."
+    }
+  },
+  {
+    "id": "7936231",
+    "title": "Improve As-Needed SmartLink Search",
+    "details": {
+      "problem": "Users frequently have difficulty finding a SmartLink that pulls in the data that they need. This can be relatively simple data, a SmartLink that they know exists because it's in a template, or something that they aren't sure exists but need for the first time. On immersion, I've been asked about a range of these, from ones that they probably should have learned during training (ME) to ones that are much more niche (ADMPROV, the pile of LABS SmartLinks, the various HISTORY SmartLinks). We have the Find SmartLinks report, but not many people know about it, and it's disruptive to people's workflows.",
+      "ideaForSolution": "Users are able to insert a new Epic-released SmartLink with one user-entered parameter, the query to find relevant SmartLinks. The system finds the relevant SmartLinks, then returns some number of results based on confidence as a SmartList that will pull in the found SmartLinks.",
+      "characteristics": "Users are able to reliably find relevant SmartLinks on the first try. Does not require leaving the note-writing workflow. Result is returned fast enough that it's not annoying to use.",
+      "whyNow": "This has been an issue for a long time, but AI classification makes the system intelligence required much more feasible than it would have been previously.",
+      "smartToolsFit": "Make it easy for users to do the right thing by reducing the time and mental load to find and share SmartTools.",
+      "epicFit": "Reduce clinicial burnout and improve user efficiency; solve existing pain points."
+    }
+  },
+  {
     "id": "7882764",
     "title": "Improve Reporting and Auditing on Custom Text Actions",
     "details": {
