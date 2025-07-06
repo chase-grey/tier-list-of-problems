@@ -9,7 +9,9 @@ import {
 } from '@mui/material';
 import { 
   GetApp as DownloadIcon,
-  HelpOutline as HelpIcon 
+  HelpOutline as HelpIcon,
+  RestaurantMenu as AppetiteIcon,
+  FormatListNumbered as RankedIcon
 } from '@mui/icons-material';
 import type { Vote } from '../../types/models';
 
@@ -61,10 +63,14 @@ export const TopBar = ({
               sx={{ 
                 color: appetiteCount === totalPitchCount ? '#4caf50' : 'inherit',
                 fontWeight: appetiteCount === totalPitchCount ? 'bold' : 'normal',
-                transition: 'all 0.2s ease'
+                transition: 'all 0.2s ease',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 0.5
               }}
             >
-              🍽 Appetites {appetiteCount}/{totalPitchCount}
+              <AppetiteIcon sx={{ fontSize: '1.4rem' }} />
+              <span>Appetites {appetiteCount}/{totalPitchCount}</span>
             </Box>
             <Box component="span">•</Box>
             <Box 
@@ -72,10 +78,14 @@ export const TopBar = ({
               sx={{ 
                 color: rankCount === totalPitchCount ? '#4caf50' : 'inherit',
                 fontWeight: rankCount === totalPitchCount ? 'bold' : 'normal',
-                transition: 'all 0.2s ease'
+                transition: 'all 0.2s ease',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 0.5
               }}
             >
-              🗂 Ranked {rankCount}/{totalPitchCount}
+              <RankedIcon sx={{ fontSize: '1.4rem' }} />
+              <span>Ranked {rankCount}/{totalPitchCount}</span>
             </Box>
           </Typography>
         </Box>
