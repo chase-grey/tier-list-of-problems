@@ -17,9 +17,7 @@ export const exportVotes = (voterName: string, votes: Record<string, Vote>) => {
   
   const csv = unparse(rows);
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  const name = `poll-votes_${voterName.replace(/\s+/g, '_')}_${
-    new Date().toISOString().slice(0, 10)
-  }.csv`;
+  const name = `${voterName.replace(/\s+/g, '_')}.csv`;
   
   const link = document.createElement('a');
   link.href = URL.createObjectURL(blob);
