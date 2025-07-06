@@ -1,57 +1,66 @@
 [
   {
-    "id": "pitch-001",
-    "title": "AI-Powered Bug Prediction",
+    "id": "349115",
+    "title": "SmartList Wildcard Entry Box Not SmartTool Enabled When List Is Refreshable",
     "details": {
-      "problem": "Developers waste time debugging issues that follow predictable patterns.",
-      "ideaForSolution": "Use ML to identify bug-prone code patterns and suggest fixes before they cause problems.",
-      "characteristics": "Requires training on our codebase history and integration with IDE.",
-      "whyNow": "We now have enough historical data to train effective models.",
-      "smartToolsFit": "Perfect application of ML for developer productivity.",
-      "epicFit": "Aligns with our goal to improve developer experience.",
-      "success": "20% reduction in bug reports for identified patterns.",
-      "maintenance": "Model would need quarterly retraining."
+      "problem": "Users create and use many SmartPhrases and are often aware of some useful SmartLinks that help speed up their documentation. If a user is documenting with a template that has a refreshable SmartList that contains a wildcard, they can't use their useful SmartPhrases or SmartLinks on this wildcard. Instead, users have to manually type out their answer to fill out this wildcard, slowing them down.",
+      "ideaForSolution": "Allow users to add SmartPhrases and SmartLinks in SmartList wildcards to speed up their documentation and allow them to take full advantage of the SmartPhrases they created.",
+      "characteristics": "The SmartLinks/SmartPhrases would have to be converted into plain text and have line breaks removed from the text so that it can be used in the wildcard even if it isn't initially the right format but the SmartTools should be able to work together.",
+      "smartToolsFit": "Wildcards would become more efficient in SmartLists, it would make simple smartphrases more usable, and would remove a frustration that end users encounter regularly.",
+      "epicFit": "This fits ST priorities because it would solve long standing existing pain points."
     }
   },
   {
-    "id": "pitch-002",
-    "title": "User Session Replay",
+    "id": "709400",
+    "title": "Allow Marking User SmartPhrases as Personal/Sensitive to Hide from Other Editors",
     "details": {
-      "problem": "Hard to diagnose UX issues without seeing what users actually experienced.",
-      "ideaForSolution": "Privacy-focused session recording for web and mobile apps.",
-      "whyNow": "Recent user complaints about confusing flows we can't reproduce.",
-      "maintenance": "Storage costs increase with user base."
+      "problem": "Users might create a SmartPhrase for a signature that doesn't make sense for other people to have access to or as a personal reference that isn't meant for others to use. If other people use their private SmartPhrases, this can make them feel like their privacy has been violated or annoyed that they can't control their personal smartphrases.",
+      "ideaForSolution": "Allow end users the choice to hide their SmartPhrases that aren't appropriate for others to use, preventing other users from searching or sharing SmartPhrases without the user's permission. This will make end users feel like they have control over their SmartPhrases.",
+      "characteristics": "Create a button in the user SmartPhrase editor that allows it to only be searchable or viewable by editors so SmartPhrases that aren't meant to be shared don't have to be. There could also be an HDF setting to allow organizations to turn this feature off if they don't think SmartPhrases should ever be private. Private SmartPhrases should able to be changed back to public SmartPhrases at any point and vice versa, and allow it to be shared limitedly if users are added as editors so it can be shared if the owner gives permission.",
+      "whyNow": "It was recently marked as a potential SPRE by a customer because they saw it as such a concern and it is regularly requested in ideas.epic.com.",
+      "smartToolsFit": "It will improve effectiveness because users already have the signature SmartPhrases but it will increase trust and feelings of security if they know that their personal information can't be taken by others.",
+      "epicFit": "This fits ST priorities because it would solve long standing existing pain points.",
+      "success": "SmartPhrases can be made private."
     }
   },
   {
-    "id": "pitch-003",
-    "title": "GraphQL API Gateway",
+    "id": "722043",
+    "title": "Create Calendar SmartLink or SmartLink You Can Pick Dates From",
     "details": {
-      "problem": "Multiple API endpoints cause client complexity and performance issues.",
-      "ideaForSolution": "Unified GraphQL layer to consolidate all backend services.",
-      "characteristics": "Would require schema design and service adaptors.",
-      "epicFit": "Strategic investment in API architecture.",
-      "internCandidate": true
+      "problem": "Users want to add dates to their notes but may not know the exact date. .reldate can pull in a date but only based on the current date so users have to look at another calendar if they want to find out what the date is 2 weeks from Friday. There are plenty of date fields with the calendar across hyperspace and other applications and it's functionality users want in their notes as well.",
+      "ideaForSolution": "Users can use a calendar SmartLink that would popup an inline calendar for users to choose dates from.",
+      "characteristics": "It's easy to use, doesn't require knowing about the t+1/w-2 shortcuts, and matches UI that is used across Hyperspace and other apps.",
+      "whyNow": "Users have been requesting this for a long time, there are a bunch of linked SLGs and ideas.epic.com links and solving this now is better than putting it off for forever.",
+      "smartToolsFit": "This improves efficiency because users don't have to open their phone or computer calendar to find the date they're looking for. The reldate parameter popup isn't particularly user friendly so picking a date from better UI would make this more of a joy to use.",
+      "epicFit": "This fits ST priorities because it would solve long standing existing pain points.",
+      "success": "Having a SmartLink that shows a calendar to pick a date on.",
+      "maintenance": "Shouldn't have much maintenance or testing costs once the SmartLink is made."
     }
   },
   {
-    "id": "pitch-004",
-    "title": "Accessibility Audit & Fixes",
+    "id": "736777",
+    "title": "Add Display Name Item for SmartText Record Lookup for Mixed Case Names in Hyperspace",
     "details": {
-      "problem": "Our products aren't fully WCAG compliant, limiting our market reach.",
-      "ideaForSolution": "Comprehensive audit and remediation plan with automated tests.",
-      "whyNow": "Legal requirements increasing in our target market.",
-      "success": "WCAG 2.1 AA compliance across all products."
+      "problem": "End users can have SmartTexts with the name showing where patients see the title of the SmartText, which is in all caps. There's no way to change this currently so the end user or patient will see the title of the SmartText and may feel like the name is yelling at them. This is off putting and isn't appropriate for patients to be seeing.",
+      "ideaForSolution": "Allow analysts to add a display name to a SmartText so that anywhere the name of a SmartText is displayed, end users and patients can see a more readable title.",
+      "characteristics": "Display name can be personalized to be end user or patient facing but should be required.",
+      "smartToolsFit": "This would make the system look better and be more of a joy to use because the SmartText title wouldn't look like it was really important because it was in all caps without having an option to change it.",
+      "epicFit": "This fits ST priorities because it would solve long standing existing pain points."
     }
   },
   {
-    "id": "pitch-005",
-    "title": "Design System Expansion",
+    "id": "803923",
+    "title": "Add Highlight Functionality",
     "details": {
-      "problem": "Inconsistent component usage across teams leads to UX debt.",
-      "ideaForSolution": "Expand our design system with new components and improved documentation.",
-      "characteristics": "Collaborative effort between design and engineering.",
-      "maintenance": "Requires dedicated maintainer long-term."
+      "problem": "Users would copy text from an external document that has highlighting but wouldn't be able to remove the highlighting without a lot of effort. They also couldn't highlight text that they wanted to emphasize and bolding or changing word color just doesn't catch attention like highlights do.",
+      "ideaForSolution": "Users can use highlighting in the STB, similar to how they use text color.",
+      "characteristics": "There's already a design and DLG! It has a good outline, it just needs to be continued.",
+      "whyNow": "We have been getting this request regularly, including from 4 months ago. It's a paper cut that would be a big win for lots of people if we fixed it.",
+      "smartToolsFit": "It would improve efficiency with documentation by allowing users to remove highlighting they don't want without having to un-highlight in external programs or cut/paste as plain text but that would remove all other formatting too. If the highlighting is throughout a document, it's really inefficient to try to fix each individual line that has highlighting. It also would improve effectiveness of documentation because leaving in unnecessary highlighting might call attention to something while more important information for this context is skipped. It can also make the most important parts of a note or template really stand out, much more than bolding.",
+      "epicFit": "This fits ST priorities because it would solve long standing existing pain points.",
+      "success": "Can users highlight and remove highlighting within the STB.",
+      "maintenance": "Shouldn't have maintenance, might need regression testing checks when changes are made to STB accessibility or certain types of copy/pasting changes.",
+      "internCandidate": false
     }
   }
 ]
