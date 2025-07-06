@@ -45,6 +45,8 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
           [action.id]: {
             ...state.votes[action.id] || { pitchId: action.id },
             tier: action.tier,
+            // Always use provided timestamp or current time to ensure consistent ordering
+            timestamp: action.timestamp || new Date().getTime(),
           } as Vote,
         },
       };
@@ -132,7 +134,18 @@ const AppContent: React.FC = () => {
     // If dropped in a tier column
     if (destId !== 'unsorted') {
       const tier = parseInt(destId.replace('tier-', '')) as Tier;
-      dispatch({ type: 'SET_TIER', id: draggableId, tier });
+      
+      // Get the current timestamp for consistent ordering (newer items will have higher values)
+      const timestamp = new Date().getTime();
+      
+      // Add timestamp to ensure consistent ordering - later added items always go to the bottom
+      dispatch({ 
+        type: 'SET_TIER', 
+        id: draggableId, 
+        tier,
+        timestamp // Pass timestamp to reducer
+      });
+      
       showSnackbar(`Pitch moved to Tier ${tier}`, 'info');
     }
   };

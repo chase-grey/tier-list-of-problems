@@ -49,15 +49,22 @@ const BucketColumn = ({ tier, pitches, votes, onAppetiteChange }: BucketColumnPr
   // Get text color for the header - always white for tier columns
   const getHeaderTextColor = () => isUnsorted ? 'text.primary' : 'white';
 
-  // Filter pitches that belong to this column
-  const filteredPitches = pitches.filter(pitch => {
-    if (isUnsorted) {
-      // Show in unsorted if it doesn't have a tier assigned
-      return !votes[pitch.id]?.tier;
-    } 
-    // Show in specific tier column if its tier matches
-    return votes[pitch.id]?.tier === tier;
-  });
+  // Filter pitches that belong to this column and sort by timestamp
+  const filteredPitches = pitches
+    .filter(pitch => {
+      if (isUnsorted) {
+        // Show in unsorted if it doesn't have a tier assigned
+        return !votes[pitch.id]?.tier;
+      } 
+      // Show in specific tier column if its tier matches
+      return votes[pitch.id]?.tier === tier;
+    })
+    .sort((a, b) => {
+      // Sort by timestamp (ascending order - oldest first, newest last)
+      const timestampA = votes[a.id]?.timestamp || 0;
+      const timestampB = votes[b.id]?.timestamp || 0;
+      return timestampA - timestampB;
+    });
 
   return (
     <Box 

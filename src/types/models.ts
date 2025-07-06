@@ -23,6 +23,7 @@ export interface Vote {
   pitchId: string;
   appetite: Appetite;      // required
   tier: Tier;              // required
+  timestamp?: number;      // used for ordering pitches within a tier
 }
 
 /* ─────────── LOCAL PERSISTENCE ───────── */
@@ -40,5 +41,5 @@ export interface AppState {
 export type AppAction =
   | { type: 'SET_NAME'; name: string }
   | { type: 'SET_APPETITE'; id: string; appetite: Appetite | null }
-  | { type: 'SET_TIER'; id: string; tier: Tier }
+  | { type: 'SET_TIER'; id: string; tier: Tier; timestamp?: number }
   | { type: 'RESET_FROM_PITCHES'; pitchIds: string[] };  // sync when JSON changes
