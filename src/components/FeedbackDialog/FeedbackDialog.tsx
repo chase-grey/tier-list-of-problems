@@ -80,7 +80,7 @@ export const FeedbackDialog: React.FC<FeedbackDialogProps> = ({ open, onClose, o
       <DialogContent>
         <Box sx={{ py: 2 }}>
           <Typography variant="subtitle1" gutterBottom>
-            How would you rate your experience with this problem polling tool?
+            How would you rate your experience with this process?
           </Typography>
           
           <Box sx={{ 

@@ -1,6 +1,7 @@
 import React, { useRef, useEffect } from 'react';
 import { Box, Typography, Paper, IconButton, Tooltip } from '@mui/material';
 import InfoOutlined from '@mui/icons-material/InfoOutlined';
+import InterestDetailsBubble from './InterestDetailsBubble';
 import { Droppable, Draggable } from '@hello-pangea/dnd';
 import type { DroppableProvided, DroppableStateSnapshot } from '@hello-pangea/dnd';
 import type { Pitch, Vote } from '../../types/models';
@@ -173,23 +174,25 @@ const InterestColumn = ({
 
 // Info button component with details bubble
 const InterestCardInfoButton = ({ pitch, vote }: { pitch: Pitch; vote?: Vote }) => {
-  const [detailsAnchor, setDetailsAnchor] = React.useState<HTMLElement | null>(null);
+  const buttonRef = React.useRef<HTMLButtonElement>(null);
+  const [detailsOpen, setDetailsOpen] = React.useState(false);
   
   const handleInfoButtonClick = (event: React.MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation();
-    setDetailsAnchor(event.currentTarget);
+    setDetailsOpen(true);
   };
   
   const handleCloseDetails = () => {
-    setDetailsAnchor(null);
+    setDetailsOpen(false);
   };
   
   return (
     <>
       <Tooltip title="View details">
         <IconButton 
+          ref={buttonRef}
           size="small" 
-          onClick={handleInfoButtonClick as any}
+          onClick={handleInfoButtonClick}
           aria-label="View pitch details"
           sx={{ 
             color: 'primary.main',
@@ -205,20 +208,15 @@ const InterestCardInfoButton = ({ pitch, vote }: { pitch: Pitch; vote?: Vote }) 
         </IconButton>
       </Tooltip>
       
-      <React.Suspense fallback={<div />}>
-        {/* Import the details bubble lazily */}
-        {React.useMemo(() => {
-          const DetailsBubble = React.lazy(() => import('./InterestDetailsBubble'));
-          return (
-            <DetailsBubble 
-              pitch={pitch}
-              vote={vote}
-              anchorEl={detailsAnchor}
-              onClose={handleCloseDetails}
-            />
-          );
-        }, [pitch, vote, detailsAnchor])}
-      </React.Suspense>
+      {/* Only render the details bubble when open - fixes the positioning bug */}
+      {detailsOpen && (
+        <InterestDetailsBubble 
+          pitch={pitch}
+          vote={vote}
+          anchorEl={buttonRef.current}
+          onClose={handleCloseDetails}
+        />
+      )}
     </>
   );
 };
