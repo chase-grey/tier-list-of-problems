@@ -448,9 +448,7 @@ const AppContent: React.FC = () => {
           onHelpClick={handleHelpClick}
           onResetClick={handleResetClick}
           stage={state.stage}
-          needsInterestRanking={needsInterestRanking}
           onNextStage={handleStageChange}
-          priorityStageComplete={priorityStageComplete}
         />
         
         <Box component="main" sx={{ flexGrow: 1, overflow: 'hidden', p: 1 }}>

@@ -29,9 +29,7 @@ interface TopBarProps {
   onHelpClick: () => void;
   onResetClick: () => void;
   stage: 'priority' | 'interest';
-  needsInterestRanking: boolean | null;
-  onNextStage?: () => void;
-  priorityStageComplete: boolean;
+  onNextStage: () => void;
 }
 
 /**
@@ -47,9 +45,7 @@ export const TopBar = ({
   onHelpClick,
   onResetClick,
   stage,
-  needsInterestRanking,
-  onNextStage,
-  priorityStageComplete
+  onNextStage
 }: TopBarProps) => {
   return (
     <AppBar position="sticky" sx={{ height: 48 }}>
@@ -138,24 +134,22 @@ export const TopBar = ({
             )}
           </Typography>
         </Box>
-        {needsInterestRanking && priorityStageComplete && (
-          <Button
-            variant="contained"
-            color={stage === 'priority' ? 'secondary' : 'primary'}
-            startIcon={stage === 'priority' ? <NextIcon /> : <PrevIcon />}
-            onClick={onNextStage}
-            sx={{
-              mr: 2,
-              // Use purple for interest stage button, blue for priority stage button
-              bgcolor: stage === 'priority' ? '#9c27b0' : '#1976d2',
-              '&:hover': {
-                bgcolor: stage === 'priority' ? '#7b1fa2' : '#1565c0'
-              }
-            }}
-          >
-            {stage === 'priority' ? 'Next: Rank Interest' : 'Previous: Rank Priority'}
-          </Button>
-        )}
+        <Button
+          variant="contained"
+          color={stage === 'priority' ? 'secondary' : 'primary'}
+          startIcon={stage === 'priority' ? <NextIcon /> : <PrevIcon />}
+          onClick={onNextStage}
+          sx={{
+            mr: 2,
+            // Use purple for interest stage button, blue for priority stage button
+            bgcolor: stage === 'priority' ? '#9c27b0' : '#1976d2',
+            '&:hover': {
+              bgcolor: stage === 'priority' ? '#7b1fa2' : '#1565c0'
+            }
+          }}
+        >
+          {stage === 'priority' ? 'Next: Rank Interest' : 'Previous: Rank Priority'}
+        </Button>
         
         <Button
           variant="contained"

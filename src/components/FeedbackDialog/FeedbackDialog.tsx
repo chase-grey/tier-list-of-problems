@@ -8,7 +8,8 @@ import {
   Typography, 
   TextField, 
   Box, 
-  Rating 
+  Rating,
+  Link 
 } from '@mui/material';
 import SentimentVeryDissatisfiedIcon from '@mui/icons-material/SentimentVeryDissatisfied';
 import SentimentDissatisfiedIcon from '@mui/icons-material/SentimentDissatisfied';
@@ -78,6 +79,9 @@ export const FeedbackDialog: React.FC<FeedbackDialogProps> = ({ open, onClose, o
       <DialogTitle>Almost Done - Quick Feedback</DialogTitle>
       
       <DialogContent>
+        <Typography variant="body1" paragraph sx={{ mt: 1, mb: 2, fontWeight: 'medium', color: 'info.main' }}>
+          After downloading, please save your CSV file to <Link href="https://epic1.sharepoint.com/:f:/s/SmartTools-Docs/EodUOVUDhwxKhuMUK3OeY2IBV_dj5j41GYqsqgu45MMEmQ?e=BYGkur" target="_blank" rel="noopener noreferrer">this SharePoint site</Link> using your full name as the filename, or email it to Chase.Grey@epic.com.
+        </Typography>
         <Box sx={{ py: 2 }}>
           <Typography variant="subtitle1" gutterBottom>
             How would you rate your experience with this process?
