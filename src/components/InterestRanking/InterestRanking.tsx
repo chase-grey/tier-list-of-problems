@@ -127,6 +127,15 @@ const InterestRanking: React.FC<InterestRankingProps> = ({
       }
     });
     
+    // Sort each column by timestamp (ascending order)  
+    Object.keys(columns).forEach(columnId => {
+      columns[columnId].sort((a, b) => {
+        const timestampA = votes[a.id]?.timestamp || 0;
+        const timestampB = votes[b.id]?.timestamp || 0;
+        return timestampA - timestampB;
+      });
+    });
+    
     return columns;
   }, [rankedPitches, votes]);
   
