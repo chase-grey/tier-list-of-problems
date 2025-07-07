@@ -130,15 +130,16 @@ const InterestColumn = ({
                       },
                       position: 'relative',
                       minHeight: '80px',
+                      display: 'flex',
+                      flexDirection: 'column',
                       width: '100%',
-                      transform: snapshot.isDragging ? 'rotate(3deg)' : 'none',
                       opacity: snapshot.isDragging ? 0.8 : 1
                     }}
                     role="button"
                     tabIndex={0}
                   >
                     {/* Top section with title and info button */}
-                    <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexGrow: 1 }}>
                       <Typography 
                         variant="subtitle2" 
                         sx={{ 
@@ -146,7 +147,10 @@ const InterestColumn = ({
                           // Ensure text wraps to avoid overflow
                           overflowWrap: 'break-word',
                           wordBreak: 'break-word',
+                          // Add bottom padding to avoid text getting cut off
+                          paddingBottom: '24px',
                           fontSize: '0.85rem',
+                          flexGrow: 1
                         }}
                       >
                         {pitch.title}
