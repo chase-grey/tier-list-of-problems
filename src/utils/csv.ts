@@ -2,18 +2,53 @@ import { unparse } from 'papaparse';
 import type { Vote } from '../types/models';
 
 /**
+ * Interface for feedback data
+ */
+export interface FeedbackData {
+  rating: number | null;
+  comments: string;
+}
+
+/**
  * Exports the current votes to a CSV file and triggers download
  * 
  * @param voterName The name of the current voter
  * @param votes Object containing all votes keyed by pitchId
+ * @param feedback Optional feedback data to include in the export
  */
-export const exportVotes = (voterName: string, votes: Record<string, Vote>) => {
-  const rows = Object.values(votes).map(v => ({
+export const exportVotes = (voterName: string, votes: Record<string, Vote>, feedback?: FeedbackData) => {
+  // First, create a summary row with metadata
+  const metadataRows = [
+    {
+      voterName,
+      type: 'metadata',
+      feedbackRating: feedback?.rating || '',
+      feedbackComments: feedback?.comments || '',
+      exportDate: new Date().toISOString(),
+      totalVotes: Object.keys(votes).length,
+      pitchId: '',  // Keeping these columns to maintain CSV structure
+      appetite: '',
+      tier: '',
+      interestLevel: '',
+    }
+  ];
+  
+  // Then create vote rows
+  const voteRows = Object.values(votes).map(v => ({
     voterName,
-    pitchId:   v.pitchId,
-    appetite:  v.appetite,
-    tier:      v.tier,
+    type: 'vote',
+    feedbackRating: '',
+    feedbackComments: '',
+    exportDate: '',
+    totalVotes: '',
+    pitchId: v.pitchId,
+    appetite: v.appetite || '',
+    tier: v.tier || '',
+    interestLevel: v.interestLevel || '',
   }));
+  
+  // Combine rows
+  const rows = [...metadataRows, ...voteRows];
   
   const csv = unparse(rows);
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });

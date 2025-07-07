@@ -17,15 +17,14 @@ import {
   NavigateBefore as PrevIcon,
   ThumbUp as InterestIcon
 } from '@mui/icons-material';
-import type { Vote } from '../../types/models';
+
 
 interface TopBarProps {
-  voterName: string;
-  votes: Record<string, Vote>;
+  voterName: string | null;
   totalPitchCount: number;
   appetiteCount: number;
   rankCount: number;
-  onExport: () => void;
+  onFinish: () => void;
   isExportEnabled: boolean;
   onHelpClick: () => void;
   onResetClick: () => void;
@@ -43,7 +42,7 @@ export const TopBar = ({
   totalPitchCount, 
   appetiteCount, 
   rankCount, 
-  onExport, 
+  onFinish, 
   isExportEnabled,
   onHelpClick,
   onResetClick,
@@ -163,8 +162,8 @@ export const TopBar = ({
           color="secondary"
           startIcon={<DownloadIcon />}
           disabled={!isExportEnabled}
-          onClick={onExport}
-          aria-label="Export results to CSV"
+          onClick={onFinish}
+          aria-label="Finish and export results"
           sx={{
             fontWeight: isExportEnabled ? 'bold' : 'normal',
             transition: 'all 0.2s ease',
@@ -173,7 +172,7 @@ export const TopBar = ({
             }
           }}
         >
-          Export CSV
+          Finish
         </Button>
       </Toolbar>
     </AppBar>

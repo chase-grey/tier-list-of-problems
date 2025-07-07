@@ -10,6 +10,8 @@ import SnackbarProvider from './SnackbarProvider';
 import { useSnackbar } from '../hooks/useSnackbar';
 import HelpDialog from './HelpDialog/HelpDialog';
 import ConfirmationDialog from './ConfirmationDialog/ConfirmationDialog';
+import FeedbackDialog from './FeedbackDialog/FeedbackDialog';
+import type { FeedbackData } from './FeedbackDialog/FeedbackDialog';
 import DevAutoPopulate from './DevAutoPopulate';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { exportVotes } from '../utils/csv';
@@ -129,6 +131,8 @@ const AppContent: React.FC = () => {
   const [initialHelpShown, setInitialHelpShown] = useState(false);
   // State to control reset confirmation dialog
   const [showResetConfirmation, setShowResetConfirmation] = useState(false);
+  // State to control feedback dialog
+  const [showFeedback, setShowFeedback] = useState(false);
   // Get pitches from JSON
   const pitches = pitchesData as Pitch[];
   const TOTAL = pitches.length;
@@ -307,13 +311,36 @@ const AppContent: React.FC = () => {
     showSnackbar('All data has been reset. Please enter your name to continue.', 'success');
   };
 
-  // Handle export
-  const handleExport = () => {
+  // Handle finish/export process
+  const handleFinish = () => {
     if (state.voterName && isExportEnabled) {
-      exportVotes(state.voterName, state.votes);
-      showSnackbar('Votes exported successfully!', 'success');
+      // Show feedback dialog before exporting
+      setShowFeedback(true);
     } else {
       showSnackbar('Complete all appetites and rankings first', 'error');
+    }
+  };
+  
+  // Handle feedback submission and export
+  const handleFeedbackSubmit = (feedbackData: FeedbackData) => {
+    // Close the feedback dialog
+    setShowFeedback(false);
+    
+    if (state.voterName) { // Add null check
+      // Export votes with feedback data
+      exportVotes(state.voterName, state.votes, feedbackData);
+      showSnackbar('Thank you for your feedback! Your data has been exported.', 'success');
+    }
+  };
+  
+  // Handle feedback dialog close (skip)
+  const handleFeedbackClose = () => {
+    setShowFeedback(false);
+    
+    if (state.voterName) { // Add null check
+      // Export votes without feedback
+      exportVotes(state.voterName, state.votes);
+      showSnackbar('Your data has been exported successfully!', 'success');
     }
   };
   
@@ -372,13 +399,12 @@ const AppContent: React.FC = () => {
       />
       
       <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
-        <TopBar
-          voterName={state.voterName || 'User'}
-          votes={state.votes}
+        <TopBar 
+          voterName={state.voterName}
           totalPitchCount={TOTAL}
           appetiteCount={appetiteCount}
           rankCount={rankCount}
-          onExport={handleExport}
+          onFinish={handleFinish}
           isExportEnabled={isExportEnabled}
           onHelpClick={handleHelpClick}
           onResetClick={handleResetClick}
@@ -403,14 +429,14 @@ const AppContent: React.FC = () => {
               onSetInterest={handleInterestChange}
             />
           )}
-
-          {/* Help Dialog - Different behavior for initial showing vs later manual showing */}
+                  
+                  {/* Help dialog */}
           <HelpDialog 
             open={showHelp} 
-            onClose={initialHelpShown ? () => setShowHelp(false) : handleInitialHelpClose} 
+            onClose={handleInitialHelpClose} 
           />
           
-          {/* Reset Confirmation Dialog */}
+          {/* Reset confirmation dialog */}
           <ConfirmationDialog
             open={showResetConfirmation}
             title="Reset Everything"
@@ -420,6 +446,21 @@ const AppContent: React.FC = () => {
             confirmText="Yes, Reset Everything"
             severity="warning"
           />
+          
+          {/* Feedback dialog */}
+          <FeedbackDialog
+            open={showFeedback}
+            onClose={handleFeedbackClose}
+            onSubmit={handleFeedbackSubmit}
+          />
+
+          {/* Show availability dialog on first name entry if not set */}
+          {state.voterName && state.available === null && (
+            <AvailabilityDialog 
+              open={true}
+              onAvailabilitySet={handleAvailabilitySet}
+            />
+          )}
           
           {/* Development-only Auto-Populate Tool */}
           {isDevelopmentMode() && (
