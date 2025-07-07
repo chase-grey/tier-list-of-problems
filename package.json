@@ -6,6 +6,7 @@
   "homepage": "https://chase-grey.github.io/tier-list-of-problems/",
   "scripts": {
     "dev": "vite",
+    "dev:local": "vite --config vite.dev.config.ts",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview"

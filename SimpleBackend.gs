@@ -135,7 +135,7 @@ function recordVotes(data) {
   console.log('Recording votes:', JSON.stringify(data));
   
   // Validate input
-  const {voterName, votes} = data;
+  const {voterName, voterRole, votes} = data;
   if (!voterName || !votes || !Array.isArray(votes) || votes.length === 0) {
     return contentResponse({error: 'Invalid request format'}, 400);
   }
@@ -163,13 +163,14 @@ function recordVotes(data) {
     now,
     voterName,
     email,
+    voterRole || '', // Add role, default to empty string if not provided
     v.pitch_id,
     v.appetite,
     v.tier,
     // Simple checksum to prevent duplicates
     Utilities.computeDigest(
       Utilities.DigestAlgorithm.SHA_256,
-      voterName + v.pitch_id + secret,
+      voterName + v.pitch_id + (voterRole || '') + secret,
       Utilities.Charset.UTF_8
     ).map(byte => ('0' + (byte & 0xFF).toString(16)).slice(-2)).join('')
   ]);
@@ -177,14 +178,14 @@ function recordVotes(data) {
   // Check for duplicates
   let checksumRange = [];
   if (sh.getLastRow() > 1) {
-    checksumRange = sh.getRange('G2:G' + sh.getLastRow()).getValues().flat();
+    checksumRange = sh.getRange('H2:H' + sh.getLastRow()).getValues().flat();
   }
   
-  const newRows = rows.filter(r => !checksumRange.includes(r[6]));
+  const newRows = rows.filter(r => !checksumRange.includes(r[7]));
   
   // Append new rows if any
   if (newRows.length) {
-    sh.getRange(sh.getLastRow() + 1, 1, newRows.length, 7).setValues(newRows);
+    sh.getRange(sh.getLastRow() + 1, 1, newRows.length, 8).setValues(newRows);
   }
   
   return contentResponse({saved: newRows.length});

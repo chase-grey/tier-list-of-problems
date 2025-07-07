@@ -85,6 +85,7 @@ export interface ResultItem {
 export interface SubmitVotesPayload {
   nonce: string;
   voterName: string;
+  voterRole?: string;
   votes: Array<{
     pitch_id: string;
     appetite: 'S' | 'M' | 'L';

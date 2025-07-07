@@ -21,6 +21,7 @@ import pitchesData from '../assets/pitches.json';
 // Initial state
 const initialState: AppState = {
   voterName: null,
+  voterRole: null,
   votes: {},
 };
 
@@ -28,7 +29,7 @@ const initialState: AppState = {
 const appReducer = (state: AppState, action: AppAction): AppState => {
   switch (action.type) {
     case 'SET_NAME':
-      return { ...state, voterName: action.name };
+      return { ...state, voterName: action.name, voterRole: action.role };
     
     case 'SET_APPETITE':
       return {
@@ -82,6 +83,7 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
       // Reset everything including voter name
       return {
         voterName: null,
+        voterRole: null,
         votes: {}
       };
     
@@ -104,18 +106,46 @@ const AppContent: React.FC = () => {
   const pitches = pitchesData as Pitch[];
   const TOTAL = pitches.length;
   
-  // Use localStorage for persistence
-  const [savedState, setSavedState] = useLocalStorage<AppState>('polling.appState', initialState);
+  // Force clear localStorage if you're getting a black screen
+  // Uncomment this line if you see a black screen after updates
+  // window.localStorage.clear();
+  
+  // Use localStorage for persistence with a safety wrapper
+  const [savedState, setSavedState] = (() => {
+    try {
+      // Try to use the normal localStorage hook
+      return useLocalStorage<AppState>('polling.appState', initialState);
+    } catch (error) {
+      // If localStorage fails completely, use a fallback implementation
+      console.error('LocalStorage error, using initial state:', error);
+      // Return a dummy state management function that doesn't persist
+      const dummySetState = (value: AppState | ((val: AppState) => AppState)): void => {
+        console.log('LocalStorage disabled, state changes will not persist');
+      };
+      return [initialState, dummySetState] as [AppState, typeof dummySetState];
+    }
+  })();
+  
+  // Always ensure we have a properly formed state object
+  const completeState = {
+    ...initialState,
+    ...savedState,
+    // Ensure voterRole exists if voterName exists
+    voterRole: savedState.voterRole || (savedState.voterName ? null : initialState.voterRole)
+  };
   
   // Set up reducer with saved state
-  const [state, dispatch] = useReducer(appReducer, savedState);
+  const [state, dispatch] = useReducer(appReducer, completeState);
 
   // Additionally store the voter name in a separate key as per spec ('polling.voterName')
   useEffect(() => {
     if (state.voterName) {
       localStorage.setItem('polling.voterName', state.voterName);
+      if (state.voterRole) {
+        localStorage.setItem('polling.voterRole', state.voterRole);
+      }
     }
-  }, [state.voterName]);
+  }, [state.voterName, state.voterRole]);
   
   // Access snackbar
   const { showSnackbar } = useSnackbar();
@@ -142,9 +172,9 @@ const AppContent: React.FC = () => {
   // Check if export is enabled
   const isExportEnabled = appetiteCount === TOTAL && rankCount === TOTAL;
   
-  // Handle name submission
-  const handleNameSubmit = (name: string) => {
-    dispatch({ type: 'SET_NAME', name });
+  // Handle name and role submission
+  const handleNameSubmit = (name: string, role: string) => {
+    dispatch({ type: 'SET_NAME', name, role });
     showSnackbar(`Welcome, ${name}!`, 'success');
     
     // Show help dialog after name is submitted for first time users
@@ -226,7 +256,8 @@ const AppContent: React.FC = () => {
   const handleAutoPopulate = (name: string, votes: Record<string, any>, complete?: boolean) => {
     // Set the name if not already set
     if (!state.voterName) {
-      dispatch({ type: 'SET_NAME', name });
+      // Default to 'developer' role for auto-populate
+      dispatch({ type: 'SET_NAME', name, role: 'developer' });
     }
     
     // Apply each vote

@@ -45,6 +45,7 @@ export interface Vote {
  */
 export interface AppState {
   voterName: string;
+  voterRole: string | null;
   votes: Record<string, Vote>;
 }
 

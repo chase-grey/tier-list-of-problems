@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Button, CircularProgress, Snackbar, Alert } from '@mui/material';
 import { submitVotes, convertVotesToApiFormat } from '../services/api';
-import { isApiConfigured } from '../utils/config';
 import type { Vote } from '../types/models';
 
 interface VoteSubmissionProps {
   votes: Record<string, Vote>;
   voterName: string;
+  voterRole?: string;
   onSuccess?: () => void;
   autoSubmit?: boolean; // If true, just handles submission without showing button
   visible?: boolean;     // Controls if the button should be visible
@@ -21,6 +21,7 @@ interface VoteSubmissionProps {
 const VoteSubmission: React.FC<VoteSubmissionProps> = ({ 
   votes, 
   voterName, 
+  voterRole,
   onSuccess,
   autoSubmit = false,
   visible = true 
@@ -49,6 +50,7 @@ const VoteSubmission: React.FC<VoteSubmissionProps> = ({
       const result = await submitVotes({
         nonce: 'mock-token',
         voterName,
+        voterRole,
         votes: apiVotes,
       });
       

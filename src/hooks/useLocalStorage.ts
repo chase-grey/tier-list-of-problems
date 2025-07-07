@@ -15,7 +15,48 @@ export function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T 
 
     try {
       const item = window.localStorage.getItem(key);
-      return item ? JSON.parse(item) : initialValue;
+      
+      if (!item) {
+        return initialValue;
+      }
+      
+      try {
+        // Parse the stored data
+        const parsedItem = JSON.parse(item);
+        
+        // Handle migration from old AppState to new AppState with voterRole
+        if (key === 'polling.appState') {
+          // Check if we need to do a schema migration
+          if (parsedItem && typeof parsedItem === 'object') {
+            // Check if it has the required voterRole field
+            if (parsedItem.voterName && !('voterRole' in parsedItem)) {
+              console.log('Migrating old AppState schema to include voterRole');  
+              // Add the missing voterRole field
+              return {
+                ...initialValue,
+                ...parsedItem,
+                voterRole: null
+              } as T;
+            }
+            
+            // If it has all expected properties, return it
+            if ('voterRole' in parsedItem) {
+              return parsedItem as T;
+            }
+          }
+          
+          // If we reach here, the schema doesn't match what we expect
+          // Reset to initial value for safety
+          console.warn('AppState schema incompatible, resetting to initial state');
+          window.localStorage.removeItem(key);
+          return initialValue;
+        }
+        
+        return parsedItem as T;
+      } catch (parseError) {
+        console.warn(`Error parsing localStorage key "${key}":`, parseError);
+        return initialValue;
+      }
     } catch (error) {
       console.warn(`Error reading localStorage key "${key}":`, error);
       return initialValue;

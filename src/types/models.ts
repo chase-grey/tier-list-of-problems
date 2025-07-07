@@ -35,11 +35,12 @@ export interface LocalSave {
 /* ─────────── STATE MANAGEMENT ───────── */
 export interface AppState {
   voterName: string | null;
+  voterRole: string | null;
   votes: Record<string, Vote>;   // partial; missing entries treated as unset
 }
 
 export type AppAction =
-  | { type: 'SET_NAME'; name: string }
+  | { type: 'SET_NAME'; name: string; role: string }
   | { type: 'SET_APPETITE'; id: string; appetite: Appetite | null }
   | { type: 'SET_TIER'; id: string; tier: Tier; timestamp?: number }
   | { type: 'RESET_FROM_PITCHES'; pitchIds: string[] }  // sync when JSON changes
