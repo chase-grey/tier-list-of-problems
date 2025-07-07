@@ -1,5 +1,6 @@
 import React, { useRef, useEffect } from 'react';
-import { Box, Typography, Paper } from '@mui/material';
+import { Box, Typography, Paper, IconButton, Tooltip } from '@mui/material';
+import InfoOutlined from '@mui/icons-material/InfoOutlined';
 import { Droppable, Draggable } from '@hello-pangea/dnd';
 import type { DroppableProvided, DroppableStateSnapshot } from '@hello-pangea/dnd';
 import type { Pitch, Vote } from '../../types/models';
@@ -181,32 +182,24 @@ const InterestCardInfoButton = ({ pitch, vote }: { pitch: Pitch; vote?: Vote }) 
   
   return (
     <>
-      <Box 
-        component="button"
-        onClick={(e: any) => handleInfoButtonClick(e)}
-        aria-label="View pitch details"
-        sx={{ 
-          position: 'absolute',
-          top: 8,
-          right: 8,
-          color: 'primary.main',
-          p: 0.5,
-          cursor: 'pointer',
-          backgroundColor: 'transparent',
-          border: 'none',
-          borderRadius: '50%',
-          width: 24,
-          height: 24,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          '&:hover': {
-            backgroundColor: 'rgba(25, 118, 210, 0.04)'
-          }
-        }}
-      >
-        <span style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>i</span>
-      </Box>
+      <Tooltip title="View details">
+        <IconButton 
+          size="small" 
+          onClick={handleInfoButtonClick as any}
+          aria-label="View pitch details"
+          sx={{ 
+            color: 'primary.main',
+            p: 0.5,
+            mt: -0.5,
+            flexShrink: 0, // Prevent button from shrinking
+            '&:hover': {
+              backgroundColor: 'rgba(25, 118, 210, 0.04)'
+            }
+          }}
+        >
+          <InfoOutlined fontSize="small" />
+        </IconButton>
+      </Tooltip>
       
       <React.Suspense fallback={<div />}>
         {/* Import the details bubble lazily */}

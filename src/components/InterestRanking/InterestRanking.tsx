@@ -168,8 +168,8 @@ const InterestRanking: React.FC<InterestRankingProps> = ({
               overflowY: { xs: 'auto', lg: 'hidden' }, // Allow vertical scroll on small screens
 
               '&::-webkit-scrollbar': {
-                height: '8px',
-                width: '8px',
+                height: '4px',
+                width: '4px',
               },
               '&::-webkit-scrollbar-thumb': {
                 backgroundColor: 'rgba(255, 255, 255, 0.2)',
