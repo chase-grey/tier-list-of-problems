@@ -6,7 +6,6 @@ import type { Pitch, Vote, Tier, Appetite } from '../../types/models';
 import BucketColumn from './BucketColumn';
 import ErrorBoundary from '../ErrorBoundary';
 import { isDragAndDropSupported } from '../../utils/dndDetection';
-import { setupAutoScroll } from '../../utils/autoScroll';
 import { initEnhancedDropDetection, cleanupEnhancedDropDetection } from '../../utils/enhancedDropDetection';
 
 interface KanbanContainerProps {
@@ -47,15 +46,11 @@ const KanbanContainer = ({
     const supported = isDragAndDropSupported();
     setIsDndSupported(supported);
     
-    // Setup auto-scroll for the container
-    const cleanupScroll = setupAutoScroll(containerRef.current);
-    
     // Initialize enhanced drop detection
     initEnhancedDropDetection();
     
     // Return cleanup function
     return () => {
-      if (cleanupScroll) cleanupScroll();
       cleanupEnhancedDropDetection();
     };
   }, []);

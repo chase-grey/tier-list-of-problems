@@ -7,7 +7,6 @@ import { DragDropContext } from '@hello-pangea/dnd';
 import InterestColumn from './InterestColumn';
 import type { DropResult } from '@hello-pangea/dnd';
 import type { Pitch, Vote, InterestLevel } from '../../types/models';
-import { setupAutoScroll } from '../../utils/autoScroll';
 import { initEnhancedDropDetection, cleanupEnhancedDropDetection } from '../../utils/enhancedDropDetection';
 
 // Use InterestColumn component now
@@ -57,17 +56,13 @@ const InterestRanking: React.FC<InterestRankingProps> = ({
   // Reference to the scrollable container
   const containerRef = useRef<HTMLDivElement>(null);
   
-  // Setup auto-scroll and enhanced drop detection for the container
+  // Setup enhanced drop detection for the container
   useEffect(() => {
-    // Setup auto-scroll for the container
-    const cleanupScroll = setupAutoScroll(containerRef.current);
-    
     // Initialize enhanced drop detection
     initEnhancedDropDetection();
     
     // Return cleanup function
     return () => {
-      if (cleanupScroll) cleanupScroll();
       cleanupEnhancedDropDetection();
     };
   }, []);
