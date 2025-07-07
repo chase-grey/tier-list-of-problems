@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Box, Alert, Select, MenuItem, FormControl, InputLabel } from '@mui/material';
 import { DragDropContext } from '@hello-pangea/dnd';
 import type { DropResult } from '@hello-pangea/dnd';
@@ -6,6 +6,8 @@ import type { Pitch, Vote, Tier, Appetite } from '../../types/models';
 import BucketColumn from './BucketColumn';
 import ErrorBoundary from '../ErrorBoundary';
 import { isDragAndDropSupported } from '../../utils/dndDetection';
+import { setupAutoScroll } from '../../utils/autoScroll';
+import { initEnhancedDropDetection, cleanupEnhancedDropDetection } from '../../utils/enhancedDropDetection';
 
 interface KanbanContainerProps {
   pitches: Pitch[];
@@ -24,6 +26,8 @@ const KanbanContainer = ({
   onDragEnd,
   onAppetiteChange
 }: KanbanContainerProps) => {
+  // Reference to the scrollable container
+  const containerRef = useRef<HTMLDivElement>(null);
   // State for drag-and-drop support detection
   const [isDndSupported, setIsDndSupported] = useState<boolean | null>(null);
   const [hasDndError, setHasDndError] = useState(false);
@@ -37,11 +41,23 @@ const KanbanContainer = ({
   // Check if there are any uncategorized pitches
   const hasUncategorizedPitches = pitches.some(pitch => !votes[pitch.id]?.tier);
 
-  // Detect drag-and-drop support on mount
+  // Detect drag-and-drop support on mount and setup auto-scroll and enhanced drop detection
   useEffect(() => {
     // Check for drag-and-drop support
     const supported = isDragAndDropSupported();
     setIsDndSupported(supported);
+    
+    // Setup auto-scroll for the container
+    const cleanupScroll = setupAutoScroll(containerRef.current);
+    
+    // Initialize enhanced drop detection
+    initEnhancedDropDetection();
+    
+    // Return cleanup function
+    return () => {
+      if (cleanupScroll) cleanupScroll();
+      cleanupEnhancedDropDetection();
+    };
   }, []);
   
   // Fallback UI for handling pitch tier assignment without drag-and-drop
@@ -171,6 +187,7 @@ const KanbanContainer = ({
       >
         <DragDropContext onDragEnd={onDragEnd}>
           <Box 
+            ref={containerRef}
             sx={{ 
               display: 'flex', 
               flexWrap: { xs: 'wrap', lg: 'nowrap' }, // Wrap on smaller screens, no wrap on large screens
@@ -181,6 +198,7 @@ const KanbanContainer = ({
               maxWidth: '100%', // Ensure it doesn't exceed viewport width
               overflowX: { xs: 'hidden', lg: 'auto' }, // Only allow horizontal scroll on large screens if needed
               overflowY: { xs: 'auto', lg: 'hidden' }, // Allow vertical scroll on small screens
+
               '&::-webkit-scrollbar': {
                 height: '8px',
                 width: '8px',

@@ -4,6 +4,8 @@ import { darkTheme } from '../theme';
 import { NameGate } from './NameGate/NameGate';
 import { TopBar } from './TopBar/TopBar';
 import KanbanContainer from './VotingBoard/KanbanContainer';
+import AvailabilityDialog from './AvailabilityDialog/AvailabilityDialog';
+import InterestRanking from './InterestRanking/InterestRanking';
 import SnackbarProvider from './SnackbarProvider';
 import { useSnackbar } from '../hooks/useSnackbar';
 import HelpDialog from './HelpDialog/HelpDialog';
@@ -13,7 +15,8 @@ import { useLocalStorage } from '../hooks/useLocalStorage';
 import { exportVotes } from '../utils/csv';
 import { isDevelopmentMode } from '../utils/testUtils';
 import type { DropResult } from '@hello-pangea/dnd';
-import type { AppState, AppAction, Pitch, Vote, Appetite, Tier } from '../types/models';
+import type { AppState, AppAction, Pitch, Vote, Appetite, Tier, InterestLevel } from '../types/models';
+import { INTEREST_RANKING_ROLES } from '../types/models';
 
 // Import pitch data
 import pitchesData from '../assets/pitches.json';
@@ -22,6 +25,8 @@ import pitchesData from '../assets/pitches.json';
 const initialState: AppState = {
   voterName: null,
   voterRole: null,
+  available: null,
+  stage: 'priority',
   votes: {},
 };
 
@@ -30,6 +35,12 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
   switch (action.type) {
     case 'SET_NAME':
       return { ...state, voterName: action.name, voterRole: action.role };
+      
+    case 'SET_AVAILABILITY':
+      return { ...state, available: action.available };
+      
+    case 'SET_STAGE':
+      return { ...state, stage: action.stage };
     
     case 'SET_APPETITE':
       return {
@@ -51,6 +62,20 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
           [action.id]: {
             ...state.votes[action.id] || { pitchId: action.id },
             tier: action.tier,
+            // Always use provided timestamp or current time to ensure consistent ordering
+            timestamp: action.timestamp || new Date().getTime(),
+          } as Vote,
+        },
+      };
+      
+    case 'SET_INTEREST':
+      return {
+        ...state,
+        votes: {
+          ...state.votes,
+          [action.id]: {
+            ...state.votes[action.id] || { pitchId: action.id },
+            interestLevel: action.interestLevel,
             // Always use provided timestamp or current time to ensure consistent ordering
             timestamp: action.timestamp || new Date().getTime(),
           } as Vote,
@@ -84,6 +109,8 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
       return {
         voterName: null,
         voterRole: null,
+        available: null,
+        stage: 'priority',
         votes: {}
       };
     
@@ -169,8 +196,19 @@ const AppContent: React.FC = () => {
   const appetiteCount = Object.values(state.votes).filter(v => v.appetite).length;
   const rankCount = Object.values(state.votes).filter(v => v.tier).length;
   
-  // Check if export is enabled
-  const isExportEnabled = appetiteCount === TOTAL && rankCount === TOTAL;
+  // Check if the user needs to rank interest
+  const needsInterestRanking = state.voterRole !== null && 
+    INTEREST_RANKING_ROLES.includes(state.voterRole) && 
+    state.available !== false;
+    
+  // Calculate completion status based on role and availability
+  const priorityStageComplete = appetiteCount === TOTAL && rankCount === TOTAL;
+  
+  // Check if export is enabled based on role and stage
+  const isExportEnabled = priorityStageComplete && 
+    // For users who don't need to rank interest, enable export immediately
+    // For users who need to rank interest, they must visit the interest page first
+    (!needsInterestRanking || (needsInterestRanking && state.stage === 'interest'));
   
   // Handle name and role submission
   const handleNameSubmit = (name: string, role: string) => {
@@ -184,7 +222,7 @@ const AppContent: React.FC = () => {
     }
   };
   
-  // Handle drag end
+  // Handle drag end for priority stage
   const handleDragEnd = (result: DropResult) => {
     const { destination, draggableId } = result;
     
@@ -211,6 +249,17 @@ const AppContent: React.FC = () => {
       showSnackbar(`Pitch moved to Tier ${tier}`, 'info');
     }
   };
+
+  // Handle interest level change
+  const handleInterestChange = (pitchId: string, interestLevel: InterestLevel) => {
+    const timestamp = new Date().getTime();
+    dispatch({ 
+      type: 'SET_INTEREST', 
+      id: pitchId, 
+      interestLevel,
+      timestamp 
+    });
+  };
   
   // Handle appetite change
   const handleAppetiteChange = (pitchId: string, appetite: Appetite | null) => {
@@ -218,6 +267,19 @@ const AppContent: React.FC = () => {
     if (appetite) {
       showSnackbar(`Appetite set to ${appetite === 'S' ? 'Small' : appetite === 'M' ? 'Medium' : 'Large'}`, 'info');
     }
+  };
+
+  // Handle availability setting
+  const handleAvailabilitySet = (available: boolean) => {
+    dispatch({ type: 'SET_AVAILABILITY', available });
+    showSnackbar(`Availability ${available ? 'confirmed' : 'noted - thanks for letting us know'}`, 'success');
+  };
+
+  // Toggle between priority and interest stages
+  const handleStageChange = () => {
+    // Toggle between stages
+    const newStage = state.stage === 'priority' ? 'interest' : 'priority';
+    dispatch({ type: 'SET_STAGE', stage: newStage });
   };
   
   // Handle showing help dialog
@@ -286,11 +348,24 @@ const AppContent: React.FC = () => {
     showSnackbar(`Auto-populated with ${name} and ${complete ? 'complete' : 'partial'} votes!`, 'success');
   };
   
+  // Show availability dialog for specific roles after name is set
+  const showAvailabilityDialog = state.voterName !== null && 
+    state.voterRole !== null &&
+    INTEREST_RANKING_ROLES.includes(state.voterRole) && 
+    state.available === null;
+
+  // We've removed the showNextStageButton variable since we're now always showing the button but conditionally enabling it
+
   return (
     <>
       <NameGate 
         onNameSubmit={handleNameSubmit}
         open={!state.voterName}
+      />
+      
+      <AvailabilityDialog 
+        open={showAvailabilityDialog}
+        onAvailabilitySet={handleAvailabilitySet}
       />
       
       <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
@@ -304,15 +379,27 @@ const AppContent: React.FC = () => {
           isExportEnabled={isExportEnabled}
           onHelpClick={handleHelpClick}
           onResetClick={handleResetClick}
+          stage={state.stage}
+          needsInterestRanking={needsInterestRanking}
+          onNextStage={handleStageChange}
+          priorityStageComplete={priorityStageComplete}
         />
         
         <Box component="main" sx={{ flexGrow: 1, overflow: 'hidden', p: 1 }}>
-          <KanbanContainer
-            pitches={pitches}
-            votes={state.votes}
-            onDragEnd={handleDragEnd}
-            onAppetiteChange={handleAppetiteChange}
-          />
+          {state.stage === 'priority' ? (
+            <KanbanContainer
+              pitches={pitches}
+              votes={state.votes}
+              onDragEnd={handleDragEnd}
+              onAppetiteChange={handleAppetiteChange}
+            />
+          ) : (
+            <InterestRanking
+              pitches={pitches}
+              votes={state.votes}
+              onSetInterest={handleInterestChange}
+            />
+          )}
 
           {/* Help Dialog */}
           <HelpDialog open={showHelp} onClose={() => setShowHelp(false)} />

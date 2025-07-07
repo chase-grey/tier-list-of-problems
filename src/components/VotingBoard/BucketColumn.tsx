@@ -1,10 +1,12 @@
 import * as React from 'react';
+import { useRef, useEffect } from 'react';
 import { Paper, Typography, Box, Stack } from '@mui/material';
 import { Droppable } from '@hello-pangea/dnd';
 import type { DroppableProvided, DroppableStateSnapshot } from '@hello-pangea/dnd';
 import { colorTokens } from '../../theme';
 import type { Pitch, Vote, Appetite } from '../../types/models';
 import PitchCard from './PitchCard/PitchCard';
+import { registerDroppable } from '../../utils/enhancedDropDetection';
 
 interface BucketColumnProps {
   tier: number | null; // null for "Unsorted" column
@@ -18,8 +20,16 @@ interface BucketColumnProps {
  * Represents a tier bucket column in the voting board
  */
 const BucketColumn = ({ tier, pitches, votes, onAppetiteChange, columnCount = 9 }: BucketColumnProps) => {
+  const columnRef = useRef<HTMLDivElement>(null);
+  const columnId = tier === null ? 'unsorted' : `tier-${tier}`;
+  
+  // Register this column with the enhanced drop detection system
+  useEffect(() => {
+    if (columnRef.current) {
+      registerDroppable(columnId, columnRef.current);
+    }
+  }, [columnId]);
   const isUnsorted = tier === null;
-  const columnId = isUnsorted ? 'unsorted' : `tier-${tier}`;
   
   // Get the priority label based on tier number
   const getPriorityLabel = (tierNumber: number | null): string => {
@@ -100,7 +110,10 @@ const BucketColumn = ({ tier, pitches, votes, onAppetiteChange, columnCount = 9 
       <Droppable droppableId={columnId}>
         {(provided: DroppableProvided, snapshot: DroppableStateSnapshot) => (
           <Paper
-            ref={provided.innerRef}
+            ref={(el) => {
+              provided.innerRef(el);
+              if (el) columnRef.current = el;
+            }}
             {...provided.droppableProps}
             sx={{
               p: 1,
