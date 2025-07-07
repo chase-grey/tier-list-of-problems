@@ -38,6 +38,13 @@ export const NON_CONTRIBUTOR_ROLES = [
   'other'
 ];
 
+// Helper function for case-insensitive role checking
+export function isNonContributorRole(role: string): boolean {
+  // Convert to lowercase for case-insensitive comparison
+  const roleLower = role.toLowerCase();
+  return NON_CONTRIBUTOR_ROLES.some(r => r.toLowerCase() === roleLower);
+}
+
 export interface Vote {
   pitchId: string;
   appetite?: Appetite;

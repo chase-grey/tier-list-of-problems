@@ -18,7 +18,7 @@ import { exportVotes } from '../utils/csv';
 import { isDevelopmentMode } from '../utils/testUtils';
 import type { DropResult } from '@hello-pangea/dnd';
 import type { AppState, AppAction, Pitch, Vote, Appetite, Tier, InterestLevel } from '../types/models';
-import { INTEREST_RANKING_ROLES, NON_CONTRIBUTOR_ROLES } from '../types/models';
+import { INTEREST_RANKING_ROLES, isNonContributorRole } from '../types/models';
 
 // Import pitch data
 import pitchesData from '../assets/pitches.json';
@@ -207,7 +207,7 @@ const AppContent: React.FC = () => {
   // Others need to have the right role and confirm their availability
   const canAccessInterestStage = state.voterRole !== null && 
     INTEREST_RANKING_ROLES.includes(state.voterRole) && 
-    !NON_CONTRIBUTOR_ROLES.includes(state.voterRole) &&
+    !isNonContributorRole(state.voterRole) &&
     state.available !== false;
   
   // Check if the user needs to rank interest (same logic as canAccessInterestStage, kept for backward compatibility)
@@ -226,6 +226,13 @@ const AppContent: React.FC = () => {
   const handleNameSubmit = (name: string, role: string) => {
     dispatch({ type: 'SET_NAME', name, role });
     showSnackbar(`Welcome, ${name}!`, 'success');
+    
+    // If this is a non-contributor role, automatically set available to false
+    // This ensures they skip the availability dialog and can't access interest section
+    if (isNonContributorRole(role) || role.toLowerCase() === 'other') {
+      // Set availability to false for non-contributors
+      dispatch({ type: 'SET_AVAILABILITY', available: false });
+    }
     
     // No need to show help dialog after name is submitted since we show it first
   };
@@ -439,7 +446,7 @@ const AppContent: React.FC = () => {
   const showAvailabilityDialog = state.voterName !== null && 
     state.voterRole !== null &&
     INTEREST_RANKING_ROLES.includes(state.voterRole) && 
-    !NON_CONTRIBUTOR_ROLES.includes(state.voterRole) &&
+    !isNonContributorRole(state.voterRole) &&
     state.available === null;
 
   // We've removed the showNextStageButton variable since we're now always showing the button but conditionally enabling it
