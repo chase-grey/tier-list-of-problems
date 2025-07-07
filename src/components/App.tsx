@@ -146,7 +146,7 @@ const AppContent: React.FC = () => {
       // If localStorage fails completely, use a fallback implementation
       console.error('LocalStorage error, using initial state:', error);
       // Return a dummy state management function that doesn't persist
-      const dummySetState = (value: AppState | ((val: AppState) => AppState)): void => {
+      const dummySetState = (_value: AppState | ((val: AppState) => AppState)): void => {
         console.log('LocalStorage disabled, state changes will not persist');
       };
       return [initialState, dummySetState] as [AppState, typeof dummySetState];

@@ -93,7 +93,7 @@ const DevConsole: React.FC = () => {
     // Set up the fetch override to monitor network requests
     const originalFetch = window.fetch;
     window.fetch = async (url, options) => {
-      const startTime = Date.now();
+      // Remove unused variable
       console.info(`🌐 Fetch request: ${url}`, options);
       
       try {

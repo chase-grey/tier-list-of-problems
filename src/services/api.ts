@@ -3,7 +3,7 @@
  * Handles communication with the Google Apps Script backend
  */
 import type { Pitch, Vote } from '../types/models';
-import { getMockCsrfToken, submitMockVotes, shouldUseMockApi } from './mockApi';
+import { getMockCsrfToken, submitMockVotes } from './mockApi';
 
 // Get the API URL from environment variables
 const API_BASE_URL = import.meta.env.VITE_API_URL || '';
@@ -56,17 +56,19 @@ export class ApiError extends Error {
 
 /**
  * Response format for votes submission
+ * @internal Used in API implementations
  */
-interface VoteResponse {
+export type VoteResponse = {
   saved: number;
-}
+};
 
 /**
  * Response format for CSRF token
+ * @internal Used in API implementations
  */
-interface TokenResponse {
+export type TokenResponse = {
   nonce: string;
-}
+};
 
 /**
  * Response format for results
@@ -322,9 +324,11 @@ export async function fetchResults(): Promise<ResultItem[]> {
  * Convert frontend votes to backend format
  */
 export function convertVotesToApiFormat(votes: Record<string, Vote>): Array<{pitch_id: string; appetite: 'S' | 'M' | 'L'; tier: number}> {
-  return Object.entries(votes).map(([pitchId, vote]) => ({
-    pitch_id: pitchId,
-    appetite: vote.appetite,
-    tier: vote.tier
-  }));
+  return Object.entries(votes)
+    .filter(([_, vote]) => vote.appetite && vote.tier) // Filter out any entries with undefined values
+    .map(([pitchId, vote]) => ({
+      pitch_id: pitchId,
+      appetite: vote.appetite as 'S' | 'M' | 'L', // Type assertion since we filtered undefined
+      tier: vote.tier as number // Type assertion since we filtered undefined
+    }));
 }
