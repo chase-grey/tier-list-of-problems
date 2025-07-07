@@ -44,15 +44,15 @@ const InterestColumn = ({
       {/* Column header */}
       <Paper 
         sx={{
-          p: 1.5,
-          mb: 2,
+          p: 0.75,
+          mb: 1,
           backgroundColor: color,
           color: 'white',
           textAlign: 'center',
           fontWeight: 'bold'
         }}
       >
-        <Typography variant="h6">
+        <Typography variant="subtitle1" sx={{ fontSize: '0.9rem' }}>
           {label} ({pitches.length})
         </Typography>
       </Paper>
@@ -116,8 +116,8 @@ const InterestColumn = ({
                     {...provided.dragHandleProps}
                     elevation={snapshot.isDragging ? 6 : 1}
                     sx={{
-                      p: 1.5,
-                      mb: 1,
+                      p: 1,
+                      mb: 0.75,
                       transition: 'all 0.2s ease',
                       cursor: 'grab',
                       '&:hover': {
@@ -128,7 +128,7 @@ const InterestColumn = ({
                         cursor: 'grabbing',
                       },
                       position: 'relative',
-                      minHeight: '90px',
+                      minHeight: '80px',
                       width: '100%',
                       transform: snapshot.isDragging ? 'rotate(3deg)' : 'none',
                       opacity: snapshot.isDragging ? 0.8 : 1
@@ -145,6 +145,7 @@ const InterestColumn = ({
                           // Ensure text wraps to avoid overflow
                           overflowWrap: 'break-word',
                           wordBreak: 'break-word',
+                          fontSize: '0.85rem',
                         }}
                       >
                         {pitch.title}

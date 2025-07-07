@@ -53,10 +53,10 @@ export const TopBar = ({
   priorityStageComplete
 }: TopBarProps) => {
   return (
-    <AppBar position="sticky" sx={{ height: 64 }}>
-      <Toolbar>
+    <AppBar position="sticky" sx={{ height: 48 }}>
+      <Toolbar sx={{ minHeight: '48px !important', py: 0 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', flexGrow: 1 }}>
-          <Typography variant="h6" component="div">
+          <Typography variant="subtitle1" component="div">
             Problem Polling: {voterName}
           </Typography>
           
@@ -79,7 +79,7 @@ export const TopBar = ({
             aria-label="Reset all votes"
             sx={{
               ml: 2,
-              height: 36, // Match export button height
+              height: 32, // Smaller reset button
               '&:hover': {
                 bgcolor: 'rgba(244, 67, 54, 0.08)'
               }
@@ -89,7 +89,7 @@ export const TopBar = ({
           </Button>
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', mr: 2 }}>
-          <Typography variant="subtitle1" sx={{ display: 'flex', gap: 1 }}>
+          <Typography variant="body2" sx={{ display: 'flex', gap: 1 }}>
             {stage === 'priority' ? (
               <>
                 <Box 

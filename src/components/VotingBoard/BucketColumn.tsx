@@ -93,15 +93,15 @@ const BucketColumn = ({ tier, pitches, votes, onAppetiteChange, columnCount = 9 
       {/* Column header */}
       <Paper 
         sx={{
-          p: 1.5,
-          mb: 2,
+          p: 0.75,
+          mb: 1,
           backgroundColor: getHeaderColor(),
           color: getHeaderTextColor(),
           textAlign: 'center',
           fontWeight: 'bold'
         }}
       >
-        <Typography variant="h6">
+        <Typography variant="subtitle1" sx={{ fontSize: '0.9rem' }}>
           {title} ({filteredPitches.length})
         </Typography>
       </Paper>

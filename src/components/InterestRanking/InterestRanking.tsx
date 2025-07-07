@@ -152,7 +152,7 @@ const InterestRanking: React.FC<InterestRankingProps> = ({
   
   return (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <Container maxWidth={false} sx={{ height: '100%', display: 'flex', flexDirection: 'column', pt: 1, px: 2 }}>
+      <Container maxWidth={false} sx={{ height: '100%', display: 'flex', flexDirection: 'column', pt: 0.5, px: 1 }}>
         
         <DragDropContext onDragEnd={handleDragEnd}>
           <Box 
@@ -161,8 +161,8 @@ const InterestRanking: React.FC<InterestRankingProps> = ({
               display: 'flex', 
               flexWrap: { xs: 'wrap', lg: 'nowrap' }, // Wrap on smaller screens, no wrap on large screens
               justifyContent: 'space-between',
-              pb: 4, // Extra padding at bottom for better scrolling experience
-              height: { xs: 'auto', lg: 'calc(100vh - 148px)' }, // Full height on large screens
+              pb: 2, // Reduced bottom padding
+              height: { xs: 'auto', lg: 'calc(100vh - 100px)' }, // Increased vertical space on large screens
               maxWidth: '100%', // Ensure it doesn't exceed viewport width
               overflowX: { xs: 'hidden', lg: 'auto' }, // Only allow horizontal scroll on large screens if needed
               overflowY: { xs: 'auto', lg: 'hidden' }, // Allow vertical scroll on small screens

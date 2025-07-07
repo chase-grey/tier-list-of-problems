@@ -192,9 +192,9 @@ const KanbanContainer = ({
               display: 'flex', 
               flexWrap: { xs: 'wrap', lg: 'nowrap' }, // Wrap on smaller screens, no wrap on large screens
               justifyContent: 'space-between',
-              p: 2,
-              pb: 4, // Extra padding at bottom for better scrolling experience
-              height: { xs: 'auto', lg: 'calc(100vh - 148px)' }, // Full height on large screens
+              p: 1,
+              pb: 2, // Reduced bottom padding
+              height: { xs: 'auto', lg: 'calc(100vh - 100px)' }, // More vertical space on large screens
               maxWidth: '100%', // Ensure it doesn't exceed viewport width
               overflowX: { xs: 'hidden', lg: 'auto' }, // Only allow horizontal scroll on large screens if needed
               overflowY: { xs: 'auto', lg: 'hidden' }, // Allow vertical scroll on small screens

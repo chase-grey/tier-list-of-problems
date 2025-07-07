@@ -87,8 +87,8 @@ const PitchCard = ({ pitch, vote, index, onAppetiteChange }: PitchCardProps) => 
           elevation={snapshot.isDragging ? 6 : 1}
           onKeyDown={handleKeyDown}
           sx={{
-            p: 1.5,
-            mb: 1,
+            p: 1,
+            mb: 0.75,
             transition: 'all 0.2s ease',
             cursor: 'grab',
             '&:hover': {
@@ -99,7 +99,7 @@ const PitchCard = ({ pitch, vote, index, onAppetiteChange }: PitchCardProps) => 
               cursor: 'grabbing',
             },
             position: 'relative',
-            minHeight: '90px',
+            minHeight: '80px',
           }}
           role="button"
           tabIndex={0}
@@ -116,7 +116,8 @@ const PitchCard = ({ pitch, vote, index, onAppetiteChange }: PitchCardProps) => 
                 overflowWrap: 'break-word',
                 wordBreak: 'break-word',
                 // Add bottom padding to avoid overlap with appetite buttons
-                paddingBottom: '28px' 
+                paddingBottom: '24px',
+                fontSize: '0.85rem' 
               }}
             >
               {pitch.title}
