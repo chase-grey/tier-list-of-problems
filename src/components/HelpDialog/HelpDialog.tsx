@@ -75,10 +75,10 @@ const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose }) => {
         <Divider sx={{ my: 3 }} />
         
         <Typography variant="h6" gutterBottom>
-          Step 3: Rank Your Interest Level (For Solution Contributors)
+          Step 3: Rank Your Interest Level
         </Typography>
         <Typography variant="body1" paragraph>
-          <strong>Note: This step only applies to users who will be contributing to solutions in the next version (Developers, Quality Management, and Team Leads).</strong>
+          <strong>Note: This step only applies to QMs, developers, QM TLs, and dev TLs that are contributing towards solutions to these problems next quarter.</strong>
         </Typography>
         <Typography variant="body1" paragraph>
           After ranking priorities, you'll be asked to rank your interest level in working on each problem. You will need to:
@@ -90,9 +90,6 @@ const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose }) => {
           </Typography>
           <Typography variant="body1" gutterBottom>
             • This helps us match problems with people who are most interested in solving them
-          </Typography>
-          <Typography variant="body1" gutterBottom>
-            • Your interest ranking is just as important as your priority ranking for project planning
           </Typography>
         </Box>
         
