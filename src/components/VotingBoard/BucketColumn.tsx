@@ -14,12 +14,13 @@ interface BucketColumnProps {
   votes: Record<string, Vote>;
   onAppetiteChange: (pitchId: string, appetite: Appetite | null) => void;
   columnCount?: number; // Total number of visible columns (9 with unsorted, 8 without)
+  userRole?: string | null;
 }
 
 /**
  * Represents a tier bucket column in the voting board
  */
-const BucketColumn = ({ tier, pitches, votes, onAppetiteChange, columnCount = 9 }: BucketColumnProps) => {
+const BucketColumn = ({ tier, pitches, votes, onAppetiteChange, columnCount = 9, userRole }: BucketColumnProps) => {
   const columnRef = useRef<HTMLDivElement>(null);
   const columnId = tier === null ? 'unsorted' : `tier-${tier}`;
   
@@ -151,6 +152,7 @@ const BucketColumn = ({ tier, pitches, votes, onAppetiteChange, columnCount = 9 
                   vote={votes[pitch.id]}
                   index={index}
                   onAppetiteChange={onAppetiteChange}
+                  userRole={userRole}
                 />
               ))}
             </Stack>

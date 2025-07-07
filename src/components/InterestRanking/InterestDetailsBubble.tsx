@@ -13,13 +13,16 @@ interface InterestDetailsBubbleProps {
   vote: Vote | undefined;
   anchorEl: HTMLElement | null;
   onClose: () => void;
+  userRole?: string | null;
 }
 
 /**
  * Displays detailed information about a pitch in the interest ranking stage
  * Including the priority tier and appetite that the user had set
  */
-const InterestDetailsBubble = ({ pitch, vote, anchorEl, onClose }: InterestDetailsBubbleProps) => {
+const InterestDetailsBubble = ({ pitch, vote, anchorEl, onClose, userRole }: InterestDetailsBubbleProps) => {
+  // Check if user is a customer
+  const isCustomer = userRole === 'customer';
   const open = Boolean(anchorEl);
   const id = open ? `details-popover-${pitch.id}` : undefined;
 
@@ -110,7 +113,26 @@ const InterestDetailsBubble = ({ pitch, vote, anchorEl, onClose }: InterestDetai
         }}
       >
         <Typography variant="h6" gutterBottom>
-          {pitch.id} - {pitch.title}
+          {isCustomer ? (
+            <Box component="span" sx={{ fontWeight: 'bold' }}>{pitch.id}</Box>
+          ) : (
+            <Box component="a" 
+              href={`https://emc2summary/GetSummaryReport.ashx/track/ZQN/${pitch.id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              sx={{ 
+                color: 'primary.main',
+                textDecoration: 'none',
+                fontWeight: 'bold',
+                '&:hover': {
+                  textDecoration: 'underline'
+                }
+              }}>
+              {pitch.id}
+            </Box>
+          )}
+          {" - "}
+          {pitch.title}
         </Typography>
         
         <Divider />

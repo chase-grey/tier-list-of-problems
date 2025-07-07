@@ -3,7 +3,8 @@ import {
   Typography,
   Box,
   Divider,
-  Paper
+  Paper,
+  Link
 } from '@mui/material';
 import type { Pitch } from '../../../types/models';
 
@@ -11,12 +12,15 @@ interface DetailsBubbleProps {
   pitch: Pitch;
   anchorEl: HTMLElement | null;
   onClose: () => void;
+  userRole?: string | null;
 }
 
 /**
  * Displays detailed information about a pitch in a popover
  */
-const DetailsBubble = ({ pitch, anchorEl, onClose }: DetailsBubbleProps) => {
+const DetailsBubble = ({ pitch, anchorEl, onClose, userRole }: DetailsBubbleProps) => {
+  // Check if user is a customer
+  const isCustomer = userRole === 'customer';
   const open = Boolean(anchorEl);
   const id = open ? `details-popover-${pitch.id}` : undefined;
 
@@ -65,9 +69,31 @@ const DetailsBubble = ({ pitch, anchorEl, onClose }: DetailsBubbleProps) => {
           overflowY: 'auto',
         }}
       >
-        <Typography variant="h6" gutterBottom>
-          {pitch.id} - {pitch.title}
-        </Typography>
+        <Box sx={{ mb: 1 }}>
+          <Typography variant="h6" noWrap={false} sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: 0.5 }}>
+            {isCustomer ? (
+              <span style={{ fontWeight: 'bold' }}>{pitch.id}</span>
+            ) : (
+              <Link 
+                href={`https://emc2summary/GetSummaryReport.ashx/track/ZQN/${pitch.id}`}
+                underline="hover"
+                target="_blank"
+                rel="noopener noreferrer"
+                sx={{ fontWeight: 'bold' }}
+              >
+                {pitch.id}
+              </Link>
+            )}
+            <span>-</span>
+            <span style={{ 
+              overflowWrap: 'break-word', 
+              wordBreak: 'break-word', 
+              hyphens: 'auto' 
+            }}>
+              {pitch.title}
+            </span>
+          </Typography>
+        </Box>
         
         <Divider />
         

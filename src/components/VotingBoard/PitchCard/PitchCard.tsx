@@ -17,12 +17,13 @@ interface PitchCardProps {
   vote: Vote | undefined;
   index: number;
   onAppetiteChange: (pitchId: string, appetite: Appetite | null) => void;
+  userRole?: string | null;
 }
 
 /**
  * Represents a single pitch card that can be dragged between tiers
  */
-const PitchCard = ({ pitch, vote, index, onAppetiteChange }: PitchCardProps) => {
+const PitchCard = ({ pitch, vote, index, onAppetiteChange, userRole }: PitchCardProps) => {
   const [detailsAnchor, setDetailsAnchor] = useState<HTMLElement | null>(null);
   // Using HTMLElement type to match what Draggable provides
   const cardRef = useRef<HTMLElement>(null);
@@ -196,6 +197,7 @@ const PitchCard = ({ pitch, vote, index, onAppetiteChange }: PitchCardProps) => 
               pitch={pitch}
               anchorEl={detailsAnchor}
               onClose={handleCloseDetails}
+              userRole={userRole}
             />
           </React.Suspense>
         </Paper>

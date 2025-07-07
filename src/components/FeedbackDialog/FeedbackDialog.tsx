@@ -27,6 +27,7 @@ interface FeedbackDialogProps {
   open: boolean;
   onClose: () => void;
   onSubmit: (feedbackData: FeedbackData) => void;
+  userRole: string | null;
 }
 
 // Custom icons for the rating component
@@ -61,7 +62,9 @@ function IconContainer(props: any) {
 /**
  * Dialog for collecting feedback before finishing the poll
  */
-export const FeedbackDialog: React.FC<FeedbackDialogProps> = ({ open, onClose, onSubmit }) => {
+export const FeedbackDialog: React.FC<FeedbackDialogProps> = ({ open, onClose, onSubmit, userRole }) => {
+  // Check if user is a customer
+  const isCustomer = userRole === 'customer';
   const [rating, setRating] = useState<number | null>(null);
   const [comments, setComments] = useState('');
   
@@ -80,7 +83,11 @@ export const FeedbackDialog: React.FC<FeedbackDialogProps> = ({ open, onClose, o
       
       <DialogContent>
         <Typography variant="body1" paragraph sx={{ mt: 1, mb: 2, fontWeight: 'medium', color: 'info.main' }}>
-          After downloading, please save your CSV file to <Link href="https://epic1.sharepoint.com/:f:/s/SmartTools-Docs/EodUOVUDhwxKhuMUK3OeY2IBV_dj5j41GYqsqgu45MMEmQ?e=BYGkur" target="_blank" rel="noopener noreferrer">this SharePoint site</Link> using your full name as the filename, or email it to cgrey@epic.com.
+          {isCustomer ? (
+            <>After downloading, please email your CSV file to Chase Grey (cgrey@epic.com).</>
+          ) : (
+            <>After downloading, please save your CSV file to <Link href="https://epic1.sharepoint.com/:f:/s/SmartTools-Docs/EodUOVUDhwxKhuMUK3OeY2IBV_dj5j41GYqsqgu45MMEmQ?e=BYGkur" target="_blank" rel="noopener noreferrer">this SharePoint site</Link> using your full name as the filename, or email it to cgrey@epic.com.</>
+          )}
         </Typography>
         <Box sx={{ py: 2 }}>
           <Typography variant="subtitle1" gutterBottom>

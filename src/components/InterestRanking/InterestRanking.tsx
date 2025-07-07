@@ -43,6 +43,7 @@ interface InterestRankingProps {
   pitches: Pitch[];
   votes: Record<string, Vote>;
   onSetInterest: (id: string, interestLevel: InterestLevel) => void;
+  userRole?: string | null;
 }
 
 /**
@@ -51,7 +52,8 @@ interface InterestRankingProps {
 const InterestRanking: React.FC<InterestRankingProps> = ({ 
   pitches,
   votes,
-  onSetInterest
+  onSetInterest,
+  userRole
 }) => {
   // Reference to the scrollable container
   const containerRef = useRef<HTMLDivElement>(null);
@@ -198,6 +200,7 @@ const InterestRanking: React.FC<InterestRankingProps> = ({
                     color={color}
                     pitches={columnPitches}
                     votes={votes}
+                    userRole={userRole}
                   />
                 </Box>
               );

@@ -13,6 +13,7 @@ interface KanbanContainerProps {
   votes: Record<string, Vote>;
   onDragEnd: (result: DropResult) => void;
   onAppetiteChange: (pitchId: string, appetite: Appetite | null) => void;
+  userRole?: string | null;
 }
 
 /**
@@ -23,7 +24,8 @@ const KanbanContainer = ({
   pitches, 
   votes, 
   onDragEnd,
-  onAppetiteChange
+  onAppetiteChange,
+  userRole
 }: KanbanContainerProps) => {
   // Reference to the scrollable container
   const containerRef = useRef<HTMLDivElement>(null);
@@ -216,6 +218,7 @@ const KanbanContainer = ({
                 votes={votes}
                 onAppetiteChange={onAppetiteChange}
                 columnCount={hasUncategorizedPitches ? 9 : 8} // 9 columns if showing unsorted, 8 otherwise
+                userRole={userRole}
               />
             )}
             
@@ -228,6 +231,7 @@ const KanbanContainer = ({
                 votes={votes}
                 onAppetiteChange={onAppetiteChange}
                 columnCount={hasUncategorizedPitches ? 9 : 8} // 9 columns if showing unsorted, 8 otherwise
+                userRole={userRole}
               />
             ))}
           </Box>

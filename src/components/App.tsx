@@ -483,19 +483,22 @@ const AppContent: React.FC = () => {
               votes={state.votes}
               onDragEnd={handleDragEnd}
               onAppetiteChange={handleAppetiteChange}
+              userRole={state.voterRole}
             />
           ) : (
             <InterestRanking
               pitches={pitches}
               votes={state.votes}
               onSetInterest={handleInterestChange}
+              userRole={state.voterRole}
             />
           )}
                   
                   {/* Help dialog */}
           <HelpDialog 
             open={showHelp} 
-            onClose={handleInitialHelpClose} 
+            onClose={handleInitialHelpClose}
+            userRole={state.voterRole} 
           />
           
           {/* Reset confirmation dialog */}
@@ -514,6 +517,7 @@ const AppContent: React.FC = () => {
             open={showFeedback}
             onClose={handleFeedbackClose}
             onSubmit={handleFeedbackSubmit}
+            userRole={state.voterRole}
           />
 
           {/* Show availability dialog on first name entry if not set */}

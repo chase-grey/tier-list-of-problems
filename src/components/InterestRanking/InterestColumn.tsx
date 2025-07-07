@@ -13,6 +13,7 @@ interface InterestColumnProps {
   color: string;
   pitches: Pitch[];
   votes: Record<string, Vote>;
+  userRole?: string | null;
 }
 
 /**
@@ -23,7 +24,8 @@ const InterestColumn = ({
   label,
   color,
   pitches,
-  votes
+  votes,
+  userRole
 }: InterestColumnProps) => {
   const columnRef = useRef<HTMLDivElement>(null);
   
@@ -158,7 +160,7 @@ const InterestColumn = ({
                       </Typography>
                       
                       {/* Info button reference passed from parent */}
-                      <InterestCardInfoButton pitch={pitch} vote={votes[pitch.id]} />
+                      <InterestCardInfoButton pitch={pitch} vote={votes[pitch.id]} userRole={userRole} />
                     </Box>
                   </Paper>
                 )}
@@ -173,7 +175,7 @@ const InterestColumn = ({
 };
 
 // Info button component with details bubble
-const InterestCardInfoButton = ({ pitch, vote }: { pitch: Pitch; vote?: Vote }) => {
+const InterestCardInfoButton = ({ pitch, vote, userRole }: { pitch: Pitch; vote?: Vote; userRole?: string | null }) => {
   const buttonRef = React.useRef<HTMLButtonElement>(null);
   const [detailsOpen, setDetailsOpen] = React.useState(false);
   
@@ -215,6 +217,7 @@ const InterestCardInfoButton = ({ pitch, vote }: { pitch: Pitch; vote?: Vote }) 
           vote={vote}
           anchorEl={buttonRef.current}
           onClose={handleCloseDetails}
+          userRole={userRole}
         />
       )}
     </>
