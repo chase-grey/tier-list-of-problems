@@ -18,7 +18,7 @@ import { exportVotes } from '../utils/csv';
 import { isDevelopmentMode } from '../utils/testUtils';
 import type { DropResult } from '@hello-pangea/dnd';
 import type { AppState, AppAction, Pitch, Vote, Appetite, Tier, InterestLevel } from '../types/models';
-import { INTEREST_RANKING_ROLES } from '../types/models';
+import { INTEREST_RANKING_ROLES, NON_CONTRIBUTOR_ROLES } from '../types/models';
 
 // Import pitch data
 import pitchesData from '../assets/pitches.json';
@@ -203,8 +203,11 @@ const AppContent: React.FC = () => {
   const rankCount = Object.values(state.votes).filter(v => v.tier).length;
   
   // Check if the user has a role that can access interest ranking
+  // Users with certain roles (UXD, TLTL, customer, other) can never access interest section
+  // Others need to have the right role and confirm their availability
   const canAccessInterestStage = state.voterRole !== null && 
     INTEREST_RANKING_ROLES.includes(state.voterRole) && 
+    !NON_CONTRIBUTOR_ROLES.includes(state.voterRole) &&
     state.available !== false;
   
   // Check if the user needs to rank interest (same logic as canAccessInterestStage, kept for backward compatibility)
@@ -432,9 +435,11 @@ const AppContent: React.FC = () => {
   };
   
   // Show availability dialog for specific roles after name is set
+  // Skip for UXD, TLTL, customer, and other roles
   const showAvailabilityDialog = state.voterName !== null && 
     state.voterRole !== null &&
     INTEREST_RANKING_ROLES.includes(state.voterRole) && 
+    !NON_CONTRIBUTOR_ROLES.includes(state.voterRole) &&
     state.available === null;
 
   // We've removed the showNextStageButton variable since we're now always showing the button but conditionally enabling it

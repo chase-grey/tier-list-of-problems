@@ -30,6 +30,14 @@ export const INTEREST_RANKING_ROLES = [
   'QM TL'
 ];
 
+// Roles that should NOT be asked about availability and can't do interest ranking
+export const NON_CONTRIBUTOR_ROLES = [
+  'UXD',
+  'TLTL',
+  'customer',
+  'other'
+];
+
 export interface Vote {
   pitchId: string;
   appetite?: Appetite;
