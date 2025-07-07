@@ -13,14 +13,16 @@ export interface FeedbackData {
  * Exports the current votes to a CSV file and triggers download
  * 
  * @param voterName The name of the current voter
+ * @param voterRole The role of the current voter
  * @param votes Object containing all votes keyed by pitchId
  * @param feedback Optional feedback data to include in the export
  */
-export const exportVotes = (voterName: string, votes: Record<string, Vote>, feedback?: FeedbackData) => {
+export const exportVotes = (voterName: string, voterRole: string, votes: Record<string, Vote>, feedback?: FeedbackData) => {
   // First, create a summary row with metadata
   const metadataRows = [
     {
       voterName,
+      voterRole,
       type: 'metadata',
       feedbackRating: feedback?.rating || '',
       feedbackComments: feedback?.comments || '',
@@ -36,6 +38,7 @@ export const exportVotes = (voterName: string, votes: Record<string, Vote>, feed
   // Then create vote rows
   const voteRows = Object.values(votes).map(v => ({
     voterName,
+    voterRole,
     type: 'vote',
     feedbackRating: '',
     feedbackComments: '',

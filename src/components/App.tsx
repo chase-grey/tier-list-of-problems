@@ -363,9 +363,9 @@ const AppContent: React.FC = () => {
     // Close the feedback dialog
     setShowFeedback(false);
     
-    if (state.voterName) { // Add null check
+    if (state.voterName && state.voterRole) { // Add null checks for both name and role
       // Export votes with feedback data
-      exportVotes(state.voterName, state.votes, feedbackData);
+      exportVotes(state.voterName, state.voterRole, state.votes, feedbackData);
       showSnackbar('Thank you for your feedback! Your data has been exported.', 'success');
     }
   };
@@ -374,9 +374,9 @@ const AppContent: React.FC = () => {
   const handleFeedbackClose = () => {
     setShowFeedback(false);
     
-    if (state.voterName) { // Add null check
+    if (state.voterName && state.voterRole) { // Add null checks for both name and role
       // Export votes without feedback
-      exportVotes(state.voterName, state.votes);
+      exportVotes(state.voterName, state.voterRole, state.votes);
       showSnackbar('Your data has been exported successfully!', 'success');
     }
   };
