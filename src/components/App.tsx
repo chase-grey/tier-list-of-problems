@@ -161,6 +161,8 @@ const AppContent: React.FC = () => {
   const completeState = {
     ...initialState,
     ...savedState,
+    // Always set initial state to priority stage when loading
+    stage: 'priority' as 'priority',
     // Ensure voterRole exists if voterName exists
     voterRole: savedState.voterRole || (savedState.voterName ? null : initialState.voterRole)
   };
