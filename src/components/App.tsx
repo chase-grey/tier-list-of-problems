@@ -279,9 +279,46 @@ const AppContent: React.FC = () => {
   const handleStageChange = () => {
     // Toggle between stages
     const newStage = state.stage === 'priority' ? 'interest' : 'priority';
+    
+    // If switching to interest stage, set default interest levels for all cards
+    // that don't already have an interest level set
+    if (newStage === 'interest') {
+      // Process each pitch that has a tier but no interest level
+      pitches.forEach(pitch => {
+        const vote = state.votes[pitch.id];
+        const tier = vote?.tier;
+        
+        // Skip if no tier or already has interest level
+        if (!tier || vote?.interestLevel) {
+          return;
+        }
+        
+        // Map tier to default interest level (same mapping logic as in InterestRanking component)
+        let defaultInterestLevel: InterestLevel;
+        if (tier === 1) defaultInterestLevel = 8;        // Tier 1 → Extremely Interested
+        else if (tier === 2) defaultInterestLevel = 7;   // Tier 2 → Very Interested
+        else if (tier === 3) defaultInterestLevel = 6;   // Tier 3 → Fairly Interested
+        else if (tier === 4) defaultInterestLevel = 5;   // Tier 4 → Interested
+        else if (tier === 5) defaultInterestLevel = 4;   // Tier 5 → Moderately Interested
+        else if (tier === 6) defaultInterestLevel = 3;   // Tier 6 → Somewhat Interested
+        else if (tier === 7) defaultInterestLevel = 2;   // Tier 7 → Slightly Interested
+        else defaultInterestLevel = 1;                   // Tier 8 → Not Interested
+        
+        // Set the default interest level and use the same timestamp
+        const timestamp = vote.timestamp || new Date().getTime();
+        dispatch({ 
+          type: 'SET_INTEREST', 
+          id: pitch.id, 
+          interestLevel: defaultInterestLevel,
+          timestamp 
+        });
+      });
+    }
+    
+    // Set the new stage
     dispatch({ type: 'SET_STAGE', stage: newStage });
   };
-  
+
   // Handle showing help dialog
   const handleHelpClick = () => {
     setShowHelp(true);
