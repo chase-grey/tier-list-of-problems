@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "homepage": ".",
+  "homepage": "https://chase-grey.github.io/tier-list-of-problems/",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",

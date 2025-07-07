@@ -1,0 +1,50 @@
+/* Background styling with fern patterns */
+
+.app-background {
+  position: relative;
+}
+
+.app-background::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: url("data:image/svg+xml,%3Csvg width='800' height='800' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M100,700 C150,650 120,550 80,520 C140,540 160,500 140,450 C180,480 200,440 190,400' fill='none' stroke='rgba(255,255,255,0.35)' stroke-width='4.5'/%3E%3Cpath d='M130,600 C140,580 120,570 110,565' fill='none' stroke='rgba(255,255,255,0.35)' stroke-width='3.5'/%3E%3Cpath d='M145,550 C155,530 140,520 125,515' fill='none' stroke='rgba(255,255,255,0.35)' stroke-width='3.5'/%3E%3Cpath d='M650,200 C600,150 630,50 670,20 C610,40 590,0 610,-50' fill='none' stroke='rgba(255,255,255,0.35)' stroke-width='4.5'/%3E%3Cpath d='M620,100 C610,80 630,70 640,65' fill='none' stroke='rgba(255,255,255,0.35)' stroke-width='3.5'/%3E%3Cpath d='M750,750 C720,720 730,670 750,650 C720,660 710,640 720,615' fill='none' stroke='rgba(255,255,255,0.35)' stroke-width='3.5'/%3E%3Cpath d='M50,50 C80,80 70,130 50,150 C80,140 90,160 80,185' fill='none' stroke='rgba(255,255,255,0.35)' stroke-width='3.5'/%3E%3C/svg%3E");
+  background-size: cover;
+  background-attachment: fixed;
+  opacity: 0.4;
+  z-index: -1;
+  pointer-events: none; /* Allow clicking through */
+  filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.2));
+}
+
+.main-content {
+  position: relative;
+  z-index: 1;
+}
+
+/* Secondary fern pattern */
+.fern-accent {
+  position: absolute;
+  width: 350px;
+  height: 450px;
+  background-image: url("data:image/svg+xml,%3Csvg width='350' height='450' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M175,375 C195,355 185,305 165,295 C195,305 205,285 195,265 C215,280 220,260 215,245' fill='none' stroke='rgba(255,255,255,0.4)' stroke-width='4'/%3E%3Cpath d='M180,325 C185,315 175,310 170,308' fill='none' stroke='rgba(255,255,255,0.4)' stroke-width='3'/%3E%3Cpath d='M195,280 C200,270 190,265 185,263' fill='none' stroke='rgba(255,255,255,0.4)' stroke-width='3'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  opacity: 0.5;
+  pointer-events: none;
+  filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.15));
+}
+
+.fern-accent-1 {
+  top: 10px;
+  right: 10px;
+  transform: rotate(45deg);
+}
+
+.fern-accent-2 {
+  bottom: 50px;
+  left: 20px;
+  transform: rotate(-30deg);
+}

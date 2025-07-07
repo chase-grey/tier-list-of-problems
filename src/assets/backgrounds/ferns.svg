@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="800px" height="800px" viewBox="0 0 800 800" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+  <title>Subtle Fern Background</title>
+  <defs>
+    <pattern id="fern-pattern" patternUnits="userSpaceOnUse" width="800" height="800" patternTransform="scale(0.75) rotate(15)">
+      <!-- Larger fern 1 -->
+      <path d="M100,700 C150,650 120,550 80,520 C140,540 160,500 140,450 C180,480 200,440 190,400 C220,430 240,400 230,360 C250,390 270,370 270,340 C290,360 310,340 300,310" 
+            fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="2" />
+      
+      <!-- Fern fronds 1 -->
+      <path d="M130,600 C140,580 120,570 110,565" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="1.5" />
+      <path d="M145,550 C155,530 140,520 125,515" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="1.5" />
+      <path d="M160,500 C170,480 150,470 140,465" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="1.5" />
+      <path d="M175,450 C185,430 165,420 155,415" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="1.5" />
+      <path d="M190,400 C200,380 180,370 170,365" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="1.5" />
+      <path d="M205,350 C215,330 195,320 185,315" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="1.5" />
+      
+      <!-- Small frond details 1 -->
+      <path d="M130,590 C135,585 125,583 123,582" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="1" />
+      <path d="M135,575 C140,570 130,568 128,567" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="1" />
+      <path d="M145,540 C150,535 140,533 138,532" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="1" />
+      
+      <!-- Larger fern 2 (positioned differently) -->
+      <path d="M650,200 C600,150 630,50 670,20 C610,40 590,0 610,-50 C570,-20 550,-60 560,-100 C530,-70 510,-100 520,-140 C500,-110 480,-130 480,-160 C460,-140 440,-160 450,-190" 
+            fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="2" />
+      
+      <!-- Fern fronds 2 -->
+      <path d="M620,100 C610,80 630,70 640,65" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="1.5" />
+      <path d="M605,50 C595,30 610,20 625,15" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="1.5" />
+      <path d="M590,0 C580,-20 600,-30 610,-35" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="1.5" />
+      <path d="M575,-50 C565,-70 585,-80 595,-85" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="1.5" />
+      <path d="M560,-100 C550,-120 570,-130 580,-135" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="1.5" />
+      <path d="M545,-150 C535,-170 555,-180 565,-185" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="1.5" />
+      
+      <!-- Small frond details 2 -->
+      <path d="M620,90 C615,85 625,83 627,82" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="1" />
+      <path d="M615,75 C610,70 620,68 622,67" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="1" />
+      <path d="M605,40 C600,35 610,33 612,32" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="1" />
+      
+      <!-- Smaller fern 3 (corner position) -->
+      <path d="M750,750 C720,720 730,670 750,650 C720,660 710,640 720,615 C700,630 690,610 695,590 C680,605 670,590 675,575" 
+            fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="1.5" />
+      
+      <!-- Fern fronds 3 -->
+      <path d="M740,700 C745,690 735,685 730,683" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="1" />
+      <path d="M730,670 C735,660 725,655 720,653" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="1" />
+      <path d="M720,640 C725,630 715,625 710,623" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="1" />
+      
+      <!-- Smaller fern 4 (top left) -->
+      <path d="M50,50 C80,80 70,130 50,150 C80,140 90,160 80,185 C100,170 110,190 105,210 C120,195 130,210 125,225" 
+            fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="1.5" />
+      
+      <!-- Fern fronds 4 -->
+      <path d="M60,100 C55,110 65,115 70,117" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="1" />
+      <path d="M70,130 C65,140 75,145 80,147" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="1" />
+      <path d="M80,160 C75,170 85,175 90,177" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="1" />
+    </pattern>
+  </defs>
+  <rect width="100%" height="100%" fill="url(#fern-pattern)" />
+</svg>

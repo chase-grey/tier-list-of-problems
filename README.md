@@ -7,6 +7,10 @@ This application provides a drag-and-drop interface for ranking problem pitches 
 
 ![Problem Polling App - Dark Mode](./docs/app-preview.png)
 
+## Live Demo
+
+View the live application: [https://chase-grey.github.io/tier-list-of-problems/](https://chase-grey.github.io/tier-list-of-problems/)
+
 ## Features
 
 - **Drag and Drop Ranking**: Sort pitches into 8 tier buckets
@@ -43,6 +47,16 @@ npm run dev
 # Production build
 npm run build
 ```
+
+### Deployment
+
+The application is automatically deployed to GitHub Pages when changes are pushed to the main branch. The deployment workflow is handled by GitHub Actions.
+
+To manually trigger a deployment:
+
+1. Push changes to the main branch
+2. GitHub Actions will automatically build and deploy the application
+3. The live site will be updated at [https://chase-grey.github.io/tier-list-of-problems/](https://chase-grey.github.io/tier-list-of-problems/)
 
 ## Data Structure
 

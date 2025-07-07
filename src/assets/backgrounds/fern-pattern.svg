@@ -1,0 +1,27 @@
+<svg width="800" height="800" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <pattern id="fern-pattern" patternUnits="userSpaceOnUse" width="800" height="800" patternTransform="rotate(10)">
+      <!-- Large fern 1 -->
+      <path d="M100,700 C150,650 120,550 80,520 C140,540 160,500 140,450 C180,480 200,440 190,400" 
+            fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="2.5" />
+      <!-- Fronds -->
+      <path d="M130,600 C140,580 120,570 110,565" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="2" />
+      <path d="M145,550 C155,530 140,520 125,515" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="2" />
+
+      <!-- Large fern 2 -->
+      <path d="M650,200 C600,150 630,50 670,20 C610,40 590,0 610,-50" 
+            fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="2.5" />
+      <!-- Fronds -->
+      <path d="M620,100 C610,80 630,70 640,65" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="2" />
+      
+      <!-- Small fern 3 -->
+      <path d="M750,750 C720,720 730,670 750,650 C720,660 710,640 720,615" 
+            fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="2" />
+      
+      <!-- Small fern 4 -->
+      <path d="M50,50 C80,80 70,130 50,150 C80,140 90,160 80,185" 
+            fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="2" />
+    </pattern>
+  </defs>
+  <rect width="100%" height="100%" fill="url(#fern-pattern)" />
+</svg>
