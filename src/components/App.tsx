@@ -202,10 +202,13 @@ const AppContent: React.FC = () => {
   const appetiteCount = Object.values(state.votes).filter(v => v.appetite).length;
   const rankCount = Object.values(state.votes).filter(v => v.tier).length;
   
-  // Check if the user needs to rank interest
-  const needsInterestRanking = state.voterRole !== null && 
+  // Check if the user has a role that can access interest ranking
+  const canAccessInterestStage = state.voterRole !== null && 
     INTEREST_RANKING_ROLES.includes(state.voterRole) && 
     state.available !== false;
+  
+  // Check if the user needs to rank interest (same logic as canAccessInterestStage, kept for backward compatibility)
+  const needsInterestRanking = canAccessInterestStage;
     
   // Calculate completion status based on role and availability
   const priorityStageComplete = appetiteCount === TOTAL && rankCount === TOTAL;
@@ -281,6 +284,17 @@ const AppContent: React.FC = () => {
   const handleStageChange = () => {
     // Toggle between stages
     const newStage = state.stage === 'priority' ? 'interest' : 'priority';
+    
+    // Only allow switching to interest stage if conditions are met
+    if (newStage === 'interest' && (!canAccessInterestStage || !priorityStageComplete)) {
+      // Show appropriate error message
+      if (!canAccessInterestStage) {
+        showSnackbar('Only QM, developers, QM TLs, and dev TLs who have indicated availability can rank interest', 'error');
+      } else {
+        showSnackbar('You must complete all appetites and priority rankings first', 'error');
+      }
+      return;
+    }
     
     // If switching to interest stage, set default interest levels for all cards
     // that don't already have an interest level set
@@ -449,6 +463,8 @@ const AppContent: React.FC = () => {
           onResetClick={handleResetClick}
           stage={state.stage}
           onNextStage={handleStageChange}
+          canAccessInterestStage={canAccessInterestStage}
+          priorityStageComplete={priorityStageComplete}
         />
         
         <Box component="main" sx={{ flexGrow: 1, overflow: 'hidden', p: 1 }}>

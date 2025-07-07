@@ -30,6 +30,8 @@ interface TopBarProps {
   onResetClick: () => void;
   stage: 'priority' | 'interest';
   onNextStage: () => void;
+  canAccessInterestStage: boolean;
+  priorityStageComplete: boolean;
 }
 
 /**
@@ -45,7 +47,9 @@ export const TopBar = ({
   onHelpClick,
   onResetClick,
   stage,
-  onNextStage
+  onNextStage,
+  canAccessInterestStage,
+  priorityStageComplete
 }: TopBarProps) => {
   return (
     <AppBar position="sticky" sx={{ height: 48 }}>
@@ -134,22 +138,33 @@ export const TopBar = ({
             )}
           </Typography>
         </Box>
-        <Button
-          variant="contained"
-          color={stage === 'priority' ? 'secondary' : 'primary'}
-          startIcon={stage === 'priority' ? <NextIcon /> : <PrevIcon />}
-          onClick={onNextStage}
-          sx={{
-            mr: 2,
-            // Use purple for interest stage button, blue for priority stage button
-            bgcolor: stage === 'priority' ? '#9c27b0' : '#1976d2',
-            '&:hover': {
-              bgcolor: stage === 'priority' ? '#7b1fa2' : '#1565c0'
-            }
-          }}
-        >
-          {stage === 'priority' ? 'Next: Rank Interest' : 'Previous: Rank Priority'}
-        </Button>
+        <Tooltip title={
+          stage === 'priority' && !canAccessInterestStage ? 
+            "Only QM, developers, QM TLs, and dev TLs who have indicated availability can rank interest" : 
+            stage === 'priority' && !priorityStageComplete ? 
+            "You must complete all appetites and priority rankings first" : 
+            ""
+        } arrow placement="bottom">
+          <span> {/* Wrapper needed for disabled button tooltips */}
+            <Button
+              variant="contained"
+              color={stage === 'priority' ? 'secondary' : 'primary'}
+              startIcon={stage === 'priority' ? <NextIcon /> : <PrevIcon />}
+              onClick={onNextStage}
+              disabled={stage === 'priority' && (!canAccessInterestStage || !priorityStageComplete)}
+              sx={{
+                mr: 2,
+                // Use purple for interest stage button, blue for priority stage button
+                bgcolor: stage === 'priority' ? '#9c27b0' : '#1976d2',
+                '&:hover': {
+                  bgcolor: stage === 'priority' ? '#7b1fa2' : '#1565c0'
+                }
+              }}
+            >
+              {stage === 'priority' ? 'Next: Rank Interest' : 'Previous: Rank Priority'}
+            </Button>
+          </span>
+        </Tooltip>
         
         <Button
           variant="contained"
