@@ -18,7 +18,7 @@ import { exportVotes } from '../utils/csv';
 import { isDevelopmentMode } from '../utils/testUtils';
 import type { DropResult } from '@hello-pangea/dnd';
 import type { AppState, AppAction, Pitch, Vote, Appetite, Tier, InterestLevel } from '../types/models';
-import { INTEREST_RANKING_ROLES, isNonContributorRole } from '../types/models';
+import { isContributorRole } from '../types/models';
 
 // Import pitch data
 import pitchesData from '../assets/pitches.json';
@@ -203,12 +203,10 @@ const AppContent: React.FC = () => {
   const rankCount = Object.values(state.votes).filter(v => v.tier).length;
   
   // Check if the user has a role that can access interest ranking
-  // Users with certain roles (UXD, TLTL, customer, other) can never access interest section
-  // Others need to have the right role and confirm their availability
+  // Only QMs, devs, QM TLs, and dev TLs who are available for next quarter can see interest section
   const canAccessInterestStage = state.voterRole !== null && 
-    INTEREST_RANKING_ROLES.includes(state.voterRole) && 
-    !isNonContributorRole(state.voterRole) &&
-    state.available !== false;
+    isContributorRole(state.voterRole) && 
+    state.available === true;
   
   // Check if the user needs to rank interest (same logic as canAccessInterestStage, kept for backward compatibility)
   const needsInterestRanking = canAccessInterestStage;
@@ -229,7 +227,7 @@ const AppContent: React.FC = () => {
     
     // If this is a non-contributor role, automatically set available to false
     // This ensures they skip the availability dialog and can't access interest section
-    if (isNonContributorRole(role) || role.toLowerCase() === 'other') {
+    if (!isContributorRole(role)) {
       // Set availability to false for non-contributors
       dispatch({ type: 'SET_AVAILABILITY', available: false });
     }
@@ -442,11 +440,10 @@ const AppContent: React.FC = () => {
   };
   
   // Show availability dialog for specific roles after name is set
-  // Skip for UXD, TLTL, customer, and other roles
+  // Only ask QMs, devs, QM TLs, and dev TLs
   const showAvailabilityDialog = state.voterName !== null && 
     state.voterRole !== null &&
-    INTEREST_RANKING_ROLES.includes(state.voterRole) && 
-    !isNonContributorRole(state.voterRole) &&
+    isContributorRole(state.voterRole) && 
     state.available === null;
 
   // We've removed the showNextStageButton variable since we're now always showing the button but conditionally enabling it

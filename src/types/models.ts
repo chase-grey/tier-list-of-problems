@@ -22,8 +22,8 @@ export type Tier     = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
 // Interest levels for the second stage
 export type InterestLevel = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
 
-// Roles that require interest ranking
-export const INTEREST_RANKING_ROLES = [
+// Roles that can participate in interest ranking if available
+export const CONTRIBUTOR_ROLES = [
   'developer',
   'QM',
   'dev TL',
@@ -38,11 +38,24 @@ export const NON_CONTRIBUTOR_ROLES = [
   'other'
 ];
 
-// Helper function for case-insensitive role checking
-export function isNonContributorRole(role: string): boolean {
+// Helper function for case-insensitive role checking to identify contributor roles
+export function isContributorRole(role: string): boolean {
+  if (!role) return false;
   // Convert to lowercase for case-insensitive comparison
   const roleLower = role.toLowerCase();
-  return NON_CONTRIBUTOR_ROLES.some(r => r.toLowerCase() === roleLower);
+  return CONTRIBUTOR_ROLES.some(r => r.toLowerCase() === roleLower);
+}
+
+// Helper function for case-insensitive role checking to identify non-contributor roles
+export function isNonContributorRole(role: string): boolean {
+  if (!role) return false;
+  // Convert to lowercase for case-insensitive comparison
+  const roleLower = role.toLowerCase();
+  
+  // Check if it's in the non-contributor list OR if it's a custom role (not in contributor list)
+  return NON_CONTRIBUTOR_ROLES.some(r => r.toLowerCase() === roleLower) ||
+    (roleLower === 'other') ||
+    (!isContributorRole(role) && role !== '');
 }
 
 export interface Vote {
