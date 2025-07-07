@@ -124,9 +124,9 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
  */
 const AppContent: React.FC = () => {
   // State to control help dialog
-  const [showHelp, setShowHelp] = useState(false);
-  // State to track if this is first login
-  const [isFirstLogin, setIsFirstLogin] = useState(true);
+  const [showHelp, setShowHelp] = useState(true); // Show help dialog by default
+  // State to track if initial help dialog was shown
+  const [initialHelpShown, setInitialHelpShown] = useState(false);
   // State to control reset confirmation dialog
   const [showResetConfirmation, setShowResetConfirmation] = useState(false);
   // Get pitches from JSON
@@ -215,11 +215,7 @@ const AppContent: React.FC = () => {
     dispatch({ type: 'SET_NAME', name, role });
     showSnackbar(`Welcome, ${name}!`, 'success');
     
-    // Show help dialog after name is submitted for first time users
-    if (isFirstLogin) {
-      setTimeout(() => setShowHelp(true), 500); // Small delay for better UX
-      setIsFirstLogin(false);
-    }
+    // No need to show help dialog after name is submitted since we show it first
   };
   
   // Handle drag end for priority stage
@@ -287,6 +283,12 @@ const AppContent: React.FC = () => {
     setShowHelp(true);
   };
   
+  // Handle closing the initial help dialog
+  const handleInitialHelpClose = () => {
+    setShowHelp(false);
+    setInitialHelpShown(true);
+  };
+  
   // Handle reset button click
   const handleResetClick = () => {
     setShowResetConfirmation(true);
@@ -298,8 +300,9 @@ const AppContent: React.FC = () => {
     dispatch({ type: 'RESET_ALL' });
     // Close confirmation dialog
     setShowResetConfirmation(false);
-    // Reset first login flag to show instructions again
-    setIsFirstLogin(true);
+    // Reset help dialog tracking to show instructions again
+    setInitialHelpShown(false);
+    setShowHelp(true);
     // Show success message
     showSnackbar('All data has been reset. Please enter your name to continue.', 'success');
   };
@@ -360,7 +363,7 @@ const AppContent: React.FC = () => {
     <>
       <NameGate 
         onNameSubmit={handleNameSubmit}
-        open={!state.voterName}
+        open={!state.voterName && initialHelpShown}
       />
       
       <AvailabilityDialog 
@@ -401,8 +404,11 @@ const AppContent: React.FC = () => {
             />
           )}
 
-          {/* Help Dialog */}
-          <HelpDialog open={showHelp} onClose={() => setShowHelp(false)} />
+          {/* Help Dialog - Different behavior for initial showing vs later manual showing */}
+          <HelpDialog 
+            open={showHelp} 
+            onClose={initialHelpShown ? () => setShowHelp(false) : handleInitialHelpClose} 
+          />
           
           {/* Reset Confirmation Dialog */}
           <ConfirmationDialog

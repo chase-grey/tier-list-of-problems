@@ -75,11 +75,35 @@ const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose }) => {
         <Divider sx={{ my: 3 }} />
         
         <Typography variant="h6" gutterBottom>
-          Step 3: Export Your Results
+          Step 3: Rank Your Interest Level (For Solution Contributors)
         </Typography>
         <Typography variant="body1" paragraph>
-          Once you've ranked all problems and set an appetite for each one, the Export button will become active.
-          Click it to download your rankings and appetites as a CSV file.
+          <strong>Note: This step only applies to users who will be contributing to solutions in the next version (Developers, Quality Management, and Team Leads).</strong>
+        </Typography>
+        <Typography variant="body1" paragraph>
+          After ranking priorities, you'll be asked to rank your interest level in working on each problem. You will need to:
+        </Typography>
+        
+        <Box sx={{ pl: 2, mb: 2 }}>
+          <Typography variant="body1" gutterBottom>
+            • Drag each problem card into one of eight interest level columns, ranging from "Extremely Interested" to "Not Interested"
+          </Typography>
+          <Typography variant="body1" gutterBottom>
+            • This helps us match problems with people who are most interested in solving them
+          </Typography>
+          <Typography variant="body1" gutterBottom>
+            • Your interest ranking is just as important as your priority ranking for project planning
+          </Typography>
+        </Box>
+        
+        <Divider sx={{ my: 3 }} />
+        
+        <Typography variant="h6" gutterBottom>
+          Step 4: Export Your Results
+        </Typography>
+        <Typography variant="body1" paragraph>
+          Once you've completed all the required steps, the Export button will become active.
+          Click it to download your rankings as a CSV file.
         </Typography>
 
         <Typography variant="body1" paragraph>
