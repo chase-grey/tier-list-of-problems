@@ -34,14 +34,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
       
-      # Building with simplified approach to avoid TypeScript errors
-      - name: Build project
-        run: npm run build -- --base=/tier-list-of-problems/
+      # Use dedicated GitHub Pages build script
+      - name: Build project for GitHub Pages
+        run: npm run build:gh-pages
         env:
           NODE_OPTIONS: --max_old_space_size=4096
           NODE_ENV: production
-          SKIP_TESTS: true
-          TSC_COMPILE_ON_ERROR: true
       
       - name: Upload build artifact
         uses: actions/upload-pages-artifact@v3

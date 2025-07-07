@@ -8,6 +8,7 @@
     "dev": "vite",
     "dev:local": "vite --config vite.dev.config.ts",
     "build": "tsc -b && vite build",
+    "build:gh-pages": "vite build --base=/tier-list-of-problems/",
     "lint": "eslint .",
     "preview": "vite preview"
   },
