@@ -5,8 +5,8 @@
 import type { Pitch, Vote } from '../types/models';
 import { getMockCsrfToken, submitMockVotes } from './mockApi';
 
-// Get the API URL from environment variables
-const API_BASE_URL = import.meta.env.VITE_API_URL || '';
+// Get the API URL from environment variables safely
+const API_BASE_URL = ((import.meta as any).env?.VITE_API_URL) || '';
 
 // Check if the API URL is properly configured
 if (!API_BASE_URL) {
