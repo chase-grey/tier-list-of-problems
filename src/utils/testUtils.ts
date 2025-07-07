@@ -38,12 +38,28 @@ export function generateRandomVotes(pitchIds: string[]): Record<string, Vote> {
  * @returns boolean True if in development mode
  */
 export function isDevelopmentMode(): boolean {
+  // Check if running on GitHub Pages (chase-grey.github.io)
+  if (window.location.hostname.includes('github.io')) {
+    return false; // Always false on GitHub Pages
+  }
+  
   // Check if running on localhost
   const isLocalhost = window.location.hostname === 'localhost' || 
     window.location.hostname === '127.0.0.1';
-    
-  // Also check the Vite env mode
-  const isDevEnv = import.meta.env.DEV === true;
   
-  return isLocalhost && isDevEnv;
+  // For localhost, also verify it's a development environment
+  if (isLocalhost) {
+    // Check if running in development mode
+    // Note: import.meta.env.DEV might not be reliable in all environments
+    try {
+      return import.meta.env.DEV === true;
+    } catch (e) {
+      // If env check fails, default to a safer option - hide dev tools
+      console.warn('Failed to check development environment:', e);
+      return false;
+    }
+  }
+  
+  // For all other environments, default to false
+  return false;
 }
