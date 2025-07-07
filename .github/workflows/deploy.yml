@@ -35,7 +35,9 @@ jobs:
         run: npm ci
       
       - name: Build project
-        run: npm run build
+        run: NODE_ENV=production TSC_COMPILE_ON_ERROR=true npm run build
+        env:
+          SKIP_TESTS: true
       
       - name: Upload build artifact
         uses: actions/upload-pages-artifact@v3

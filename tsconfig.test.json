@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.app.json",
+  "compilerOptions": {
+    "verbatimModuleSyntax": false,
+    "types": ["jest", "node"],
+    "esModuleInterop": true
+  },
+  "include": ["src/__tests__", "src/**/*.test.ts", "src/**/*.test.tsx"]
+}

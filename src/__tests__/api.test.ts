@@ -2,10 +2,11 @@
  * Tests for the API service
  */
 import { fetchPitches, getCsrfToken, submitVotes, fetchResults, ApiError } from '../services/api';
-import { Appetite } from '../types';
+import type { Appetite } from '../types';
+import { describe, beforeEach, it, expect, jest } from '@jest/globals';
 
 // Mock the fetch function
-global.fetch = jest.fn();
+global.fetch = jest.fn() as jest.Mock;
 
 describe('API Service', () => {
   beforeEach(() => {
