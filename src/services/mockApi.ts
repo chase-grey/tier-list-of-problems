@@ -84,10 +84,6 @@ export function saveMockVotes(votes: Record<string, any[]>): void {
  * This helps us bypass the Google Apps Script during development
  */
 export function shouldUseMockApi(): boolean {
-  // When running locally, use mock API by default
-  const isLocalhost = window.location.hostname === 'localhost' || 
-                       window.location.hostname === '127.0.0.1';
-  
   // Check if mock API is explicitly enabled/disabled via URL parameter
   const urlParams = new URLSearchParams(window.location.search);
   const mockParam = urlParams.get('mock');
