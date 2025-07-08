@@ -39,8 +39,8 @@ const KanbanContainer = ({
   // Show total pitch count for validation
   const TOTAL = pitches.length;
   
-  // Check if there are any uncategorized pitches
-  const hasUncategorizedPitches = pitches.some(pitch => !votes[pitch.id]?.tier);
+  // We always show the unsorted column now regardless of whether there are any uncategorized pitches
+  const columnCount = 9; // Always 9 columns (8 tier columns + 1 unsorted column)
 
   // Detect drag-and-drop support on mount and setup auto-scroll and enhanced drop detection
   useEffect(() => {
@@ -119,7 +119,7 @@ const KanbanContainer = ({
                   })();
                   
                   return (
-                    <MenuItem key={tier} value={tier}>
+                    <MenuItem key={tier} value={tier === null ? '' : tier}>
                       {priorityName}
                     </MenuItem>
                   );
@@ -210,17 +210,15 @@ const KanbanContainer = ({
             }}
             aria-label={`Kanban board with ${TOTAL} pitches to categorize`}
           >
-            {/* Unsorted column - only show if there are uncategorized pitches */}
-            {hasUncategorizedPitches && (
-              <BucketColumn
-                tier={null}
-                pitches={pitches}
-                votes={votes}
-                onAppetiteChange={onAppetiteChange}
-                columnCount={hasUncategorizedPitches ? 9 : 8} // 9 columns if showing unsorted, 8 otherwise
-                userRole={userRole}
-              />
-            )}
+            {/* Unsorted column - always visible so users can move cards back to unranked state */}
+            <BucketColumn
+              tier={null}
+              pitches={pitches}
+              votes={votes}
+              onAppetiteChange={onAppetiteChange}
+              columnCount={columnCount} // Always 9 columns
+              userRole={userRole}
+            />
             
             {/* Tier columns 1-8 */}
             {tiers.map(tier => (
@@ -230,7 +228,7 @@ const KanbanContainer = ({
                 pitches={pitches}
                 votes={votes}
                 onAppetiteChange={onAppetiteChange}
-                columnCount={hasUncategorizedPitches ? 9 : 8} // 9 columns if showing unsorted, 8 otherwise
+                columnCount={columnCount} // Always 9 columns
                 userRole={userRole}
               />
             ))}

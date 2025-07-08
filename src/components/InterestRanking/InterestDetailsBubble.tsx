@@ -27,7 +27,7 @@ const InterestDetailsBubble = ({ pitch, vote, anchorEl, onClose, userRole }: Int
   const id = open ? `details-popover-${pitch.id}` : undefined;
 
   // Get priority tier label
-  const getPriorityLabel = (tier?: number) => {
+  const getPriorityLabel = (tier?: number | null) => {
     if (!tier) return 'Not Set';
     
     switch (tier) {
