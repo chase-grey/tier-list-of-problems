@@ -20,7 +20,7 @@ export type Appetite = 'S' | 'M' | 'L';   // Small | Medium | Large
 export type Tier     = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
 
 // Interest levels for the second stage
-export type InterestLevel = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
+export type InterestLevel = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | null;
 
 // Roles that can participate in interest ranking if available
 export const CONTRIBUTOR_ROLES = [
@@ -85,6 +85,7 @@ export type AppAction =
   | { type: 'SET_NAME'; name: string; role: string }
   | { type: 'SET_APPETITE'; id: string; appetite: Appetite | null }
   | { type: 'SET_TIER'; id: string; tier: Tier; timestamp?: number }
+  | { type: 'UNSET_TIER'; id: string; timestamp?: number }  // Remove tier assignment
   | { type: 'SET_INTEREST'; id: string; interestLevel: InterestLevel; timestamp?: number }
   | { type: 'SET_AVAILABILITY'; available: boolean }
   | { type: 'SET_STAGE'; stage: 'priority' | 'interest' }
