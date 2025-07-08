@@ -71,18 +71,18 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
       };
       
     case 'UNSET_TIER':
-      // Create a new vote object without the tier property
+      // Set tier to null explicitly (don't remove the property)
       {
-        const { tier, ...voteWithoutTier } = state.votes[action.id] || { pitchId: action.id };
         return {
           ...state,
           votes: {
             ...state.votes,
             [action.id]: {
-              ...voteWithoutTier,
+              ...state.votes[action.id] || { pitchId: action.id },
+              tier: null,  // Set the tier value
               timestamp: action.timestamp || new Date().getTime(),
-            } as Vote
-          }
+            } as Vote,
+          },
         };
       }
       
@@ -96,25 +96,9 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
             interestLevel: action.interestLevel,
             // Always use provided timestamp or current time to ensure consistent ordering
             timestamp: action.timestamp || new Date().getTime(),
-          } as Vote,
-        },
+          } as Vote
+        }
       };
-      
-    case 'UNSET_INTEREST':
-      // Set interestLevel to null explicitly (don't remove the property)
-      {
-        return {
-          ...state,
-          votes: {
-            ...state.votes,
-            [action.id]: {
-              ...state.votes[action.id] || { pitchId: action.id },
-              interestLevel: null, // Explicitly set to null rather than removing
-              timestamp: action.timestamp || new Date().getTime(),
-            } as Vote
-          }
-        };
-      }
     
     case 'RESET_FROM_PITCHES': {
       // Sync votes with current pitch IDs
@@ -335,6 +319,7 @@ const AppContent: React.FC = () => {
         interestLevel,
         timestamp 
       });
+    
       
       // Convert numeric interest level to descriptive label
       const interestLabels = [

@@ -17,7 +17,7 @@ export interface Pitch {
 
 /* ─────────────–– RUNTIME ───────────── */
 export type Appetite = 'S' | 'M' | 'L';   // Small | Medium | Large
-export type Tier     = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
+export type Tier     = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | null;
 
 // Interest levels for the second stage
 export type InterestLevel = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | null;
@@ -87,6 +87,7 @@ export type AppAction =
   | { type: 'SET_TIER'; id: string; tier: Tier; timestamp?: number }
   | { type: 'UNSET_TIER'; id: string; timestamp?: number }  // Remove tier assignment
   | { type: 'SET_INTEREST'; id: string; interestLevel: InterestLevel; timestamp?: number }
+  | { type: 'UNSET_INTEREST'; id: string; timestamp?: number }  // Remove interest level
   | { type: 'SET_AVAILABILITY'; available: boolean }
   | { type: 'SET_STAGE'; stage: 'priority' | 'interest' }
   | { type: 'RESET_FROM_PITCHES'; pitchIds: string[] }  // sync when JSON changes
