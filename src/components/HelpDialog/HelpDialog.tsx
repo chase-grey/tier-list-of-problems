@@ -48,11 +48,14 @@ const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose, userRole }) => {
       <Divider />
       <DialogContent sx={{ pt: 3 }}>
         <Typography variant="h6" gutterBottom>
-          Step 1: Rank All Problems
+          Step 1: Rank Problems by Priority
         </Typography>
         <Typography variant="body1" paragraph>
           Drag each problem card into one of the eight tier columns based on how important you think it is to solve in this next version.
           The tiers range from "Highest Priority" (Tier 1) to "Not a Priority" (Tier 8).
+        </Typography>
+        <Typography variant="body1" paragraph sx={{ fontWeight: 'medium', color: 'primary.main' }}>
+          You need to rank at least 50% of the problems to submit your feedback. However, ranking more helps our team make more informed decisions about what to work on next.
         </Typography>
         <Typography variant="body1" paragraph sx={{ fontStyle: 'italic', color: 'text.secondary' }}>
           Note: Even if a problem isn't prioritized for this version, it could always be pitched and prioritized in the next version instead.
@@ -61,10 +64,13 @@ const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose, userRole }) => {
         <Divider sx={{ my: 3 }} />
         
         <Typography variant="h6" gutterBottom>
-          Step 2: Set an Appetite for Each Problem
+          Step 2: Set an Appetite for Problems
         </Typography>
         <Typography variant="body1" paragraph>
           For each problem, select an appetite by clicking on one of the S/M/L buttons on the card:
+        </Typography>
+        <Typography variant="body1" paragraph sx={{ fontWeight: 'medium', color: 'primary.main' }}>
+          You need to set appetites for at least 50% of the problems to submit your feedback. The more data you provide, the better we can scope our solutions appropriately.
         </Typography>
         
         <Box sx={{ pl: 2, mb: 2 }}>
@@ -94,17 +100,15 @@ const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose, userRole }) => {
               <strong>Note: This step only applies to QMs, developers, QM TLs, and dev TLs that are contributing towards solutions to these problems next quarter.</strong>
             </Typography>
             <Typography variant="body1" paragraph>
-              After ranking priorities, you'll be asked to rank your interest level in working on each problem. You will need to:
+              After ranking priorities, you'll be asked to rank your interest level in working on each problem. This information helps team leads match people with projects they're excited about working on. You will need to:
             </Typography>
             
-            <Box sx={{ pl: 2, mb: 2 }}>
-              <Typography variant="body1" gutterBottom>
-                • Drag each problem card into one of eight interest level columns, ranging from "Extremely Interested" to "Not Interested"
-              </Typography>
-              <Typography variant="body1" gutterBottom>
-                • This helps us match problems with people who are most interested in solving them
-              </Typography>
-            </Box>
+            <Typography variant="body1" gutterBottom>
+              Drag each problem card into one of eight interest level columns, ranging from "Extremely Interested" to "Not Interested".
+            </Typography>
+            <Typography variant="body1" paragraph sx={{ fontWeight: 'medium', color: 'primary.main' }}>
+              You need to set your interest levels for at least 50% of the problems to submit your feedback. The more data you provide, the better we can match folks to their interests.
+            </Typography>
             
             <Divider sx={{ my: 3 }} />
           </>
