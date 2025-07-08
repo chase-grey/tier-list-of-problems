@@ -68,10 +68,9 @@ const InterestRanking: React.FC<InterestRankingProps> = ({
       cleanupEnhancedDropDetection();
     };
   }, []);
-  // Filter pitches that have a tier assigned
-  const rankedPitches = React.useMemo(() => {
+  // Get all pitches that should be shown in this stage (includes all pitches now)
+  const pitchesForInterestStage = React.useMemo(() => {
     return pitches
-      .filter(pitch => votes[pitch.id]?.tier !== undefined)
       .sort((a, b) => {
         // Sort first by tier (lower tier = higher priority)
         const tierA = votes[a.id]?.tier || 99;
@@ -92,39 +91,52 @@ const InterestRanking: React.FC<InterestRankingProps> = ({
   const interestColumns = React.useMemo(() => {
     const columns: Record<string, Pitch[]> = {};
     
-    // Initialize columns with empty arrays
+    // Add unsorted column
+    columns['interest-unsorted'] = [];
+    
+    // Initialize interest level columns with empty arrays
     for (let i = 1; i <= 8; i++) {
       columns[`interest-${i}`] = [];
     }
     
     // Add pitches to their respective columns
-    rankedPitches.forEach(pitch => {
+    pitchesForInterestStage.forEach(pitch => {
       const interestLevel = votes[pitch.id]?.interestLevel;
-      if (interestLevel) {
-        columns[`interest-${interestLevel}`].push(pitch);
-      } else {
-        // Default new pitches to a corresponding interest level based on their priority tier
-        const tier = votes[pitch.id]?.tier;
-        if (!tier) {
-          // If there's no tier assigned, don't try to default it
+      const tier = votes[pitch.id]?.tier;
+
+      // If the pitch has an explicit interestLevel set (including null which means "unsorted"),
+      // respect that placement
+      if (interestLevel !== undefined) {
+        // If interestLevel is null, it was explicitly set to unsorted
+        if (interestLevel === null) {
+          columns['interest-unsorted'].push(pitch);
           return;
         }
-        
-        // More nuanced interest level defaulting
-        let defaultInterestLevel: InterestLevel;
-        
-        // Map tier 1 (highest priority) to level 8 (extremely interested), and so on
-        if (tier === 1) defaultInterestLevel = 8;       // Tier 1 → Extremely Interested
-        else if (tier === 2) defaultInterestLevel = 7;  // Tier 2 → Very Interested
-        else if (tier === 3) defaultInterestLevel = 6;  // Tier 3 → Fairly Interested
-        else if (tier === 4) defaultInterestLevel = 5;  // Tier 4 → Interested
-        else if (tier === 5) defaultInterestLevel = 4;  // Tier 5 → Moderately Interested
-        else if (tier === 6) defaultInterestLevel = 3;  // Tier 6 → Somewhat Interested
-        else if (tier === 7) defaultInterestLevel = 2;  // Tier 7 → Slightly Interested
-        else defaultInterestLevel = 1;                  // Tier 8 → Not Interested
-        
-        columns[`interest-${defaultInterestLevel}`].push(pitch);
+        // Otherwise place in the appropriate interest level column
+        columns[`interest-${interestLevel}`].push(pitch);
+        return;
       }
+      
+      // If pitch has no tier (was unsorted in priority step), keep it unsorted in interest step
+      if (!tier) {
+        columns['interest-unsorted'].push(pitch);
+        return;
+      }
+      
+      // If pitch has a tier but no interest level, default its interest level based on its priority tier
+      let defaultInterestLevel: InterestLevel;
+      
+      // Map tier 1 (highest priority) to level 8 (extremely interested), and so on
+      if (tier === 1) defaultInterestLevel = 8;       // Tier 1 → Extremely Interested
+      else if (tier === 2) defaultInterestLevel = 7;  // Tier 2 → Very Interested
+      else if (tier === 3) defaultInterestLevel = 6;  // Tier 3 → Fairly Interested
+      else if (tier === 4) defaultInterestLevel = 5;  // Tier 4 → Interested
+      else if (tier === 5) defaultInterestLevel = 4;  // Tier 5 → Moderately Interested
+      else if (tier === 6) defaultInterestLevel = 3;  // Tier 6 → Somewhat Interested
+      else if (tier === 7) defaultInterestLevel = 2;  // Tier 7 → Slightly Interested
+      else defaultInterestLevel = 1;                  // Tier 8 → Not Interested
+      
+      columns[`interest-${defaultInterestLevel}`].push(pitch);
     });
     
     // Sort each column by timestamp (ascending order)  
@@ -137,7 +149,7 @@ const InterestRanking: React.FC<InterestRankingProps> = ({
     });
     
     return columns;
-  }, [rankedPitches, votes]);
+  }, [pitchesForInterestStage, votes]);
   
   const handleDragEnd = (result: DropResult) => {
     const { destination, draggableId } = result;
@@ -147,8 +159,13 @@ const InterestRanking: React.FC<InterestRankingProps> = ({
     
     const destId = destination.droppableId;
     
+    // If dropped in unsorted column
+    if (destId === 'interest-unsorted') {
+      // Use null to unset the interest level - the App component will handle it with the proper action
+      onSetInterest(draggableId, null);
+    }
     // If dropped in an interest level column
-    if (destId.startsWith('interest-')) {
+    else if (destId.startsWith('interest-')) {
       const interestLevel = parseInt(destId.replace('interest-', '')) as InterestLevel;
       
       // Update the interest level for this pitch
@@ -186,6 +203,26 @@ const InterestRanking: React.FC<InterestRankingProps> = ({
               },
             }}
           >
+            {/* Unsorted column */}
+            <Box 
+              sx={{ 
+                width: `calc((100% - 16px) / 9)`, // Dynamic width based on 9 columns (8 interest levels + 1 unsorted)
+                minWidth: '200px', // Minimum usable width
+                mx: 1, // Margin on both sides for spacing
+                height: '100%'
+              }}
+              key="interest-unsorted">
+              <InterestColumn 
+                columnId="interest-unsorted"
+                label="Unsorted"
+                color="#616161" // Gray color for unsorted
+                pitches={interestColumns['interest-unsorted'] || []}
+                votes={votes}
+                userRole={userRole}
+              />
+            </Box>
+
+            {/* Interest level columns 1-8 */}
             {Array.from({ length: 8 }).map((_, index) => {
               // Map the display index to the actual interest level
               const level = DISPLAY_TO_INTEREST_LEVEL[index];
@@ -197,7 +234,7 @@ const InterestRanking: React.FC<InterestRankingProps> = ({
               return (
                 <Box 
                   sx={{ 
-                    width: `calc((100% - 14px) / 8)`, // Dynamic width based on column count with 2px margin between
+                    width: `calc((100% - 16px) / 9)`, // Dynamic width based on 9 columns (8 interest levels + 1 unranked)
                     minWidth: '200px', // Minimum usable width
                     mx: 1, // Margin on both sides for spacing
                     height: '100%'

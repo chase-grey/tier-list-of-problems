@@ -70,6 +70,22 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
         },
       };
       
+    case 'UNSET_TIER':
+      // Create a new vote object without the tier property
+      {
+        const { tier, ...voteWithoutTier } = state.votes[action.id] || { pitchId: action.id };
+        return {
+          ...state,
+          votes: {
+            ...state.votes,
+            [action.id]: {
+              ...voteWithoutTier,
+              timestamp: action.timestamp || new Date().getTime(),
+            } as Vote
+          }
+        };
+      }
+      
     case 'SET_INTEREST':
       return {
         ...state,
@@ -83,6 +99,22 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
           } as Vote,
         },
       };
+      
+    case 'UNSET_INTEREST':
+      // Set interestLevel to null explicitly (don't remove the property)
+      {
+        return {
+          ...state,
+          votes: {
+            ...state.votes,
+            [action.id]: {
+              ...state.votes[action.id] || { pitchId: action.id },
+              interestLevel: null, // Explicitly set to null rather than removing
+              timestamp: action.timestamp || new Date().getTime(),
+            } as Vote
+          }
+        };
+      }
     
     case 'RESET_FROM_PITCHES': {
       // Sync votes with current pitch IDs
@@ -211,14 +243,22 @@ const AppContent: React.FC = () => {
   // Check if the user needs to rank interest (same logic as canAccessInterestStage, kept for backward compatibility)
   const needsInterestRanking = canAccessInterestStage;
     
-  // Calculate completion status based on role and availability
-  const priorityStageComplete = appetiteCount === TOTAL && rankCount === TOTAL;
+  // Calculate required minimums (50% of total)
+  const minimumRequired = Math.ceil(TOTAL / 2);
+  
+  // Calculate completion status based on role and availability (now only requires 50%)
+  const priorityStageComplete = appetiteCount >= minimumRequired && rankCount >= minimumRequired;
+  
+  // Calculate interest completion for users who need it
+  const interestCount = needsInterestRanking ? 
+    Object.values(state.votes).filter(v => v.interestLevel !== undefined).length : 0;
+  const interestStageComplete = !needsInterestRanking || interestCount >= minimumRequired;
   
   // Check if export is enabled based on role and stage
   const isExportEnabled = priorityStageComplete && 
     // For users who don't need to rank interest, enable export immediately
-    // For users who need to rank interest, they must visit the interest page first
-    (!needsInterestRanking || (needsInterestRanking && state.stage === 'interest'));
+    // For users who need to rank interest, they need 50% completion and must visit the interest page
+    (!needsInterestRanking || (needsInterestRanking && state.stage === 'interest' && interestStageComplete));
   
   // Handle name and role submission
   const handleNameSubmit = (name: string, role: string) => {
@@ -244,8 +284,20 @@ const AppContent: React.FC = () => {
     
     const destId = destination.droppableId;
     
+    // If dropped in the unsorted column
+    if (destId === 'unsorted') {
+      // Remove tier assignment but keep any other data (like appetite)
+      const timestamp = new Date().getTime();
+      dispatch({ 
+        type: 'UNSET_TIER', 
+        id: draggableId,
+        timestamp
+      });
+      
+      showSnackbar('Pitch moved to unsorted', 'info');
+    }
     // If dropped in a tier column
-    if (destId !== 'unsorted') {
+    else {
       const tier = parseInt(destId.replace('tier-', '')) as Tier;
       
       // Get the current timestamp for consistent ordering (newer items will have higher values)
@@ -266,12 +318,39 @@ const AppContent: React.FC = () => {
   // Handle interest level change
   const handleInterestChange = (pitchId: string, interestLevel: InterestLevel) => {
     const timestamp = new Date().getTime();
-    dispatch({ 
-      type: 'SET_INTEREST', 
-      id: pitchId, 
-      interestLevel,
-      timestamp 
-    });
+    
+    if (interestLevel === null) {
+      // Use UNSET_INTEREST action to remove the interest level assignment
+      dispatch({
+        type: 'UNSET_INTEREST',
+        id: pitchId,
+        timestamp
+      });
+      showSnackbar('Pitch moved to unsorted', 'info');
+    } else {
+      // Set the interest level
+      dispatch({ 
+        type: 'SET_INTEREST', 
+        id: pitchId, 
+        interestLevel,
+        timestamp 
+      });
+      
+      // Convert numeric interest level to descriptive label
+      const interestLabels = [
+        'Extremely Interested',  // Level 8
+        'Very Interested',      // Level 7
+        'Fairly Interested',    // Level 6
+        'Interested',           // Level 5
+        'Moderately Interested', // Level 4
+        'Somewhat Interested',  // Level 3
+        'Slightly Interested',  // Level 2
+        'Not Interested'        // Level 1
+      ];
+      
+      const levelIndex = 8 - interestLevel; // Convert from level (8-1) to index (0-7)
+      showSnackbar(`Interest level set to ${interestLabels[levelIndex]}`, 'info');
+    }
   };
   
   // Handle appetite change
@@ -378,7 +457,7 @@ const AppContent: React.FC = () => {
       // Show feedback dialog before exporting
       setShowFeedback(true);
     } else {
-      showSnackbar('Complete all appetites and rankings first', 'error');
+      showSnackbar('Complete at least 50% of appetites and rankings first', 'error');
     }
   };
   
@@ -466,6 +545,7 @@ const AppContent: React.FC = () => {
           totalPitchCount={TOTAL}
           appetiteCount={appetiteCount}
           rankCount={rankCount}
+          interestCount={interestCount}
           onFinish={handleFinish}
           isExportEnabled={isExportEnabled}
           onHelpClick={handleHelpClick}

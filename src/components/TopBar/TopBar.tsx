@@ -24,6 +24,7 @@ interface TopBarProps {
   totalPitchCount: number;
   appetiteCount: number;
   rankCount: number;
+  interestCount: number;
   onFinish: () => void;
   isExportEnabled: boolean;
   onHelpClick: () => void;
@@ -42,6 +43,7 @@ export const TopBar = ({
   totalPitchCount, 
   appetiteCount, 
   rankCount, 
+  interestCount,
   onFinish, 
   isExportEnabled,
   onHelpClick,
@@ -55,6 +57,23 @@ export const TopBar = ({
     <AppBar position="sticky" sx={{ height: 48 }}>
       <Toolbar sx={{ minHeight: '48px !important', py: 0 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', flexGrow: 1 }}>
+          <Button
+            variant="outlined"
+            color="error"
+            startIcon={<ResetIcon />}
+            onClick={onResetClick}
+            aria-label="Reset all votes"
+            sx={{
+              mr: 2,
+              height: 32, // Smaller reset button
+              '&:hover': {
+                bgcolor: 'rgba(244, 67, 54, 0.08)'
+              }
+            }}
+          >
+            Reset
+          </Button>
+          
           <Typography variant="subtitle1" component="div">
             Problem Polling: {voterName}
           </Typography>
@@ -69,23 +88,6 @@ export const TopBar = ({
               <HelpIcon />
             </IconButton>
           </Tooltip>
-          
-          <Button
-            variant="outlined"
-            color="error"
-            startIcon={<ResetIcon />}
-            onClick={onResetClick}
-            aria-label="Reset all votes"
-            sx={{
-              ml: 2,
-              height: 32, // Smaller reset button
-              '&:hover': {
-                bgcolor: 'rgba(244, 67, 54, 0.08)'
-              }
-            }}
-          >
-            Reset
-          </Button>
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', mr: 2 }}>
           <Typography variant="body2" sx={{ display: 'flex', gap: 1 }}>
@@ -94,8 +96,8 @@ export const TopBar = ({
                 <Box 
                   component="span" 
                   sx={{ 
-                    color: appetiteCount === totalPitchCount ? '#4caf50' : 'inherit',
-                    fontWeight: appetiteCount === totalPitchCount ? 'bold' : 'normal',
+                    color: appetiteCount >= Math.ceil(totalPitchCount / 2) ? '#4caf50' : 'inherit',
+                    fontWeight: appetiteCount >= Math.ceil(totalPitchCount / 2) ? 'bold' : 'normal',
                     transition: 'all 0.2s ease',
                     display: 'flex',
                     alignItems: 'center',
@@ -109,8 +111,8 @@ export const TopBar = ({
                 <Box 
                   component="span" 
                   sx={{ 
-                    color: rankCount === totalPitchCount ? '#4caf50' : 'inherit',
-                    fontWeight: rankCount === totalPitchCount ? 'bold' : 'normal',
+                    color: rankCount >= Math.ceil(totalPitchCount / 2) ? '#4caf50' : 'inherit',
+                    fontWeight: rankCount >= Math.ceil(totalPitchCount / 2) ? 'bold' : 'normal',
                     transition: 'all 0.2s ease',
                     display: 'flex',
                     alignItems: 'center',
@@ -128,12 +130,13 @@ export const TopBar = ({
                   display: 'flex',
                   alignItems: 'center',
                   gap: 0.5,
-                  color: '#4caf50', // Always green when in interest stage since cards are defaulted
-                  fontWeight: 'bold'
+                  color: interestCount >= Math.ceil(totalPitchCount / 2) ? '#4caf50' : 'inherit',
+                  fontWeight: interestCount >= Math.ceil(totalPitchCount / 2) ? 'bold' : 'normal',
+                  transition: 'all 0.2s ease'
                 }}
               >
                 <InterestIcon sx={{ fontSize: '1.4rem' }} />
-                <span>Ranking Interest Levels</span>
+                <span>Interests {interestCount}/{totalPitchCount}</span>
               </Box>
             )}
           </Typography>
