@@ -99,6 +99,9 @@ const InterestRanking: React.FC<InterestRankingProps> = ({
       columns[`interest-${i}`] = [];
     }
     
+    // Create arrays to collect pitches for each column before randomizing
+    const unsortedPitches: Pitch[] = [];
+    
     // Add pitches to their respective columns
     pitchesForInterestStage.forEach(pitch => {
       const interestLevel = votes[pitch.id]?.interestLevel;
@@ -109,7 +112,7 @@ const InterestRanking: React.FC<InterestRankingProps> = ({
       if (interestLevel !== undefined) {
         // If interestLevel is null, it was explicitly set to unsorted
         if (interestLevel === null) {
-          columns['interest-unsorted'].push(pitch);
+          unsortedPitches.push(pitch);
           return;
         }
         // Otherwise place in the appropriate interest level column
@@ -119,7 +122,7 @@ const InterestRanking: React.FC<InterestRankingProps> = ({
       
       // If pitch has no tier (was unsorted in priority step), keep it unsorted in interest step
       if (!tier) {
-        columns['interest-unsorted'].push(pitch);
+        unsortedPitches.push(pitch);
         return;
       }
       
@@ -139,14 +142,18 @@ const InterestRanking: React.FC<InterestRankingProps> = ({
       columns[`interest-${defaultInterestLevel}`].push(pitch);
     });
     
-    // Sort each column by timestamp (ascending order)  
-    Object.keys(columns).forEach(columnId => {
+    // Sort interest level columns by timestamp for consistent ordering
+    for (let i = 1; i <= 8; i++) {
+      const columnId = `interest-${i}`;
       columns[columnId].sort((a, b) => {
         const timestampA = votes[a.id]?.timestamp || 0;
         const timestampB = votes[b.id]?.timestamp || 0;
         return timestampA - timestampB;
       });
-    });
+    }
+    
+    // Randomize unsorted pitches to ensure more even data collection
+    columns['interest-unsorted'] = unsortedPitches.sort(() => Math.random() - 0.5);
     
     return columns;
   }, [pitchesForInterestStage, votes]);

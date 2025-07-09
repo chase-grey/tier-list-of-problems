@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useMemo } from 'react';
 import { Paper, Typography, Box, Stack } from '@mui/material';
 import { Droppable } from '@hello-pangea/dnd';
 import type { DroppableProvided, DroppableStateSnapshot } from '@hello-pangea/dnd';
@@ -61,22 +61,33 @@ const BucketColumn = ({ tier, pitches, votes, onAppetiteChange, columnCount = 9,
   // Get text color for the header - always white for tier columns
   const getHeaderTextColor = () => isUnsorted ? 'text.primary' : 'white';
 
-  // Filter pitches that belong to this column and sort by timestamp
-  const filteredPitches = pitches
-    .filter(pitch => {
+  // Filter and sort pitches that belong to this column
+  const filteredPitches = useMemo(() => {
+    // First, filter pitches that belong to this column
+    const filtered = pitches.filter(pitch => {
       if (isUnsorted) {
         // Show in unsorted if it doesn't have a tier assigned
         return !votes[pitch.id]?.tier;
       } 
       // Show in specific tier column if its tier matches
       return votes[pitch.id]?.tier === tier;
-    })
-    .sort((a, b) => {
-      // Sort by timestamp (ascending order - oldest first, newest last)
-      const timestampA = votes[a.id]?.timestamp || 0;
-      const timestampB = votes[b.id]?.timestamp || 0;
-      return timestampA - timestampB;
     });
+    
+    // For unsorted column, randomize the order to ensure more even data collection
+    // For tier columns, maintain timestamp order
+    if (isUnsorted) {
+      // Fisher-Yates shuffle algorithm for truly random order
+      // We create a copy to avoid mutating the original array
+      return [...filtered].sort(() => Math.random() - 0.5);
+    } else {
+      // Sort by timestamp (oldest first, newest last)
+      return filtered.sort((a, b) => {
+        const timestampA = votes[a.id]?.timestamp || 0;
+        const timestampB = votes[b.id]?.timestamp || 0;
+        return timestampA - timestampB;
+      });
+    }
+  }, [pitches, votes, isUnsorted, tier]);
 
   return (
     <Box 
