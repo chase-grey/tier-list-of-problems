@@ -104,7 +104,9 @@ const StageNavigation: React.FC<StageNavigationProps> = ({
       alignItems: 'center',
       justifyContent: 'flex-end',
       width: '100%',
-      mt: -1.5, // Position buttons flush with the top of the toolbar
+      mt: -2.5, // More aggressive negative margin to eliminate gap completely
+      position: 'relative',
+      top: '-5px', // Additional top adjustment to move buttons up
     }}>
       {stages.map((stage, index) => {
         const isActive = activeStage === stage.value;
