@@ -254,8 +254,9 @@ const AppContent: React.FC = () => {
   const priorityStageComplete = appetiteCount >= minimumRequired && rankCount >= minimumRequired;
   
   // Calculate interest completion for users who need it
+  // Count a problem as having interest if it either has an interestLevel OR it has a tier set (i.e., not in Unsorted)
   const interestCount = needsInterestRanking ? 
-    Object.values(state.votes).filter(v => v.interestLevel !== undefined).length : 0;
+    Object.values(state.votes).filter(v => v.interestLevel !== undefined || v.tier !== null && v.tier !== undefined).length : 0;
   const interestStageComplete = !needsInterestRanking || interestCount >= minimumRequired;
   
   // Check if export is enabled based on role and stage
