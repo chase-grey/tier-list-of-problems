@@ -29,6 +29,9 @@ interface TopBarProps {
   onStageChange: (stage: AppStage) => void;
   canAccessStage: (stage: AppStage) => boolean;
   completedStages: AppStage[];
+  // Project counters
+  totalProjectCount?: number;
+  rankedProjectCount?: number;
 }
 
 /**
@@ -47,7 +50,9 @@ export const TopBar = ({
   stage,
   onStageChange,
   canAccessStage,
-  completedStages
+  completedStages,
+  totalProjectCount = 8, // Default value
+  rankedProjectCount = 0
 }: TopBarProps) => {
   return (
     <AppBar position="sticky">
@@ -106,6 +111,8 @@ export const TopBar = ({
           appetiteCount={appetiteCount}
           rankCount={rankCount}
           interestCount={interestCount}
+          totalProjectCount={totalProjectCount}
+          rankedProjectCount={rankedProjectCount}
         />
       </Toolbar>
     </AppBar>

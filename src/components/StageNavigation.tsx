@@ -4,7 +4,10 @@ import {
   DragIndicator as RankProblemsIcon,
   ThumbUp as RankInterestIcon,
   LocalActivity as RankProjectsIcon,
-  GetApp as FinishIcon
+  GetApp as FinishIcon,
+  RestaurantMenu as AppetiteIcon,
+  FormatListNumbered as RankIcon,
+  CheckBox as CompletedIcon
 } from '@mui/icons-material';
 
 // Define the available application stages
@@ -16,6 +19,7 @@ const NavButton = styled(Button)(({ theme }) => ({
   padding: theme.spacing(0.5, 1.5),
   margin: theme.spacing(0, 0.5),
   minWidth: 'auto',
+  height: '48px', // Ensure consistent height
   fontSize: '0.75rem',
   textTransform: 'none',
   fontWeight: 'bold',
@@ -34,6 +38,9 @@ interface StageNavigationProps {
   appetiteCount: number;
   rankCount: number;
   interestCount: number;
+  // Project counters
+  totalProjectCount?: number;
+  rankedProjectCount?: number;
 }
 
 /**
@@ -49,7 +56,9 @@ const StageNavigation: React.FC<StageNavigationProps> = ({
   totalPitchCount,
   appetiteCount,
   rankCount,
-  interestCount
+  interestCount,
+  totalProjectCount = 8, // Default value if not provided
+  rankedProjectCount = 0
 }) => {
   // Define all stages with their labels, icons, and progress counters
   const stages = [
@@ -79,7 +88,10 @@ const StageNavigation: React.FC<StageNavigationProps> = ({
       label: 'Rank Projects',
       icon: <RankProjectsIcon fontSize="small" />,
       tooltip: 'Prioritize projects based on previous rankings',
-      progressCounts: null // No specific counter for projects stage
+      progressCounts: {
+        ranked: rankedProjectCount,
+        total: totalProjectCount
+      }
     }
   ];
 
@@ -92,7 +104,8 @@ const StageNavigation: React.FC<StageNavigationProps> = ({
       display: 'flex', 
       alignItems: 'center',
       justifyContent: 'flex-end',
-      width: '100%'
+      width: '100%',
+      mt: -0.5, // Remove unnecessary padding above buttons
     }}>
       {stages.map((stage, index) => {
         const isActive = activeStage === stage.value;
@@ -159,7 +172,8 @@ const StageNavigation: React.FC<StageNavigationProps> = ({
                           opacity: 0.9,
                           mt: 0.2,
                           display: 'flex',
-                          gap: 0.5
+                          gap: 0.5,
+                          alignItems: 'center',
                         }}
                       >
                         <Box 
@@ -167,9 +181,12 @@ const StageNavigation: React.FC<StageNavigationProps> = ({
                           sx={{ 
                             color: appetiteCount >= Math.ceil(totalPitchCount / 2) ? '#4caf50' : 'inherit',
                             fontWeight: appetiteCount >= Math.ceil(totalPitchCount / 2) ? 'bold' : 'normal',
+                            display: 'flex',
+                            alignItems: 'center',
                           }}
                         >
-                          A:{appetiteCount}/{totalPitchCount}
+                          <AppetiteIcon sx={{ fontSize: '0.9rem', mr: 0.2 }} />
+                          {appetiteCount}/{totalPitchCount}
                         </Box>
                         <Box component="span" sx={{ fontSize: '0.6rem', opacity: 0.7 }}>•</Box>
                         <Box 
@@ -177,9 +194,12 @@ const StageNavigation: React.FC<StageNavigationProps> = ({
                           sx={{ 
                             color: rankCount >= Math.ceil(totalPitchCount / 2) ? '#4caf50' : 'inherit',
                             fontWeight: rankCount >= Math.ceil(totalPitchCount / 2) ? 'bold' : 'normal',
+                            display: 'flex',
+                            alignItems: 'center',
                           }}
                         >
-                          R:{rankCount}/{totalPitchCount}
+                          <RankIcon sx={{ fontSize: '0.9rem', mr: 0.2 }} />
+                          {rankCount}/{totalPitchCount}
                         </Box>
                       </Box>
                     )}
@@ -192,9 +212,30 @@ const StageNavigation: React.FC<StageNavigationProps> = ({
                           mt: 0.2,
                           color: interestCount >= Math.ceil(totalPitchCount / 2) ? '#4caf50' : 'inherit',
                           fontWeight: interestCount >= Math.ceil(totalPitchCount / 2) ? 'bold' : 'normal',
+                          display: 'flex',
+                          alignItems: 'center',
                         }}
                       >
+                        <RankInterestIcon sx={{ fontSize: '0.9rem', mr: 0.2 }} />
                         {interestCount}/{totalPitchCount}
+                      </Box>
+                    )}
+                    
+                    {/* Projects counter */}
+                    {stage.progressCounts && stage.value === 'projects' && (
+                      <Box 
+                        sx={{ 
+                          fontSize: '0.65rem', 
+                          opacity: 0.9,
+                          mt: 0.2,
+                          color: rankedProjectCount >= Math.ceil(totalProjectCount / 2) ? '#4caf50' : 'inherit',
+                          fontWeight: rankedProjectCount >= Math.ceil(totalProjectCount / 2) ? 'bold' : 'normal',
+                          display: 'flex',
+                          alignItems: 'center',
+                        }}
+                      >
+                        <CompletedIcon sx={{ fontSize: '0.9rem', mr: 0.2 }} />
+                        {rankedProjectCount}/{totalProjectCount}
                       </Box>
                     )}
                   </Box>
