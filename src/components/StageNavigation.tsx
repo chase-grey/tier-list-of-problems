@@ -94,8 +94,9 @@ const StageNavigation: React.FC<StageNavigationProps> = ({
     }
   ];
 
-  // Determine when to show the Finish button
+  // Determine where to show the Finish button
   // Show after Interest if in priority/interest stage, or after Projects if in projects stage
+  // Note: The button can still be active in any stage if requirements are met
   const showFinishAfterInterest = activeStage !== 'projects';
   
   return (
@@ -251,6 +252,8 @@ const StageNavigation: React.FC<StageNavigationProps> = ({
                     sx={{ 
                       opacity: isExportEnabled ? 1 : 0.5,
                       ml: 1,
+                      // Add highlight effect when active, regardless of stage
+                      boxShadow: isExportEnabled ? 2 : 0,
                     }}
                   >
                     Finish
@@ -275,6 +278,8 @@ const StageNavigation: React.FC<StageNavigationProps> = ({
               sx={{ 
                 opacity: isExportEnabled ? 1 : 0.5,
                 ml: 1,
+                // Add highlight effect when active, regardless of stage
+                boxShadow: isExportEnabled ? 2 : 0,
               }}
             >
               Finish
