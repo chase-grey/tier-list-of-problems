@@ -9,11 +9,7 @@ import {
 } from '@mui/material';
 import { 
   HelpOutline as HelpIcon,
-  RestaurantMenu as AppetiteIcon,
-  FormatListNumbered as RankedIcon,
-  RestartAlt as ResetIcon,
-  ThumbUp as InterestIcon,
-  LocalActivity as ProjectIcon
+  RestartAlt as ResetIcon
 } from '@mui/icons-material';
 import StageNavigation from '../StageNavigation';
 import type { AppStage } from '../StageNavigation';
@@ -94,80 +90,11 @@ export const TopBar = ({
             </Tooltip>
           </Box>
           
-          {/* Progress metrics - more compact */}
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <Typography variant="body2" sx={{ 
-              display: 'flex', 
-              gap: 1,
-              fontSize: '0.8rem',
-              px: 1,
-              py: 0.5,
-              bgcolor: 'rgba(255,255,255,0.1)',
-              borderRadius: 1,
-              alignItems: 'center'
-            }}>
-              {stage === 'priority' ? (
-                <>
-                  <Box 
-                    component="span" 
-                    sx={{ 
-                      color: appetiteCount >= Math.ceil(totalPitchCount / 2) ? '#4caf50' : 'inherit',
-                      fontWeight: appetiteCount >= Math.ceil(totalPitchCount / 2) ? 'bold' : 'normal',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 0.5
-                    }}
-                  >
-                    <AppetiteIcon sx={{ fontSize: '1.1rem' }} />
-                    <span>{appetiteCount}/{totalPitchCount}</span>
-                  </Box>
-                  <Box component="span" sx={{ fontSize: '0.8rem', opacity: 0.7 }}>•</Box>
-                  <Box 
-                    component="span" 
-                    sx={{ 
-                      color: rankCount >= Math.ceil(totalPitchCount / 2) ? '#4caf50' : 'inherit',
-                      fontWeight: rankCount >= Math.ceil(totalPitchCount / 2) ? 'bold' : 'normal',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 0.5
-                    }}
-                  >
-                    <RankedIcon sx={{ fontSize: '1.1rem' }} />
-                    <span>{rankCount}/{totalPitchCount}</span>
-                  </Box>
-                </>
-              ) : stage === 'interest' ? (
-                <Box 
-                  component="span" 
-                  sx={{ 
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 0.5,
-                    color: interestCount >= Math.ceil(totalPitchCount / 2) ? '#4caf50' : 'inherit',
-                    fontWeight: interestCount >= Math.ceil(totalPitchCount / 2) ? 'bold' : 'normal'
-                  }}
-                >
-                  <InterestIcon sx={{ fontSize: '1.1rem' }} />
-                  <span>{interestCount}/{totalPitchCount}</span>
-                </Box>
-              ) : (
-                <Box 
-                  component="span" 
-                  sx={{ 
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 0.5
-                  }}
-                >
-                  <ProjectIcon sx={{ fontSize: '1.1rem' }} />
-                  <span>Projects</span>
-                </Box>
-              )}
-            </Typography>
-          </Box>
+          {/* This space is now free since counters are in the navigation buttons */}
+          <Box sx={{ width: 20 }} />
         </Box>
         
-        {/* Stage navigation with blocky style buttons and integrated Finish button */}
+        {/* Stage navigation with blocky style buttons, counters, and integrated Finish button */}
         <StageNavigation
           activeStage={stage}
           completedStages={completedStages}
@@ -175,6 +102,10 @@ export const TopBar = ({
           canAccessStage={canAccessStage}
           onFinish={onFinish}
           isExportEnabled={isExportEnabled}
+          totalPitchCount={totalPitchCount}
+          appetiteCount={appetiteCount}
+          rankCount={rankCount}
+          interestCount={interestCount}
         />
       </Toolbar>
     </AppBar>

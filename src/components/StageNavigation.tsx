@@ -29,6 +29,11 @@ interface StageNavigationProps {
   canAccessStage: (stage: AppStage) => boolean;
   onFinish: () => void;
   isExportEnabled: boolean;
+  // Progress counters
+  totalPitchCount: number;
+  appetiteCount: number;
+  rankCount: number;
+  interestCount: number;
 }
 
 /**
@@ -40,27 +45,41 @@ const StageNavigation: React.FC<StageNavigationProps> = ({
   onStageSelect,
   canAccessStage,
   onFinish,
-  isExportEnabled
+  isExportEnabled,
+  totalPitchCount,
+  appetiteCount,
+  rankCount,
+  interestCount
 }) => {
-  // Define all stages with their labels and icons
+  // Define all stages with their labels, icons, and progress counters
   const stages = [
     {
       value: 'priority' as AppStage,
       label: 'Rank Problems',
       icon: <RankProblemsIcon fontSize="small" />,
-      tooltip: 'Prioritize problems and assign appetites'
+      tooltip: 'Prioritize problems and assign appetites',
+      progressCounts: {
+        appetite: appetiteCount,
+        rank: rankCount,
+        total: totalPitchCount
+      }
     },
     {
       value: 'interest' as AppStage,
       label: 'Rank Interest',
       icon: <RankInterestIcon fontSize="small" />,
-      tooltip: 'Indicate your interest level in problems'
+      tooltip: 'Indicate your interest level in problems',
+      progressCounts: {
+        interest: interestCount,
+        total: totalPitchCount
+      }
     },
     {
       value: 'projects' as AppStage,
       label: 'Rank Projects',
       icon: <RankProjectsIcon fontSize="small" />,
-      tooltip: 'Prioritize projects based on previous rankings'
+      tooltip: 'Prioritize projects based on previous rankings',
+      progressCounts: null // No specific counter for projects stage
     }
   ];
 
@@ -129,7 +148,56 @@ const StageNavigation: React.FC<StageNavigationProps> = ({
                     } : {},
                   }}
                 >
-                  {stage.label}
+                  <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    <Box>{stage.label}</Box>
+                    
+                    {/* Progress counter displays */}
+                    {stage.progressCounts && stage.value === 'priority' && (
+                      <Box 
+                        sx={{ 
+                          fontSize: '0.65rem', 
+                          opacity: 0.9,
+                          mt: 0.2,
+                          display: 'flex',
+                          gap: 0.5
+                        }}
+                      >
+                        <Box 
+                          component="span"
+                          sx={{ 
+                            color: appetiteCount >= Math.ceil(totalPitchCount / 2) ? '#4caf50' : 'inherit',
+                            fontWeight: appetiteCount >= Math.ceil(totalPitchCount / 2) ? 'bold' : 'normal',
+                          }}
+                        >
+                          A:{appetiteCount}/{totalPitchCount}
+                        </Box>
+                        <Box component="span" sx={{ fontSize: '0.6rem', opacity: 0.7 }}>•</Box>
+                        <Box 
+                          component="span"
+                          sx={{ 
+                            color: rankCount >= Math.ceil(totalPitchCount / 2) ? '#4caf50' : 'inherit',
+                            fontWeight: rankCount >= Math.ceil(totalPitchCount / 2) ? 'bold' : 'normal',
+                          }}
+                        >
+                          R:{rankCount}/{totalPitchCount}
+                        </Box>
+                      </Box>
+                    )}
+                    
+                    {stage.progressCounts && stage.value === 'interest' && (
+                      <Box 
+                        sx={{ 
+                          fontSize: '0.65rem', 
+                          opacity: 0.9,
+                          mt: 0.2,
+                          color: interestCount >= Math.ceil(totalPitchCount / 2) ? '#4caf50' : 'inherit',
+                          fontWeight: interestCount >= Math.ceil(totalPitchCount / 2) ? 'bold' : 'normal',
+                        }}
+                      >
+                        {interestCount}/{totalPitchCount}
+                      </Box>
+                    )}
+                  </Box>
                 </NavButton>
               </span>
             </Tooltip>
