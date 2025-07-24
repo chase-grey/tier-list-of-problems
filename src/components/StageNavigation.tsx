@@ -6,8 +6,7 @@ import {
   LocalActivity as RankProjectsIcon,
   GetApp as FinishIcon,
   RestaurantMenu as AppetiteIcon,
-  FormatListNumbered as RankIcon,
-  CheckBox as CompletedIcon
+  FormatListNumbered as RankIcon
 } from '@mui/icons-material';
 
 // Define the available application stages
@@ -105,7 +104,7 @@ const StageNavigation: React.FC<StageNavigationProps> = ({
       alignItems: 'center',
       justifyContent: 'flex-end',
       width: '100%',
-      mt: -0.5, // Remove unnecessary padding above buttons
+      mt: -1.5, // Position buttons flush with the top of the toolbar
     }}>
       {stages.map((stage, index) => {
         const isActive = activeStage === stage.value;
@@ -212,11 +211,8 @@ const StageNavigation: React.FC<StageNavigationProps> = ({
                           mt: 0.2,
                           color: interestCount >= Math.ceil(totalPitchCount / 2) ? '#4caf50' : 'inherit',
                           fontWeight: interestCount >= Math.ceil(totalPitchCount / 2) ? 'bold' : 'normal',
-                          display: 'flex',
-                          alignItems: 'center',
                         }}
                       >
-                        <RankInterestIcon sx={{ fontSize: '0.9rem', mr: 0.2 }} />
                         {interestCount}/{totalPitchCount}
                       </Box>
                     )}
@@ -230,11 +226,8 @@ const StageNavigation: React.FC<StageNavigationProps> = ({
                           mt: 0.2,
                           color: rankedProjectCount >= Math.ceil(totalProjectCount / 2) ? '#4caf50' : 'inherit',
                           fontWeight: rankedProjectCount >= Math.ceil(totalProjectCount / 2) ? 'bold' : 'normal',
-                          display: 'flex',
-                          alignItems: 'center',
                         }}
                       >
-                        <CompletedIcon sx={{ fontSize: '0.9rem', mr: 0.2 }} />
                         {rankedProjectCount}/{totalProjectCount}
                       </Box>
                     )}
