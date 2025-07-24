@@ -8,15 +8,15 @@ import {
   Tooltip,
 } from '@mui/material';
 import { 
-  GetApp as DownloadIcon,
   HelpOutline as HelpIcon,
   RestaurantMenu as AppetiteIcon,
   FormatListNumbered as RankedIcon,
   RestartAlt as ResetIcon,
-  NavigateNext as NextIcon,
-  NavigateBefore as PrevIcon,
-  ThumbUp as InterestIcon
+  ThumbUp as InterestIcon,
+  LocalActivity as ProjectIcon
 } from '@mui/icons-material';
+import StageNavigation from '../StageNavigation';
+import type { AppStage } from '../StageNavigation';
 
 
 interface TopBarProps {
@@ -29,10 +29,10 @@ interface TopBarProps {
   isExportEnabled: boolean;
   onHelpClick: () => void;
   onResetClick: () => void;
-  stage: 'priority' | 'interest';
-  onNextStage: () => void;
-  canAccessInterestStage: boolean;
-  priorityStageComplete: boolean;
+  stage: AppStage;
+  onStageChange: (stage: AppStage) => void;
+  canAccessStage: (stage: AppStage) => boolean;
+  completedStages: AppStage[];
 }
 
 /**
@@ -49,146 +49,133 @@ export const TopBar = ({
   onHelpClick,
   onResetClick,
   stage,
-  onNextStage,
-  canAccessInterestStage,
-  priorityStageComplete
+  onStageChange,
+  canAccessStage,
+  completedStages
 }: TopBarProps) => {
   return (
-    <AppBar position="sticky" sx={{ height: 48 }}>
-      <Toolbar sx={{ minHeight: '48px !important', py: 0 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', flexGrow: 1 }}>
-          <Button
-            variant="outlined"
-            color="error"
-            startIcon={<ResetIcon />}
-            onClick={onResetClick}
-            aria-label="Reset all votes"
-            sx={{
-              mr: 2,
-              height: 32, // Smaller reset button
-              '&:hover': {
-                bgcolor: 'rgba(244, 67, 54, 0.08)'
-              }
-            }}
-          >
-            Reset
-          </Button>
-          
-          <Typography variant="subtitle1" component="div">
-            Problem Polling: {voterName}
-          </Typography>
-          
-          <Tooltip title="View Instructions">
-            <IconButton 
-              color="inherit" 
-              onClick={onHelpClick}
-              sx={{ ml: 2 }}
-              aria-label="Help"
+    <AppBar position="sticky">
+      <Toolbar sx={{ flexDirection: 'column', py: 0.5 }}>
+        {/* Top section with title and stats */}
+        <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', mb: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', flexGrow: 1, mr: 1 }}>
+            <Button
+              variant="outlined"
+              color="error"
+              size="small"
+              startIcon={<ResetIcon />}
+              onClick={onResetClick}
+              aria-label="Reset all votes"
+              sx={{
+                mr: 2,
+                height: 28, // Smaller reset button
+                '&:hover': {
+                  bgcolor: 'rgba(244, 67, 54, 0.08)'
+                }
+              }}
             >
-              <HelpIcon />
-            </IconButton>
-          </Tooltip>
-        </Box>
-        <Box sx={{ display: 'flex', alignItems: 'center', mr: 2 }}>
-          <Typography variant="body2" sx={{ display: 'flex', gap: 1 }}>
-            {stage === 'priority' ? (
-              <>
+              Reset
+            </Button>
+            
+            <Typography variant="subtitle1" component="div" sx={{ fontSize: '0.95rem' }}>
+              Problem Polling: {voterName}
+            </Typography>
+            
+            <Tooltip title="View Instructions">
+              <IconButton 
+                color="inherit"
+                size="small" 
+                onClick={onHelpClick}
+                sx={{ ml: 1 }}
+                aria-label="Help"
+              >
+                <HelpIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          </Box>
+          
+          {/* Progress metrics - more compact */}
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <Typography variant="body2" sx={{ 
+              display: 'flex', 
+              gap: 1,
+              fontSize: '0.8rem',
+              px: 1,
+              py: 0.5,
+              bgcolor: 'rgba(255,255,255,0.1)',
+              borderRadius: 1,
+              alignItems: 'center'
+            }}>
+              {stage === 'priority' ? (
+                <>
+                  <Box 
+                    component="span" 
+                    sx={{ 
+                      color: appetiteCount >= Math.ceil(totalPitchCount / 2) ? '#4caf50' : 'inherit',
+                      fontWeight: appetiteCount >= Math.ceil(totalPitchCount / 2) ? 'bold' : 'normal',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 0.5
+                    }}
+                  >
+                    <AppetiteIcon sx={{ fontSize: '1.1rem' }} />
+                    <span>{appetiteCount}/{totalPitchCount}</span>
+                  </Box>
+                  <Box component="span" sx={{ fontSize: '0.8rem', opacity: 0.7 }}>•</Box>
+                  <Box 
+                    component="span" 
+                    sx={{ 
+                      color: rankCount >= Math.ceil(totalPitchCount / 2) ? '#4caf50' : 'inherit',
+                      fontWeight: rankCount >= Math.ceil(totalPitchCount / 2) ? 'bold' : 'normal',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 0.5
+                    }}
+                  >
+                    <RankedIcon sx={{ fontSize: '1.1rem' }} />
+                    <span>{rankCount}/{totalPitchCount}</span>
+                  </Box>
+                </>
+              ) : stage === 'interest' ? (
                 <Box 
                   component="span" 
                   sx={{ 
-                    color: appetiteCount >= Math.ceil(totalPitchCount / 2) ? '#4caf50' : 'inherit',
-                    fontWeight: appetiteCount >= Math.ceil(totalPitchCount / 2) ? 'bold' : 'normal',
-                    transition: 'all 0.2s ease',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 0.5,
+                    color: interestCount >= Math.ceil(totalPitchCount / 2) ? '#4caf50' : 'inherit',
+                    fontWeight: interestCount >= Math.ceil(totalPitchCount / 2) ? 'bold' : 'normal'
+                  }}
+                >
+                  <InterestIcon sx={{ fontSize: '1.1rem' }} />
+                  <span>{interestCount}/{totalPitchCount}</span>
+                </Box>
+              ) : (
+                <Box 
+                  component="span" 
+                  sx={{ 
                     display: 'flex',
                     alignItems: 'center',
                     gap: 0.5
                   }}
                 >
-                  <AppetiteIcon sx={{ fontSize: '1.4rem' }} />
-                  <span>Appetites {appetiteCount}/{totalPitchCount}</span>
+                  <ProjectIcon sx={{ fontSize: '1.1rem' }} />
+                  <span>Projects</span>
                 </Box>
-                <Box component="span">•</Box>
-                <Box 
-                  component="span" 
-                  sx={{ 
-                    color: rankCount >= Math.ceil(totalPitchCount / 2) ? '#4caf50' : 'inherit',
-                    fontWeight: rankCount >= Math.ceil(totalPitchCount / 2) ? 'bold' : 'normal',
-                    transition: 'all 0.2s ease',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 0.5
-                  }}
-                >
-                  <RankedIcon sx={{ fontSize: '1.4rem' }} />
-                  <span>Ranked {rankCount}/{totalPitchCount}</span>
-                </Box>
-              </>
-            ) : (
-              <Box 
-                component="span" 
-                sx={{ 
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 0.5,
-                  color: interestCount >= Math.ceil(totalPitchCount / 2) ? '#4caf50' : 'inherit',
-                  fontWeight: interestCount >= Math.ceil(totalPitchCount / 2) ? 'bold' : 'normal',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                <InterestIcon sx={{ fontSize: '1.4rem' }} />
-                <span>Interests {interestCount}/{totalPitchCount}</span>
-              </Box>
-            )}
-          </Typography>
+              )}
+            </Typography>
+          </Box>
         </Box>
-        {/* Only show the interest section button if the user has access to it */}
-        {(canAccessInterestStage || stage === 'interest') && (
-          <Tooltip title={
-            stage === 'priority' && !canAccessInterestStage ? 
-              "Only QM, developers, QM TLs, and dev TLs who have indicated availability can rank interest" : 
-              stage === 'priority' && !priorityStageComplete ? 
-              "You must complete all appetites and priority rankings first" : 
-              ""
-          } arrow placement="bottom">
-            <span> {/* Wrapper needed for disabled button tooltips */}
-              <Button
-                variant="contained"
-                color={stage === 'priority' ? 'secondary' : 'primary'}
-                startIcon={stage === 'priority' ? <NextIcon /> : <PrevIcon />}
-                onClick={onNextStage}
-                disabled={stage === 'priority' && (!canAccessInterestStage || !priorityStageComplete)}
-                sx={{
-                  mr: 2,
-                  // Use purple for interest stage button, blue for priority stage button
-                  bgcolor: stage === 'priority' ? '#9c27b0' : '#1976d2',
-                  '&:hover': {
-                    bgcolor: stage === 'priority' ? '#7b1fa2' : '#1565c0'
-                  }
-                }}
-              >
-                {stage === 'priority' ? 'Next: Rank Interest' : 'Previous: Rank Priority'}
-              </Button>
-            </span>
-          </Tooltip>
-        )}
         
-        <Button
-          variant="contained"
-          color="secondary"
-          startIcon={<DownloadIcon />}
-          disabled={!isExportEnabled}
-          onClick={onFinish}
-          aria-label="Finish and export results"
-          sx={{
-            fontWeight: isExportEnabled ? 'bold' : 'normal',
-            transition: 'all 0.2s ease',
-            '&:not(:disabled)': {
-              boxShadow: 3
-            }
-          }}
-        >
-          Finish
-        </Button>
+        {/* Stage navigation with blocky style buttons and integrated Finish button */}
+        <StageNavigation
+          activeStage={stage}
+          completedStages={completedStages}
+          onStageSelect={onStageChange}
+          canAccessStage={canAccessStage}
+          onFinish={onFinish}
+          isExportEnabled={isExportEnabled}
+        />
       </Toolbar>
     </AppBar>
   );

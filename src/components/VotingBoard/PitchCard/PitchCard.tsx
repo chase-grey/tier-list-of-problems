@@ -18,12 +18,13 @@ interface PitchCardProps {
   index: number;
   onAppetiteChange: (pitchId: string, appetite: Appetite | null) => void;
   userRole?: string | null;
+  readOnly?: boolean; // Whether the card is in read-only mode
 }
 
 /**
  * Represents a single pitch card that can be dragged between tiers
  */
-const PitchCard = ({ pitch, vote, index, onAppetiteChange, userRole }: PitchCardProps) => {
+const PitchCard = ({ pitch, vote, index, onAppetiteChange, userRole, readOnly = false }: PitchCardProps) => {
   const [detailsAnchor, setDetailsAnchor] = useState<HTMLElement | null>(null);
   // Using HTMLElement type to match what Draggable provides
   const cardRef = useRef<HTMLElement>(null);
@@ -47,6 +48,9 @@ const PitchCard = ({ pitch, vote, index, onAppetiteChange, userRole }: PitchCard
   // Handle appetite dot click
   const handleAppetiteClick = (clickedAppetite: Appetite, e: React.MouseEvent) => {
     e.stopPropagation();
+    // If in read-only mode, don't allow changes
+    if (readOnly) return;
+    
     // If this appetite is already selected, clear it (set to null)
     // otherwise set it to the clicked appetite
     const nextAppetite = currentAppetite === clickedAppetite ? null : clickedAppetite;
@@ -91,7 +95,7 @@ const PitchCard = ({ pitch, vote, index, onAppetiteChange, userRole }: PitchCard
             p: 1,
             mb: 0.75,
             transition: 'all 0.2s ease',
-            cursor: 'grab',
+            cursor: readOnly ? 'default' : 'grab',
             '&:hover': {
               backgroundColor: 'background.paper',
               boxShadow: 3,
@@ -166,6 +170,7 @@ const PitchCard = ({ pitch, vote, index, onAppetiteChange, userRole }: PitchCard
                   onClick={(e) => handleAppetiteClick(appetite, e)}
                   className="appetite-dot"
                   aria-label={getAppetiteAriaLabel(appetite)}
+                  disabled={readOnly}
                   sx={{
                     width: 24,
                     height: 24,

@@ -3,9 +3,11 @@ import { ThemeProvider, CssBaseline, Box } from '@mui/material';
 import { darkTheme } from '../theme';
 import { NameGate } from './NameGate/NameGate';
 import { TopBar } from './TopBar/TopBar';
+import type { AppStage } from './Timeline/Timeline';
 import KanbanContainer from './VotingBoard/KanbanContainer';
 import AvailabilityDialog from './AvailabilityDialog/AvailabilityDialog';
 import InterestRanking from './InterestRanking/InterestRanking';
+import ProjectPriorityApp from './ProjectBoard/ProjectPriorityApp';
 import SnackbarProvider from './SnackbarProvider';
 import { useSnackbar } from '../hooks/useSnackbar';
 import HelpDialog from './HelpDialog/HelpDialog';
@@ -22,6 +24,8 @@ import { isContributorRole } from '../types/models';
 
 // Import pitch data
 import pitchesData from '../assets/pitches.json';
+// Import project data
+import { mockProjects } from './ProjectBoard/mockData';
 
 // Initial state
 const initialState: AppState = {
@@ -30,6 +34,7 @@ const initialState: AppState = {
   available: null,
   stage: 'priority',
   votes: {},
+  projectVotes: {},
 };
 
 // Reducer for state management
@@ -121,6 +126,20 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
         ...state,
         votes: {}
       };
+    
+    case 'SET_PROJECT_VOTES':
+      // Set project votes from the ProjectPriorityApp
+      return {
+        ...state,
+        projectVotes: action.projectVotes
+      };
+      
+    case 'RESET_ALL_PROJECT_VOTES':
+      // Reset just project votes while keeping problem votes
+      return {
+        ...state,
+        projectVotes: {}
+      };
       
     case 'RESET_ALL':
       // Reset everything including voter name
@@ -129,7 +148,8 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
         voterRole: null,
         available: null,
         stage: 'priority',
-        votes: {}
+        votes: {},
+        projectVotes: {}
       };
     
     default:
@@ -215,8 +235,8 @@ const AppContent: React.FC = () => {
   }, [pitches]);
   
   // Calculate completion counters
-  const appetiteCount = Object.values(state.votes).filter(v => v.appetite).length;
-  const rankCount = Object.values(state.votes).filter(v => v.tier).length;
+  const appetiteCount = Object.values(state.votes).filter(v => v.appetite !== undefined).length;
+  const rankCount = Object.values(state.votes).filter(v => v.tier !== null).length;
   
   // Check if the user has a role that can access interest ranking
   // Only QMs, devs, QM TLs, and dev TLs who are available for next quarter can see interest section
@@ -353,24 +373,39 @@ const AppContent: React.FC = () => {
   };
 
   // Toggle between priority and interest stages
-  const handleStageChange = () => {
-    // Toggle between stages
-    const newStage = state.stage === 'priority' ? 'interest' : 'priority';
-    
-    // Only allow switching to interest stage if conditions are met
-    if (newStage === 'interest' && (!canAccessInterestStage || !priorityStageComplete)) {
-      // Show appropriate error message
-      if (!canAccessInterestStage) {
-        showSnackbar('Only QM, developers, QM TLs, and dev TLs who have indicated availability can rank interest', 'error');
-      } else {
-        showSnackbar('You must complete all appetites and priority rankings first', 'error');
-      }
+  const handleStageChange = (targetStage?: AppStage) => {
+    // If specified stage is provided, use it directly
+    if (targetStage) {
+      dispatch({
+        type: 'SET_STAGE',
+        stage: targetStage
+      });
       return;
     }
     
-    // If switching to interest stage, set default interest levels for all cards
-    // that don't already have an interest level set
-    if (newStage === 'interest') {
+    // Otherwise toggle between stages as before
+    // Toggle between stages
+    const nextStage = state.stage === 'priority' ? 'interest' : 'priority';
+    
+    // Only allow switching to interest stage if conditions are met
+    if (nextStage === 'interest' && (!canAccessInterestStage || !priorityStageComplete)) {
+      console.log('Cannot access interest stage yet');
+      return;
+    }
+
+    // All good, switch stages
+    dispatch({
+      type: 'SET_STAGE',
+      stage: nextStage
+    });
+
+    // Scroll to the top when stage changes
+    setTimeout(() => {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }, 100);
+
+    // Show completion message if moving to interest stage
+    if (nextStage === 'interest') {
       // Process each pitch that has a tier but no interest level
       pitches.forEach(pitch => {
         const vote = state.votes[pitch.id];
@@ -404,7 +439,7 @@ const AppContent: React.FC = () => {
     }
     
     // Set the new stage
-    dispatch({ type: 'SET_STAGE', stage: newStage });
+    dispatch({ type: 'SET_STAGE', stage: nextStage });
   };
 
   // Handle showing help dialog
@@ -510,7 +545,36 @@ const AppContent: React.FC = () => {
     isContributorRole(state.voterRole) && 
     state.available === null;
 
-  // We've removed the showNextStageButton variable since we're now always showing the button but conditionally enabling it
+  // Determine which stages are completed and which can be accessed
+  const completedStages: AppStage[] = [];
+  
+  // Priority stage is completed if enough projects are ranked
+  if (priorityStageComplete) {
+    completedStages.push('priority');
+  }
+  
+  // Interest stage is completed if enough interests are set
+  if (interestCount >= Math.ceil(TOTAL / 2)) {
+    completedStages.push('interest');
+  }
+  
+  // Determine if a user can access a particular stage
+  const canAccessStage = (stage: AppStage): boolean => {
+    // Always can access priority stage
+    if (stage === 'priority') return true;
+    
+    // For interest stage, must be a contributor with availability and have completed priority stage
+    if (stage === 'interest') {
+      return canAccessInterestStage && priorityStageComplete;
+    }
+    
+    // For projects stage, user must have completed priority stage
+    if (stage === 'projects') {
+      return priorityStageComplete;
+    }
+    
+    return false;
+  };
 
   return (
     <>
@@ -536,9 +600,9 @@ const AppContent: React.FC = () => {
           onHelpClick={handleHelpClick}
           onResetClick={handleResetClick}
           stage={state.stage}
-          onNextStage={handleStageChange}
-          canAccessInterestStage={canAccessInterestStage}
-          priorityStageComplete={priorityStageComplete}
+          onStageChange={handleStageChange}
+          canAccessStage={canAccessStage}
+          completedStages={completedStages}
         />
         
         <Box component="main" sx={{ flexGrow: 1, overflow: 'hidden', p: 1 }}>
@@ -549,13 +613,25 @@ const AppContent: React.FC = () => {
               onDragEnd={handleDragEnd}
               onAppetiteChange={handleAppetiteChange}
               userRole={state.voterRole}
+              readOnly={state.stage === 'priority' && completedStages.includes('priority')}
             />
-          ) : (
+          ) : state.stage === 'interest' ? (
             <InterestRanking
               pitches={pitches}
               votes={state.votes}
               onSetInterest={handleInterestChange}
               userRole={state.voterRole}
+            />
+          ) : (
+            // Project priority stage with integrated ProjectPriorityApp
+            <ProjectPriorityApp
+              projects={mockProjects}
+              initialVotes={state.projectVotes}
+              userName={state.voterName || ''}
+              userRole={state.voterRole || ''}
+              onSaveVotes={(projectVotes) => {
+                dispatch({ type: 'SET_PROJECT_VOTES', projectVotes });
+              }}
             />
           )}
                   

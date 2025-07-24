@@ -14,6 +14,7 @@ interface KanbanContainerProps {
   onDragEnd: (result: DropResult) => void;
   onAppetiteChange: (pitchId: string, appetite: Appetite | null) => void;
   userRole?: string | null;
+  readOnly?: boolean; // Whether the component is in read-only mode (for completed stages)
 }
 
 /**
@@ -25,7 +26,8 @@ const KanbanContainer = ({
   votes, 
   onDragEnd,
   onAppetiteChange,
-  userRole
+  userRole,
+  readOnly = false
 }: KanbanContainerProps) => {
   // Reference to the scrollable container
   const containerRef = useRef<HTMLDivElement>(null);
@@ -58,13 +60,19 @@ const KanbanContainer = ({
   }, []);
   
   // Fallback UI for handling pitch tier assignment without drag-and-drop
-  const renderFallbackUI = () => (
+  const renderFallbackUI = () => {
+    // Message to display based on mode
+    const message = readOnly
+      ? "You're viewing your previous priority rankings in read-only mode."
+      : "Using dropdown selection mode for tier assignment since drag-and-drop functionality isn't available in your environment.";
+      
+    return (
     <Box sx={{ p: 2 }}>
       <Alert 
         severity="info" 
         sx={{ mb: 2 }}
       >
-        Using dropdown selection mode for tier assignment since drag-and-drop functionality isn't available in your environment.
+        {message}
       </Alert>
       
       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, justifyContent: 'space-between' }}>
@@ -98,6 +106,7 @@ const KanbanContainer = ({
                   } as DropResult;
                   onDragEnd(result);
                 }}
+                disabled={readOnly}
               >
                 <MenuItem value="">
                   <em>Unsorted</em>
@@ -133,11 +142,14 @@ const KanbanContainer = ({
                   key={appetite}
                   component="button"
                   onClick={() => {
-                    // Toggle appetite
-                    const currentAppetite = votes[pitch.id]?.appetite;
-                    const newAppetite = currentAppetite === appetite ? null : appetite;
-                    onAppetiteChange(pitch.id, newAppetite);
+                    // Toggle appetite only if not in read-only mode
+                    if (!readOnly) {
+                      const currentAppetite = votes[pitch.id]?.appetite;
+                      const newAppetite = currentAppetite === appetite ? null : appetite;
+                      onAppetiteChange(pitch.id, newAppetite);
+                    }
                   }}
+                  disabled={readOnly}
                   sx={{
                     width: 30,
                     height: 30,
@@ -146,7 +158,7 @@ const KanbanContainer = ({
                     alignItems: 'center',
                     justifyContent: 'center',
                     border: 'none',
-                    cursor: 'pointer',
+                    cursor: readOnly ? 'default' : 'pointer',
                     bgcolor: votes[pitch.id]?.appetite === appetite ? 
                       appetite === 'S' ? '#2ecc71' : 
                       appetite === 'M' ? '#f39c12' : 
@@ -167,6 +179,7 @@ const KanbanContainer = ({
       </Box>
     </Box>
   );
+  };
 
   // We set hasDndError directly in the onReset prop of ErrorBoundary
 
@@ -182,7 +195,7 @@ const KanbanContainer = ({
         fallback={renderFallbackUI()}
         onReset={() => setHasDndError(false)}
       >
-        <DragDropContext onDragEnd={onDragEnd}>
+        <DragDropContext onDragEnd={readOnly ? () => {} : onDragEnd}>
           <Box 
             ref={containerRef}
             sx={{ 
@@ -215,9 +228,10 @@ const KanbanContainer = ({
               tier={null}
               pitches={pitches}
               votes={votes}
-              onAppetiteChange={onAppetiteChange}
+              onAppetiteChange={readOnly ? () => {} : onAppetiteChange}
               columnCount={columnCount} // Always 9 columns
               userRole={userRole}
+              readOnly={readOnly}
             />
             
             {/* Tier columns 1-8 */}
@@ -227,9 +241,10 @@ const KanbanContainer = ({
                 tier={tier}
                 pitches={pitches}
                 votes={votes}
-                onAppetiteChange={onAppetiteChange}
+                onAppetiteChange={readOnly ? () => {} : onAppetiteChange}
                 columnCount={columnCount} // Always 9 columns
                 userRole={userRole}
+                readOnly={readOnly}
               />
             ))}
           </Box>
