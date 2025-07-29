@@ -9,7 +9,8 @@ import {
   Chip,
   IconButton,
   Grid,
-  Paper
+  Paper,
+  Link
 } from '@mui/material';
 import { Close as CloseIcon } from '@mui/icons-material';
 import type { Project, Deliverable } from '../../../types/project-models';
@@ -27,7 +28,7 @@ interface ProjectDetailsModalProps {
  * Basic modal to display detailed information about a project
  * This is a simplified version to avoid code similarity detection issues
  */
-const ProjectDetailsModal = ({ project, open, onClose }: ProjectDetailsModalProps) => {
+const ProjectDetailsModal = ({ project, open, onClose, userRole }: ProjectDetailsModalProps) => {
   // Get color for appetite
   const getAppetiteColor = (appetite: Appetite): string => {
     switch (appetite) {
@@ -68,6 +69,29 @@ const ProjectDetailsModal = ({ project, open, onClose }: ProjectDetailsModalProp
       </DialogTitle>
 
       <DialogContent dividers>
+        {/* Project Proposal Link - Only shown if user is not a customer */}
+        {userRole !== 'customer' && (
+          <>
+            <Box mb={2}>
+              <Typography variant="subtitle2" color="textSecondary">
+                Project Proposal
+              </Typography>
+              <Box mt={0.5}>
+                <Link 
+                  href={`https://example.com/proposals/${project.id}`} 
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  underline="hover"
+                  sx={{ fontWeight: 'medium' }}
+                >
+                  View original proposal document
+                </Link>
+              </Box>
+            </Box>
+            <Divider />
+          </>
+        )}
+        
         {/* Appetite */}
         <Box mb={2}>
           <Typography variant="subtitle2" color="textSecondary">

@@ -3,18 +3,17 @@ import { useRef, useEffect, useMemo } from 'react';
 import { Paper, Typography, Box, Stack } from '@mui/material';
 import { Droppable } from '@hello-pangea/dnd';
 import type { DroppableProvided, DroppableStateSnapshot } from '@hello-pangea/dnd';
-import { colorTokens } from '../../theme';
 import type { Project, ProjectVote, ProjectPriority } from '../../types/project-models';
 import ProjectCard from './ProjectCard/ProjectCard';
 import { registerDroppable } from '../../utils/enhancedDropDetection';
 
-// Custom colors for priority columns
+// Custom colors for priority columns - using different shades of grayish-green as requested
 const PRIORITY_COLORS = {
-  'Highest priority': '#e74c3c', // Red
-  'High priority': '#f39c12',    // Orange
-  'Medium Priority': '#3498db',  // Blue
-  'Low priority': '#2ecc71',     // Green
-  'Not a priority': '#95a5a6',   // Gray
+  'Highest priority': '#496A5C', // Darkest shade of grayish-green
+  'High priority': '#5E8272',    // Dark shade of grayish-green
+  'Medium Priority': '#739A89',  // Medium shade of grayish-green
+  'Low priority': '#88B19F',     // Light shade of grayish-green
+  'Not a priority': '#9DC9B6',   // Lightest shade of grayish-green
   'Unsorted': 'background.paper' // Default paper color
 };
 
@@ -94,10 +93,10 @@ const PriorityColumn = ({
   return (
     <Box 
       sx={{ 
-        width: `calc((100% - ${(columnCount - 1) * 2}px) / ${columnCount})`, // Dynamic width based on column count
-        minWidth: '200px', // Minimum usable width
-        mx: 1, // Margin on both sides for spacing
+        width: `calc(100% / ${columnCount})`, // Simplified width calculation for equal distribution
+        minWidth: '180px', // Minimum width to ensure all columns fit
         height: '100%',
+        px: 0.5, // Use padding instead of margin to prevent width calculation issues
         display: 'flex',
         flexDirection: 'column'
       }}

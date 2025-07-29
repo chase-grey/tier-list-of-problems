@@ -1,5 +1,5 @@
 import { useState, useReducer, useEffect } from 'react';
-import { Box, Typography, Button, Paper, Container, Alert } from '@mui/material';
+import { Box, Alert } from '@mui/material';
 import type { DropResult } from '@hello-pangea/dnd';
 import ProjectBoard from './ProjectBoard';
 import type { Project, ProjectVote, ProjectPriority } from '../../types/project-models';
@@ -7,7 +7,6 @@ import type { Project, ProjectVote, ProjectPriority } from '../../types/project-
 interface ProjectPriorityAppProps {
   projects: Project[];
   initialVotes?: Record<string, ProjectVote>;
-  userName?: string;
   userRole?: string;
   onSaveVotes?: (votes: Record<string, ProjectVote>) => void;
 }
@@ -49,19 +48,14 @@ function votesReducer(state: Record<string, ProjectVote>, action: VoteAction): R
 const ProjectPriorityApp = ({ 
   projects, 
   initialVotes = {}, 
-  userName = '',
   userRole = '',
   onSaveVotes 
 }: ProjectPriorityAppProps) => {
   // State for user's votes
   const [votes, dispatchVote] = useReducer(votesReducer, initialVotes);
   
-  // User name state
-  const [name, setName] = useState<string>(userName);
-  
-  // State for export status
-  const [isExporting, setIsExporting] = useState<boolean>(false);
-  const [exportError, setExportError] = useState<string | null>(null);
+  // Export functionality was removed, only keeping error state for UI feedback if needed
+  const [exportError] = useState<string | null>(null);
   
   // Effect to save votes whenever they change
   useEffect(() => {
@@ -100,90 +94,22 @@ const ProjectPriorityApp = ({
     }
   };
   
-  // Export votes as CSV
-  const handleExportCsv = () => {
-    try {
-      setIsExporting(true);
-      setExportError(null);
-      
-      // Create CSV header
-      const headers = ['Project ID', 'Project Title', 'Appetite', 'Priority', 'Hour Estimate'];
-      
-      // Create CSV rows
-      const rows = projects.map(project => {
-        const vote = votes[project.id];
-        const priority = vote?.priority || 'Unsorted';
-        
-        return [
-          project.id,
-          `"${project.title.replace(/"/g, '""')}"`, // Escape quotes in title
-          project.appetite,
-          priority,
-          project.details.hourEstimate
-        ].join(',');
-      });
-      
-      // Combine header and rows
-      const csv = [headers.join(','), ...rows].join('\n');
-      
-      // Create download link
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.setAttribute('href', url);
-      link.setAttribute('download', `project-priorities-${new Date().toISOString().split('T')[0]}.csv`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      
-      setIsExporting(false);
-    } catch (error) {
-      console.error('Failed to export CSV:', error);
-      setExportError('Failed to export CSV');
-      setIsExporting(false);
-    }
-  };
+  // Export functionality removed as it's not currently being used
 
-  // Count how many projects have been prioritized
-  const prioritizedCount = Object.keys(votes).length;
-  const totalProjects = projects.length;
+  // Project counting code removed as it's not being used
 
   return (
-    <Container maxWidth="xl" sx={{ py: 3 }}>
-      <Paper sx={{ p: 3, mb: 3 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-          <Typography variant="h5">
-            Project Prioritization
-          </Typography>
-          
-          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-            <Typography variant="body2" color="text.secondary">
-              {prioritizedCount} of {totalProjects} projects prioritized
-            </Typography>
-            
-            <Button 
-              variant="outlined" 
-              color="primary" 
-              onClick={handleExportCsv}
-              disabled={isExporting}
-            >
-              {isExporting ? 'Exporting...' : 'Export CSV'}
-            </Button>
-          </Box>
-        </Box>
-        
-        {exportError && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {exportError}
-          </Alert>
-        )}
-        
-        <Typography variant="body2" sx={{ mb: 3 }}>
-          Drag and drop projects into the appropriate priority columns. Your selections will be saved automatically.
-        </Typography>
-      </Paper>
+    <Box sx={{ width: '100%', height: '100vh', overflow: 'hidden' }}>
+      {/* Remove the header section with instructions and export CSV button as requested */}
       
-      <Box sx={{ height: 'calc(100vh - 200px)' }}>
+      {/* Show error alert if export fails (keeping this for functionality) */}
+      {exportError && (
+        <Alert severity="error" sx={{ mb: 1 }}>
+          {exportError}
+        </Alert>
+      )}
+      
+      <Box sx={{ height: '100%', pt: 0 }}>
         <ProjectBoard 
           projects={projects} 
           votes={votes} 
@@ -191,7 +117,7 @@ const ProjectPriorityApp = ({
           userRole={userRole} 
         />
       </Box>
-    </Container>
+    </Box>
   );
 };
 

@@ -20,10 +20,15 @@ interface ProjectCardProps {
 /**
  * Represents a single project card that can be dragged between priority columns
  */
-const ProjectCard = ({ project, vote, index, userRole }: ProjectCardProps) => {
-  // Using vote for memo comparison in the memo function at the bottom
-  // Accessing a property to prevent unused variable warning
-  const priority = vote?.priority;
+const ProjectCard = ({ 
+  project, 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  vote, 
+  index, 
+  userRole 
+}: ProjectCardProps) => {
+  // NOTE: The vote prop appears unused but is actually used in the memo comparison function at the bottom
+  // of this file. It's essential for optimization to prevent unnecessary re-renders when votes change.
   const [detailsOpen, setDetailsOpen] = useState(false);
   const cardRef = useRef<HTMLElement>(null);
   
@@ -139,8 +144,8 @@ const ProjectCard = ({ project, vote, index, userRole }: ProjectCardProps) => {
               </Tooltip>
             </Box>
             
-            {/* Appetite chip */}
-            <Box sx={{ display: 'flex', mb: 1 }}>
+            {/* Appetite chip and hour estimate */}
+            <Box sx={{ display: 'flex', mb: 1, alignItems: 'center' }}>
               <Chip 
                 label={getAppetiteText(project.appetite)}
                 size="small"
@@ -151,6 +156,9 @@ const ProjectCard = ({ project, vote, index, userRole }: ProjectCardProps) => {
                   height: '22px',
                 }}
               />
+              <Typography variant="body2" sx={{ ml: 1, fontSize: '0.75rem', fontWeight: 'bold' }}>
+                {project.details.hourEstimate} hrs
+              </Typography>
             </Box>
             
             {/* Deliverables summary */}
@@ -163,14 +171,7 @@ const ProjectCard = ({ project, vote, index, userRole }: ProjectCardProps) => {
               </Typography>
             </Box>
             
-            {/* Hour estimate */}
-            {/* Hour estimate */}
-            <Box sx={{ position: 'absolute', bottom: 8, right: 12 }}>
-              <Typography variant="body2" sx={{ fontSize: '0.75rem', fontWeight: 'bold' }}>
-                {project.details.hourEstimate} hrs
-                {priority && <Box component="span" sx={{ ml: 0.5, fontSize: '0.7rem', opacity: 0.7 }}> • {priority}</Box>}
-              </Typography>
-            </Box>
+            {/* Removed redundant hour estimate and priority text from bottom of card as requested */}
           </Paper>
 
           {/* Details modal */}

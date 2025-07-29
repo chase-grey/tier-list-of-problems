@@ -33,21 +33,21 @@ const ProjectBoard = ({
   const [isDndSupported, setIsDndSupported] = useState<boolean | null>(null);
   const [hasDndError, setHasDndError] = useState(false);
   
-  // Generate array of priority levels
+  // Generate array of priority levels - removed 'Not a priority' as requested
   const priorities: (ProjectPriority | null)[] = [
     null, // Unsorted
     'Highest priority',
     'High priority',
     'Medium Priority',
-    'Low priority',
-    'Not a priority'
+    'Low priority'
+    // 'Not a priority' removed as requested
   ];
   
   // Show total project count for validation
   const TOTAL = projects.length;
   
-  // Always show 6 columns (5 priority columns + 1 unsorted column)
-  const columnCount = 6;
+  // Always show 5 columns (4 priority columns + 1 unsorted column)
+  const columnCount = 5;
 
   // Detect drag-and-drop support on mount and setup auto-scroll and enhanced drop detection
   useEffect(() => {
@@ -82,14 +82,14 @@ const ProjectBoard = ({
   const renderFallbackUI = () => {
     console.log('Rendering fallback UI due to drag-and-drop compatibility issues');
     
-    // Get available priorities for dropdown
+    // Get available priorities for dropdown - removed 'Not a priority' as requested
     const priorityOptions: (ProjectPriority | null)[] = [
       null, // Unsorted
       'Highest priority',
       'High priority',
       'Medium Priority',
-      'Low priority',
-      'Not a priority'
+      'Low priority'
+      // 'Not a priority' removed as requested
     ];
     
     return (
@@ -224,11 +224,11 @@ const ProjectBoard = ({
           sx={{ 
             display: 'flex', 
             flexWrap: { xs: 'wrap', lg: 'nowrap' }, // Wrap on smaller screens, no wrap on large screens
-            justifyContent: 'space-between',
-            p: 1,
-            pb: 2, // Reduced bottom padding
-            height: { xs: 'auto', lg: 'calc(100vh - 100px)' }, // More vertical space on large screens
-            maxWidth: '100%', // Ensure it doesn't exceed viewport width
+            justifyContent: 'space-between', // Even distribution across entire width
+            p: 0, // Remove padding
+            height: { xs: 'auto', lg: '100vh' }, // Full viewport height on large screens
+            width: '100%', // Full width
+            maxWidth: '100%', // Ensure it doesn't exceed container width
             overflowX: { xs: 'hidden', lg: 'auto' }, // Only allow horizontal scroll on large screens if needed
             overflowY: { xs: 'auto', lg: 'hidden' }, // Allow vertical scroll on small screens
 
