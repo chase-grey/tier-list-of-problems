@@ -37,7 +37,6 @@ const SortableColumn = ({
   // State to track where drop indicators should appear
   const [dropIndicatorIndex, setDropIndicatorIndex] = useState<number | null>(null);
   const [dropTargetId, setDropTargetId] = useState<string | null>(null);
-  const [isActiveDrop, setIsActiveDrop] = useState(false);
   const isUnsorted = priority === null;
   const columnId = isUnsorted ? 'unsorted' : `priority-${priority.replace(/\s+/g, '-').toLowerCase()}`;
   
@@ -108,13 +107,11 @@ const SortableColumn = ({
     onDragOver({ over, active }) {
       if (!over) {
         setDropIndicatorIndex(null);
-        setIsActiveDrop(false);
         return;
       }
       
       // If dragging over this column
       if (over.id === columnId) {
-        setIsActiveDrop(true);
         setDropTargetId(String(active.id));
         
         const projectCards = Array.from(document.querySelectorAll(`[data-droppable-id="${columnId}"] .project-card`));
@@ -181,18 +178,15 @@ const SortableColumn = ({
         }
       } else {
         // Not dragging over this column anymore
-        setIsActiveDrop(false);
       }
     },
     onDragEnd() {
-      setDropIndicatorIndex(null);
-      setIsActiveDrop(false);
       setDropTargetId(null);
+      setDropIndicatorIndex(null);
     },
     onDragCancel() {
-      setDropIndicatorIndex(null);
-      setIsActiveDrop(false);
       setDropTargetId(null);
+      setDropIndicatorIndex(null);
     }
   });
   
@@ -280,10 +274,10 @@ const SortableColumn = ({
             {filteredProjects.length === 0 && (
               <Box sx={{ height: '38px', width: '100%', visibility: 'hidden' }} />
             )}
-            {/* Insert drop indicator at the top if needed - with reduced spacing */}
+            {/* Insert drop indicator at the top if needed - with minimal spacing */}
             {dropIndicatorIndex === 0 && isOver && (
-              <Box sx={{ position: 'relative', height: '2px', mb: 0.5 }}>
-                <DropIndicator isVisible={true} isAnimated={isActiveDrop} />
+              <Box sx={{ position: 'relative', height: '2px', mb: 0 }}>
+                <DropIndicator isVisible={true} isAnimated={false} />
               </Box>
             )}
             
@@ -297,10 +291,10 @@ const SortableColumn = ({
                     className="project-card" 
                     sx={{ 
                       opacity: isDragTarget && isOver ? 0.4 : 1,
-                      // Remove the transform that was causing the jump
-                      transform: 'translateY(0)',
-                      // Keep the opacity transition but remove the transform transition
-                      transition: 'opacity 200ms ease',
+                      // Remove all transforms and prevent any unexpected movement
+                      transform: 'none',
+                      // Disable all transitions during drag operations to prevent jumps
+                      transition: isOver ? 'none' : 'opacity 200ms ease',
                       position: 'relative',
                       zIndex: 1
                     }}
@@ -313,17 +307,17 @@ const SortableColumn = ({
                     />
                   </Box>
                   
-                  {/* Insert drop indicator after this card if needed - with reduced spacing */}
+                  {/* Insert drop indicator after this card if needed - with minimal spacing */}
                   {dropIndicatorIndex === index + 1 && isOver && (
                     <Box 
                       sx={{ 
                         position: 'relative', 
                         height: '2px', 
-                        my: 0.5, // Reduce margin to minimize spacing disruption
+                        my: 0, // Remove all margin to prevent any spacing disruption
                         zIndex: 5 
                       }}
                     >
-                      <DropIndicator isVisible={true} isAnimated={isActiveDrop} />
+                      <DropIndicator isVisible={true} isAnimated={false} />
                     </Box>
                   )}
                 </React.Fragment>
