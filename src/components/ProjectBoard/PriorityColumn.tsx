@@ -103,7 +103,7 @@ const PriorityColumn = ({
       role="region"
       aria-label={`${title} column`}
     >
-      {/* Column header */}
+      {/* Column header - completely separate from droppable area */}
       <Paper 
         sx={{
           p: 1,
@@ -119,9 +119,11 @@ const PriorityColumn = ({
         </Typography>
       </Paper>
       
-      {/* Droppable area */}
-      <Droppable droppableId={columnId}>
-        {(provided: DroppableProvided, snapshot: DroppableStateSnapshot) => (
+      {/* Separate box to contain the droppable area */}
+      <Box sx={{ display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
+        {/* Droppable area starts here - completely separate from the header */}
+        <Droppable droppableId={columnId}>
+          {(provided: DroppableProvided, snapshot: DroppableStateSnapshot) => (
           <Paper
             ref={(el) => {
               provided.innerRef(el);
@@ -140,23 +142,15 @@ const PriorityColumn = ({
                 ? '2px dashed rgba(0,0,0,0.1)' 
                 : 'none',
               display: 'flex',
-              flexDirection: 'column'
+              flexDirection: 'column',
+              // No position or z-index adjustments needed
             }}
             aria-roledescription="droppable region"
           >
-            {filteredProjects.length === 0 && !snapshot.isDraggingOver && (
-              <Typography 
-                sx={{ 
-                  textAlign: 'center', 
-                  color: 'text.secondary',
-                  py: 2 
-                }}
-              >
-                Drop projects here
-              </Typography>
-            )}
+            {/* Empty columns no longer display placeholder text */}
             
             <Stack spacing={1}>
+
               {filteredProjects.map((project, index) => (
                 <ProjectCard
                   key={project.id}
@@ -166,12 +160,13 @@ const PriorityColumn = ({
                   userRole={userRole}
                 />
               ))}
+              {/* Keep placeholder inside the stack for proper positioning */}
+              {provided.placeholder}
             </Stack>
-            
-            {provided.placeholder}
           </Paper>
-        )}
-      </Droppable>
+          )}
+        </Droppable>
+      </Box>
     </Box>
   );
 };

@@ -242,68 +242,63 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ taskItems, userRole }) => {
         <Container>
           <TaskColumnStyles>
             {Object.entries(columns).map(([columnId, column]) => (
-              <Droppable key={columnId} droppableId={columnId}>
-                {(provided: any, snapshot: any) => (
-                  <Box 
-                    sx={{ 
-                      borderRadius: 0,
-                      backgroundColor: snapshot.isDraggingOver ? '#1a1a1a' : '#000000',
-                      flex: 1,
-                      transition: 'background-color 0.2s ease',
-                      border: '1px solid #333333',
-                      borderTop: 'none',
-                      borderBottom: 'none',
+              <Box key={columnId} sx={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+                {/* Column header - completely separate from droppable area */}
+                <ColumnHeader>
+                  <ColumnTitle>{column.title}</ColumnTitle>
+                  <Typography 
+                    sx={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: 24,
+                      height: 24,
+                      borderRadius: '50%',
+                      backgroundColor: '#eeeeee',
+                      color: '#616161',
+                      fontSize: '0.75rem',
+                      fontWeight: 'bold'
                     }}
                   >
-                    <TaskList
-                      ref={provided.innerRef}
-                      {...provided.droppableProps}
-                      style={{
-                        backgroundColor: snapshot.isDraggingOver ? '#1a1a1a' : '#000000'
+                    {column.items.length}
+                  </Typography>
+                </ColumnHeader>
+
+                {/* Separate droppable area */}
+                <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                  <Droppable key={columnId} droppableId={columnId}>
+                  {(provided: any, snapshot: any) => (
+                    <Box 
+                      sx={{ 
+                        borderRadius: 0,
+                        backgroundColor: snapshot.isDraggingOver ? '#1a1a1a' : '#000000',
+                        flex: 1,
+                        transition: 'background-color 0.2s ease',
+                        border: '1px solid #333333',
+                        borderTop: 'none',
+                        borderBottom: 'none',
                       }}
                     >
-                      <ColumnHeader>
-                        <ColumnTitle>{column.title}</ColumnTitle>
-                        <Typography 
-                          sx={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            width: 24,
-                            height: 24,
-                            borderRadius: '50%',
-                            backgroundColor: '#eeeeee',
-                            color: '#616161',
-                            fontSize: '0.75rem',
-                            fontWeight: 'bold'
-                          }}
-                        >
-                          {column.items.length}
-                        </Typography>
-                      </ColumnHeader>
+                      <TaskList
+                        ref={provided.innerRef}
+                        {...provided.droppableProps}
+                        style={{
+                          backgroundColor: snapshot.isDraggingOver ? '#1a1a1a' : '#000000'
+                        }}
+                      >
                       
                       {column.items.map((item, index) => (
                         <TaskCard key={item.id} item={item} index={index} userRole={userRole} />
                       ))}
                       {provided.placeholder}
                       
-                      {column.items.length === 0 && (
-                        <Typography 
-                          sx={{ 
-                            textAlign: 'center', 
-                            color: '#9e9e9e',
-                            py: 3,
-                            fontSize: '0.85rem',
-                            fontStyle: 'italic'
-                          }}
-                        >
-                          Drag cards here
-                        </Typography>
-                      )}
+                      {/* Empty columns no longer show placeholder text */}
                     </TaskList>
                   </Box>
                 )}
-              </Droppable>
+                  </Droppable>
+                </Box>
+              </Box>
             ))}
           </TaskColumnStyles>
         </Container>
