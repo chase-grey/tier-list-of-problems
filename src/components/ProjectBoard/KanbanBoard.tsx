@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { DragDropContext, Droppable } from "@hello-pangea/dnd";
 import { Box, Typography } from "@mui/material";
-import FilterListIcon from "@mui/icons-material/FilterList";
 import { type KanbanColumns, type TaskItem } from "./KanbanData";
 import TaskCard from "./TaskCard";
 
@@ -14,7 +13,8 @@ const Container = (props: React.HTMLAttributes<HTMLDivElement>) => (
       padding: '10px 0',
       overflowX: 'auto',
       width: '100%',
-      gap: 2
+      height: '100%',
+      gap: 0
     }}
   />
 );
@@ -27,22 +27,29 @@ const TaskList = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivEl
     {...props}
     ref={ref}
     sx={{
-      minHeight: '100px',
       display: 'flex',
       flexDirection: 'column',
-      background: '#f9f9f9',
-      minWidth: '280px',
-      maxWidth: '280px',
-      borderRadius: '8px',
+      background: '#1e1e1e', // Dark background
+      width: '100%',
+      borderRadius: '0',
       padding: '12px',
-      boxShadow: 'inset 0 0 0 1px rgba(0, 0, 0, 0.05)',
-      height: 'fit-content',
-      maxHeight: 'calc(100vh - 200px)',
+      boxShadow: 'inset 0 0 0 1px rgba(255, 255, 255, 0.1)',
+      height: '100%',
       overflowY: 'auto',
       userSelect: 'none',
       WebkitUserSelect: 'none',
       MozUserSelect: 'none',
-      msUserSelect: 'none'
+      msUserSelect: 'none',
+      '&::-webkit-scrollbar': {
+        width: '8px',
+      },
+      '&::-webkit-scrollbar-track': {
+        background: '#2d2d2d',
+      },
+      '&::-webkit-scrollbar-thumb': {
+        background: '#555',
+        borderRadius: '4px',
+      },
     }}
   />
 ));
@@ -54,9 +61,9 @@ const TaskColumnStyles = (props: React.HTMLAttributes<HTMLDivElement>) => (
       margin: 0,
       display: 'flex',
       width: '100%',
-      minHeight: '70vh',
-      gap: 2,
-      padding: '8px'
+      height: 'calc(100vh - 80px)',
+      gap: 0,
+      padding: 0
     }}
   />
 );
@@ -70,7 +77,7 @@ const ColumnHeader = (props: React.HTMLAttributes<HTMLDivElement>) => (
       alignItems: 'center',
       marginBottom: '12px',
       paddingBottom: '8px',
-      borderBottom: '1px solid #eeeeee'
+      borderBottom: '1px solid #444444'
     }}
   />
 );
@@ -81,7 +88,7 @@ const ColumnTitle = (props: React.HTMLAttributes<HTMLSpanElement>) => (
     {...props}
     sx={{
       fontWeight: 600,
-      color: '#424242',
+      color: '#ffffff',
       fontSize: '14px',
       textTransform: 'uppercase',
       letterSpacing: '0.5px'
@@ -219,31 +226,14 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ taskItems, userRole }) => {
   };
 
   return (
-    <Box sx={{ width: '100%', overflowX: 'auto', padding: 2, backgroundColor: '#fafafa', borderRadius: 2 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h5" component="h1" sx={{ fontWeight: 600, color: '#424242' }}>
-          Project Kanban Board
-        </Typography>
-        <Box sx={{ display: 'flex', gap: 1 }}>
-          <Box 
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              px: 2, 
-              py: 0.75,
-              borderRadius: '20px',
-              bgcolor: 'white',
-              border: '1px solid #e0e0e0',
-              cursor: 'pointer'
-            }}
-          >
-            <Typography variant="body2" sx={{ mr: 1, color: '#616161', fontWeight: 500 }}>
-              Filter
-            </Typography>
-            <FilterListIcon fontSize="small" sx={{ color: '#9e9e9e' }} />
-          </Box>
-        </Box>
-      </Box>
+    <Box sx={{ 
+      width: '100%', 
+      height: '100%', 
+      overflowX: 'auto', 
+      backgroundColor: '#000000', // Match the background color of the app
+      borderRadius: 0,
+      position: 'relative'
+    }}>
       
       <DragDropContext 
         onDragStart={onDragStart}
@@ -256,17 +246,20 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ taskItems, userRole }) => {
                 {(provided: any, snapshot: any) => (
                   <Box 
                     sx={{ 
-                      borderRadius: 2,
-                      backgroundColor: snapshot.isDraggingOver ? '#f0f4f8' : '#f9f9f9',
-                      width: 280,
+                      borderRadius: 0,
+                      backgroundColor: snapshot.isDraggingOver ? '#1a1a1a' : '#000000',
+                      flex: 1,
                       transition: 'background-color 0.2s ease',
+                      border: '1px solid #333333',
+                      borderTop: 'none',
+                      borderBottom: 'none',
                     }}
                   >
                     <TaskList
                       ref={provided.innerRef}
                       {...provided.droppableProps}
                       style={{
-                        backgroundColor: snapshot.isDraggingOver ? '#f0f4f8' : '#f9f9f9'
+                        backgroundColor: snapshot.isDraggingOver ? '#1a1a1a' : '#000000'
                       }}
                     >
                       <ColumnHeader>

@@ -632,17 +632,20 @@ const AppContent: React.FC = () => {
               userRole={state.voterRole}
             />
           ) : state.stage === 'project-interest' ? (
-            // Toggle between original component and new kanban board based on development setting
-            isDevelopmentMode() ? (
+            // Always render KanbanBoardTest for project-interest stage
+            <Box sx={{ 
+              width: '100%', 
+              height: 'calc(100vh - 64px)', 
+              bgcolor: '#000000',
+              position: 'absolute',
+              left: 0,
+              right: 0,
+              top: 64, // Account for header height
+              bottom: 0,
+              overflow: 'hidden'
+            }}>
               <KanbanBoardTest />
-            ) : (
-              <InterestRanking
-                pitches={pitches}
-                votes={state.votes}
-                onSetInterest={handleInterestChange}
-                userRole={state.voterRole}
-              />
-            )
+            </Box>
           ) : (
             // Project priority stage with integrated ProjectPriorityApp
             <ProjectPriorityApp

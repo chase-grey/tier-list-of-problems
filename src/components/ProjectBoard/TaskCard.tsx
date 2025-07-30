@@ -55,7 +55,7 @@ const TaskCard = ({ item, index }: TaskCardProps) => {
           sx={{
             p: 2,
             mb: 2,
-            borderRadius: '8px',
+            borderRadius: '4px',
             transition: 'all 0.2s ease',
             cursor: 'grab',
             userSelect: 'none', // Prevent text selection during drag
@@ -63,15 +63,15 @@ const TaskCard = ({ item, index }: TaskCardProps) => {
             MozUserSelect: 'none', // For Firefox
             msUserSelect: 'none', // For IE/Edge
             '&:hover': {
-              backgroundColor: 'background.paper',
-              boxShadow: 2,
+              backgroundColor: '#2d2d2d',
+              boxShadow: '0 4px 8px rgba(0,0,0,0.3)',
             },
             '&:active': {
               cursor: 'grabbing',
             },
             position: 'relative',
-            backgroundColor: snapshot.isDragging ? '#f8f9fa' : 'white',
-            border: '1px solid #e0e0e0',
+            backgroundColor: snapshot.isDragging ? '#2d2d2d' : '#333333',
+            border: '1px solid #444444',
           }}
         >
           {/* Header with avatar and options */}
@@ -81,7 +81,9 @@ const TaskCard = ({ item, index }: TaskCardProps) => {
                 width: 28, 
                 height: 28, 
                 fontSize: '0.9rem',
-                bgcolor: stringToColor(item.assigned_To)
+                bgcolor: stringToColor(item.assigned_To),
+                color: '#fff',
+                border: '1px solid #555'
               }}
             >
               {avatarLetter}
@@ -96,7 +98,8 @@ const TaskCard = ({ item, index }: TaskCardProps) => {
                   mr: 1,
                   fontSize: '0.7rem',
                   fontWeight: 'medium',
-                  bgcolor: '#f0f0f0'
+                  bgcolor: '#555',
+                  color: '#ddd'
                 }}
               />
               <MoreVertIcon sx={{ fontSize: '1.2rem', color: 'text.secondary', cursor: 'pointer' }} />
@@ -112,7 +115,7 @@ const TaskCard = ({ item, index }: TaskCardProps) => {
               overflowWrap: 'break-word',
               wordBreak: 'break-word',
               mb: 1.5,
-              color: '#37474f',
+              color: '#ffffff',
               lineHeight: 1.3
             }}
           >
@@ -126,7 +129,7 @@ const TaskCard = ({ item, index }: TaskCardProps) => {
                 variant="body2" 
                 sx={{ 
                   fontSize: '0.75rem', 
-                  color: 'text.secondary',
+                  color: '#aaaaaa',
                   fontWeight: 'medium'
                 }}
               >
