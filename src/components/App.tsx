@@ -8,6 +8,7 @@ import KanbanContainer from './VotingBoard/KanbanContainer';
 import AvailabilityDialog from './AvailabilityDialog/AvailabilityDialog';
 import InterestRanking from './InterestRanking/InterestRanking';
 import ProjectPriorityApp from './ProjectBoard/ProjectPriorityApp';
+import KanbanBoardTest from './ProjectBoard/KanbanBoardTest';
 import SnackbarProvider from './SnackbarProvider';
 import { useSnackbar } from '../hooks/useSnackbar';
 import HelpDialog from './HelpDialog/HelpDialog';
@@ -35,6 +36,7 @@ const initialState: AppState = {
   stage: 'priority',
   votes: {},
   projectVotes: {},
+  projectInterestVotes: {},
 };
 
 // Reducer for state management
@@ -149,7 +151,8 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
         available: null,
         stage: 'priority',
         votes: {},
-        projectVotes: {}
+        projectVotes: {},
+        projectInterestVotes: {}
       };
     
     default:
@@ -574,6 +577,11 @@ const AppContent: React.FC = () => {
       return priorityStageComplete;
     }
     
+    // For project-interest stage, enable it whenever projects stage is enabled
+    if (stage === 'project-interest') {
+      return priorityStageComplete; // Same condition as projects stage
+    }
+    
     return false;
   };
 
@@ -623,13 +631,23 @@ const AppContent: React.FC = () => {
               onSetInterest={handleInterestChange}
               userRole={state.voterRole}
             />
+          ) : state.stage === 'project-interest' ? (
+            // Toggle between original component and new kanban board based on development setting
+            isDevelopmentMode() ? (
+              <KanbanBoardTest />
+            ) : (
+              <InterestRanking
+                pitches={pitches}
+                votes={state.votes}
+                onSetInterest={handleInterestChange}
+                userRole={state.voterRole}
+              />
+            )
           ) : (
             // Project priority stage with integrated ProjectPriorityApp
             <ProjectPriorityApp
               projects={mockProjects}
               initialVotes={state.projectVotes}
-              userName={state.voterName || ''}
-              userRole={state.voterRole || ''}
               onSaveVotes={(projectVotes) => {
                 dispatch({ type: 'SET_PROJECT_VOTES', projectVotes });
               }}
