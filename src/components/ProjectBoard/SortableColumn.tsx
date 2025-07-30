@@ -280,9 +280,9 @@ const SortableColumn = ({
             {filteredProjects.length === 0 && (
               <Box sx={{ height: '38px', width: '100%', visibility: 'hidden' }} />
             )}
-            {/* Insert drop indicator at the top if needed */}
+            {/* Insert drop indicator at the top if needed - with reduced spacing */}
             {dropIndicatorIndex === 0 && isOver && (
-              <Box sx={{ position: 'relative', height: '2px', mb: 1 }}>
+              <Box sx={{ position: 'relative', height: '2px', mb: 0.5 }}>
                 <DropIndicator isVisible={true} isAnimated={isActiveDrop} />
               </Box>
             )}
@@ -313,13 +313,13 @@ const SortableColumn = ({
                     />
                   </Box>
                   
-                  {/* Insert drop indicator after this card if needed */}
+                  {/* Insert drop indicator after this card if needed - with reduced spacing */}
                   {dropIndicatorIndex === index + 1 && isOver && (
                     <Box 
                       sx={{ 
                         position: 'relative', 
-                        height: '4px', 
-                        my: 1,
+                        height: '2px', 
+                        my: 0.5, // Reduce margin to minimize spacing disruption
                         zIndex: 5 
                       }}
                     >
