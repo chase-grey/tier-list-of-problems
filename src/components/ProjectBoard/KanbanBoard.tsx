@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { DragDropContext, Droppable } from "@hello-pangea/dnd";
-import { Box, Typography } from "@mui/material";
+import { Box } from "@mui/material";
 import { type KanbanColumns, type TaskItem } from "./KanbanData";
 import TaskCard from "./TaskCard";
 
@@ -12,15 +12,16 @@ const Container = (props: React.HTMLAttributes<HTMLDivElement>) => (
       flexDirection: 'row',
       padding: '10px 0',
       overflowX: 'auto',
+      overflowY: 'hidden', /* Hide vertical scrollbar */
       width: '100%',
       height: '100%',
-      gap: 0
+      gap: 0,
+      backgroundColor: '#000000' /* Black background */
     }}
   />
 );
 
-const TaskList = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>((
-  props, 
+const TaskList = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>((  props, 
   ref
 ) => (
   <Box
@@ -29,11 +30,11 @@ const TaskList = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivEl
     sx={{
       display: 'flex',
       flexDirection: 'column',
-      background: '#1e1e1e', // Dark background
+      background: '#222222', // Even darker grey background for columns
       width: '100%',
-      borderRadius: '0',
-      padding: '12px',
-      boxShadow: 'inset 0 0 0 1px rgba(255, 255, 255, 0.1)',
+      borderRadius: '12px', // Match column header border radius
+      padding: '10px',
+      // Removed the inset box-shadow that was creating the border/line
       height: '100%',
       overflowY: 'auto',
       userSelect: 'none',
@@ -61,23 +62,33 @@ const TaskColumnStyles = (props: React.HTMLAttributes<HTMLDivElement>) => (
       margin: 0,
       display: 'flex',
       width: '100%',
-      height: 'calc(100vh - 80px)',
-      gap: 0,
-      padding: 0
+      height: 'calc(100vh - 92px)', // Adjusted for less bottom padding
+      gap: 1, // Minimal spacing between columns
+      padding: '0 2px', // Minimal horizontal padding
+      mt: 1, // Top padding matches gap between columns
+      mb: 0.5 // Reduced bottom padding
     }}
   />
 );
 
-const ColumnHeader = (props: React.HTMLAttributes<HTMLDivElement>) => (
+// Use SX prop with Material UI Box component
+const ColumnHeader = (props: any) => (
   <Box
     {...props}
     sx={{
       display: 'flex',
-      justifyContent: 'space-between',
+      justifyContent: 'center',
       alignItems: 'center',
-      marginBottom: '12px',
-      paddingBottom: '8px',
-      borderBottom: '1px solid #444444'
+      marginBottom: '8px', // Match spacing to gap between columns
+      marginTop: '8px', // Match spacing to gap between columns
+      padding: '10px 16px', // Maintain vertical padding
+      borderRadius: '12px', // Rounded rectangle instead of full oval
+      backgroundColor: '#4A5CFF', // Default color (will be overridden)
+      color: '#FFFFFF',
+      boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+      width: '100%', // Full width to match column width
+      margin: '0 auto 8px auto', // Match spacing to gap between columns
+      ...(props.sx || {})
     }}
   />
 );
@@ -105,37 +116,45 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ taskItems, userRole }) => {
   // Create columns from task items, grouped by status
   // Create fixed column IDs to ensure consistent droppableIds
   const columnIds = {
-    toDo: 'column-to-do',
-    inProgress: 'column-in-progress',
-    testing: 'column-testing',
-    done: 'column-done'
+    unsorted: 'column-unsorted',
+    highest: 'column-highest',
+    high: 'column-high',
+    medium: 'column-medium',
+    low: 'column-low'
   };
 
   const initialColumns: KanbanColumns = useMemo(() => {
     // Create a base structure with empty columns
     const baseColumns: KanbanColumns = {
-      [columnIds.toDo]: { title: 'To-Do', items: [] },
-      [columnIds.inProgress]: { title: 'In Progress', items: [] },
-      [columnIds.testing]: { title: 'Testing', items: [] },
-      [columnIds.done]: { title: 'Done', items: [] }
+      [columnIds.unsorted]: { title: 'Unsorted', items: [], color: '#666666' },         // Lighter grey for Unsorted
+      [columnIds.highest]: { title: 'Highest Interest', items: [], color: '#6a1b9a' },  // Darkest purple
+      [columnIds.high]: { title: 'High Interest', items: [], color: '#8e24aa' },        // Dark purple
+      [columnIds.medium]: { title: 'Medium Interest', items: [], color: '#ab47bc' },     // Medium purple
+      [columnIds.low]: { title: 'Low Interest', items: [], color: '#ce93d8' }           // Light purple
     };
     
     // Add items to appropriate columns based on their status
     taskItems.forEach(item => {
       const status = item.Status.toLowerCase().replace(/\s+/g, '-');
       if (status === 'to-do') {
-        baseColumns[columnIds.toDo].items.push({...item});
+        baseColumns[columnIds.unsorted].items.push({...item});
       } else if (status === 'in-progress') {
-        baseColumns[columnIds.inProgress].items.push({...item});
+        baseColumns[columnIds.high].items.push({...item});
       } else if (status === 'testing') {
-        baseColumns[columnIds.testing].items.push({...item});
+        baseColumns[columnIds.medium].items.push({...item});
       } else if (status === 'done') {
-        baseColumns[columnIds.done].items.push({...item});
+        baseColumns[columnIds.low].items.push({...item});
       } else {
-        // Default to To-Do if status doesn't match any column
-        baseColumns[columnIds.toDo].items.push({...item});
+        // Default to Unsorted if status doesn't match any column
+        baseColumns[columnIds.unsorted].items.push({...item});
       }
     });
+    
+    // Distribute some items to highest interest for demonstration
+    if (baseColumns[columnIds.unsorted].items.length > 1) {
+      const itemsToMove = baseColumns[columnIds.unsorted].items.splice(0, 1);
+      baseColumns[columnIds.highest].items.push(...itemsToMove);
+    }
     
     return baseColumns;
   }, [taskItems]);
@@ -229,10 +248,12 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ taskItems, userRole }) => {
     <Box sx={{ 
       width: '100%', 
       height: '100%', 
-      overflowX: 'auto', 
-      backgroundColor: '#000000', // Match the background color of the app
+      overflowX: 'auto',
+      overflowY: 'hidden', // Hide vertical scrollbar 
+      backgroundColor: '#000000', // Black background
       borderRadius: 0,
-      position: 'relative'
+      position: 'relative',
+      pb: 0.5 // Reduce bottom padding
     }}>
       
       <DragDropContext 
@@ -242,26 +263,15 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ taskItems, userRole }) => {
         <Container>
           <TaskColumnStyles>
             {Object.entries(columns).map(([columnId, column]) => (
-              <Box key={columnId} sx={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
-                {/* Column header - completely separate from droppable area */}
-                <ColumnHeader>
-                  <ColumnTitle>{column.title}</ColumnTitle>
-                  <Typography 
-                    sx={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      width: 24,
-                      height: 24,
-                      borderRadius: '50%',
-                      backgroundColor: '#eeeeee',
-                      color: '#616161',
-                      fontSize: '0.75rem',
-                      fontWeight: 'bold'
-                    }}
-                  >
-                    {column.items.length}
-                  </Typography>
+              <Box key={columnId} sx={{ 
+                display: 'flex', 
+                flexDirection: 'column', 
+                flex: 1,
+                mb: 1 // Match bottom margin to gap between columns
+              }}>
+                {/* Pill-shaped column header above the column */}
+                <ColumnHeader sx={{ backgroundColor: column.color || '#4A5CFF' }}>
+                  <ColumnTitle>{column.title} ({column.items.length})</ColumnTitle>
                 </ColumnHeader>
 
                 {/* Separate droppable area */}
@@ -271,19 +281,17 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ taskItems, userRole }) => {
                     <Box 
                       sx={{ 
                         borderRadius: 0,
-                        backgroundColor: snapshot.isDraggingOver ? '#1a1a1a' : '#000000',
+                        backgroundColor: snapshot.isDraggingOver ? '#2c2c2c' : '#000000', // Black background
                         flex: 1,
                         transition: 'background-color 0.2s ease',
-                        border: '1px solid #333333',
-                        borderTop: 'none',
-                        borderBottom: 'none',
+                        // Removed all border styling to get rid of dividing lines
                       }}
                     >
                       <TaskList
                         ref={provided.innerRef}
                         {...provided.droppableProps}
                         style={{
-                          backgroundColor: snapshot.isDraggingOver ? '#1a1a1a' : '#000000'
+                          backgroundColor: snapshot.isDraggingOver ? '#2a2a2a' : '#222222' // Even darker grey for columns
                         }}
                       >
                       

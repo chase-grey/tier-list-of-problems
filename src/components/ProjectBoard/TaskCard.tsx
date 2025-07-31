@@ -55,7 +55,7 @@ const TaskCard = ({ item, index }: TaskCardProps) => {
           sx={{
             p: 2,
             mb: 2,
-            borderRadius: '4px',
+            borderRadius: '12px', // Match column and header border radius
             transition: 'all 0.2s ease',
             cursor: 'grab',
             userSelect: 'none', // Prevent text selection during drag
