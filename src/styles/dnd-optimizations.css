@@ -1,0 +1,53 @@
+/**
+ * Performance optimizations for drag and drop operations
+ */
+
+/* Apply hardware acceleration to draggable elements */
+.drag-overlay-container {
+  will-change: transform;
+  contain: layout style;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+
+/* Apply hardware acceleration to elements during drag */
+.dragging .project-card {
+  will-change: transform, opacity;
+  contain: layout style;
+}
+
+/* Optimize drop indicator animations */
+.drop-indicator {
+  contain: layout style;
+  will-change: transform, opacity;
+}
+
+/* Ensure smooth transitions */
+.dnd-transition {
+  transition-property: transform, opacity;
+  transition-timing-function: cubic-bezier(0.18, 0.67, 0.6, 1.22);
+  transition-duration: 200ms;
+}
+
+/* Add pointer styling during drag operations */
+body.dragging {
+  cursor: grabbing !important;
+}
+body.dragging * {
+  cursor: grabbing !important;
+}
+
+/* Apply reduced motion if user prefers it */
+@media (prefers-reduced-motion: reduce) {
+  .drag-overlay-container,
+  .drop-indicator,
+  .dnd-transition {
+    transition-duration: 50ms !important;
+    animation-duration: 50ms !important;
+  }
+}
+
+/* Momentum-based scrolling */
+.auto-scroll-container {
+  scroll-behavior: smooth;
+}

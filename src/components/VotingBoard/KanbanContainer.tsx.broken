@@ -1,0 +1,714 @@
+import { useState, useEffect, useRef } from 'react';
+import { Box, Alert } from '@mui/material';
+import { DragDropContext } from '@hello-pangea/dnd';
+import type { DropResult } from '@hello-pangea/dnd';
+import type { Pitch, Vote, Tier, Appetite } from '../../types/models';
+import BucketColumn from './BucketColumn';
+import ErrorBoundary from '../ErrorBoundary';
+import { isDragAndDropSupported } from '../../utils/dndDetection';
+import { initEnhancedDropDetection, cleanupEnhancedDropDetection } from '../../utils/enhancedDropDetection';
+import { calculateCardOrder, prepareItemsForOrdering } from '../../utils/cardSorting';
+
+interface KanbanContainerProps {
+  pitches: Pitch[];
+  votes: Record<string, Vote>;
+  onDragEnd: (result: DropResult) => void;
+  onAppetiteChange: (pitchId: string, appetite: Appetite | null) => void;
+  userRole?: string | null;
+  readOnly?: boolean; // Whether the component is in read-only mode (for completed stages)
+}
+
+/**
+ * Main drag-and-drop container for organizing pitches into tier buckets
+ * with feature detection and fallback for incompatible browsers
+ */
+const KanbanContainer = ({
+  pitches,
+  votes,
+  onDragEnd,
+  onAppetiteChange,
+  userRole,
+  readOnly = false
+}: KanbanContainerProps) => {
+  // Reference to the scrollable container
+  const containerRef = useRef<HTMLDivElement>(null);
+  
+  // State for drag-and-drop support detection
+  const [isDndSupported, setIsDndSupported] = useState<boolean | null>(null);
+  const [hasDndError, setHasDndError] = useState(false);
+  
+  // Generate array of tier numbers 1-4 (high, medium, low, none)
+  const tiers = [1, 2, 3, 4] as Tier[];
+  const tierLabels = ['High', 'Medium', 'Low', 'None'];
+  
+  // Show total pitch count for validation
+  const TOTAL = pitches.length;
+  
+  // We always show the unsorted column now regardless of whether there are any uncategorized pitches
+  const columnCount = 5; // Always 5 columns (4 tier columns + 1 unsorted column)
+
+  // Detect drag-and-drop support on mount and setup auto-scroll and enhanced drop detection
+  useEffect(() => {
+    // Check for drag-and-drop support
+    const supported = isDragAndDropSupported();
+    setIsDndSupported(supported);
+    
+    // Initialize enhanced drop detection
+    initEnhancedDropDetection();
+    
+    // Return cleanup function
+    return () => {
+      cleanupEnhancedDropDetection();
+    };
+  }, []);
+
+  // Fallback UI for handling pitch tier assignment without drag-and-drop
+  const renderFallbackUI = () => {
+    // Message to display based on mode
+    const message = readOnly
+      ? "You're viewing your previous priority rankings in read-only mode."
+      : "Using dropdown selection mode for tier assignment since drag-and-drop functionality isn't available in your environment.";
+      
+    return (
+      <Box sx={{ p: 2 }}>
+        <Alert 
+          severity="info" 
+          sx={{ mb: 2 }}
+        >
+          {message}
+        </Alert>
+      </Box>
+    );
+  };
+  
+  // If we've detected that drag-and-drop isn't supported or an error occurred, show fallback UI
+  if (isDndSupported === false || hasDndError) {
+    return renderFallbackUI();
+  }
+
+  // Enhanced drag end handler with better error handling and order calculation
+  const handleEnhancedDragEnd = (result: DropResult) => {
+    if (readOnly) return; // Don't process drag events in read-only mode
+    
+    // Log start of drag end processing
+    console.log('===== ENHANCED DRAG END HANDLER =====');
+    console.log('Processing enhanced drag:', { 
+      draggableId: result.draggableId,
+      source: result.source,
+      destination: result.destination,
+      type: result.type,
+      reason: result.reason
+    });
+    
+    // If there is no destination or source, pass through to original handler
+    if (!result.destination || !result.source) {
+      console.log('No valid destination or source, using original handler');
+      onDragEnd(result);
+      return;
+    }
+    
+    try {
+      // Create a copy of the result for enhancement
+      const enhancedResult = { ...result };
+      
+      // Extract details from drop result
+      const { source, destination, draggableId } = result;
+      
+      // Add sourceId and destId variables
+      const sourceId = source.droppableId;
+      const destId = destination.droppableId;
+      const destinationIndex = destination.index;
+      
+      // Log drag operation specifics
+      console.log(`Card ${draggableId} being moved from ${sourceId} to ${destId}`);
+      
+      // If dropped outside a droppable area or in the same position, do nothing
+      if (source.droppableId === destination.droppableId && 
+          source.index === destination.index) {
+        console.log('No valid destination or same position, cancelling drag operation');
+        return;
+      }
+      
+      // Case 1: Moving to a different column
+      if (sourceId !== destId) {
+        console.log(`Moving from ${sourceId} to ${destId}`);
+        
+        // If moving to unsorted column, we handle this differently
+        if (destId === 'unsorted') {
+          console.log('Moving to unsorted column');
+        } else {
+          // Extract tier from destination id
+          const tierMatch = destId.match(/tier-(\d+)/);
+          if (tierMatch && tierMatch[1]) {
+            const tier = Number(tierMatch[1]) as Tier;
+            console.log(`Enhanced ordering for tier ${tier}`);
+            
+            // Get all other pitches in this tier column for ordering
+            const sameTierPitches = pitches
+              .filter(p => p.id !== draggableId)
+              .filter(p => votes[p.id]?.tier === tier)
+              .map(p => p.id);
+            
+            // Helper function to get order values consistently
+            const getOrder = (pitchId: string): number => {
+              return votes[pitchId]?.order ?? 
+                     votes[pitchId]?.timestamp ?? 
+                     Date.now();
+            };
+            
+            // Prepare items and calculate order using utility functions
+            const { itemsBefore, itemsAfter } = prepareItemsForOrdering(sameTierPitches, destinationIndex);
+            const newOrder = calculateCardOrder(itemsBefore, itemsAfter, getOrder);
+            
+            // Store order info for use by the main onDragEnd handler
+            Object.defineProperty(enhancedResult, 'enhancedOrder', {
+              value: newOrder,
+              enumerable: true
+            });
+            Object.defineProperty(enhancedResult, 'orderType', {
+              value: 'tier',
+              enumerable: true
+            });
+            
+            console.log(`Enhanced tier order: ${newOrder} for ${draggableId} in tier ${tier}`);
+          }
+        }
+      } 
+      // Case 2: Reordering within the unsorted column
+      else if (destId === 'unsorted') {
+        console.log('Enhanced reordering within unsorted column');
+        
+        // Helper function to get order values consistently
+        const getUnsortedOrder = (pitchId: string): number => {
+          return votes[pitchId]?.unsortedOrder ?? 
+                 votes[pitchId]?.timestamp ?? 
+                 Date.now();
+        };
+        
+        // Get all other pitches in the unsorted column
+        const unsortedPitches = pitches
+          .filter(p => p.id !== draggableId)
+          .filter(p => !votes[p.id]?.tier)
+          .map(p => p.id);
+        
+        // Prepare arrays for order calculation
+        const { itemsBefore, itemsAfter } = prepareItemsForOrdering(unsortedPitches, destinationIndex);
+        const newOrder = calculateCardOrder(itemsBefore, itemsAfter, getUnsortedOrder);
+        
+        // Store the new order in the enhanced result
+        Object.defineProperty(enhancedResult, 'enhancedOrder', {
+          value: newOrder,
+          enumerable: true
+        });
+        Object.defineProperty(enhancedResult, 'orderType', {
+          value: 'unsorted',
+          enumerable: true
+        });
+        
+        console.log(`Enhanced unsorted order: ${newOrder} for ${draggableId}`);
+      }
+      // Case 3: Reordering within a tier column
+      else {
+        const tierMatch = destId.match(/tier-(\d+)/);
+        if (tierMatch && tierMatch[1]) {
+          const tier = Number(tierMatch[1]) as Tier;
+          console.log(`Enhanced reordering within tier ${tier}`);
+          
+          // Get all other pitches in this tier column
+          const sameTierPitches = pitches
+            .filter(p => p.id !== draggableId)
+            .filter(p => votes[p.id]?.tier === tier)
+            .map(p => p.id);
+          
+          // Helper function to get order values consistently
+          const getOrder = (pitchId: string): number => {
+            return votes[pitchId]?.order ?? 
+                   votes[pitchId]?.timestamp ?? 
+                   Date.now();
+          };
+          
+          // Prepare items and calculate order
+          const { itemsBefore, itemsAfter } = prepareItemsForOrdering(sameTierPitches, destinationIndex);
+          const newOrder = calculateCardOrder(itemsBefore, itemsAfter, getOrder);
+          
+          // Store the new order in the enhanced result
+          Object.defineProperty(enhancedResult, 'enhancedOrder', {
+            value: newOrder,
+            enumerable: true
+          });
+          Object.defineProperty(enhancedResult, 'orderType', {
+            value: 'tier',
+            enumerable: true
+          });
+          
+          console.log(`Enhanced tier order: ${newOrder} for ${draggableId} in tier ${tier}`);
+        }
+      }
+      
+      // Call the original onDragEnd with enhanced result
+      onDragEnd(enhancedResult);
+    } catch (error) {
+      console.error('Error in enhanced drag end handler:', error);
+      // Fall back to original handler if our enhancement fails
+      onDragEnd(result);
+    }
+  };
+
+  // Return the UI for the drag and drop board
+  return (
+    <ErrorBoundary
+      fallback={renderFallbackUI()}
+      onReset={() => setHasDndError(false)}
+    >
+      <DragDropContext onDragEnd={readOnly ? () => {} : handleEnhancedDragEnd}>
+        <Box 
+          ref={containerRef}
+          sx={{ 
+            display: 'flex', 
+            flexWrap: { xs: 'wrap', lg: 'nowrap' }, // Wrap on smaller screens, no wrap on large screens
+            justifyContent: 'space-between',
+            p: 1,
+            pb: 2, // Reduced bottom padding
+            height: { xs: 'auto', lg: 'calc(100vh - 100px)' }, // More vertical space on large screens
+            maxWidth: '100%', // Ensure it doesn't exceed viewport width
+            // Set overflow handling for the main container (parent of droppable areas)
+            overflowX: { xs: 'visible', lg: 'auto' }, // Only allow horizontal scroll on large screens
+            overflowY: 'auto', // Always allow vertical scroll for the container
+
+            '&::-webkit-scrollbar': {
+              height: '4px',
+              width: '4px',
+            },
+            '&::-webkit-scrollbar-thumb': {
+              backgroundColor: 'rgba(255, 255, 255, 0.2)',
+              borderRadius: '10px',
+            },
+            '&::-webkit-scrollbar-track': {
+              backgroundColor: 'rgba(0, 0, 0, 0.1)',
+            },
+          }}
+          aria-label={`Kanban board with ${TOTAL} pitches to categorize`}
+        >
+          {/* Unsorted column - always visible */}
+          <BucketColumn
+            tier={null}
+            pitches={pitches}
+            votes={votes}
+            onAppetiteChange={readOnly ? () => {} : onAppetiteChange}
+            columnCount={columnCount} 
+            userRole={userRole}
+            readOnly={readOnly}
+          />
+          
+          {/* Tier columns 1-4 */}
+          {tiers.map((tier, index) => (
+            <BucketColumn
+              key={`tier-${tier}`}
+              tier={tier}
+              tierLabel={tierLabels[index]}
+              pitches={pitches}
+              votes={votes}
+              onAppetiteChange={readOnly ? () => {} : onAppetiteChange}
+              columnCount={columnCount}
+              userRole={userRole}
+              readOnly={readOnly}
+            />
+          ))}
+        </Box>
+      </DragDropContext>
+    </ErrorBoundary>
+  );
+};
+
+export default KanbanContainer;
+
+// This duplicate component definition has been removed
+  // Reference to the scrollable container
+  const containerRef = useRef<HTMLDivElement>(null);
+  // State for drag-and-drop support detection
+  const [isDndSupported, setIsDndSupported] = useState<boolean | null>(null);
+  const [hasDndError, setHasDndError] = useState(false);
+  
+  // Generate array of tier numbers 1-4 (high, medium, low, none)
+  const tiers = [1, 2, 3, 4] as Tier[];
+  const tierLabels = ['High', 'Medium', 'Low', 'None'];
+  
+  // Show total pitch count for validation
+  const TOTAL = pitches.length;
+  
+  // We always show the unsorted column now regardless of whether there are any uncategorized pitches
+  const columnCount = 5; // Always 5 columns (4 tier columns + 1 unsorted column)
+
+  // Detect drag-and-drop support on mount and setup auto-scroll and enhanced drop detection
+  useEffect(() => {
+    // Check for drag-and-drop support
+    const supported = isDragAndDropSupported();
+    setIsDndSupported(supported);
+    
+    // Initialize enhanced drop detection
+    initEnhancedDropDetection();
+    
+    // Return cleanup function
+    return () => {
+      cleanupEnhancedDropDetection();
+    };
+  }, []);
+  
+  // Fallback UI for handling pitch tier assignment without drag-and-drop
+  const renderFallbackUI = () => {
+    // Message to display based on mode
+    const message = readOnly
+      ? "You're viewing your previous priority rankings in read-only mode."
+      : "Using dropdown selection mode for tier assignment since drag-and-drop functionality isn't available in your environment.";
+      
+    return (
+    <Box sx={{ p: 2 }}>
+      <Alert 
+        severity="info" 
+        sx={{ mb: 2 }}
+      >
+        {message}
+      </Alert>
+      
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, justifyContent: 'space-between' }}>
+        {pitches.map((pitch) => (
+          <Box 
+            key={pitch.id} 
+            sx={{ 
+              width: { xs: '100%', sm: 'calc(50% - 16px)', md: 'calc(33.33% - 16px)', lg: 'calc(25% - 16px)' },
+              p: 2, 
+              bgcolor: 'background.paper',
+              borderRadius: 1,
+              boxShadow: 1,
+              mb: 2 
+            }}
+          >
+            <Box sx={{ mb: 2 }}>
+              <strong>{pitch.title}</strong>
+              <div>{pitch.details.problem}</div>
+            </Box>
+            
+            <FormControl fullWidth size="small" sx={{ mb: 1 }}>
+              <InputLabel>Tier</InputLabel>
+              <Select
+                value={votes[pitch.id]?.tier || ''}
+                label="Tier"
+                onChange={(e) => {
+                  const tier = e.target.value ? Number(e.target.value) as Tier : undefined;
+                  const result = {
+                    draggableId: pitch.id,
+                    destination: tier ? { droppableId: `tier-${tier}` } : null
+                  } as DropResult;
+                  onDragEnd(result);
+                }}
+                disabled={readOnly}
+              >
+                <MenuItem value="">
+                  <em>Unsorted</em>
+                </MenuItem>
+                {tiers.map(tier => {
+                  // Get descriptive priority name for each tier
+                  const priorityName = (() => {
+                    switch (tier) {
+                      case 1: return 'Highest Priority';
+                      case 2: return 'Very High Priority';
+                      case 3: return 'High Priority';
+                      case 4: return 'Moderate Priority';
+                      case 5: return 'Low-Moderate Priority';
+                      case 6: return 'Low Priority';
+                      case 7: return 'Very Low Priority';
+                      case 8: return 'Not a Priority';
+                      default: return `Tier ${tier}`;
+                    }
+                  })();
+                  
+                  return (
+                    <MenuItem key={tier} value={tier === null ? '' : tier}>
+                      {priorityName}
+                    </MenuItem>
+                  );
+                })}
+              </Select>
+            </FormControl>
+            
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              {(['S', 'M', 'L'] as Appetite[]).map(appetite => (
+                <Box 
+                  key={appetite}
+                  component="button"
+                  onClick={() => {
+                    // Toggle appetite only if not in read-only mode
+                    if (!readOnly) {
+                      const currentAppetite = votes[pitch.id]?.appetite;
+                      const newAppetite = currentAppetite === appetite ? null : appetite;
+                      onAppetiteChange(pitch.id, newAppetite);
+                    }
+                  }}
+                  disabled={readOnly}
+                  sx={{
+                    width: 30,
+                    height: 30,
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    border: 'none',
+                    cursor: readOnly ? 'default' : 'pointer',
+                    bgcolor: votes[pitch.id]?.appetite === appetite ? 
+                      appetite === 'S' ? '#2ecc71' : 
+                      appetite === 'M' ? '#f39c12' : 
+                      '#e74c3c' : 
+                      'rgba(255,255,255,0.1)',
+                    color: '#fff',
+                    '&:hover': {
+                      opacity: 0.9
+                    }
+                  }}
+                >
+                  {appetite}
+                </Box>
+              ))}
+            </Box>
+          </Box>
+        ))}
+      </Box>
+    </Box>
+  );
+  };
+
+  // We set hasDndError directly in the onReset prop of ErrorBoundary
+
+  // If we've detected that drag-and-drop isn't supported or an error occurred, show fallback UI
+  if (isDndSupported === false || hasDndError) {
+    return renderFallbackUI();
+  }
+
+  // Enhanced onDragEnd handler that ensures proper card ordering
+  const handleEnhancedDragEnd = (result: DropResult) => {
+    if (readOnly) return; // Don't process drag events in read-only mode
+    
+    // Log start of drag end processing
+    console.log('===== ENHANCED DRAG END HANDLER =====');
+    console.log('Processing enhanced drag:', { 
+      draggableId: result.draggableId,
+      source: result.source,
+      destination: result.destination,
+      type: result.type,
+      reason: result.reason
+    });
+
+    // If there is no destination or source, pass through to original handler
+    if (!result.destination || !result.source) {
+      console.log('No valid destination or source, using original handler');
+      onDragEnd(result);
+      return;
+    }
+    
+    try {
+      // Create a copy of the result for enhancement
+      const enhancedResult = { ...result };
+      
+      // Extract details from drop result
+      const { source, destination, draggableId } = result;
+      
+      // Log drag operation specifics
+      console.log(`Card ${draggableId} being moved from ${source.droppableId}`);
+      console.log(`Destination: ${destination?.droppableId || 'none'}`);
+      console.log('Number of pitches:', pitches.length);
+      
+      // If dropped outside a droppable area or in the same position, do nothing
+      if (!destination || 
+          (source.droppableId === destination.droppableId && 
+          source.index === destination.index)) {
+        console.log('No valid destination or same position, cancelling drag operation');
+    const destinationIndex = destination.index;
+    
+    // Case 1: Moving to a different column
+    if (sourceId !== destId) {
+      console.log(`Moving from ${sourceId} to ${destId}`);
+      
+      // If moving to unsorted column, we handle this differently
+      if (destId === 'unsorted') {
+        // This will be handled by the onDragEnd prop
+        console.log('Moving to unsorted column');
+      } else {
+        // Extract tier from destination id
+        const tierMatch = destId.match(/tier-(\d+)/);
+        if (tierMatch && tierMatch[1]) {
+          const tier = Number(tierMatch[1]) as Tier;
+          console.log(`Enhanced ordering for tier ${tier}`);
+          
+          // Get all other pitches in this tier column for ordering
+          const sameTierPitches = pitches
+            .filter(p => p.id !== draggableId)
+            .filter(p => votes[p.id]?.tier === tier)
+            .map(p => p.id);
+          
+          // Helper function to get order values consistently
+          const getOrder = (pitchId: string): number => {
+            return votes[pitchId]?.order ?? 
+                   votes[pitchId]?.timestamp ?? 
+                   Date.now();
+          };
+          
+          // Prepare items and calculate order using utility functions
+          const { itemsBefore, itemsAfter } = prepareItemsForOrdering(sameTierPitches, destinationIndex);
+          const newOrder = calculateCardOrder(itemsBefore, itemsAfter, getOrder);
+          
+          // Store order info for use by the main onDragEnd handler using Object.defineProperty
+          // This avoids TypeScript errors with extending the DropResult type
+          Object.defineProperty(enhancedResult, 'enhancedOrder', {
+            value: newOrder,
+            enumerable: true
+          });
+          Object.defineProperty(enhancedResult, 'orderType', {
+            value: 'tier',
+            enumerable: true
+          });
+          
+          console.log(`Enhanced tier order: ${newOrder} for ${draggableId} in tier ${tier}`);
+        }
+      }
+    } 
+    // Case 2: Reordering within the unsorted column
+    else if (destId === 'unsorted') {
+      console.log('Enhanced reordering within unsorted column');
+      
+      // Helper function to get order values consistently
+      const getUnsortedOrder = (pitchId: string): number => {
+        return votes[pitchId]?.unsortedOrder ?? 
+               votes[pitchId]?.timestamp ?? 
+               Date.now();
+      };
+      
+      // Get all other pitches in the unsorted column
+      const unsortedPitches = pitches
+        .filter(p => p.id !== draggableId)
+        .filter(p => !votes[p.id]?.tier)
+        .map(p => p.id);
+      
+      // Prepare arrays for order calculation
+      const { itemsBefore, itemsAfter } = prepareItemsForOrdering(unsortedPitches, destinationIndex);
+      const newOrder = calculateCardOrder(itemsBefore, itemsAfter, getUnsortedOrder);
+      
+      // Store the new order in the enhanced result
+      Object.defineProperty(enhancedResult, 'enhancedOrder', {
+        value: newOrder,
+        enumerable: true
+      });
+      Object.defineProperty(enhancedResult, 'orderType', {
+        value: 'unsorted',
+        enumerable: true
+      });
+      
+      console.log(`Enhanced unsorted order: ${newOrder} for ${draggableId}`);
+    }
+    // Case 3: Reordering within a tier column
+    else {
+      const tierMatch = destId.match(/tier-(\d+)/);
+      if (tierMatch && tierMatch[1]) {
+        const tier = Number(tierMatch[1]) as Tier;
+        console.log(`Enhanced reordering within tier ${tier}`);
+        
+        // Get all other pitches in this tier column
+        const sameTierPitches = pitches
+          .filter(p => p.id !== draggableId)
+          .filter(p => votes[p.id]?.tier === tier)
+          .map(p => p.id);
+        
+        // Helper function to get order values consistently
+        const getOrder = (pitchId: string): number => {
+          return votes[pitchId]?.order ?? 
+                 votes[pitchId]?.timestamp ?? 
+                 Date.now();
+        };
+        
+        // Prepare items and calculate order using utility functions
+        const { itemsBefore, itemsAfter } = prepareItemsForOrdering(sameTierPitches, destinationIndex);
+        const newOrder = calculateCardOrder(itemsBefore, itemsAfter, getOrder);
+        
+        // Store the new order in the enhanced result
+        Object.defineProperty(enhancedResult, 'enhancedOrder', {
+          value: newOrder,
+          enumerable: true
+        });
+        Object.defineProperty(enhancedResult, 'orderType', {
+          value: 'tier',
+          enumerable: true
+        });
+        
+        console.log(`Enhanced tier order: ${newOrder} for ${draggableId} in tier ${tier}`);
+      }
+    }
+    
+    // Call the original onDragEnd with enhanced result
+    onDragEnd(enhancedResult);
+  } catch (error) {
+    console.error('Error in enhanced drag end handler:', error);
+    // Fall back to original handler if our enhancement fails
+    onDragEnd(result);
+  }
+        onReset={() => setHasDndError(false)}
+      >
+        <DragDropContext onDragEnd={readOnly ? () => {} : handleEnhancedDragEnd}>
+          <Box 
+            ref={containerRef}
+            sx={{ 
+              display: 'flex', 
+              flexWrap: { xs: 'wrap', lg: 'nowrap' }, // Wrap on smaller screens, no wrap on large screens
+              justifyContent: 'space-between',
+              p: 1,
+              pb: 2, // Reduced bottom padding
+              height: { xs: 'auto', lg: 'calc(100vh - 100px)' }, // More vertical space on large screens
+              maxWidth: '100%', // Ensure it doesn't exceed viewport width
+              // Set overflow handling for the main container (parent of droppable areas)
+              overflowX: { xs: 'visible', lg: 'auto' }, // Only allow horizontal scroll on large screens
+              overflowY: 'auto', // Always allow vertical scroll for the container
+
+              '&::-webkit-scrollbar': {
+                height: '4px',
+                width: '4px',
+              },
+              '&::-webkit-scrollbar-thumb': {
+                backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                borderRadius: '10px',
+              },
+              '&::-webkit-scrollbar-track': {
+                backgroundColor: 'rgba(0, 0, 0, 0.1)',
+              },
+            }}
+            aria-label={`Kanban board with ${TOTAL} pitches to categorize`}
+          >
+            {/* Unsorted column - always visible so users can move cards back to unranked state */}
+            <BucketColumn
+              tier={null}
+              pitches={pitches}
+              votes={votes}
+              onAppetiteChange={readOnly ? () => {} : onAppetiteChange}
+              columnCount={columnCount} // Always 9 columns
+              userRole={userRole}
+              readOnly={readOnly}
+            />
+            
+            {/* Tier columns 1-4 */}
+            {tiers.map((tier, index) => (
+              <BucketColumn
+                key={`tier-${tier}`}
+                tier={tier}
+                tierLabel={tierLabels[index]}
+                pitches={pitches}
+                votes={votes}
+                onAppetiteChange={readOnly ? () => {} : onAppetiteChange}
+                columnCount={columnCount} // Now 5 columns
+                userRole={userRole}
+                readOnly={readOnly}
+              />
+            ))}
+          </Box>
+        </DragDropContext>
+      </ErrorBoundary>
+    </>
+  );
+};
+
+export default KanbanContainer;

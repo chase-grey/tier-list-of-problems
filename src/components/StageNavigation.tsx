@@ -10,7 +10,10 @@ import {
 } from '@mui/icons-material';
 
 // Define the available application stages
-export type AppStage = 'priority' | 'interest' | 'projects';
+export type AppStage = 'priority' | 'interest' | 'project-interest' | 'projects';
+
+// Define the user roles
+export type UserRole = 'developer' | 'qm' | 'uxd' | 'dev-tl' | 'qm-tl' | 'tltl' | 'customer' | 'other';
 
 // Styled button for the navigation
 const NavButton = styled(Button)(({ theme }) => ({
@@ -40,6 +43,11 @@ interface StageNavigationProps {
   // Project counters
   totalProjectCount?: number;
   rankedProjectCount?: number;
+  // User role and availability info
+  voterRole: string | null;
+  available: boolean | null;
+  // Project interest counters
+  projectInterestCount?: number;
 }
 
 /**
@@ -57,10 +65,24 @@ const StageNavigation: React.FC<StageNavigationProps> = ({
   rankCount,
   interestCount,
   totalProjectCount = 8, // Default value if not provided
-  rankedProjectCount = 0
+  rankedProjectCount = 0,
+  voterRole,
+  available,
+  projectInterestCount = 0
 }) => {
-  // Define all stages with their labels, icons, and progress counters
-  const stages = [
+  // Determine whether user can help with projects next quarter
+  const canHelpNextQuarter = available === true;
+  
+  // Determine if user is a developer (needs Problem Interest)
+  const isDeveloper = voterRole === 'developer';
+  
+  // Determine which roles have access to Project Interest section
+  const canShowProjectInterest = (
+    (voterRole === 'qm' || voterRole === 'dev-tl') && canHelpNextQuarter
+  ) || (isDeveloper && canHelpNextQuarter);
+
+  // Define all potential stages with their labels, icons, and progress counters
+  const allStages = [
     {
       value: 'priority' as AppStage,
       label: 'Rank Problems',
@@ -70,17 +92,21 @@ const StageNavigation: React.FC<StageNavigationProps> = ({
         appetite: appetiteCount,
         rank: rankCount,
         total: totalPitchCount
-      }
+      },
+      // Always show this stage for all users
+      show: true
     },
     {
       value: 'interest' as AppStage,
-      label: 'Rank Interest',
+      label: 'Problem Interest',
       icon: <RankInterestIcon fontSize="small" />,
       tooltip: 'Indicate your interest level in problems',
       progressCounts: {
         interest: interestCount,
         total: totalPitchCount
-      }
+      },
+      // Only show for developers who can help next quarter
+      show: isDeveloper && canHelpNextQuarter
     },
     {
       value: 'projects' as AppStage,
@@ -90,14 +116,43 @@ const StageNavigation: React.FC<StageNavigationProps> = ({
       progressCounts: {
         ranked: rankedProjectCount,
         total: totalProjectCount
-      }
+      },
+      // Always show this stage for all users
+      show: true
+    },
+    {
+      value: 'project-interest' as AppStage,
+      label: 'Project Interest',
+      icon: <RankInterestIcon fontSize="small" />,
+      tooltip: 'Indicate your interest level in projects',
+      progressCounts: {
+        ranked: projectInterestCount,
+        total: totalProjectCount
+      },
+      // Only show for certain roles who can help next quarter
+      show: canShowProjectInterest
     }
   ];
+  
+  // Filter stages based on user role and availability
+  const stages = allStages.filter(stage => stage.show);
 
-  // Determine where to show the Finish button
-  // Show after Interest if in priority/interest stage, or after Projects if in projects stage
-  // Note: The button can still be active in any stage if requirements are met
-  const showFinishAfterInterest = activeStage !== 'projects';
+  // Determine where to show the Finish button based on stage and available sections
+  const hasProblemInterest = allStages.some(stage => stage.value === 'interest' && stage.show);
+  const hasProjectInterestStage = allStages.some(stage => stage.value === 'project-interest' && stage.show);
+  
+  // In Stage 1 (Priority/Interest), show finish button after Problem Interest for devs with canHelp=true
+  // otherwise show it after Rank Problems
+  // In Stage 2 (Projects), show finish button after Project Interest for roles with canHelp=true
+  // otherwise show it after Rank Projects
+  
+  // We're in Stage 1 when we're not in the Projects stage
+  const inStage1 = activeStage !== 'projects' && activeStage !== 'project-interest';
+  
+  // Determine where to show the finish button
+  const finishButtonPosition = inStage1 ? 
+    (hasProblemInterest ? 1 : 0) : // After Problem Interest or Rank Problems in Stage 1
+    (hasProjectInterestStage ? stages.length - 1 : stages.findIndex(s => s.value === 'projects')); // After Project Interest or Projects in Stage 2
   
   return (
     <Box sx={{ 
@@ -130,7 +185,9 @@ const StageNavigation: React.FC<StageNavigationProps> = ({
           <React.Fragment key={stage.value}>
             <Tooltip title={
               !canAccess 
-                ? "Complete previous steps first" 
+                ? (inStage1 && (stage.value === 'projects' || stage.value === 'project-interest'))
+                  ? "This section will be available when Stage 2 voting begins"
+                  : "Complete previous steps first" 
                 : (isCompleted && !isActive)
                   ? "Return to this stage"
                   : isActive
@@ -239,8 +296,8 @@ const StageNavigation: React.FC<StageNavigationProps> = ({
               </span>
             </Tooltip>
             
-            {/* Add Finish button after Interest if in priority/interest stage */}
-            {index === 1 && showFinishAfterInterest && (
+            {/* Add Finish button at the appropriate position based on stage and user role */}
+            {inStage1 && index === finishButtonPosition && (
               <Tooltip title={!isExportEnabled ? "Complete required fields first" : "Finish and export results"}>
                 <span>
                   <NavButton
@@ -266,7 +323,7 @@ const StageNavigation: React.FC<StageNavigationProps> = ({
       })}
       
       {/* Add Finish button at the end when in Projects stage */}
-      {!showFinishAfterInterest && (
+      {!inStage1 && finishButtonPosition === stages.length - 1 && (
         <Tooltip title={!isExportEnabled ? "Complete required fields first" : "Finish and export results"}>
           <span>
             <NavButton

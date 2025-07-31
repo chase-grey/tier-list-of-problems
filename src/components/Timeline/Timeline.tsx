@@ -8,7 +8,7 @@ import {
 } from '@mui/icons-material';
 
 // Define the available application stages
-export type AppStage = 'priority' | 'interest' | 'projects';
+export type AppStage = 'priority' | 'interest' | 'project-interest' | 'projects';
 
 // Styled components for customized timeline
 const CustomStepper = styled(Stepper)(({ theme }) => ({
@@ -73,7 +73,7 @@ export const Timeline: React.FC<TimelineProps> = ({
     },
     {
       value: 'interest',
-      label: 'Rank Interest',
+      label: 'Problem Interest',
       icon: <RankInterestIcon />,
       tooltip: 'Indicate your interest level in problems'
     },
@@ -82,6 +82,12 @@ export const Timeline: React.FC<TimelineProps> = ({
       label: 'Rank Projects',
       icon: <RankProjectsIcon />,
       tooltip: 'Prioritize projects based on previous rankings'
+    },
+    {
+      value: 'project-interest',
+      label: 'Project Interest',
+      icon: <RankInterestIcon />,
+      tooltip: 'Indicate your interest level in projects'
     }
   ];
 

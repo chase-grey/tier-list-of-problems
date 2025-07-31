@@ -17,6 +17,8 @@ import type { AppStage } from '../StageNavigation';
 
 interface TopBarProps {
   voterName: string | null;
+  voterRole: string | null;
+  available: boolean | null;
   totalPitchCount: number;
   appetiteCount: number;
   rankCount: number;
@@ -32,6 +34,8 @@ interface TopBarProps {
   // Project counters
   totalProjectCount?: number;
   rankedProjectCount?: number;
+  // Project interest counts
+  projectInterestCount?: number;
 }
 
 /**
@@ -39,6 +43,8 @@ interface TopBarProps {
  */
 export const TopBar = ({ 
   voterName, 
+  voterRole,
+  available,
   totalPitchCount, 
   appetiteCount, 
   rankCount, 
@@ -52,7 +58,8 @@ export const TopBar = ({
   canAccessStage,
   completedStages,
   totalProjectCount = 8, // Default value
-  rankedProjectCount = 0
+  rankedProjectCount = 0,
+  projectInterestCount = 0
 }: TopBarProps) => {
   return (
     <AppBar position="sticky">
@@ -113,6 +120,9 @@ export const TopBar = ({
           interestCount={interestCount}
           totalProjectCount={totalProjectCount}
           rankedProjectCount={rankedProjectCount}
+          voterRole={voterRole}
+          available={available}
+          projectInterestCount={projectInterestCount}
         />
       </Toolbar>
     </AppBar>

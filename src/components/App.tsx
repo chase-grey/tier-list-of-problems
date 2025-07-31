@@ -2,6 +2,12 @@ import React, { useEffect, useReducer, memo, useState } from 'react';
 import { ThemeProvider, CssBaseline, Box } from '@mui/material';
 import { darkTheme } from '../theme';
 import { NameGate } from './NameGate/NameGate';
+
+// App-wide configuration
+export const APP_CONFIG = {
+  // Set to 'problems' for Stage 1 (Problems) or 'projects' for Stage 2 (Projects)
+  CURRENT_APP_STAGE: 'problems', // Change this to 'projects' when releasing Stage 2
+};
 import { TopBar } from './TopBar/TopBar';
 import type { AppStage } from './Timeline/Timeline';
 import KanbanContainer from './VotingBoard/KanbanContainer';
@@ -241,6 +247,9 @@ const AppContent: React.FC = () => {
   const appetiteCount = Object.values(state.votes).filter(v => v.appetite !== undefined).length;
   const rankCount = Object.values(state.votes).filter(v => v.tier !== null).length;
   
+  // Project-related counters
+  const totalProjectCount = mockProjects.length;
+  
   // Check if the user has a role that can access interest ranking
   // Only QMs, devs, QM TLs, and dev TLs who are available for next quarter can see interest section
   const canAccessInterestStage = state.voterRole !== null && 
@@ -260,13 +269,55 @@ const AppContent: React.FC = () => {
   // Count a problem as having interest if it either has an interestLevel OR it has a tier set (i.e., not in Unsorted)
   const interestCount = needsInterestRanking ? 
     Object.values(state.votes).filter(v => v.interestLevel !== undefined || v.tier !== null && v.tier !== undefined).length : 0;
-  const interestStageComplete = !needsInterestRanking || interestCount >= minimumRequired;
+  // The minimum interest count needed to complete the interest stage
+  const hasMinimumInterestCount = interestCount >= minimumRequired;
   
-  // Check if export is enabled based on role and stage
-  const isExportEnabled = priorityStageComplete && 
-    // For users who don't need to rank interest, enable export immediately
-    // For users who need to rank interest, they need 50% completion and must visit the interest page
-    (!needsInterestRanking || (needsInterestRanking && state.stage === 'interest' && interestStageComplete));
+  // Identify user role for finish button activation rules
+  const isDeveloper = state.voterRole === 'developer';
+  const isQM = state.voterRole === 'qm';
+  const isDevTL = state.voterRole === 'dev-tl';
+  const canHelpNextQuarter = state.available === true;
+  
+  // Count project votes
+  const projectVoteCount = Object.keys(state.projectVotes).length;
+  const projectInterestCount = Object.keys(state.projectInterestVotes || {}).length;
+  const projectThreshold = Math.ceil(totalProjectCount / 2);
+  
+  // Check if Finish button should be enabled based on user role, stage, and progress
+  let isExportEnabled = false;
+  
+  // Stage 1: Problems
+  if (state.stage === 'priority' || state.stage === 'interest') {
+    // For devs who can help out next quarter, need to complete Problem Interest
+    if (isDeveloper && canHelpNextQuarter) {
+      // Need half of problems ranked and half of interest set
+      isExportEnabled = rankCount >= Math.ceil(TOTAL / 2) && 
+                        appetiteCount >= Math.ceil(TOTAL / 2) && 
+                        interestCount >= Math.ceil(TOTAL / 2);
+    } else {
+      // For all other users, just need half of problems ranked and half appetites set
+      isExportEnabled = rankCount >= Math.ceil(TOTAL / 2) && 
+                        appetiteCount >= Math.ceil(TOTAL / 2);
+    }
+  }
+  
+  // Stage 2: Projects
+  else if (state.stage === 'projects' || state.stage === 'project-interest') {
+    // For QMs, Dev TLs, and devs who can help out with projects next quarter
+    if ((isDeveloper || isQM || isDevTL) && canHelpNextQuarter) {
+      if (state.stage === 'project-interest') {
+        // Need half of projects ranked and half of project interest set
+        isExportEnabled = projectVoteCount >= projectThreshold && 
+                          projectInterestCount >= projectThreshold;
+      } else {
+        // In projects stage, need just project rankings
+        isExportEnabled = projectVoteCount >= projectThreshold;
+      }
+    } else {
+      // For all other users, just need half of projects ranked
+      isExportEnabled = projectVoteCount >= projectThreshold;
+    }
+  }
   
   // Handle name and role submission
   const handleNameSubmit = (name: string, role: string) => {
@@ -562,24 +613,58 @@ const AppContent: React.FC = () => {
     completedStages.push('interest');
   }
   
-  // Determine if a user can access a particular stage
+  // Determine if a user can access a particular stage based on role and progress
   const canAccessStage = (stage: AppStage): boolean => {
     // Always can access priority stage
     if (stage === 'priority') return true;
     
-    // For interest stage, must be a contributor with availability and have completed priority stage
+    const isDeveloper = state.voterRole === 'developer';
+    const isQM = state.voterRole === 'qm';
+    const isDevTL = state.voterRole === 'dev-tl';
+    const canHelpNextQuarter = state.available === true;
+    
+    // For Stage 1 progression:
+    // Priority -> Problem Interest -> Finish
+    // Priority -> Finish
+    
+    // For Stage 2 progression:
+    // Projects -> Project Interest -> Finish
+    // Projects -> Finish
+    
+    // For interest stage (Problem Interest), must be a developer who can help with projects next quarter
     if (stage === 'interest') {
-      return canAccessInterestStage && priorityStageComplete;
+      const hasEnoughProgress = appetiteCount >= Math.ceil(TOTAL / 2) && rankCount >= Math.ceil(TOTAL / 2);
+      return isDeveloper && canHelpNextQuarter && hasEnoughProgress;
     }
     
-    // For projects stage, user must have completed priority stage
+    // For projects stage (Stage 2), access depends on app configuration
     if (stage === 'projects') {
-      return priorityStageComplete;
+      // Only allow access if the app is configured for Stage 2
+      if (APP_CONFIG.CURRENT_APP_STAGE !== 'projects') {
+        return false;
+      }
+      
+      // In Stage 2, access is always granted to the projects stage
+      return true;
     }
     
-    // For project-interest stage, enable it whenever projects stage is enabled
+    // For project-interest stage (only available in Stage 2)
     if (stage === 'project-interest') {
-      return priorityStageComplete; // Same condition as projects stage
+      // Only allow access if the app is configured for Stage 2
+      if (APP_CONFIG.CURRENT_APP_STAGE !== 'projects') {
+        return false;
+      }
+      
+      // Only QMs, Dev TLs and devs who can help next quarter can access this stage
+      const canAccessProjectInterest = canHelpNextQuarter && 
+        (isDeveloper || isQM || isDevTL);
+      
+      // Additionally, need to have ranked half of the projects to access project interest
+      const projectVoteCount = Object.keys(state.projectVotes).length;
+      const projectMinimum = Math.ceil((totalProjectCount || 8) / 2); // Default to 8 if totalProjectCount not provided
+      const hasRankedEnoughProjects = projectVoteCount >= projectMinimum;
+      
+      return canAccessProjectInterest && hasRankedEnoughProjects;
     }
     
     return false;
@@ -600,6 +685,8 @@ const AppContent: React.FC = () => {
       <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
         <TopBar 
           voterName={state.voterName}
+          voterRole={state.voterRole}
+          available={state.available}
           totalPitchCount={TOTAL}
           appetiteCount={appetiteCount}
           rankCount={rankCount}
@@ -612,6 +699,7 @@ const AppContent: React.FC = () => {
           onStageChange={handleStageChange}
           canAccessStage={canAccessStage}
           completedStages={completedStages}
+          projectInterestCount={0} // Add project interest count tracking when implemented
         />
         
         <Box component="main" sx={{ flexGrow: 1, overflow: 'hidden', p: 1 }}>
@@ -696,6 +784,8 @@ const AppContent: React.FC = () => {
             <DevAutoPopulate 
               onPopulate={handleAutoPopulate}
               pitchIds={pitches.map(pitch => pitch.id)}
+              onStageChange={handleStageChange}
+              currentStage={state.stage}
             />
           )}
         </Box>

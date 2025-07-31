@@ -77,10 +77,19 @@ export interface AppState {
   voterName: string | null;
   voterRole: string | null;
   available: boolean | null; // Whether the user is available next quarter
-  stage: 'priority' | 'interest' | 'projects'; // Current stage of voting
+  stage: 'priority' | 'interest' | 'project-interest' | 'projects'; // Current stage of voting
   votes: Record<string, Vote>;
   projectVotes: Record<string, any>; // For project voting data
+  projectInterestVotes: Record<string, ProjectInterestVote>; // For project interest voting data
 }
+
+export interface ProjectInterestVote {
+  projectId: string;
+  interestLevel?: ProjectInterestLevel;
+  timestamp?: number;
+}
+
+export type ProjectInterestLevel = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | null;
 
 export type AppAction =
   | { type: 'SET_NAME'; name: string; role: string }
@@ -89,10 +98,13 @@ export type AppAction =
   | { type: 'UNSET_TIER'; id: string; timestamp?: number }  // Remove tier assignment
   | { type: 'SET_INTEREST'; id: string; interestLevel: InterestLevel; timestamp?: number }
   | { type: 'UNSET_INTEREST'; id: string; timestamp?: number }  // Remove interest level
+  | { type: 'SET_PROJECT_INTEREST'; id: string; interestLevel: ProjectInterestLevel; timestamp?: number }
+  | { type: 'UNSET_PROJECT_INTEREST'; id: string; timestamp?: number }  // Remove project interest level
   | { type: 'SET_AVAILABILITY'; available: boolean }
-  | { type: 'SET_STAGE'; stage: 'priority' | 'interest' | 'projects' }
+  | { type: 'SET_STAGE'; stage: 'priority' | 'interest' | 'project-interest' | 'projects' }
   | { type: 'RESET_FROM_PITCHES'; pitchIds: string[] }  // sync when JSON changes
   | { type: 'SET_PROJECT_VOTES'; projectVotes: Record<string, any> }  // set project votes from ProjectPriorityApp
   | { type: 'RESET_ALL_VOTES' }  // reset all votes but keep voter name
   | { type: 'RESET_ALL_PROJECT_VOTES' }  // reset project votes but keep problem votes
+  | { type: 'RESET_ALL_PROJECT_INTEREST_VOTES' }  // reset project interest votes but keep other votes
   | { type: 'RESET_ALL' };  // reset everything including voter name

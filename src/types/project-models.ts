@@ -77,6 +77,7 @@ export interface ProjectVote {
   projectId: string;
   priority: ProjectPriority;
   timestamp?: number;      // Used for consistent ordering
+  position?: number;       // Used for sorting within a column
 }
 
 /**
