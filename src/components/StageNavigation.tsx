@@ -187,7 +187,9 @@ const StageNavigation: React.FC<StageNavigationProps> = ({
               !canAccess 
                 ? (inStage1 && (stage.value === 'projects' || stage.value === 'project-interest'))
                   ? "This section will be available when Stage 2 voting begins"
-                  : "Complete previous steps first" 
+                  : !inStage1 && (stage.value === 'priority' || stage.value === 'interest')
+                    ? "Cannot return to Stage 1 views from Stage 2"
+                    : "Complete previous steps first" 
                 : (isCompleted && !isActive)
                   ? "Return to this stage"
                   : isActive
@@ -204,6 +206,18 @@ const StageNavigation: React.FC<StageNavigationProps> = ({
                   sx={{ 
                     opacity: buttonOpacity,
                     pointerEvents: canAccess ? 'auto' : 'none',
+                    // Add visual indication that Stage 1 views are no longer accessible in Stage 2
+                    position: 'relative',
+                    '&::before': !inStage1 && (stage.value === 'priority' || stage.value === 'interest') ? {
+                      content: '""',
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      backgroundColor: 'rgba(0,0,0,0.2)',
+                      zIndex: 1,
+                    } : undefined,
                     // Add arrow indicator if active
                     '&::after': isActive ? {
                       content: '""',

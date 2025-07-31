@@ -6,6 +6,7 @@ import {
   LocalActivity as RankProjectsIcon,
   GetApp as DownloadIcon
 } from '@mui/icons-material';
+import { APP_CONFIG } from '../../components/App';
 
 // Define the available application stages
 export type AppStage = 'priority' | 'interest' | 'project-interest' | 'projects';
@@ -96,6 +97,29 @@ export const Timeline: React.FC<TimelineProps> = ({
 
   // Determine if we need to show finish button before projects stage or at the end
   const showFinishBeforeProjects = activeStage !== 'projects';
+  
+  // Determine if we're currently in Stage 2 based on app config
+  const isInStage2 = APP_CONFIG.CURRENT_APP_STAGE === 'projects';
+  
+  // Helper function to get tooltip text based on stage accessibility
+  const getTooltipText = (stage: AppStage, canAccess: boolean, isActive: boolean, isCompleted: boolean): string => {
+    // If in Stage 2, block access to Stage 1 views
+    const isStage1View = stage === 'priority' || stage === 'interest';
+    
+    if (!canAccess) {
+      // Show specific message when trying to access Stage 1 from Stage 2
+      if (isInStage2 && isStage1View) {
+        return "Cannot return to Stage 1 views from Stage 2";
+      }
+      return "Complete previous steps first";
+    }
+    
+    // No tooltip when already on this stage or completed
+    if (isCompleted || isActive) return "";
+    
+    // Default tooltip from stage definition
+    return stages.find(s => s.value === stage)?.tooltip || "";
+  };
   
   // Create a compact version of the timeline
   return (

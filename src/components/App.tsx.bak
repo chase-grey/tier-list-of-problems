@@ -8,12 +8,6 @@ export const APP_CONFIG = {
   // Set to 'problems' for Stage 1 (Problems) or 'projects' for Stage 2 (Projects)
   CURRENT_APP_STAGE: 'problems', // Change this to 'projects' when releasing Stage 2
 };
-
-// Function to update app stage for testing purposes
-export const updateAppStage = (stage: 'problems' | 'projects') => {
-  APP_CONFIG.CURRENT_APP_STAGE = stage;
-};
-
 import { TopBar } from './TopBar/TopBar';
 import type { AppStage } from './Timeline/Timeline';
 import KanbanContainer from './VotingBoard/KanbanContainer';
@@ -49,6 +43,7 @@ const initialState: AppState = {
   votes: {},
   projectVotes: {},
   projectInterestVotes: {},
+  viewingStage: null, // Track if user is viewing a different stage in read-only mode
 };
 
 // Reducer for state management
@@ -164,8 +159,12 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
         stage: 'priority',
         votes: {},
         projectVotes: {},
-        projectInterestVotes: {}
+        projectInterestVotes: {},
+        viewingStage: null,
       };
+    
+    case 'SET_VIEWING_STAGE':
+      return { ...state, viewingStage: action.viewingStage };
     
     default:
       return state;
@@ -434,13 +433,10 @@ const AppContent: React.FC = () => {
   };
 
   // Toggle between priority and interest stages
-  const handleStageChange = (targetStage?: AppStage) => {
-    // If specified stage is provided, use it directly
-    if (targetStage) {
-      dispatch({
-        type: 'SET_STAGE',
-        stage: targetStage
-      });
+  const handleStageChange = (stage: AppStage) => {
+    // Check if trying to view Stage 1 content when in Stage 2
+    const currentlyInStage2 = APP_CONFIG.CURRENT_APP_STAGE === 'projects';
+    const isStage1Section = stage === 'priority' || stage === 'interest';
       return;
     }
     
@@ -619,18 +615,10 @@ const AppContent: React.FC = () => {
     completedStages.push('interest');
   }
   
-  // Determine if a user can access a particular stage based on role and progress
+  // Function to determine if a user can access a particular stage based on role and progress
   const canAccessStage = (stage: AppStage): boolean => {
-    // Check if we're in Stage 2
-    const isInStage2 = APP_CONFIG.CURRENT_APP_STAGE === 'projects';
-    
-    // If in Stage 2, block access to Stage 1 views ('priority', 'interest')
-    if (isInStage2 && (stage === 'priority' || stage === 'interest')) {
-      return false;
-    }
-    
-    // Can access priority stage only in Stage 1
-    if (stage === 'priority' && !isInStage2) return true;
+    // Always can access priority stage
+    if (stage === 'priority') return true;
     
     const isDeveloper = state.voterRole === 'developer';
     const isQM = state.voterRole === 'qm';
@@ -684,6 +672,7 @@ const AppContent: React.FC = () => {
     return false;
   };
 
+  // Main component render
   return (
     <>
       <NameGate 
@@ -717,21 +706,23 @@ const AppContent: React.FC = () => {
         />
         
         <Box component="main" sx={{ flexGrow: 1, overflow: 'hidden', p: 1 }}>
-          {state.stage === 'priority' ? (
+          {/* Determine which content to render based on actual stage or viewing stage */}
+          {(state.viewingStage === 'priority' || (state.stage === 'priority' && !state.viewingStage)) ? (
             <KanbanContainer
               pitches={pitches}
               votes={state.votes}
               onDragEnd={handleDragEnd}
               onAppetiteChange={handleAppetiteChange}
               userRole={state.voterRole}
-              readOnly={state.stage === 'priority' && completedStages.includes('priority')}
+              readOnly={state.viewingStage === 'priority' || (state.stage === 'priority' && completedStages.includes('priority'))}
             />
-          ) : state.stage === 'interest' ? (
+          ) : (state.viewingStage === 'interest' || (state.stage === 'interest' && !state.viewingStage)) ? (
             <InterestRanking
               pitches={pitches}
               votes={state.votes}
               onSetInterest={handleInterestChange}
               userRole={state.voterRole}
+              readOnly={state.viewingStage === 'interest'}
             />
           ) : state.stage === 'project-interest' ? (
             // Always render KanbanBoardTest for project-interest stage
@@ -800,7 +791,6 @@ const AppContent: React.FC = () => {
               pitchIds={pitches.map(pitch => pitch.id)}
               onStageChange={handleStageChange}
               currentStage={state.stage}
-              canAccessStage={canAccessStage}
             />
           )}
         </Box>
