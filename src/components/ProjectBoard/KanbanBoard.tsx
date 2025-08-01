@@ -70,12 +70,13 @@ const TaskColumnStyles = (props: React.HTMLAttributes<HTMLDivElement>) => (
       margin: 0,
       display: 'flex',
       width: '100%',
-      height: 'calc(100vh - 92px)', // Adjusted for less bottom padding
-      minHeight: '500px', // Ensure minimum height for columns
+      height: '100%', // Use 100% height to fill parent container
+      minHeight: 'calc(100vh - 92px)', // Ensure it fills available viewport space
       gap: 1, // Minimal spacing between columns
       padding: '0 2px', // Minimal horizontal padding
       mt: 1, // Top padding matches gap between columns
       mb: 0.5, // Reduced bottom padding
+      flexGrow: 1, // Allow columns to grow and fill available space
     }}
   />
 );
@@ -263,14 +264,16 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ taskItems, userRole }) => {
       borderRadius: 0,
       position: 'relative',
       pb: 0.5, // Reduce bottom padding
-      maxHeight: 'calc(100vh - 70px)', // Ensure it doesn't overflow viewport
+      minHeight: 'calc(100vh - 70px)', // Ensure minimum height
+      display: 'flex', // Use flexbox for better space distribution
+      flexDirection: 'column', // Stack children vertically
     }}>
       
       <DragDropContext 
         onDragStart={onDragStart}
         onDragEnd={(result) => onDragEnd(result, columns, setColumns)}
       >
-        <Container>
+        <Container style={{ flex: '1 1 auto', display: 'flex', flexDirection: 'column' }}>
           <TaskColumnStyles>
             {Object.entries(columns).map(([columnId, column]) => (
               <Box key={columnId} sx={{ 
@@ -291,6 +294,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ taskItems, userRole }) => {
                   flexDirection: 'column',
                   height: 'calc(100% - 10px)', // Ensure it takes the full height minus margin
                   position: 'relative', // For proper scroll containment
+                  minHeight: '100%', // Minimum height to fill available space
                 }}>
                   <Droppable key={columnId} droppableId={columnId}>
                   {(provided: any, snapshot: any) => (
@@ -302,6 +306,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ taskItems, userRole }) => {
                         transition: 'background-color 0.2s ease',
                         // Removed all border styling to get rid of dividing lines
                         height: '100%', // Take full height of parent
+                        minHeight: '100%', // Ensure minimum height fills container
                         display: 'flex',
                         flexDirection: 'column',
                         position: 'relative', // For proper scroll containment
