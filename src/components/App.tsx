@@ -1,5 +1,5 @@
 import React, { useEffect, useReducer, memo, useState } from 'react';
-import { ThemeProvider, CssBaseline, Box } from '@mui/material';
+import { ThemeProvider, CssBaseline, Box, Button } from '@mui/material';
 import { darkTheme } from '../theme';
 import { NameGate } from './NameGate/NameGate';
 
@@ -24,6 +24,7 @@ import KanbanBoardTest from './ProjectBoard/KanbanBoardTest';
 import SnackbarProvider from './SnackbarProvider';
 import { useSnackbar } from '../hooks/useSnackbar';
 import HelpDialog from './HelpDialog/HelpDialog';
+import ScrollShadowTest from './common/ScrollShadowTest';
 import ConfirmationDialog from './ConfirmationDialog/ConfirmationDialog';
 import FeedbackDialog from './FeedbackDialog/FeedbackDialog';
 import type { FeedbackData } from './FeedbackDialog/FeedbackDialog';
@@ -33,6 +34,9 @@ import { exportVotes } from '../utils/csv';
 import { isDevelopmentMode } from '../utils/testUtils';
 import type { DropResult } from '@hello-pangea/dnd';
 import type { AppState, AppAction, Pitch, Vote, Appetite, Tier, InterestLevel } from '../types/models';
+
+// We define these locally rather than extending the module
+
 import { isContributorRole } from '../types/models';
 
 // Import pitch data
@@ -41,7 +45,11 @@ import pitchesData from '../assets/pitches.json';
 import { mockProjects } from './ProjectBoard/mockData';
 
 // Initial state
-const initialState: AppState = {
+interface ExtendedAppState extends AppState {
+  showScrollTest: boolean;
+}
+
+const initialState: ExtendedAppState = {
   voterName: null,
   voterRole: null,
   available: null,
@@ -49,11 +57,17 @@ const initialState: AppState = {
   votes: {},
   projectVotes: {},
   projectInterestVotes: {},
+  showScrollTest: false, // Flag to show/hide scroll shadow test page
 };
 
+// Extend AppAction type to add TOGGLE_SCROLL_TEST
+type ExtendedAction = AppAction | { type: 'TOGGLE_SCROLL_TEST' };
+
 // Reducer for state management
-const appReducer = (state: AppState, action: AppAction): AppState => {
+const appReducer = (state: ExtendedAppState, action: ExtendedAction): ExtendedAppState => {
   switch (action.type) {
+    case 'TOGGLE_SCROLL_TEST':
+      return { ...state, showScrollTest: !state.showScrollTest };
     case 'SET_NAME':
       return { ...state, voterName: action.name, voterRole: action.role };
       
@@ -164,7 +178,8 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
         stage: 'priority',
         votes: {},
         projectVotes: {},
-        projectInterestVotes: {}
+        projectInterestVotes: {},
+        showScrollTest: false // Keep test page hidden after reset
       };
     
     default:
@@ -686,35 +701,49 @@ const AppContent: React.FC = () => {
 
   return (
     <>
-      <NameGate 
-        onNameSubmit={handleNameSubmit}
-        open={!state.voterName && initialHelpShown}
-      />
-      
-      <AvailabilityDialog 
-        open={showAvailabilityDialog}
-        onAvailabilitySet={handleAvailabilitySet}
-      />
-      
-      <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
-        <TopBar 
-          voterName={state.voterName}
-          voterRole={state.voterRole}
-          available={state.available}
-          totalPitchCount={TOTAL}
-          appetiteCount={appetiteCount}
-          rankCount={rankCount}
-          interestCount={interestCount}
-          onFinish={handleFinish}
-          isExportEnabled={isExportEnabled}
-          onHelpClick={handleHelpClick}
-          onResetClick={handleResetClick}
-          stage={state.stage}
-          onStageChange={handleStageChange}
-          canAccessStage={canAccessStage}
-          completedStages={completedStages}
-          projectInterestCount={0} // Add project interest count tracking when implemented
-        />
+      {state.showScrollTest ? (
+        <Box sx={{ position: 'relative', height: '100vh' }}>
+          <ScrollShadowTest />
+          <Button 
+            variant="contained" 
+            color="primary"
+            onClick={() => dispatch({ type: 'TOGGLE_SCROLL_TEST' })}
+            sx={{ position: 'fixed', bottom: 20, right: 20 }}
+          >
+            Back to App
+          </Button>
+        </Box>
+      ) : (
+        <>
+          <NameGate 
+            onNameSubmit={handleNameSubmit}
+            open={!state.voterName && initialHelpShown}
+          />
+          
+          <AvailabilityDialog 
+            open={showAvailabilityDialog}
+            onAvailabilitySet={handleAvailabilitySet}
+          />
+          
+          <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
+            <TopBar 
+              voterName={state.voterName}
+              voterRole={state.voterRole}
+              available={state.available}
+              totalPitchCount={TOTAL}
+              appetiteCount={appetiteCount}
+              rankCount={rankCount}
+              interestCount={interestCount}
+              onFinish={handleFinish}
+              isExportEnabled={isExportEnabled}
+              onHelpClick={handleHelpClick}
+              onResetClick={handleResetClick}
+              stage={state.stage}
+              onStageChange={handleStageChange}
+              canAccessStage={canAccessStage}
+              completedStages={completedStages}
+              projectInterestCount={0} // Add project interest count tracking when implemented
+            />
         
         <Box component="main" sx={{ flexGrow: 1, overflow: 'hidden', p: 1 }}>
           {state.stage === 'priority' ? (
@@ -795,16 +824,29 @@ const AppContent: React.FC = () => {
           
           {/* Development-only Auto-Populate Tool */}
           {isDevelopmentMode() && (
-            <DevAutoPopulate 
-              onPopulate={handleAutoPopulate}
-              pitchIds={pitches.map(pitch => pitch.id)}
-              onStageChange={handleStageChange}
-              currentStage={state.stage}
-              canAccessStage={canAccessStage}
-            />
+            <>
+              <DevAutoPopulate 
+                onPopulate={handleAutoPopulate}
+                pitchIds={pitches.map(pitch => pitch.id)}
+                onStageChange={handleStageChange}
+                currentStage={state.stage}
+                canAccessStage={canAccessStage}
+              />
+              {/* Button to access scroll shadow test page */}
+              <Button
+                variant="outlined"
+                color="primary"
+                onClick={() => dispatch({ type: 'TOGGLE_SCROLL_TEST' } as ExtendedAction)}
+                sx={{ position: 'fixed', bottom: 20, right: 20, zIndex: 1000 }}
+              >
+                Scroll Shadow Test
+              </Button>
+            </>
           )}
-        </Box>
-      </Box>
+            </Box>
+          </Box>
+        </>
+      )}
     </>
   );
 };

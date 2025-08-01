@@ -2,6 +2,7 @@ import * as React from 'react';
 import { useRef, useEffect, useMemo } from 'react';
 import { Paper, Typography, Box, Stack } from '@mui/material';
 import { Droppable } from '@hello-pangea/dnd';
+import ScrollShadowContainer from '../common/ScrollShadowContainer';
 import type { DroppableProvided, DroppableStateSnapshot } from '@hello-pangea/dnd';
 import type { Project, ProjectVote, ProjectPriority } from '../../types/project-models';
 import ProjectCard from './ProjectCard/ProjectCard';
@@ -124,46 +125,55 @@ const PriorityColumn = ({
         {/* Droppable area starts here - completely separate from the header */}
         <Droppable droppableId={columnId}>
           {(provided: DroppableProvided, snapshot: DroppableStateSnapshot) => (
-          <Paper
-            ref={(el) => {
-              provided.innerRef(el);
-              if (el) columnRef.current = el;
-            }}
-            {...provided.droppableProps}
-            sx={{
-              p: 1,
-              flexGrow: 1,
-              backgroundColor: snapshot.isDraggingOver 
-                ? 'action.hover' 
-                : 'background.paper',
-              overflowY: 'auto',
-              transition: 'background-color 0.2s ease',
-              border: filteredProjects.length === 0 
-                ? '2px dashed rgba(0,0,0,0.1)' 
-                : 'none',
-              display: 'flex',
-              flexDirection: 'column',
-              // No position or z-index adjustments needed
-            }}
-            aria-roledescription="droppable region"
-          >
-            {/* Empty columns no longer display placeholder text */}
-            
-            <Stack spacing={1}>
-
-              {filteredProjects.map((project, index) => (
-                <ProjectCard
-                  key={project.id}
-                  project={project}
-                  vote={votes[project.id]}
-                  index={index}
-                  userRole={userRole}
-                />
-              ))}
-              {/* Keep placeholder inside the stack for proper positioning */}
-              {provided.placeholder}
-            </Stack>
-          </Paper>
+            <Box
+              sx={{
+                flexGrow: 1,
+                height: '100%',
+                backgroundColor: snapshot.isDraggingOver 
+                  ? 'action.hover' 
+                  : 'background.paper',
+                transition: 'background-color 0.2s ease',
+                border: filteredProjects.length === 0 
+                  ? '2px dashed rgba(0,0,0,0.1)' 
+                  : 'none',
+              }}
+            >
+              <ScrollShadowContainer maxHeight="100%">
+                <Paper
+                  ref={(el) => {
+                    provided.innerRef(el);
+                    if (el) columnRef.current = el;
+                  }}
+                  {...provided.droppableProps}
+                  sx={{
+                    p: 1,
+                    height: '100%',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    // Using transparent background since ScrollShadowContainer handles the background
+                    backgroundColor: 'transparent', 
+                    boxShadow: 'none',
+                  }}
+                  aria-roledescription="droppable region"
+                >
+                  {/* Empty columns no longer display placeholder text */}
+                  
+                  <Stack spacing={1}>
+                    {filteredProjects.map((project, index) => (
+                      <ProjectCard
+                        key={project.id}
+                        project={project}
+                        vote={votes[project.id]}
+                        index={index}
+                        userRole={userRole}
+                      />
+                    ))}
+                    {/* Keep placeholder inside the stack for proper positioning */}
+                    {provided.placeholder}
+                  </Stack>
+                </Paper>
+              </ScrollShadowContainer>
+            </Box>
           )}
         </Droppable>
       </Box>

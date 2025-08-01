@@ -93,9 +93,19 @@ const ProjectCard = ({
     }
     
     return (
-      <Box component="ul" sx={{ pl: 2, m: 0 }}>
+      <Box component="ul" sx={{ pl: 2, m: 0, width: '100%' }}>
         {project.deliverables.map((deliverable, index) => (
-          <Typography component="li" key={index} variant="body2" sx={{ fontSize: '0.8rem' }}>
+          <Typography 
+            component="li" 
+            key={index} 
+            variant="body2" 
+            sx={{ 
+              fontSize: '0.8rem',
+              overflowWrap: 'break-word',
+              wordBreak: 'break-word',
+              width: '100%'
+            }}
+          >
             {deliverable}
           </Typography>
         ))}
@@ -132,6 +142,9 @@ const ProjectCard = ({
               },
               position: 'relative',
               minHeight: '100px',
+              height: 'auto', // Allow height to grow based on content
+              display: 'flex',
+              flexDirection: 'column',
             }}
             role="button"
             tabIndex={0}
@@ -139,7 +152,13 @@ const ProjectCard = ({
             aria-label={`Project: ${project.title}`}
           >
             {/* Project ID, Appetite indicator, Hours and Info Button in one row */}
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.75 }}>
+            <Box sx={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'space-between', 
+              mb: 0.75,
+              width: '100%'
+            }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexGrow: 1, minWidth: 0 }}>
                 {/* Project ID */}
                 {getFormattedProjectId()}
@@ -199,13 +218,20 @@ const ProjectCard = ({
                 // Ensure text wraps to avoid overflow
                 overflowWrap: 'break-word',
                 wordBreak: 'break-word',
+                width: '100%',
               }}
             >
               {project.title}
             </Typography>
             
             {/* Deliverables list */}
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+            <Box sx={{ 
+              display: 'flex', 
+              flexDirection: 'column', 
+              gap: 0.5,
+              width: '100%',
+              flexGrow: 1, // Allow this section to grow to fit content
+            }}>
               <Typography variant="caption" color="text.secondary">
                 Deliverables:
               </Typography>

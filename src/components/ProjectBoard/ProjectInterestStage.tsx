@@ -1,6 +1,7 @@
 import React from 'react';
 import { Box, Typography, Grid, Container } from '@mui/material';
 import ProjectInterestCard from './ProjectCard/ProjectInterestCard';
+import ScrollShadowContainer from '../common/ScrollShadowContainer';
 import type { Project } from '../../types/project-models';
 
 interface ProjectInterestStageProps {
@@ -22,11 +23,13 @@ export const ProjectInterestStage: React.FC<ProjectInterestStageProps> = ({ user
         
         <Grid container spacing={3}>
           {projects.map((project) => (
-            <Grid item xs={12} sm={6} md={4} key={project.id}>
+            <Grid item xs={12} sm={6} md={4} key={project.id} sx={{ display: 'flex', height: '350px' }}>
+              <ScrollShadowContainer maxHeight="100%">
                 <ProjectInterestCard 
-                project={project} 
-                userRole={userRole} 
-              />
+                  project={project} 
+                  userRole={userRole} 
+                />
+              </ScrollShadowContainer>
             </Grid>
           ))}
         </Grid>

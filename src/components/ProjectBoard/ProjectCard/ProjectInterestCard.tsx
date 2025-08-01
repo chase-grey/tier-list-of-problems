@@ -108,6 +108,10 @@ const ProjectInterestCard = ({
           },
           position: 'relative',
           minHeight: '100px',
+          height: 'auto', // Allow height to adjust to content
+          display: 'flex',
+          flexDirection: 'column',
+          width: '100%', // Ensure full width
         }}
         role="button"
         tabIndex={0}

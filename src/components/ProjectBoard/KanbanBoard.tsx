@@ -3,6 +3,7 @@ import { DragDropContext, Droppable } from "@hello-pangea/dnd";
 import { Box } from "@mui/material";
 import { type KanbanColumns, type TaskItem } from "./KanbanData";
 import TaskCard from "./TaskCard";
+import ScrollShadowContainer from "../common/ScrollShadowContainer";
 
 const Container = (props: React.HTMLAttributes<HTMLDivElement>) => (
   <Box
@@ -37,27 +38,19 @@ const TaskList = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivEl
       // Removed the inset box-shadow that was creating the border/line
       height: 'calc(100% - 46px)', // Adjust height to account for header
       maxHeight: 'calc(100% - 46px)', // Ensure it doesn't exceed container minus header
-      overflowY: 'auto', // Enable vertical scrolling for each column independently
+      overflowY: 'scroll', // Enable vertical scrolling while allowing hiding via ScrollShadowContainer
       overflowX: 'hidden', // Hide horizontal scrollbar
       userSelect: 'none',
       WebkitUserSelect: 'none',
       MozUserSelect: 'none',
       msUserSelect: 'none',
-      // Improved scrollbar styling to be less visually disruptive
+      // Hide scrollbar in all browsers but maintain scrollability
+      msOverflowStyle: 'none',  // Hide scrollbar in IE and Edge
+      scrollbarWidth: 'none',   // Hide scrollbar in Firefox
       '&::-webkit-scrollbar': {
-        width: '6px', // Slightly narrower scrollbar
-        backgroundColor: 'transparent', // Transparent background
-      },
-      '&::-webkit-scrollbar-track': {
-        background: 'transparent', // Transparent track
-        margin: '5px 0', // Add some margin to top and bottom
-      },
-      '&::-webkit-scrollbar-thumb': {
-        background: 'rgba(120, 120, 120, 0.4)', // Semi-transparent scrollbar thumb
-        borderRadius: '6px',
-        '&:hover': {
-          background: 'rgba(140, 140, 140, 0.6)', // Slightly more opaque on hover
-        },
+        display: 'none', // Hide scrollbar in WebKit browsers (Chrome, Safari)
+        width: 0,
+        background: 'transparent',
       },
     }}
   />
@@ -307,21 +300,28 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ taskItems, userRole }) => {
                         position: 'relative', // For proper scroll containment
                       }}
                     >
-                      <TaskList
-                        ref={provided.innerRef}
-                        {...provided.droppableProps}
-                        style={{
-                          backgroundColor: snapshot.isDraggingOver ? '#2a2a2a' : '#222222' // Even darker grey for columns
-                        }}
-                      >
-                      
-                      {column.items.map((item, index) => (
-                        <TaskCard key={item.id} item={item} index={index} userRole={userRole} />
-                      ))}
-                      {provided.placeholder}
-                      
-                      {/* Empty columns no longer show placeholder text */}
-                    </TaskList>
+                      <ScrollShadowContainer maxHeight="100%" showScrollBar={false}>
+                        <TaskList
+                          ref={provided.innerRef}
+                          {...provided.droppableProps}
+                          style={{
+                            backgroundColor: snapshot.isDraggingOver ? '#2a2a2a' : '#222222', // Even darker grey for columns
+                            // Maintain scrollability while hiding scrollbar visually
+                            overflowY: 'scroll',
+                            msOverflowStyle: 'none',  /* IE and Edge */
+                            scrollbarWidth: 'none',   /* Firefox */
+                            '&::-webkit-scrollbar': { display: 'none' } /* Chrome, Safari, Opera */
+                          }}
+                        >
+                        
+                        {column.items.map((item, index) => (
+                          <TaskCard key={item.id} item={item} index={index} userRole={userRole} />
+                        ))}
+                        {provided.placeholder}
+                        
+                        {/* Empty columns no longer show placeholder text */}
+                        </TaskList>
+                      </ScrollShadowContainer>
                   </Box>
                 )}
                   </Droppable>
