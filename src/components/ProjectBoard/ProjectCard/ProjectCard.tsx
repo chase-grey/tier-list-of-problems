@@ -1,5 +1,5 @@
 import React, { useState, useRef, memo } from 'react';
-import { Paper, Typography, Box, IconButton, Tooltip, Chip } from '@mui/material';
+import { Paper, Typography, Box, IconButton, Tooltip, Link } from '@mui/material';
 import { InfoOutlined } from '@mui/icons-material';
 import { Draggable } from '@hello-pangea/dnd';
 import type { DraggableProvided, DraggableStateSnapshot } from '@hello-pangea/dnd';
@@ -42,9 +42,29 @@ const ProjectCard = ({
     }
   };
 
-  // Get short text for the appetite
-  const getAppetiteText = (appetite: Appetite): string => {
-    return appetite;
+  
+  
+  // Format the project ID with or without a hyperlink based on user role
+  const getFormattedProjectId = () => {
+    const url = `https://emc2summary/GetSummaryReport.ashx/track/ZQN/${project.id}`;
+    
+    // For customers, just return the ID as plain text
+    if (userRole === 'customer') {
+      return <Typography variant="body2" sx={{ fontWeight: 'medium' }}>{project.id}</Typography>;
+    }
+    
+    // For all other users, return a hyperlink
+    return (
+      <Link 
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        underline="hover"
+        sx={{ fontWeight: 'medium' }}
+      >
+        {project.id}
+      </Link>
+    );
   };
 
   // Toggle details modal
@@ -66,16 +86,21 @@ const ProjectCard = ({
     }
   };
 
-  // Get a truncated list of deliverables to show on card
-  const getDeliverableSummary = () => {
-    if (!project.deliverables || project.deliverables.length === 0) return 'No deliverables';
-    
-    // Show up to 2 deliverables, then "and X more"
-    if (project.deliverables.length <= 2) {
-      return project.deliverables.join(', ');
-    } else {
-      return `${project.deliverables[0]}, +${project.deliverables.length - 1} more`;
+  // Get deliverables list to display on card
+  const getDeliverablesList = () => {
+    if (!project.deliverables || project.deliverables.length === 0) {
+      return <Typography variant="body2">No deliverables</Typography>;
     }
+    
+    return (
+      <Box component="ul" sx={{ pl: 2, m: 0 }}>
+        {project.deliverables.map((deliverable, index) => (
+          <Typography component="li" key={index} variant="body2" sx={{ fontSize: '0.8rem' }}>
+            {deliverable}
+          </Typography>
+        ))}
+      </Box>
+    );
   };
 
   return (
@@ -113,20 +138,9 @@ const ProjectCard = ({
             aria-expanded={detailsOpen}
             aria-label={`Project: ${project.title}`}
           >
-            {/* Top section with title and info button */}
-            <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 1 }}>
-              <Typography 
-                variant="subtitle1" 
-                sx={{ 
-                  mr: 1,
-                  fontWeight: 'bold',
-                  // Ensure text wraps to avoid overflow
-                  overflowWrap: 'break-word',
-                  wordBreak: 'break-word',
-                }}
-              >
-                {project.title}
-              </Typography>
+            {/* Project ID and Info Button */}
+            <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 0.5 }}>
+              {getFormattedProjectId()}
               <Tooltip title="View details">
                 <IconButton 
                   size="small" 
@@ -144,16 +158,29 @@ const ProjectCard = ({
               </Tooltip>
             </Box>
             
-            {/* Appetite chip and hour estimate */}
+            {/* Project Title */}
+            <Typography 
+              variant="subtitle1" 
+              sx={{ 
+                mb: 1,
+                fontWeight: 'bold',
+                // Ensure text wraps to avoid overflow
+                overflowWrap: 'break-word',
+                wordBreak: 'break-word',
+              }}
+            >
+              {project.title}
+            </Typography>
+            
+            {/* Appetite circle and hour estimate */}
             <Box sx={{ display: 'flex', mb: 1, alignItems: 'center' }}>
-              <Chip 
-                label={getAppetiteText(project.appetite)}
-                size="small"
+              <Box 
                 sx={{ 
+                  width: 14, 
+                  height: 14, 
+                  borderRadius: '50%',
                   bgcolor: getAppetiteColor(project.appetite),
-                  color: 'white',
-                  fontWeight: 'bold',
-                  height: '22px',
+                  display: 'inline-block'
                 }}
               />
               <Typography variant="body2" sx={{ ml: 1, fontSize: '0.75rem', fontWeight: 'bold' }}>
@@ -161,14 +188,12 @@ const ProjectCard = ({
               </Typography>
             </Box>
             
-            {/* Deliverables summary */}
+            {/* Deliverables list */}
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
               <Typography variant="caption" color="text.secondary">
                 Deliverables:
               </Typography>
-              <Typography variant="body2" sx={{ fontSize: '0.8rem' }}>
-                {getDeliverableSummary()}
-              </Typography>
+              {getDeliverablesList()}
             </Box>
             
             {/* Removed redundant hour estimate and priority text from bottom of card as requested */}

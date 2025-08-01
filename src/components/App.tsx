@@ -6,7 +6,7 @@ import { NameGate } from './NameGate/NameGate';
 // App-wide configuration
 export const APP_CONFIG = {
   // Set to 'problems' for Stage 1 (Problems) or 'projects' for Stage 2 (Projects)
-  CURRENT_APP_STAGE: 'problems', // Change this to 'projects' when releasing Stage 2
+  CURRENT_APP_STAGE: 'projects', // Changed to 'projects' to enable Stage 2
 };
 
 // Function to update app stage for testing purposes

@@ -66,6 +66,10 @@ export interface Project {
     outOfScope: string;    // Description of what is out of scope
     hourEstimate: number;  // Total hour estimate for the project
     taskBreakdown: Task[]; // Breakdown of tasks with hour estimates
+    assessorName?: string; // Name of the person who assessed the project
+    assessmentDate?: Date; // Date when the assessment was done
+    hourEstimateRange?: string; // Hour estimate range (e.g., "90-140")
+    notes?: string;        // Additional notes that don't fit elsewhere
     [key: string]: any;    // Allow for additional fields
   };
 }

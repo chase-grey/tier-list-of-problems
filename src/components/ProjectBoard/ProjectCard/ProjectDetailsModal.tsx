@@ -8,14 +8,20 @@ import {
   Divider,
   Chip,
   IconButton,
-  Grid,
   Paper,
-  Link
+  Link,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow
 } from '@mui/material';
 import { Close as CloseIcon } from '@mui/icons-material';
-import type { Project, Deliverable } from '../../../types/project-models';
+import type { Project, Deliverable, Task } from '../../../types/project-models';
 import type { Appetite } from '../../../types/models';
 import { colorTokens } from '../../../theme';
+// Using built-in date formatting instead of date-fns
 
 interface ProjectDetailsModalProps {
   project: Project;
@@ -29,6 +35,21 @@ interface ProjectDetailsModalProps {
  * This is a simplified version to avoid code similarity detection issues
  */
 const ProjectDetailsModal = ({ project, open, onClose, userRole }: ProjectDetailsModalProps) => {
+  // Format assessment date if available
+  const getFormattedAssessmentDate = () => {
+    if (project.details.assessmentDate) {
+      const date = new Date(project.details.assessmentDate);
+      return date.toLocaleString('en-US', {
+        month: 'numeric',
+        day: 'numeric',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: 'numeric',
+        hour12: true
+      });
+    }
+    return null;
+  };
   // Get color for appetite
   const getAppetiteColor = (appetite: Appetite): string => {
     switch (appetite) {
@@ -78,7 +99,7 @@ const ProjectDetailsModal = ({ project, open, onClose, userRole }: ProjectDetail
               </Typography>
               <Box mt={0.5}>
                 <Link 
-                  href={`https://example.com/proposals/${project.id}`} 
+                  href={`https://emc2summary/GetSummaryReport.ashx/track/ZQN/${project.id}`} 
                   target="_blank"
                   rel="noopener noreferrer"
                   underline="hover"
@@ -92,20 +113,47 @@ const ProjectDetailsModal = ({ project, open, onClose, userRole }: ProjectDetail
           </>
         )}
         
-        {/* Appetite */}
+        {/* Assessor Information */}
+        {project.details.assessorName && (
+          <>
+            <Box mb={2}>
+              <Typography variant="subtitle2" color="textSecondary">
+                Assessed By
+              </Typography>
+              <Box mt={0.5} display="flex" alignItems="center">
+                <Typography variant="body1">
+                  {project.details.assessorName}
+                  {getFormattedAssessmentDate() && (
+                    <Typography component="span" variant="body2" color="text.secondary" sx={{ ml: 1 }}>
+                      {getFormattedAssessmentDate()}
+                    </Typography>
+                  )}
+                </Typography>
+              </Box>
+            </Box>
+            <Divider />
+          </>
+        )}
+        
+        {/* Appetite and Hour Estimate */}
         <Box mb={2}>
           <Typography variant="subtitle2" color="textSecondary">
-            Appetite
+            Appetite & Estimate
           </Typography>
-          <Chip
-            label={getAppetiteDescription(project.appetite)}
-            sx={{
-              mt: 0.5,
-              bgcolor: getAppetiteColor(project.appetite),
-              color: 'white',
-              fontWeight: 'bold'
-            }}
-          />
+          <Box mt={0.5} display="flex" alignItems="center">
+            <Chip
+              label={getAppetiteDescription(project.appetite)}
+              sx={{
+                bgcolor: getAppetiteColor(project.appetite),
+                color: 'white',
+                fontWeight: 'bold',
+                mr: 1
+              }}
+            />
+            <Typography variant="body2">
+              {project.details.hourEstimateRange || `${project.details.hourEstimate} hours`}
+            </Typography>
+          </Box>
         </Box>
 
         <Divider />
@@ -143,110 +191,95 @@ const ProjectDetailsModal = ({ project, open, onClose, userRole }: ProjectDetail
         <Divider />
 
         {/* Out of Scope */}
-        <Box my={2}>
-          <Typography variant="subtitle2" color="textSecondary">
-            Out of Scope
-          </Typography>
-          <Typography variant="body2" sx={{ mt: 0.5, whiteSpace: 'pre-wrap' }}>
-            {project.details.outOfScope || 'Not specified'}
-          </Typography>
-        </Box>
-
-        <Divider />
-
-        {/* Hour Estimate */}
-        <Box my={2}>
-          <Typography variant="subtitle2" color="textSecondary">
-            Hour Estimate
-          </Typography>
-          <Typography variant="body2" sx={{ mt: 0.5, fontWeight: 'bold' }}>
-            {project.details.hourEstimate} hours
-          </Typography>
-        </Box>
-
-        <Divider />
+        {project.details.outOfScope && (
+          <>
+            <Box my={2}>
+              <Typography variant="subtitle2" color="textSecondary">
+                Out of Scope
+              </Typography>
+              <Typography variant="body2" sx={{ mt: 0.5, whiteSpace: 'pre-line' }}>
+                {project.details.outOfScope}
+              </Typography>
+            </Box>
+            <Divider />
+          </>
+        )}
+        
+        {/* Additional Notes */}
+        {project.details.notes && (
+          <>
+            <Box my={2}>
+              <Typography variant="subtitle2" color="textSecondary">
+                Notes
+              </Typography>
+              <Typography variant="body2" sx={{ mt: 0.5, whiteSpace: 'pre-line' }}>
+                {project.details.notes}
+              </Typography>
+            </Box>
+            <Divider />
+          </>
+        )}
         
         {/* Task Breakdown */}
         {project.details.taskBreakdown && project.details.taskBreakdown.length > 0 && (
           <Box my={2}>
-            <Typography variant="subtitle2" color="textSecondary">
+            <Typography variant="subtitle2" color="textSecondary" mb={1}>
               Task Breakdown
             </Typography>
             
-            <Box mt={1}>
-              {/* Header Row */}
-              <Grid container sx={{ bgcolor: 'action.hover', p: 1, borderRadius: '4px 4px 0 0' }}>
-                <Grid item xs={4}>
-                  <Typography variant="subtitle2">Task</Typography>
-                </Grid>
-                <Grid item xs={2} sx={{ textAlign: 'right' }}>
-                  <Typography variant="subtitle2">Best Case</Typography>
-                </Grid>
-                <Grid item xs={2} sx={{ textAlign: 'right' }}>
-                  <Typography variant="subtitle2">Expected</Typography>
-                </Grid>
-                <Grid item xs={2} sx={{ textAlign: 'right' }}>
-                  <Typography variant="subtitle2">Worst Case</Typography>
-                </Grid>
-                <Grid item xs={2} sx={{ textAlign: 'right' }}>
-                  <Typography variant="subtitle2">Weighted</Typography>
-                </Grid>
-              </Grid>
-              
-              {/* Task Rows */}
-              <Paper variant="outlined" sx={{ mb: 2 }}>
-                {project.details.taskBreakdown.map((task, index) => (
-                  <Grid container key={index} sx={{ 
-                    p: 1, 
-                    borderBottom: index < project.details.taskBreakdown.length - 1 ? '1px solid rgba(0, 0, 0, 0.12)' : 'none',
-                    '&:hover': { bgcolor: 'rgba(0, 0, 0, 0.04)' }
-                  }}>
-                    <Grid item xs={4}>
-                      <Typography variant="body2">{task.name}</Typography>
-                    </Grid>
-                    <Grid item xs={2} sx={{ textAlign: 'right' }}>
-                      <Typography variant="body2">{task.bestCaseHours}</Typography>
-                    </Grid>
-                    <Grid item xs={2} sx={{ textAlign: 'right' }}>
-                      <Typography variant="body2">{task.expectedHours}</Typography>
-                    </Grid>
-                    <Grid item xs={2} sx={{ textAlign: 'right' }}>
-                      <Typography variant="body2">{task.worstCaseHours}</Typography>
-                    </Grid>
-                    <Grid item xs={2} sx={{ textAlign: 'right' }}>
-                      <Typography variant="body2">{task.weightedHours}</Typography>
-                    </Grid>
-                  </Grid>
-                ))}
-                
-                {/* Totals Row */}
-                <Grid container sx={{ p: 1, bgcolor: 'action.hover', borderRadius: '0 0 4px 4px' }}>
-                  <Grid item xs={4}>
-                    <Typography variant="subtitle2">Totals</Typography>
-                  </Grid>
-                  <Grid item xs={2} sx={{ textAlign: 'right' }}>
-                    <Typography variant="subtitle2">
-                      {project.details.taskBreakdown.reduce((sum, task) => sum + task.bestCaseHours, 0)}
-                    </Typography>
-                  </Grid>
-                  <Grid item xs={2} sx={{ textAlign: 'right' }}>
-                    <Typography variant="subtitle2">
-                      {project.details.taskBreakdown.reduce((sum, task) => sum + task.expectedHours, 0)}
-                    </Typography>
-                  </Grid>
-                  <Grid item xs={2} sx={{ textAlign: 'right' }}>
-                    <Typography variant="subtitle2">
-                      {project.details.taskBreakdown.reduce((sum, task) => sum + task.worstCaseHours, 0)}
-                    </Typography>
-                  </Grid>
-                  <Grid item xs={2} sx={{ textAlign: 'right' }}>
-                    <Typography variant="subtitle2">
-                      {project.details.taskBreakdown.reduce((sum, task) => sum + task.weightedHours, 0)}
-                    </Typography>
-                  </Grid>
-                </Grid>
-              </Paper>
-            </Box>
+            <TableContainer component={Paper} variant="outlined">
+              <Table size="small" aria-label="task breakdown table">
+                <TableHead>
+                  <TableRow sx={{ bgcolor: 'action.hover' }}>
+                    <TableCell>Task</TableCell>
+                    <TableCell align="right">Best Case</TableCell>
+                    <TableCell align="right">Expected Case</TableCell>
+                    <TableCell align="right">Worst Case</TableCell>
+                    <TableCell align="right">Weighted Hours</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {project.details.taskBreakdown.map((task: Task, index: number) => (
+                    <TableRow key={index} sx={{ '&:hover': { bgcolor: 'rgba(0, 0, 0, 0.04)' } }}>
+                      <TableCell component="th" scope="row" sx={{ whiteSpace: 'pre-line' }}>
+                        {task.name}
+                      </TableCell>
+                      <TableCell align="right">{task.bestCaseHours}</TableCell>
+                      <TableCell align="right">{task.expectedHours}</TableCell>
+                      <TableCell align="right">{task.worstCaseHours}</TableCell>
+                      <TableCell align="right">{task.weightedHours}</TableCell>
+                    </TableRow>
+                  ))}
+                  
+                  {/* Totals Row */}
+                  <TableRow sx={{ bgcolor: 'action.hover' }}>
+                    <TableCell component="th" scope="row">
+                      <Typography variant="subtitle2">Totals</Typography>
+                    </TableCell>
+                    <TableCell align="right">
+                      <Typography variant="subtitle2">
+                        {project.details.taskBreakdown.reduce((sum, task) => sum + task.bestCaseHours, 0)}
+                      </Typography>
+                    </TableCell>
+                    <TableCell align="right">
+                      <Typography variant="subtitle2">
+                        {project.details.taskBreakdown.reduce((sum, task) => sum + task.expectedHours, 0)}
+                      </Typography>
+                    </TableCell>
+                    <TableCell align="right">
+                      <Typography variant="subtitle2">
+                        {project.details.taskBreakdown.reduce((sum, task) => sum + task.worstCaseHours, 0)}
+                      </Typography>
+                    </TableCell>
+                    <TableCell align="right">
+                      <Typography variant="subtitle2">
+                        {project.details.taskBreakdown.reduce((sum, task) => sum + task.weightedHours, 0)}
+                      </Typography>
+                    </TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </TableContainer>
           </Box>
         )}
       </DialogContent>
