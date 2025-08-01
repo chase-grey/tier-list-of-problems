@@ -12,7 +12,7 @@ const Container = (props: React.HTMLAttributes<HTMLDivElement>) => (
       flexDirection: 'row',
       padding: '10px 0',
       overflowX: 'auto',
-      overflowY: 'hidden', /* Hide vertical scrollbar */
+      overflowY: 'hidden', /* Hide vertical scrollbar at container level */
       width: '100%',
       height: '100%',
       gap: 0,
@@ -35,21 +35,29 @@ const TaskList = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivEl
       borderRadius: '12px', // Match column header border radius
       padding: '10px',
       // Removed the inset box-shadow that was creating the border/line
-      height: '100%',
-      overflowY: 'auto',
+      height: 'calc(100% - 46px)', // Adjust height to account for header
+      maxHeight: 'calc(100% - 46px)', // Ensure it doesn't exceed container minus header
+      overflowY: 'auto', // Enable vertical scrolling for each column independently
+      overflowX: 'hidden', // Hide horizontal scrollbar
       userSelect: 'none',
       WebkitUserSelect: 'none',
       MozUserSelect: 'none',
       msUserSelect: 'none',
+      // Improved scrollbar styling to be less visually disruptive
       '&::-webkit-scrollbar': {
-        width: '8px',
+        width: '6px', // Slightly narrower scrollbar
+        backgroundColor: 'transparent', // Transparent background
       },
       '&::-webkit-scrollbar-track': {
-        background: '#2d2d2d',
+        background: 'transparent', // Transparent track
+        margin: '5px 0', // Add some margin to top and bottom
       },
       '&::-webkit-scrollbar-thumb': {
-        background: '#555',
-        borderRadius: '4px',
+        background: 'rgba(120, 120, 120, 0.4)', // Semi-transparent scrollbar thumb
+        borderRadius: '6px',
+        '&:hover': {
+          background: 'rgba(140, 140, 140, 0.6)', // Slightly more opaque on hover
+        },
       },
     }}
   />
@@ -63,10 +71,11 @@ const TaskColumnStyles = (props: React.HTMLAttributes<HTMLDivElement>) => (
       display: 'flex',
       width: '100%',
       height: 'calc(100vh - 92px)', // Adjusted for less bottom padding
+      minHeight: '500px', // Ensure minimum height for columns
       gap: 1, // Minimal spacing between columns
       padding: '0 2px', // Minimal horizontal padding
       mt: 1, // Top padding matches gap between columns
-      mb: 0.5 // Reduced bottom padding
+      mb: 0.5, // Reduced bottom padding
     }}
   />
 );
@@ -249,11 +258,12 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ taskItems, userRole }) => {
       width: '100%', 
       height: '100%', 
       overflowX: 'auto',
-      overflowY: 'hidden', // Hide vertical scrollbar 
+      overflowY: 'hidden', // Hide vertical scrollbar at container level
       backgroundColor: '#000000', // Black background
       borderRadius: 0,
       position: 'relative',
-      pb: 0.5 // Reduce bottom padding
+      pb: 0.5, // Reduce bottom padding
+      maxHeight: 'calc(100vh - 70px)', // Ensure it doesn't overflow viewport
     }}>
       
       <DragDropContext 
@@ -275,7 +285,13 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ taskItems, userRole }) => {
                 </ColumnHeader>
 
                 {/* Separate droppable area */}
-                <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                <Box sx={{ 
+                  flex: 1, 
+                  display: 'flex', 
+                  flexDirection: 'column',
+                  height: 'calc(100% - 10px)', // Ensure it takes the full height minus margin
+                  position: 'relative', // For proper scroll containment
+                }}>
                   <Droppable key={columnId} droppableId={columnId}>
                   {(provided: any, snapshot: any) => (
                     <Box 
@@ -285,6 +301,10 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ taskItems, userRole }) => {
                         flex: 1,
                         transition: 'background-color 0.2s ease',
                         // Removed all border styling to get rid of dividing lines
+                        height: '100%', // Take full height of parent
+                        display: 'flex',
+                        flexDirection: 'column',
+                        position: 'relative', // For proper scroll containment
                       }}
                     >
                       <TaskList

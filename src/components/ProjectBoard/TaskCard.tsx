@@ -54,7 +54,7 @@ const TaskCard = ({ item, index, userRole }: TaskCardProps) => {
     
     // For customers, just return the ID as plain text
     if (userRole === 'customer') {
-      return <Typography variant="body2" sx={{ fontWeight: 'medium' }}>{item.id}</Typography>;
+      return <Typography variant="body2" sx={{ fontWeight: 'medium', fontSize: '0.7rem' }}>{item.id}</Typography>;
     }
     
     // For all other users, return a hyperlink
@@ -64,7 +64,7 @@ const TaskCard = ({ item, index, userRole }: TaskCardProps) => {
         target="_blank"
         rel="noopener noreferrer"
         underline="hover"
-        sx={{ fontWeight: 'medium', color: '#ffffff' }}
+        sx={{ fontWeight: 'medium', color: '#ffffff', fontSize: '0.7rem' }}
       >
         {item.id}
       </Link>
@@ -109,7 +109,7 @@ const TaskCard = ({ item, index, userRole }: TaskCardProps) => {
             elevation={snapshot.isDragging ? 3 : 1}
             sx={{
               p: 1, 
-              mb: 0.75, 
+              mb: 1.5, 
               borderRadius: '12px',
               transition: 'all 0.2s ease',
               cursor: 'grab',
@@ -129,12 +129,60 @@ const TaskCard = ({ item, index, userRole }: TaskCardProps) => {
               display: 'flex',
               flexDirection: 'column',
               minHeight: '80px',
-              opacity: snapshot.isDragging ? 0.8 : 1
+              height: 'auto !important', 
+              width: '100%',
+              opacity: snapshot.isDragging ? 0.8 : 1,
+              overflow: 'visible', 
+              boxSizing: 'border-box', 
+              marginBottom: '16px !important' 
             }}
           >
-            {/* Project ID and Info Button */}
-            <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 0.5 }}>
-              {getFormattedProjectId()}
+            {/* Project ID, Appetite indicator, Hours and Info Button in one row */}
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.75 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexGrow: 1, minWidth: 0 }}>
+                {/* Project ID with smaller font */}
+                <Box sx={{ fontSize: '0.75rem' }}>
+                  {getFormattedProjectId()}
+                </Box>
+                
+                {/* Appetite circle */}
+                <Box 
+                  sx={{ 
+                    width: 16, 
+                    height: 16, 
+                    borderRadius: '50%',
+                    bgcolor: getAppetiteColor(item.priority),
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#FFFFFF',
+                    fontWeight: 'bold',
+                    fontSize: '10px',
+                    flexShrink: 0,
+                    ml: 0.5
+                  }}
+                  title={`Appetite: ${item.priority}`}
+                >
+                  {item.priority}
+                </Box>
+                
+                {/* Hour estimate */}
+                {project && (
+                  <Typography 
+                    variant="body2" 
+                    sx={{ 
+                      fontSize: '0.65rem', 
+                      fontWeight: 'bold',
+                      whiteSpace: 'nowrap',
+                      flexShrink: 0
+                    }}
+                  >
+                    {project.details.hourEstimate} hrs
+                  </Typography>
+                )}
+              </Box>
+              
+              {/* Info Button */}
               <Tooltip title="View details">
                 <IconButton 
                   size="small" 
@@ -143,7 +191,7 @@ const TaskCard = ({ item, index, userRole }: TaskCardProps) => {
                   sx={{ 
                     color: 'primary.main',
                     p: 0.5,
-                    mt: -0.5,
+                    ml: 0.5,
                     flexShrink: 0,
                   }}
                 >
@@ -156,37 +204,15 @@ const TaskCard = ({ item, index, userRole }: TaskCardProps) => {
             <Typography 
               variant="subtitle2" 
               sx={{ 
-                mb: 1,
+                mb: 0.5,
                 fontWeight: 'bold',
                 overflowWrap: 'break-word',
                 wordBreak: 'break-word',
+                lineHeight: 1.2, // Slightly tighter line height
               }}
             >
               {item.task}
             </Typography>
-            
-            {/* Appetite circle and hour estimate */}
-            <Box sx={{ display: 'flex', mb: 1, alignItems: 'center' }}>
-              <Box 
-                sx={{ 
-                  width: 20, 
-                  height: 20, 
-                  borderRadius: '50%',
-                  bgcolor: getAppetiteColor(item.priority),
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#FFFFFF',
-                  fontWeight: 'bold',
-                  fontSize: '12px'
-                }}
-              >
-                {item.priority}
-              </Box>
-              <Typography variant="body2" sx={{ ml: 1, fontSize: '0.75rem', fontWeight: 'bold' }}>
-                {project.details.hourEstimate} hrs
-              </Typography>
-            </Box>
           </Paper>
         )}
       </Draggable>

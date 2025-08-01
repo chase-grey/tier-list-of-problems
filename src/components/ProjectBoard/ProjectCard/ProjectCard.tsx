@@ -138,9 +138,41 @@ const ProjectCard = ({
             aria-expanded={detailsOpen}
             aria-label={`Project: ${project.title}`}
           >
-            {/* Project ID and Info Button */}
-            <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 0.5 }}>
-              {getFormattedProjectId()}
+            {/* Project ID, Appetite indicator, Hours and Info Button in one row */}
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.75 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexGrow: 1, minWidth: 0 }}>
+                {/* Project ID */}
+                {getFormattedProjectId()}
+                
+                {/* Appetite indicator circle */}
+                <Box 
+                  sx={{ 
+                    width: 12, 
+                    height: 12, 
+                    borderRadius: '50%',
+                    bgcolor: getAppetiteColor(project.appetite),
+                    display: 'inline-block',
+                    flexShrink: 0,
+                    ml: 0.5
+                  }}
+                  title={`Appetite: ${project.appetite}`}
+                />
+                
+                {/* Hour estimate */}
+                <Typography 
+                  variant="body2" 
+                  sx={{ 
+                    fontSize: '0.75rem', 
+                    fontWeight: 'bold',
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0
+                  }}
+                >
+                  {project.details.hourEstimate} hrs
+                </Typography>
+              </Box>
+              
+              {/* Info Button */}
               <Tooltip title="View details">
                 <IconButton 
                   size="small" 
@@ -149,7 +181,7 @@ const ProjectCard = ({
                   sx={{ 
                     color: 'primary.main',
                     p: 0.5,
-                    mt: -0.5,
+                    ml: 0.5,
                     flexShrink: 0,
                   }}
                 >
@@ -171,22 +203,6 @@ const ProjectCard = ({
             >
               {project.title}
             </Typography>
-            
-            {/* Appetite circle and hour estimate */}
-            <Box sx={{ display: 'flex', mb: 1, alignItems: 'center' }}>
-              <Box 
-                sx={{ 
-                  width: 14, 
-                  height: 14, 
-                  borderRadius: '50%',
-                  bgcolor: getAppetiteColor(project.appetite),
-                  display: 'inline-block'
-                }}
-              />
-              <Typography variant="body2" sx={{ ml: 1, fontSize: '0.75rem', fontWeight: 'bold' }}>
-                {project.details.hourEstimate} hrs
-              </Typography>
-            </Box>
             
             {/* Deliverables list */}
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
