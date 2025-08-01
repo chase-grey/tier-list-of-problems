@@ -1,8 +1,7 @@
 import * as React from 'react';
-import { useRef, useEffect, useMemo } from 'react';
+import { useRef, useEffect, useMemo, useState } from 'react';
 import { Paper, Typography, Box, Stack } from '@mui/material';
 import { Droppable } from '@hello-pangea/dnd';
-import ScrollShadowContainer from '../common/ScrollShadowContainer';
 import type { DroppableProvided, DroppableStateSnapshot } from '@hello-pangea/dnd';
 import type { Project, ProjectVote, ProjectPriority } from '../../types/project-models';
 import ProjectCard from './ProjectCard/ProjectCard';
@@ -37,6 +36,7 @@ const PriorityColumn = ({
   userRole 
 }: PriorityColumnProps) => {
   const columnRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const columnId = priority === null ? 'unsorted' : `priority-${priority.replace(/\s+/g, '-').toLowerCase()}`;
   
   // Register this column with the enhanced drop detection system
@@ -90,6 +90,44 @@ const PriorityColumn = ({
       });
     }
   }, [projects, votes, isUnsorted, priority]);
+  
+  // State for shadow visibility
+  const [showTopShadow, setShowTopShadow] = useState(false);
+  const [showBottomShadow, setShowBottomShadow] = useState(false);
+  
+  // Check if scrolling is possible and update shadow visibility
+  const checkScrollability = () => {
+    if (scrollContainerRef.current) {
+      const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current;
+      
+      // Show top shadow only when scrolled down from top
+      setShowTopShadow(scrollTop > 0);
+      
+      // Show bottom shadow only when there's more content below to scroll to
+      // The -1 accounts for potential rounding errors
+      setShowBottomShadow(scrollTop < scrollHeight - clientHeight - 1);
+    }
+  };
+  
+  // Check scrollability on mount and window resize
+  useEffect(() => {
+    const handleResize = () => checkScrollability();
+    window.addEventListener('resize', handleResize);
+    
+    // Initial check after a short delay to ensure content is rendered
+    const timer = setTimeout(checkScrollability, 100);
+    
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      clearTimeout(timer);
+    };
+  }, []);
+  
+  // Recheck whenever projects change
+  useEffect(() => {
+    const timer = setTimeout(checkScrollability, 100);
+    return () => clearTimeout(timer);
+  }, [filteredProjects.length]);
 
   return (
     <Box 
@@ -136,43 +174,90 @@ const PriorityColumn = ({
                 border: filteredProjects.length === 0 
                   ? '2px dashed rgba(0,0,0,0.1)' 
                   : 'none',
+                // This wrapper needs position relative but WITHOUT overflow hidden
+                position: 'relative',
               }}
             >
-              <ScrollShadowContainer maxHeight="100%">
-                <Paper
-                  ref={(el) => {
-                    provided.innerRef(el);
-                    if (el) columnRef.current = el;
-                  }}
-                  {...provided.droppableProps}
-                  sx={{
-                    p: 1,
-                    height: '100%',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    // Using transparent background since ScrollShadowContainer handles the background
-                    backgroundColor: 'transparent', 
-                    boxShadow: 'none',
-                  }}
-                  aria-roledescription="droppable region"
+              {/* Simplified direct implementation of scroll shadows */}
+              {/* Top shadow debug box - only visible when scrolled down */}
+              <Box 
+                sx={{ 
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: '30px',
+                  backgroundColor: '#ff0000', // Bright red for debugging
+                  opacity: showTopShadow ? 1 : 0,
+                  zIndex: 10,
+                  pointerEvents: 'none',
+                }}
+              />
+                
+              {/* Scrollable container */}
+              <Box
+                ref={scrollContainerRef}
+                onScroll={checkScrollability}
+                sx={{
+                  height: '100%',
+                  width: '100%',
+                  overflowY: 'auto',
+                  position: 'relative',
+                  '&::-webkit-scrollbar': {
+                    width: '4px',
+                  },
+                  '&::-webkit-scrollbar-thumb': {
+                    backgroundColor: 'rgba(0, 0, 0, 0.2)',
+                    borderRadius: '4px',
+                  },
+                }}
                 >
-                  {/* Empty columns no longer display placeholder text */}
-                  
-                  <Stack spacing={1}>
-                    {filteredProjects.map((project, index) => (
-                      <ProjectCard
-                        key={project.id}
-                        project={project}
-                        vote={votes[project.id]}
-                        index={index}
-                        userRole={userRole}
-                      />
-                    ))}
-                    {/* Keep placeholder inside the stack for proper positioning */}
-                    {provided.placeholder}
-                  </Stack>
-                </Paper>
-              </ScrollShadowContainer>
+                  <Paper
+                    ref={(el) => {
+                      provided.innerRef(el);
+                      if (el) columnRef.current = el;
+                    }}
+                    {...provided.droppableProps}
+                    sx={{
+                      p: 1,
+                      height: '100%',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      backgroundColor: 'transparent',
+                      boxShadow: 'none',
+                    }}
+                    aria-roledescription="droppable region"
+                  >
+                    <Stack spacing={1}>
+                      {filteredProjects.map((project, index) => (
+                        <ProjectCard
+                          key={project.id}
+                          project={project}
+                          vote={votes[project.id]}
+                          index={index}
+                          userRole={userRole}
+                        />
+                      ))}
+                      {/* Keep placeholder inside the stack for proper positioning */}
+                      {provided.placeholder}
+                    </Stack>
+                  </Paper>
+                </Box>
+                
+                {/* Bottom shadow debug box - only visible when more content below */}
+                <Box
+                  sx={{ 
+                    position: 'absolute',
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    height: '30px',
+                    backgroundColor: '#00ff00', // Bright green for debugging
+                    opacity: showBottomShadow ? 1 : 0,
+                    zIndex: 10,
+                    pointerEvents: 'none',
+                  }}
+                />
             </Box>
           )}
         </Droppable>

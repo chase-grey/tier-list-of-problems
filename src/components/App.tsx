@@ -773,7 +773,7 @@ const AppContent: React.FC = () => {
               right: 0,
               top: 64, // Account for header height
               bottom: 0,
-              overflow: 'hidden'
+              overflow: 'visible' // Changed from 'hidden' to 'visible' to allow shadows to appear
             }}>
               <KanbanBoardTest />
             </Box>

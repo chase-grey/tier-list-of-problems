@@ -1,9 +1,8 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef, useEffect } from "react";
 import { DragDropContext, Droppable } from "@hello-pangea/dnd";
 import { Box } from "@mui/material";
 import { type KanbanColumns, type TaskItem } from "./KanbanData";
 import TaskCard from "./TaskCard";
-import ScrollShadowContainer from "../common/ScrollShadowContainer";
 
 const Container = (props: React.HTMLAttributes<HTMLDivElement>) => (
   <Box
@@ -22,9 +21,8 @@ const Container = (props: React.HTMLAttributes<HTMLDivElement>) => (
   />
 );
 
-const TaskList = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>((  props, 
-  ref
-) => (
+// Simple version for now - we'll define the enhanced version later after KanbanBoard component
+const TaskList = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>((props, ref) => (
   <Box
     {...props}
     ref={ref}
@@ -52,6 +50,8 @@ const TaskList = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivEl
         width: 0,
         background: 'transparent',
       },
+      position: 'relative', // Add this to ensure proper stacking context
+      zIndex: 1, // Add base z-index to establish stacking context
     }}
   />
 ));
@@ -63,8 +63,8 @@ const TaskColumnStyles = (props: React.HTMLAttributes<HTMLDivElement>) => (
       margin: 0,
       display: 'flex',
       width: '100%',
-      height: 'calc(100vh - 92px)', // Adjusted for less bottom padding
-      minHeight: '500px', // Ensure minimum height for columns
+      height: 'calc(100vh - 64px)', // Match exactly to the viewport height minus header
+      minHeight: '600px', // Minimum height for columns
       gap: 1, // Minimal spacing between columns
       padding: '0 2px', // Minimal horizontal padding
       mt: 1, // Top padding matches gap between columns
@@ -115,6 +115,39 @@ interface KanbanBoardProps {
 }
 
 const KanbanBoard: React.FC<KanbanBoardProps> = ({ taskItems, userRole }) => {
+  // Track scroll state for each column to control shadow visibility
+  const [columnScrollState, setColumnScrollState] = useState<Record<string, { showTopShadow: boolean, showBottomShadow: boolean }>>({});
+  
+  // Store refs to column content elements
+  const columnRefs = useRef<Record<string, HTMLElement | null>>({});
+  
+  // Function to check scroll position and update shadow visibility
+  const checkScrollability = (columnId: string, element: HTMLElement) => {
+    const { scrollTop, scrollHeight, clientHeight } = element;
+    
+    // Show top shadow only when scrolled down from top
+    const showTopShadow = scrollTop > 0;
+    
+    // Show bottom shadow only when there's more content below to scroll to
+    // The -1 accounts for potential rounding errors
+    const showBottomShadow = scrollTop < scrollHeight - clientHeight - 1;
+    
+    // Update state only if something changed
+    setColumnScrollState(prevState => {
+      if (
+        !prevState[columnId] || 
+        prevState[columnId].showTopShadow !== showTopShadow || 
+        prevState[columnId].showBottomShadow !== showBottomShadow
+      ) {
+        return {
+          ...prevState,
+          [columnId]: { showTopShadow, showBottomShadow }
+        };
+      }
+      return prevState;
+    });
+  }; 
+  
   // Create columns from task items, grouped by status
   // Create fixed column IDs to ensure consistent droppableIds
   const columnIds = {
@@ -162,6 +195,22 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ taskItems, userRole }) => {
   }, [taskItems]);
   
   const [columns, setColumns] = useState<KanbanColumns>(initialColumns);
+  
+  // Register scroll event handlers for all column lists after columns are initialized
+  useEffect(() => {
+    // Small delay to ensure DOM elements are rendered
+    const timer = setTimeout(() => {
+      // Initialize the shadow state for all columns
+      Object.entries(columnRefs.current).forEach(([id, element]) => {
+        if (element) {
+          // Initial check
+          checkScrollability(id, element);
+        }
+      });
+    }, 100);
+    
+    return () => clearTimeout(timer);
+  }, [columns]);
 
   // Console log to help debug drag events
   const onDragStart = () => {
@@ -282,7 +331,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ taskItems, userRole }) => {
                   flex: 1, 
                   display: 'flex', 
                   flexDirection: 'column',
-                  height: 'calc(100% - 10px)', // Ensure it takes the full height minus margin
+                  height: 'calc(100% - 5px)', // Reduced margin to increase height
                   position: 'relative', // For proper scroll containment
                 }}>
                   <Droppable key={columnId} droppableId={columnId}>
@@ -300,28 +349,101 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ taskItems, userRole }) => {
                         position: 'relative', // For proper scroll containment
                       }}
                     >
-                      <ScrollShadowContainer maxHeight="100%" showScrollBar={false}>
-                        <TaskList
-                          ref={provided.innerRef}
-                          {...provided.droppableProps}
-                          style={{
-                            backgroundColor: snapshot.isDraggingOver ? '#2a2a2a' : '#222222', // Even darker grey for columns
-                            // Maintain scrollability while hiding scrollbar visually
-                            overflowY: 'scroll',
-                            msOverflowStyle: 'none',  /* IE and Edge */
-                            scrollbarWidth: 'none',   /* Firefox */
-                            '&::-webkit-scrollbar': { display: 'none' } /* Chrome, Safari, Opera */
-                          }}
-                        >
+                            {/* Column container with shadows */}
+                      <Box sx={{ 
+                        position: 'relative', 
+                        width: '100%', 
+                        height: '100%', 
+                        display: 'flex', 
+                        flexDirection: 'column',
+                        backgroundColor: snapshot.isDraggingOver ? '#2a2a2a' : '#222222', // Background color
+                        borderRadius: '8px',
+                        overflow: 'visible' // Allow shadows to extend outside container
+                      }}>
+                        {/* Top overlay shadow - only shown when scrolled down */}
+                        <Box 
+                          sx={{ 
+                            position: 'absolute', 
+                            top: 0, 
+                            left: 0, 
+                            right: 0, 
+                            height: '30px', 
+                            backgroundColor: '#ff0000', // Debug color: red
+                            zIndex: 20, // High enough to be visible but not interfere with other elements
+                            opacity: columnScrollState[columnId]?.showTopShadow ? 0.7 : 0, // Only show when scrolled
+                            pointerEvents: 'none',
+                            transition: 'opacity 0.2s ease',
+                          }} 
+                        />
                         
-                        {column.items.map((item, index) => (
-                          <TaskCard key={item.id} item={item} index={index} userRole={userRole} />
-                        ))}
-                        {provided.placeholder}
-                        
-                        {/* Empty columns no longer show placeholder text */}
-                        </TaskList>
-                      </ScrollShadowContainer>
+                        {/* Content container that fills entire height */}
+                        <Box sx={{ 
+                          flex: 1,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          height: '100%',
+                          minHeight: '100%',
+                          position: 'relative',
+                          overflow: 'hidden'
+                        }}>
+                          <TaskList
+                            id={columnId} /* Add unique ID for scroll tracking */
+                            ref={provided.innerRef}
+                            {...provided.droppableProps}
+                            onScroll={() => {
+                              // Direct scroll handler for immediate feedback
+                              const element = columnRefs.current[columnId];
+                              if (element) {
+                                checkScrollability(columnId, element);
+                              }
+                            }}
+                            sx={{
+                              flex: 1,
+                              display: 'flex',
+                              flexDirection: 'column',
+                              padding: '10px',
+                              overflowY: 'auto',
+                              msOverflowStyle: 'none',  // IE and Edge
+                              scrollbarWidth: 'none',   // Firefox
+                              '&::-webkit-scrollbar': { 
+                                display: 'none' // Chrome, Safari, Opera
+                              },
+                              // Make list stretch to fill entire column height
+                              minHeight: '100%'
+                            }}
+                          >
+                          {column.items.length === 0 && (
+                            <Box sx={{ 
+                              flex: 1, 
+                              display: 'flex', 
+                              justifyContent: 'center',
+                              alignItems: 'center',
+                              height: '100%',
+                              opacity: 0.4
+                            }}>No items</Box>
+                          )}
+                          
+                          {column.items.map((item, index) => (
+                            <TaskCard key={item.id} item={item} index={index} userRole={userRole} />
+                          ))}
+                          {provided.placeholder}
+                          </TaskList>
+                        </Box>
+                          
+                        {/* Bottom overlay shadow - only shown when more content below */}
+                        <Box sx={{ 
+                          position: 'absolute', 
+                          bottom: 0, 
+                          left: 0, 
+                          right: 0, 
+                          height: '30px', // Match height with top shadow
+                          backgroundColor: '#00ff00', // Debug color: green
+                          zIndex: 20, // Match z-index with top shadow
+                          opacity: columnScrollState[columnId]?.showBottomShadow ? 0.7 : 0, // Only show when needed
+                          pointerEvents: 'none',
+                          transition: 'opacity 0.2s ease' // Smooth transition
+                        }} />
+                      </Box>
                   </Box>
                 )}
                   </Droppable>
