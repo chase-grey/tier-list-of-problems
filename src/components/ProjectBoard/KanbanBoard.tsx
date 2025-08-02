@@ -295,6 +295,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ taskItems, userRole }) => {
                   height: 'calc(100% - 10px)', // Ensure it takes the full height minus margin
                   position: 'relative', // For proper scroll containment
                   minHeight: '100%', // Minimum height to fill available space
+                  overflow: 'hidden', // Prevent content from expanding outside the box
                 }}>
                   <Droppable key={columnId} droppableId={columnId}>
                   {(provided: any, snapshot: any) => (
@@ -307,9 +308,11 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ taskItems, userRole }) => {
                         // Removed all border styling to get rid of dividing lines
                         height: '100%', // Take full height of parent
                         minHeight: '100%', // Ensure minimum height fills container
+                        maxHeight: '100%', // Prevent expanding beyond parent height
                         display: 'flex',
                         flexDirection: 'column',
                         position: 'relative', // For proper scroll containment
+                        overflow: 'hidden', // Prevent expanding outside the box during drag
                       }}
                     >
                       <TaskList

@@ -48,22 +48,58 @@ const ProjectCard = ({
   const getFormattedProjectId = () => {
     const url = `https://emc2summary/GetSummaryReport.ashx/track/ZQN/${project.id}`;
     
-    // For customers, just return the ID as plain text
+    // For customers, show the ID as clickable text that opens the details modal
     if (userRole === 'customer') {
-      return <Typography variant="body2" sx={{ fontWeight: 'medium' }}>{project.id}</Typography>;
+      return (
+        <Typography 
+          variant="body2" 
+          sx={{ 
+            fontWeight: 'medium',
+            cursor: 'pointer',
+            '&:hover': { textDecoration: 'underline' }
+          }}
+          onClick={handleInfoButtonClick}
+        >
+          {project.id}
+        </Typography>
+      );
     }
     
-    // For all other users, return a hyperlink
+    // For all other users, return a hyperlink with dual functionality:
+    // - Ctrl+Click or middle-click: open external link
+    // - Regular click: open details modal
     return (
-      <Link 
-        href={url}
-        target="_blank"
-        rel="noopener noreferrer"
-        underline="hover"
-        sx={{ fontWeight: 'medium' }}
-      >
-        {project.id}
-      </Link>
+      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+        <Link 
+          onClick={(e: React.MouseEvent<HTMLAnchorElement>) => {
+            // If Ctrl/Cmd key is pressed, let the browser handle the link normally
+            if (!e.ctrlKey && !e.metaKey && !e.shiftKey && e.button !== 1) {
+              e.preventDefault();
+              handleInfoButtonClick(e as unknown as React.MouseEvent);
+            }
+          }}
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          underline="hover"
+          sx={{ fontWeight: 'medium', cursor: 'pointer' }}
+        >
+          {project.id}
+        </Link>
+        <Tooltip title="Ctrl+Click to open in new tab">
+          <Box 
+            component="span" 
+            sx={{ 
+              fontSize: '0.7rem', 
+              ml: 0.5, 
+              color: 'text.secondary',
+              display: { xs: 'none', sm: 'inline' } // Hide on very small screens
+            }}
+          >
+            ↗
+          </Box>
+        </Tooltip>
+      </Box>
     );
   };
 
@@ -210,17 +246,18 @@ const ProjectCard = ({
                 </Tooltip>
               </Box>
               
-              {/* Info Button */}
+              {/* Info Button - Now optional since ID is clickable */}
               <Tooltip title="View details">
                 <IconButton 
                   size="small" 
                   onClick={handleInfoButtonClick}
                   aria-label="View project details"
                   sx={{ 
-                    color: 'primary.main',
+                    color: 'text.secondary', // Made less prominent
                     p: 0.5,
                     ml: 0.5,
                     flexShrink: 0,
+                    fontSize: '0.9em', // Slightly smaller
                   }}
                 >
                   <InfoOutlined fontSize="small" />
