@@ -550,8 +550,15 @@ const AppContent: React.FC = () => {
     setShowFeedback(false);
     
     if (state.voterName && state.voterRole) { // Add null checks for both name and role
-      // Export votes with feedback data
-      exportVotes(state.voterName, state.voterRole, state.votes, feedbackData);
+      // Export votes with feedback data (including data from all sections)
+      exportVotes(
+        state.voterName,
+        state.voterRole,
+        state.votes,
+        state.projectVotes,
+        state.projectInterestVotes,
+        feedbackData
+      );
       showSnackbar('Thank you for your feedback! Your data has been exported.', 'success');
     }
   };
@@ -561,8 +568,14 @@ const AppContent: React.FC = () => {
     setShowFeedback(false);
     
     if (state.voterName && state.voterRole) { // Add null checks for both name and role
-      // Export votes without feedback
-      exportVotes(state.voterName, state.voterRole, state.votes);
+      // Export votes without feedback (including data from all sections)
+      exportVotes(
+        state.voterName,
+        state.voterRole,
+        state.votes,
+        state.projectVotes,
+        state.projectInterestVotes
+      );
       showSnackbar('Your data has been exported successfully!', 'success');
     }
   };
