@@ -1,7 +1,8 @@
-import { useState, useReducer, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Box, Alert } from '@mui/material';
-import type { DropResult } from '@hello-pangea/dnd';
-import ProjectBoard from './ProjectBoard';
+// Import KanbanBoard instead of ProjectBoard for consistent UI
+import KanbanBoard from './KanbanBoard';
+import { convertProjectsToTaskItems } from './KanbanData';
 import type { Project, ProjectVote, ProjectPriority } from '../../types/project-models';
 
 interface ProjectPriorityAppProps {
@@ -11,36 +12,7 @@ interface ProjectPriorityAppProps {
   onSaveVotes?: (votes: Record<string, ProjectVote>) => void;
 }
 
-// Simple reducer for vote state management
-type VoteAction = 
-  | { type: 'SET_PRIORITY'; projectId: string; priority: ProjectPriority }
-  | { type: 'UNSET_PRIORITY'; projectId: string }
-  | { type: 'RESET_ALL' };
-
-function votesReducer(state: Record<string, ProjectVote>, action: VoteAction): Record<string, ProjectVote> {
-  switch (action.type) {
-    case 'SET_PRIORITY': {
-      return {
-        ...state,
-        [action.projectId]: {
-          projectId: action.projectId,
-          priority: action.priority,
-          timestamp: Date.now()
-        }
-      };
-    }
-    case 'UNSET_PRIORITY': {
-      const newState = { ...state };
-      delete newState[action.projectId];
-      return newState;
-    }
-    case 'RESET_ALL': {
-      return {};
-    }
-    default:
-      return state;
-  }
-}
+// Note: The vote management logic has been simplified since we're now using KanbanBoard's internal drag-and-drop handling
 
 /**
  * Main component for the Project Prioritization Poll
@@ -52,7 +24,8 @@ const ProjectPriorityApp = ({
   onSaveVotes 
 }: ProjectPriorityAppProps) => {
   // State for user's votes
-  const [votes, dispatchVote] = useReducer(votesReducer, initialVotes);
+  // Using direct state instead of reducer since we're not updating it directly anymore
+  const [votes] = useState(initialVotes);
   
   // Export functionality was removed, only keeping error state for UI feedback if needed
   const [exportError] = useState<string | null>(null);
@@ -64,39 +37,20 @@ const ProjectPriorityApp = ({
     }
   }, [votes, onSaveVotes]);
   
-  // Handle when a project card is dragged to a priority column
-  const handleDragEnd = (result: DropResult) => {
-    const { destination, draggableId } = result;
-    
-    // If dropped outside a droppable area, do nothing
-    if (!destination) return;
-    
-    const dropId = destination.droppableId;
-    
-    // Handle drop in different columns
-    if (dropId.startsWith('priority-')) {
-      // Extract priority from column id (format: priority-highest-priority, etc.)
-      const priorityParts = dropId.replace('priority-', '').split('-');
-      const priority = priorityParts.join(' ') as ProjectPriority;
-      
-      // Update vote
-      dispatchVote({
-        type: 'SET_PRIORITY',
-        projectId: draggableId,
-        priority
-      });
-    } else if (dropId === 'unsorted') {
-      // If dropped in unsorted, remove priority
-      dispatchVote({
-        type: 'UNSET_PRIORITY',
-        projectId: draggableId
-      });
-    }
-  };
+  // KanbanBoard has its own internal drag handling, but we need to update our votes
+  // when the KanbanBoard's state changes. We'll implement a callback for this in the future
+  // if needed. For now, we'll just rely on the KanbanBoard's internal state.
   
   // Export functionality removed as it's not currently being used
 
   // Project counting code removed as it's not being used
+
+  // Convert projects to task items format needed by KanbanBoard
+  const taskItems = useMemo(() => {
+    // Pass the votes directly to the convertProjectsToTaskItems function
+    // since it expects a record of ProjectVote objects
+    return convertProjectsToTaskItems(projects, votes);
+  }, [projects, votes]);
 
   return (
     <Box sx={{ width: '100%', height: '100vh', overflow: 'hidden' }}>
@@ -109,11 +63,20 @@ const ProjectPriorityApp = ({
         </Alert>
       )}
       
-      <Box sx={{ height: '100%', pt: 0 }}>
-        <ProjectBoard 
-          projects={projects} 
-          votes={votes} 
-          onDragEnd={handleDragEnd}
+      <Box sx={{ 
+        width: '100%', 
+        height: 'calc(100vh - 64px)', 
+        bgcolor: '#000000',
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        top: 64, // Account for header height
+        bottom: 0,
+        overflow: 'hidden'
+      }}>
+        {/* Use KanbanBoard instead of ProjectBoard for consistent UI */}
+        <KanbanBoard 
+          taskItems={taskItems} 
           userRole={userRole} 
         />
       </Box>

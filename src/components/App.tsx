@@ -39,6 +39,8 @@ import { isContributorRole } from '../types/models';
 import pitchesData from '../assets/pitches.json';
 // Import project data
 import { mockProjects } from './ProjectBoard/mockData';
+// Import our complete projects data
+import { allProjects } from '../data/allProjectsData';
 
 // Initial state
 const initialState: AppState = {
@@ -751,7 +753,7 @@ const AppContent: React.FC = () => {
           ) : (
             // Project priority stage with integrated ProjectPriorityApp
             <ProjectPriorityApp
-              projects={mockProjects}
+              projects={allProjects}
               initialVotes={state.projectVotes}
               onSaveVotes={(projectVotes) => {
                 dispatch({ type: 'SET_PROJECT_VOTES', projectVotes });
