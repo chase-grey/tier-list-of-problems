@@ -5,7 +5,8 @@ import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import { type TaskItem } from "./KanbanData";
 import { colorTokens } from '../../theme';
 import ProjectDetailsModal from './ProjectCard/ProjectDetailsModal';
-import { sampleProjects } from '../../data/sampleProjectInterestData';
+// Use the complete data source with all 29 projects
+import { allProjects } from '../../data/allProjectsData';
 
 interface TaskCardProps {
   item: TaskItem;
@@ -34,8 +35,8 @@ const TaskCard = ({ item, index, userRole }: TaskCardProps) => {
   // Ensure draggable ID is always a string
   const draggableId = `task-${item.id}`;
   
-  // Find the full project data from our sample data using the ID
-  const project = sampleProjects.find(p => p.id === item.id);
+  // Find the full project data from our complete data using the ID
+  const project = allProjects.find(p => p.id === item.id);
   
   // Handle info button click to open details modal
   const handleInfoButtonClick = (event: React.MouseEvent) => {
@@ -139,46 +140,44 @@ const TaskCard = ({ item, index, userRole }: TaskCardProps) => {
           >
             {/* Project ID, Appetite indicator, Hours and Info Button in one row */}
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.75 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexGrow: 1, minWidth: 0 }}>
-                {/* Project ID with smaller font */}
-                <Box sx={{ fontSize: '0.75rem' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexGrow: 1, minWidth: 0, flexWrap: 'wrap' }}>
+                {/* Project ID - Made more prominent */}
+                <Box sx={{ fontWeight: 'bold' }}>
                   {getFormattedProjectId()}
                 </Box>
                 
-                {/* Appetite circle */}
-                <Box 
-                  sx={{ 
-                    width: 16, 
-                    height: 16, 
-                    borderRadius: '50%',
-                    bgcolor: getAppetiteColor(item.priority),
+                {/* Appetite indicator with text in colored box */}
+                <Tooltip title={item.priority === 'L' ? 'Large' : item.priority === 'M' ? 'Medium' : 'Small'}>
+                  <Box sx={{ 
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'center',
-                    color: '#FFFFFF',
+                    bgcolor: getAppetiteColor(item.priority),
+                    px: 0.75,
+                    py: 0.25,
+                    borderRadius: 1,
+                    color: '#000',
                     fontWeight: 'bold',
-                    fontSize: '10px',
-                    flexShrink: 0,
-                    ml: 0.5
-                  }}
-                  title={`Appetite: ${item.priority}`}
-                >
-                  {item.priority}
-                </Box>
+                    fontSize: '0.7rem'
+                  }}>
+                    {item.priority}
+                  </Box>
+                </Tooltip>
                 
-                {/* Hour estimate */}
+                {/* Hour estimate - Simplified */}
                 {project && (
-                  <Typography 
-                    variant="body2" 
-                    sx={{ 
-                      fontSize: '0.65rem', 
-                      fontWeight: 'bold',
-                      whiteSpace: 'nowrap',
-                      flexShrink: 0
-                    }}
-                  >
-                    {project.details.hourEstimate} hrs
-                  </Typography>
+                  <Tooltip title={`Hour estimate: ${project.details.hourEstimate} hours`}>
+                    <Typography 
+                      variant="body2" 
+                      sx={{ 
+                        fontSize: '0.75rem', 
+                        fontWeight: 'bold',
+                        whiteSpace: 'nowrap',
+                        flexShrink: 0,
+                      }}
+                    >
+                      {project.details.hourEstimate} hrs
+                    </Typography>
+                  </Tooltip>
                 )}
               </Box>
               

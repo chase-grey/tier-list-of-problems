@@ -65,7 +65,7 @@ const ProjectDetailsModal = ({ project, open, onClose, userRole }: ProjectDetail
     switch (appetite) {
       case 'S': return 'Small (days/week)';
       case 'M': return 'Medium (weeks/month)';
-      case 'L': return 'Large (months/quarter)';
+      case 'L': return 'Large'; // Removed (months/quarter) as requested
       default: return 'Unknown';
     }
   };
@@ -80,9 +80,22 @@ const ProjectDetailsModal = ({ project, open, onClose, userRole }: ProjectDetail
     >
       <DialogTitle id="project-details-title">
         <Box display="flex" justifyContent="space-between" alignItems="center">
-          <Typography variant="h6">
-            {project.id} - {project.title}
-          </Typography>
+          <Box>
+            <Typography variant="h6">
+              <Link 
+                href={`https://emc2summary/GetSummaryReport.ashx/track/ZQN/${project.id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                underline="hover"
+                sx={{ fontWeight: 'bold' }}
+              >
+                {project.id}
+              </Link> - {project.title}
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+              {project.details.assessorName && `Assessed by ${project.details.assessorName}`}
+            </Typography>
+          </Box>
           <IconButton edge="end" color="inherit" onClick={onClose} aria-label="close">
             <CloseIcon />
           </IconButton>
@@ -140,19 +153,33 @@ const ProjectDetailsModal = ({ project, open, onClose, userRole }: ProjectDetail
           <Typography variant="subtitle2" color="textSecondary">
             Appetite & Estimate
           </Typography>
-          <Box mt={0.5} display="flex" alignItems="center">
-            <Chip
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Chip 
               label={getAppetiteDescription(project.appetite)}
-              sx={{
+              size="small"
+              sx={{ 
                 bgcolor: getAppetiteColor(project.appetite),
-                color: 'white',
-                fontWeight: 'bold',
-                mr: 1
-              }}
+                color: 'black',
+                fontWeight: 'bold'
+              }} 
             />
-            <Typography variant="body2">
-              {project.details.hourEstimateRange || `${project.details.hourEstimate} hours`}
-            </Typography>
+
+            {/* Hour estimate chip - with proper unit */}
+            <Chip
+              label={`${project.details.hourEstimate} hours`}
+              size="small"
+              sx={{ fontWeight: 'medium' }}
+            />
+            
+            {/* Hour range if available */}
+            {project.details.hourEstimateRange && (
+              <Chip
+                label={`Range: ${project.details.hourEstimateRange}`}
+                size="small"
+                variant="outlined"
+                sx={{ fontWeight: 'medium' }}
+              />
+            )}
           </Box>
         </Box>
 

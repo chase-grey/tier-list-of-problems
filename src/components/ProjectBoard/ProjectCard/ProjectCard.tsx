@@ -172,37 +172,42 @@ const ProjectCard = ({
                 flexWrap: 'wrap', // Allow wrapping when needed
                 overflow: 'hidden' // Prevent content overflow
               }}>
-                {/* Project ID */}
-                {getFormattedProjectId()}
+                {/* Project ID - Made more prominent */}
+                <Box sx={{ fontWeight: 'bold' }}>
+                  {getFormattedProjectId()}
+                </Box>
                 
-                {/* Appetite indicator circle */}
-                <Box 
-                  sx={{ 
-                    width: 12, 
-                    height: 12, 
-                    borderRadius: '50%',
+                {/* Appetite indicator with text */}
+                <Tooltip title={project.appetite === 'L' ? 'Large' : project.appetite === 'M' ? 'Medium' : 'Small'}>
+                  <Box sx={{ 
+                    display: 'flex',
+                    alignItems: 'center',
                     bgcolor: getAppetiteColor(project.appetite),
-                    display: 'inline-block',
-                    flexShrink: 0,
-                    ml: 0.5
-                  }}
-                  title={`Appetite: ${project.appetite}`}
-                />
-                
-                {/* Hour estimate */}
-                <Typography 
-                  variant="body2" 
-                  sx={{ 
-                    fontSize: '0.75rem', 
+                    px: 0.75,
+                    py: 0.25,
+                    borderRadius: 1,
+                    color: '#000',
                     fontWeight: 'bold',
-                    whiteSpace: 'nowrap',
-                    flexShrink: 0,
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis'
-                  }}
-                >
-                  {project.details.hourEstimate} hrs
-                </Typography>
+                    fontSize: '0.7rem'
+                  }}>
+                    {project.appetite}
+                  </Box>
+                </Tooltip>
+                
+                {/* Hour estimate - Simplified */}
+                <Tooltip title={`Hour estimate: ${project.details.hourEstimate} hours`}>
+                  <Typography 
+                    variant="body2" 
+                    sx={{ 
+                      fontSize: '0.75rem', 
+                      fontWeight: 'bold',
+                      whiteSpace: 'nowrap',
+                      flexShrink: 0,
+                    }}
+                  >
+                    {project.details.hourEstimate} hrs
+                  </Typography>
+                </Tooltip>
               </Box>
               
               {/* Info Button */}
