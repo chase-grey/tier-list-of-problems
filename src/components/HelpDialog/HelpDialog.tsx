@@ -73,7 +73,7 @@ const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose, userRole }) => {
       </DialogTitle>
       <Divider />
       <DialogContent sx={{ pt: 3 }}>
-        {/* Current stage description */}
+        {/* Current stage description with improved explanation of the overall process */}
         <Alert 
           severity={isStage1 ? "info" : "warning"}
           sx={{ mb: 3 }}
@@ -84,10 +84,62 @@ const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose, userRole }) => {
           </Typography>
           <Typography variant="body2">
             {isStage1 
-              ? 'In this stage, you will rank problems and set appetites for how much time should be spent on each problem.' 
-              : 'In this stage, you will rank projects that were developed based on problem priorities from Stage 1.'}
+              ? 'In Stage 1, you will rank problems and set appetites for how much time should be spent on each problem. Your input will help determine which problems will move to the investigation phase.' 
+              : 'In Stage 2, you will rank proposed solutions (projects) that were developed based on problem priorities from Stage 1. Your input helps determine which projects will be scheduled for the next quarterly cycle.'}
           </Typography>
         </Alert>
+        
+        {/* Process Overview */}
+        <Box sx={{ mb: 3, p: 2, bgcolor: 'rgba(0, 0, 0, 0.07)', borderRadius: 1 }}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>
+            Process Overview
+          </Typography>
+          <Typography variant="body2" sx={{ mb: 1 }}>
+            This is part of a quarterly cycle to determine which projects to work on in the next version:
+          </Typography>
+          <ol style={{ margin: 0, paddingLeft: '1.5rem' }}>
+            <li>
+              <Typography variant="body2" sx={{ mb: 0.5 }}>
+                <strong>Collect ideas</strong> on problems to solve next
+              </Typography>
+            </li>
+            <li>
+              <Typography variant="body2" sx={{ mb: 0.5 }}>
+                <strong>TLs curate</strong> this list
+              </Typography>
+            </li>
+            <li>
+              <Typography variant="body2" sx={{ mb: 0.5, color: isStage1 ? 'primary.main' : 'text.secondary' }}>
+                <strong>Collectively vote</strong> on priority and appetite for each problem (Stage 1)
+              </Typography>
+            </li>
+            <li>
+              <Typography variant="body2" sx={{ mb: 0.5 }}>
+                <strong>Devs do initial assessment</strong> and come up with deliverables
+              </Typography>
+            </li>
+            <li>
+              <Typography variant="body2" sx={{ mb: 0.5, color: !isStage1 ? 'primary.main' : 'text.secondary' }}>
+                <strong>Collectively vote</strong> on priority for which projects to take on (Stage 2)
+              </Typography>
+            </li>
+            <li>
+              <Typography variant="body2" sx={{ mb: 0.5 }}>
+                <strong>TLs sign off</strong>
+              </Typography>
+            </li>
+            <li>
+              <Typography variant="body2" sx={{ mb: 0.5 }}>
+                <strong>Match resources</strong> to projects based on interest
+              </Typography>
+            </li>
+            <li>
+              <Typography variant="body2">
+                <strong>Kickoff!</strong>
+              </Typography>
+            </li>
+          </ol>
+        </Box>
         
         {/* Show appropriate content based on current stage */}
         {isStage1 ? (
@@ -97,9 +149,29 @@ const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose, userRole }) => {
               Step 1: Rank Problems by Priority
             </Typography>
             <Typography variant="body1" paragraph>
-              Drag each problem card into one of the eight tier columns based on how important you think it is to solve in this next version.
-              The tiers range from "Highest Priority" (Tier 1) to "Not a Priority" (Tier 8).
+              Drag each problem card into one of the priority columns based on how important you think it is to solve in this next version.
+              The priority levels range from "Highest Priority" to "Not a Priority".
             </Typography>
+            <Typography variant="body1" sx={{ mb: 1 }}>
+              This helps us determine:
+            </Typography>
+            <ul>
+              <li>
+                <Typography variant="body1">
+                  Which problems are most important to our users and team
+                </Typography>
+              </li>
+              <li>
+                <Typography variant="body1">
+                  Which problems should advance to the investigation phase
+                </Typography>
+              </li>
+              <li>
+                <Typography variant="body1" sx={{ mb: 1 }}>
+                  How to allocate our limited resources effectively
+                </Typography>
+              </li>
+            </ul>
             <Typography variant="body1" paragraph sx={{ fontWeight: 'medium', color: 'primary.main' }}>
               You need to rank at least 50% of the problems to submit your feedback. However, ranking more helps our team make more informed decisions about what to work on next.
             </Typography>
@@ -165,8 +237,31 @@ const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose, userRole }) => {
               Step 1: Rank Projects by Priority
             </Typography>
             <Typography variant="body1" paragraph>
-              Drag each project card into one of the tier columns based on how important you think it is to implement in this next version.
-              The tiers range from "Highest Priority" (Tier 1) to "Not a Priority" (Tier 8).
+              Drag each project card into one of the priority columns based on how important you think it is to implement in this next version.
+              The priority levels range from "Highest Priority" to "Not a Priority".
+            </Typography>
+            <Typography variant="body1" sx={{ mb: 1 }}>
+              During this stage, you are evaluating concrete project proposals that include:
+            </Typography>
+            <ul>
+              <li>
+                <Typography variant="body1">
+                  Specific deliverables and scope
+                </Typography>
+              </li>
+              <li>
+                <Typography variant="body1">
+                  Hour estimates based on developer investigation
+                </Typography>
+              </li>
+              <li>
+                <Typography variant="body1" sx={{ mb: 1 }}>
+                  Detailed task breakdowns
+                </Typography>
+              </li>
+            </ul>
+            <Typography variant="body1" paragraph>
+              Your rankings will directly influence which projects get scheduled for the next quarterly cycle.
             </Typography>
             <Typography variant="body1" paragraph sx={{ fontWeight: 'medium', color: 'primary.main' }}>
               You need to rank at least 50% of the projects to submit your feedback.
@@ -183,8 +278,28 @@ const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose, userRole }) => {
                   <strong>Note: This step only applies to QMs, developers, QM TLs, and dev TLs that are contributing towards implementations next quarter.</strong>
                 </Typography>
                 <Typography variant="body1" paragraph>
-                  After ranking projects, you'll be asked to indicate your interest level in working on each project. This information helps team leads match people with projects they're excited about working on.
+                  After ranking projects, you'll be asked to indicate your interest level in working on each project. This information helps team leads match people with projects they're excited about working on, which is a key part of the final stage of the process.
                 </Typography>
+                <Typography variant="body1" sx={{ mb: 1 }}>
+                  When indicating interest, consider factors such as:
+                </Typography>
+                <ul>
+                  <li>
+                    <Typography variant="body1">
+                      Your experience with the relevant codebase
+                    </Typography>
+                  </li>
+                  <li>
+                    <Typography variant="body1">
+                      Your skills that align with the project requirements
+                    </Typography>
+                  </li>
+                  <li>
+                    <Typography variant="body1" sx={{ mb: 1 }}>
+                      Your passion for solving this particular problem
+                    </Typography>
+                  </li>
+                </ul>
                 <Typography variant="body1" paragraph sx={{ fontWeight: 'medium', color: 'primary.main' }}>
                   You need to set your interest levels for at least 50% of the projects to submit your feedback.
                 </Typography>
