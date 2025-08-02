@@ -93,9 +93,21 @@ const ProjectCard = ({
     }
     
     return (
-      <Box component="ul" sx={{ pl: 2, m: 0 }}>
+      <Box component="ul" sx={{ pl: 2, m: 0, maxWidth: '100%' }}>
         {project.deliverables.map((deliverable, index) => (
-          <Typography component="li" key={index} variant="body2" sx={{ fontSize: '0.8rem' }}>
+          <Typography 
+            component="li" 
+            key={index} 
+            variant="body2" 
+            sx={{ 
+              fontSize: '0.8rem',
+              overflowWrap: 'break-word',
+              wordBreak: 'break-word',
+              hyphens: 'auto',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis'
+            }}
+          >
             {deliverable}
           </Typography>
         ))}
@@ -132,6 +144,10 @@ const ProjectCard = ({
               },
               position: 'relative',
               minHeight: '100px',
+              width: '100%', // Ensure card takes full width of its container
+              boxSizing: 'border-box', // Include padding in width calculation
+              overflow: 'hidden', // Prevent content from spilling outside
+              wordBreak: 'break-word', // Allow words to break to prevent overflow
             }}
             role="button"
             tabIndex={0}
@@ -139,8 +155,23 @@ const ProjectCard = ({
             aria-label={`Project: ${project.title}`}
           >
             {/* Project ID, Appetite indicator, Hours and Info Button in one row */}
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.75 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexGrow: 1, minWidth: 0 }}>
+            <Box sx={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'space-between', 
+              mb: 0.75,
+              flexWrap: 'wrap', // Allow wrapping on very small screens
+              gap: 0.5 // Add gap for wrapped items
+            }}>
+              <Box sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: 1, 
+                flexGrow: 1, 
+                minWidth: 0,
+                flexWrap: 'wrap', // Allow wrapping when needed
+                overflow: 'hidden' // Prevent content overflow
+              }}>
                 {/* Project ID */}
                 {getFormattedProjectId()}
                 
@@ -165,7 +196,9 @@ const ProjectCard = ({
                     fontSize: '0.75rem', 
                     fontWeight: 'bold',
                     whiteSpace: 'nowrap',
-                    flexShrink: 0
+                    flexShrink: 0,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis'
                   }}
                 >
                   {project.details.hourEstimate} hrs
@@ -199,17 +232,29 @@ const ProjectCard = ({
                 // Ensure text wraps to avoid overflow
                 overflowWrap: 'break-word',
                 wordBreak: 'break-word',
+                hyphens: 'auto', // Add hyphenation for better text wrapping
+                width: '100%', // Ensure full width
+                overflow: 'hidden', // Hide overflow
+                textOverflow: 'ellipsis' // Show ellipsis for overflow
               }}
             >
               {project.title}
             </Typography>
             
             {/* Deliverables list */}
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+            <Box sx={{ 
+              display: 'flex', 
+              flexDirection: 'column', 
+              gap: 0.5,
+              overflow: 'hidden', // Hide overflow
+              width: '100%' // Take full width
+            }}>
               <Typography variant="caption" color="text.secondary">
                 Deliverables:
               </Typography>
-              {getDeliverablesList()}
+              <Box sx={{ overflow: 'hidden' }}>
+                {getDeliverablesList()}
+              </Box>
             </Box>
             
             {/* Removed redundant hour estimate and priority text from bottom of card as requested */}
