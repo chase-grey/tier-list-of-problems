@@ -698,7 +698,8 @@ const AppContent: React.FC = () => {
     
     return false;
   };
-
+  
+  // After all the function declarations, return the component's JSX
   return (
     <>
       <NameGate 
