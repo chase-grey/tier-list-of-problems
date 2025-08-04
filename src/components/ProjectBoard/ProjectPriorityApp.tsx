@@ -32,9 +32,18 @@ const ProjectPriorityApp = ({
   const [votes, setVotes] = useState(initialVotes);
   
   // Effect to save votes when they change
+  // Add a short delay to prevent excessive updates
   useEffect(() => {
-    if (onSaveVotes) {
-      onSaveVotes(votes);
+    // Make sure onSaveVotes exists and we have votes to save
+    if (onSaveVotes && Object.keys(votes).length > 0) {
+      // Add a short debounce to prevent excessive updates
+      const handler = setTimeout(() => {
+        console.log('Saving votes to App state:', votes);
+        onSaveVotes(votes);
+      }, 300);
+      
+      // Clean up timeout on unmount
+      return () => clearTimeout(handler);
     }
   }, [votes, onSaveVotes]);
 
