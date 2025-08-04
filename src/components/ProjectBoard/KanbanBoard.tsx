@@ -240,6 +240,12 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
         medium: columns[columnIds.medium].items.length,
         low: columns[columnIds.low].items.length
       };
+      
+      // Log column counts for debugging
+      console.log('KanbanBoard - Column counts:', columnCounts);
+      console.log(`KanbanBoard - Categorized: ${columnCounts.highest + columnCounts.high + columnCounts.medium + columnCounts.low}`);
+      
+      // Call the parent's callback with the updated column counts
       onColumnsChange(columnCounts);
     }
   }, [columns, onColumnsChange, columnIds]);

@@ -187,6 +187,9 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
       
     case 'SET_PROJECT_INTEREST_VOTES':
       // Set project interest votes
+      console.log('DEBUG: SET_PROJECT_INTEREST_VOTES action received:', action.projectInterestVotes);
+      console.log('DEBUG: Previous projectInterestVotes count:', Object.keys(state.projectInterestVotes).length);
+      console.log('DEBUG: New projectInterestVotes count:', Object.keys(action.projectInterestVotes).length);
       return {
         ...state,
         projectInterestVotes: action.projectInterestVotes
@@ -194,9 +197,26 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
       
     case 'SET_PROJECT_INTEREST_PROGRESS':
       // Set project interest progress for timeline
+      console.log('DEBUG: SET_PROJECT_INTEREST_PROGRESS action received:', action.progress);
       return {
         ...state,
         projectInterestProgress: action.progress
+      };
+      
+    case 'UPDATE_PROJECT_INTEREST_COUNT':
+      // Direct update of project interest count for the timeline
+      console.log(`DEBUG: UPDATE_PROJECT_INTEREST_COUNT received: ${action.count}/${action.total}`);
+      
+      // Create a synthetic projectInterestProgress object
+      const newProgress = {
+        completed: action.count,
+        total: action.total
+      };
+      
+      // Return updated state with the new progress
+      return {
+        ...state,
+        projectInterestProgress: newProgress
       };
       
     case 'RESET_ALL':
@@ -873,9 +893,15 @@ const AppContent: React.FC = () => {
             problemAppetiteCount={appetiteCount}
             problemInterestCount={interestCount}
             projectRankCount={projectCounts.ranked}
-            projectTotal={totalProjectCount || 8}
-            projectInterestCount={Object.keys(state.projectInterestVotes).length}
+            projectTotal={totalProjectCount || 29}
+            projectInterestCount={state.projectInterestProgress?.completed || 0}
             onFinish={handleFinish}
+            // Debug info
+            debugInfo={{ 
+              projectInterestVotes: Object.keys(state.projectInterestVotes).length,
+              projectInterestProgress: state.projectInterestProgress,
+              stageName: state.stage
+            }}
             currentAppStage={APP_CONFIG.CURRENT_APP_STAGE as 'problems' | 'projects'}
           />
         </Toolbar>
@@ -916,10 +942,26 @@ const AppContent: React.FC = () => {
                 projectVotes={state.projectVotes}
                 projectInterestVotes={state.projectInterestVotes}
                 onSetProjectInterestVotes={(projectInterestVotes) => {
+                  // Log the update to verify it's being called
+                  console.log('Setting project interest votes:', Object.keys(projectInterestVotes).length);
                   dispatch({ type: 'SET_PROJECT_INTEREST_VOTES', projectInterestVotes });
+                  
+                  // CRITICAL FIX: Force a re-render by directly setting project interest count
+                  // This ensures the timeline counter updates immediately
+                  const interestCount = Object.keys(projectInterestVotes).length;
+                  if (interestCount > 0) {
+                    console.log(`Directly updating project interest count to ${interestCount}`);
+                    // Update both projectInterestVotes and projectInterestProgress together
+                    dispatch({
+                      type: 'UPDATE_PROJECT_INTEREST_COUNT',
+                      count: interestCount,
+                      total: totalProjectCount || 29
+                    });
+                  }
                 }}
                 onUpdateInterestProgress={(completed, total) => {
                   // Set project interest progress for the timeline
+                  console.log(`Setting project interest progress: ${completed}/${total}`);
                   dispatch({
                     type: 'SET_PROJECT_INTEREST_PROGRESS',
                     progress: { completed, total }
