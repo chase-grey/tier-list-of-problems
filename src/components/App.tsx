@@ -159,12 +159,13 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
       };
       
     case 'RESET_ALL':
-      // Reset everything including voter name
+      // Reset everything including voter name but keep the current stage based on app configuration
       return {
         voterName: null,
         voterRole: null,
         available: null,
-        stage: 'priority',
+        // Set stage based on current app stage - stay in current stage after reset
+        stage: APP_CONFIG.CURRENT_APP_STAGE === 'projects' ? 'project-priority' : 'priority',
         votes: {},
         projectVotes: {},
         projectInterestVotes: {}

@@ -11,12 +11,10 @@ const Container = (props: React.HTMLAttributes<HTMLDivElement>) => (
       display: 'flex',
       flexDirection: 'row',
       padding: '10px 0',
-      // IMPORTANT: Removed overflowX and overflowY to avoid nested scroll container issues
-      // Only TaskList should manage overflow behavior as the direct parent of Droppable
       width: '100%',
       height: '100%',
       gap: 0,
-      backgroundColor: '#000000' /* Black background */
+      backgroundColor: '#000000'
     }}
   />
 );
@@ -30,22 +28,18 @@ const TaskList = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivEl
     sx={{
       display: 'flex',
       flexDirection: 'column',
-      background: '#222222', // Even darker grey background for columns
+      background: '#222222',
       width: '100%',
-      borderRadius: '12px', // Match column header border radius
+      borderRadius: '12px',
       padding: '10px',
-      // Removed the inset box-shadow that was creating the border/line
-      height: 'calc(100% - 46px)', // Adjust height to account for header
-      maxHeight: 'calc(100% - 46px)', // Ensure it doesn't exceed container minus header
-      // IMPORTANT: This is the only scroll container allowed for a Droppable
-      // All parent elements must NOT have overflow settings
-      overflowY: 'auto', // Enable vertical scrolling for each column independently
-      overflowX: 'hidden', // Hide horizontal scrollbar
+      height: 'calc(100% - 46px)',
+      maxHeight: 'calc(100% - 46px)',
+      overflowY: 'auto',
+      overflowX: 'hidden',
       userSelect: 'none',
       WebkitUserSelect: 'none',
       MozUserSelect: 'none',
       msUserSelect: 'none',
-      // Improved scrollbar styling to be less visually disruptive
       '&::-webkit-scrollbar': {
         width: '6px', // Slightly narrower scrollbar
         backgroundColor: 'transparent', // Transparent background
@@ -83,7 +77,7 @@ const TaskColumnStyles = (props: React.HTMLAttributes<HTMLDivElement>) => (
   />
 );
 
-// Use SX prop with Material UI Box component
+
 const ColumnHeader = (props: any) => (
   <Box
     {...props}
@@ -162,11 +156,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ taskItems, userRole }) => {
       }
     });
     
-    // Distribute some items to highest interest for demonstration
-    if (baseColumns[columnIds.unsorted].items.length > 1) {
-      const itemsToMove = baseColumns[columnIds.unsorted].items.splice(0, 1);
-      baseColumns[columnIds.highest].items.push(...itemsToMove);
-    }
+    // All items should remain in their proper columns based on status
     
     return baseColumns;
   }, [taskItems]);
@@ -389,8 +379,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ taskItems, userRole }) => {
                   height: 'calc(100% - 10px)', // Ensure it takes the full height minus margin
                   position: 'relative', // For proper scroll containment
                   minHeight: '100%', // Minimum height to fill available space
-                  // IMPORTANT: Removed overflow:hidden to prevent nested scroll container issues
-                  // Only TaskList should have overflow settings as the direct parent of the Droppable
+
                 }}>
                   <Droppable key={columnId} droppableId={columnId}>
                   {(provided: any, snapshot: any) => (
@@ -407,8 +396,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ taskItems, userRole }) => {
                         display: 'flex',
                         flexDirection: 'column',
                         position: 'relative', // For proper scroll containment
-                        // IMPORTANT: Removed overflow:hidden to prevent nested scroll container issues
-                        // Only TaskList should control overflow behavior in the drag-and-drop hierarchy
+
                       }}
                     >
                       <TaskList
@@ -419,7 +407,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ taskItems, userRole }) => {
                         }}
                       >
                       
-                      {/* Simple windowing solution to only render visible cards */}
+
                       {column.items.map((item, index) => {
                         // Simple visibility check based on item index
                         // Only render items that are likely to be visible (first 20)
@@ -456,7 +444,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ taskItems, userRole }) => {
                       })}
                       {provided.placeholder}
                       
-                      {/* Empty columns no longer show placeholder text */}
+
                     </TaskList>
                   </Box>
                 )}
