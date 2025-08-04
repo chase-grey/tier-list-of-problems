@@ -121,6 +121,20 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
           } as Vote
         }
       };
+      
+    case 'UNSET_INTEREST':
+      // Handle unsetting the interest level
+      return {
+        ...state,
+        votes: {
+          ...state.votes,
+          [action.id]: {
+            ...state.votes[action.id] || { pitchId: action.id },
+            interestLevel: undefined,
+            timestamp: action.timestamp || new Date().getTime(),
+          } as Vote
+        }
+      };
     
     case 'RESET_FROM_PITCHES': {
       // Sync votes with current pitch IDs
