@@ -9,6 +9,11 @@ interface ProjectPriorityAppProps {
   initialVotes?: Record<string, ProjectVote>;
   userRole?: string;
   onSaveVotes?: (votes: Record<string, ProjectVote>) => void;
+  onColumnCountsChange?: (counts: {
+    unsorted: number;
+    ranked: number; // Sum of highest, high, medium, low columns
+    total: number; // Sum of all columns
+  }) => void;
 }
 
 
@@ -20,7 +25,8 @@ const ProjectPriorityApp = ({
   projects, 
   initialVotes = {}, 
   userRole = '',
-  onSaveVotes 
+  onSaveVotes,
+  onColumnCountsChange
 }: ProjectPriorityAppProps) => {
   // State for user's votes - initialize from props 
   const [votes] = useState(initialVotes);
@@ -60,7 +66,22 @@ const ProjectPriorityApp = ({
 
         <KanbanBoard 
           taskItems={taskItems} 
-          userRole={userRole} 
+          userRole={userRole}
+          onColumnsChange={(columnCounts) => {
+            if (onColumnCountsChange) {
+              // Calculate ranked and total counts
+              const ranked = columnCounts.highest + columnCounts.high + 
+                           columnCounts.medium + columnCounts.low;
+              const total = ranked + columnCounts.unsorted;
+              
+              // Report counts to parent component
+              onColumnCountsChange({
+                unsorted: columnCounts.unsorted,
+                ranked,
+                total
+              });
+            }
+          }}
         />
       </Box>
     </Box>

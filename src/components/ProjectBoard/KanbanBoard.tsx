@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { DragDropContext, Droppable } from "@hello-pangea/dnd";
 import { Box } from "@mui/material";
 import { type KanbanColumns, type TaskItem } from "./KanbanData";
@@ -116,9 +116,16 @@ const ColumnTitle = (props: React.HTMLAttributes<HTMLSpanElement>) => (
 interface KanbanBoardProps {
   taskItems: TaskItem[];
   userRole?: string | null;
+  onColumnsChange?: (columnCounts: {
+    unsorted: number;
+    highest: number;
+    high: number;
+    medium: number;
+    low: number;
+  }) => void;
 }
 
-const KanbanBoard: React.FC<KanbanBoardProps> = ({ taskItems, userRole }) => {
+const KanbanBoard: React.FC<KanbanBoardProps> = ({ taskItems, userRole, onColumnsChange }) => {
   // Create columns from task items, grouped by status
   // Create fixed column IDs to ensure consistent droppableIds
   const columnIds = {
@@ -162,6 +169,20 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ taskItems, userRole }) => {
   }, [taskItems]);
   
   const [columns, setColumns] = useState<KanbanColumns>(initialColumns);
+
+  // Report column counts to parent component when columns change
+  useEffect(() => {
+    if (onColumnsChange) {
+      const columnCounts = {
+        unsorted: columns[columnIds.unsorted].items.length,
+        highest: columns[columnIds.highest].items.length,
+        high: columns[columnIds.high].items.length,
+        medium: columns[columnIds.medium].items.length,
+        low: columns[columnIds.low].items.length
+      };
+      onColumnsChange(columnCounts);
+    }
+  }, [columns, onColumnsChange, columnIds]);
 
   // Performance tracking variables and active item tracking
   const performanceMetricsRef = React.useRef({

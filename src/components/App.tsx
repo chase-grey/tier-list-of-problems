@@ -288,10 +288,16 @@ const AppContent: React.FC = () => {
   const isDevTL = state.voterRole === 'dev-tl';
   const canHelpNextQuarter = state.available === true;
   
-  // Count project votes
-  const projectVoteCount = Object.keys(state.projectVotes).length;
+  // Variables to track project counts for timeline
+  const [projectCounts, setProjectCounts] = useState({
+    ranked: 0,
+    total: allProjects.length
+  });
   const projectInterestCount = Object.keys(state.projectInterestVotes || {}).length;
   const projectThreshold = Math.ceil(totalProjectCount / 2);
+  
+  // Count project votes
+  const projectVoteCount = Object.keys(state.projectVotes).length;
   
   // Check if Finish button should be enabled based on user role, stage, and progress
   let isExportEnabled = false;
@@ -731,8 +737,8 @@ const AppContent: React.FC = () => {
           onStageChange={handleStageChange}
           canAccessStage={canAccessStage}
           completedStages={completedStages}
-          totalProjectCount={totalProjectCount} // Pass the actual project count
-          rankedProjectCount={projectVoteCount} // Pass the ranked project count
+          totalProjectCount={projectCounts.total} // Pass the column-based project count total
+          rankedProjectCount={projectCounts.ranked} // Pass the column-based project count ranked
           projectInterestCount={0} // Add project interest count tracking when implemented
         />
         
@@ -775,6 +781,12 @@ const AppContent: React.FC = () => {
               initialVotes={state.projectVotes}
               onSaveVotes={(projectVotes) => {
                 dispatch({ type: 'SET_PROJECT_VOTES', projectVotes });
+              }}
+              onColumnCountsChange={(counts) => {
+                setProjectCounts({
+                  ranked: counts.ranked,
+                  total: counts.total
+                });
               }}
             />
           )}
