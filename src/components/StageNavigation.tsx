@@ -147,7 +147,8 @@ const StageNavigation: React.FC<StageNavigationProps> = ({
   // otherwise show it after Rank Projects
   
   // We're in Stage 1 when we're not in the Projects stage
-  const inStage1 = activeStage !== 'projects' && activeStage !== 'project-interest';
+  // Treat both 'projects' and 'project-priority' as the same stage for UI purposes
+  const inStage1 = activeStage !== 'projects' && activeStage !== 'project-interest' && activeStage !== 'project-priority';
   
   // Determine where to show the finish button
   const finishButtonPosition = inStage1 ? 
@@ -165,7 +166,9 @@ const StageNavigation: React.FC<StageNavigationProps> = ({
       top: '-5px', // Additional top adjustment to move buttons up
     }}>
       {stages.map((stage, index) => {
-        const isActive = activeStage === stage.value;
+        // Treat 'project-priority' as equivalent to 'projects' for highlighting
+        const isActive = (activeStage === stage.value) || 
+                       (activeStage === 'project-priority' && stage.value === 'projects');
         const isCompleted = completedStages.includes(stage.value);
         const canAccess = canAccessStage(stage.value);
         
