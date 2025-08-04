@@ -140,10 +140,10 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ taskItems, userRole, onColumn
     // Create a base structure with empty columns
     const baseColumns: KanbanColumns = {
       [columnIds.unsorted]: { title: 'Unsorted', items: [], color: '#666666' },         // Lighter grey for Unsorted
-      [columnIds.highest]: { title: 'Highest Interest', items: [], color: '#6a1b9a' },  // Darkest purple
-      [columnIds.high]: { title: 'High Interest', items: [], color: '#8e24aa' },        // Dark purple
-      [columnIds.medium]: { title: 'Medium Interest', items: [], color: '#ab47bc' },     // Medium purple
-      [columnIds.low]: { title: 'Low Interest', items: [], color: '#ce93d8' }           // Light purple
+      [columnIds.highest]: { title: 'Highest Priority', items: [], color: '#6a1b9a' },  // Darkest purple
+      [columnIds.high]: { title: 'High Priority', items: [], color: '#8e24aa' },        // Dark purple
+      [columnIds.medium]: { title: 'Medium Priority', items: [], color: '#ab47bc' },     // Medium purple
+      [columnIds.low]: { title: 'Low Priority', items: [], color: '#ce93d8' }           // Light purple
     };
     
     // Add items to appropriate columns based on their status

@@ -56,7 +56,7 @@ const InterestColumn = ({
           fontWeight: 'bold'
         }}
       >
-        <Typography variant="subtitle1" sx={{ fontSize: '0.9rem' }}>
+        <Typography variant="subtitle1" sx={{ fontSize: '0.9rem', textTransform: 'none' }}>
           {label} ({pitches.length})
         </Typography>
       </Paper>
