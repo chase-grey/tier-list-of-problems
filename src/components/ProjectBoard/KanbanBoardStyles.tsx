@@ -165,6 +165,7 @@ export const ColumnTitle = (props: React.HTMLAttributes<HTMLSpanElement>) => (
       textOverflow: 'ellipsis',
       textAlign: 'center',
       width: '100%',
+      textTransform: 'none', // Prevent text transformation to allow title case
     }}
   />
 );
