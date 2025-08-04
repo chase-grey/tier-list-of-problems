@@ -9,7 +9,7 @@ import {
 import { APP_CONFIG } from '../../components/App';
 
 // Define the available application stages
-export type AppStage = 'priority' | 'interest' | 'project-interest' | 'projects';
+export type AppStage = 'priority' | 'interest' | 'project-interest' | 'project-priority' | 'projects';
 
 // Styled components for customized timeline
 const CustomStepper = styled(Stepper)(({ theme }) => ({

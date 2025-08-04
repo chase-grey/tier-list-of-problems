@@ -77,7 +77,7 @@ export interface AppState {
   voterName: string | null;
   voterRole: string | null;
   available: boolean | null; // Whether the user is available next quarter
-  stage: 'priority' | 'interest' | 'project-interest' | 'projects'; // Current stage of voting
+  stage: 'priority' | 'interest' | 'project-interest' | 'project-priority' | 'projects'; // Current stage of voting
   votes: Record<string, Vote>;
   projectVotes: Record<string, any>; // For project voting data
   projectInterestVotes: Record<string, ProjectInterestVote>; // For project interest voting data
@@ -101,7 +101,7 @@ export type AppAction =
   | { type: 'SET_PROJECT_INTEREST'; id: string; interestLevel: ProjectInterestLevel; timestamp?: number }
   | { type: 'UNSET_PROJECT_INTEREST'; id: string; timestamp?: number }  // Remove project interest level
   | { type: 'SET_AVAILABILITY'; available: boolean }
-  | { type: 'SET_STAGE'; stage: 'priority' | 'interest' | 'project-interest' | 'projects' }
+  | { type: 'SET_STAGE'; stage: 'priority' | 'interest' | 'project-interest' | 'project-priority' | 'projects' }
   | { type: 'RESET_FROM_PITCHES'; pitchIds: string[] }  // sync when JSON changes
   | { type: 'SET_PROJECT_VOTES'; projectVotes: Record<string, any> }  // set project votes from ProjectPriorityApp
   | { type: 'RESET_ALL_VOTES' }  // reset all votes but keep voter name

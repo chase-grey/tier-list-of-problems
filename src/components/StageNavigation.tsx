@@ -10,7 +10,7 @@ import {
 } from '@mui/icons-material';
 
 // Define the available application stages
-export type AppStage = 'priority' | 'interest' | 'project-interest' | 'projects';
+export type AppStage = 'priority' | 'interest' | 'project-interest' | 'project-priority' | 'projects';
 
 // Define the user roles
 export type UserRole = 'developer' | 'qm' | 'uxd' | 'dev-tl' | 'qm-tl' | 'tltl' | 'customer' | 'other';

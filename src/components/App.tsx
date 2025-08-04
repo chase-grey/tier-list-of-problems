@@ -47,7 +47,8 @@ const initialState: AppState = {
   voterName: null,
   voterRole: null,
   available: null,
-  stage: 'priority',
+  // Set initial stage based on current app stage
+  stage: APP_CONFIG.CURRENT_APP_STAGE === 'projects' ? 'project-priority' : 'priority',
   votes: {},
   projectVotes: {},
   projectInterestVotes: {},
@@ -214,8 +215,8 @@ const AppContent: React.FC = () => {
   const completeState = {
     ...initialState,
     ...savedState,
-    // Always set initial state to priority stage when loading
-    stage: 'priority' as 'priority',
+    // Set initial stage based on current app stage
+    stage: APP_CONFIG.CURRENT_APP_STAGE === 'projects' ? 'project-priority' : 'priority',
     // Ensure voterRole exists if voterName exists
     voterRole: savedState.voterRole || (savedState.voterName ? null : initialState.voterRole)
   };
@@ -256,7 +257,7 @@ const AppContent: React.FC = () => {
   const rankCount = Object.values(state.votes).filter(v => v.tier !== null).length;
   
   // Project-related counters
-  const totalProjectCount = mockProjects.length;
+  const totalProjectCount = allProjects.length; // Use allProjects.length for accurate threshold calculation
   
   // Check if the user has a role that can access interest ranking
   // Only QMs, devs, QM TLs, and dev TLs who are available for next quarter can see interest section
@@ -729,6 +730,8 @@ const AppContent: React.FC = () => {
           onStageChange={handleStageChange}
           canAccessStage={canAccessStage}
           completedStages={completedStages}
+          totalProjectCount={totalProjectCount} // Pass the actual project count
+          rankedProjectCount={projectVoteCount} // Pass the ranked project count
           projectInterestCount={0} // Add project interest count tracking when implemented
         />
         
