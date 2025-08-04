@@ -123,9 +123,31 @@ interface KanbanBoardProps {
     medium: number;
     low: number;
   }) => void;
+  isInterestMode?: boolean; // Flag to determine if we're in interest mode
+  columnTitles?: {
+    unsorted: string;
+    highest: string;
+    high: string;
+    medium: string;
+    low: string;
+  }; // Custom column titles
+  columnColors?: {
+    unsorted: string;
+    highest: string;
+    high: string;
+    medium: string;
+    low: string;
+  }; // Custom column colors
 }
 
-const KanbanBoard: React.FC<KanbanBoardProps> = ({ taskItems, userRole, onColumnsChange }) => {
+const KanbanBoard: React.FC<KanbanBoardProps> = ({ 
+  taskItems, 
+  userRole, 
+  onColumnsChange, 
+  isInterestMode = false,
+  columnTitles,
+  columnColors
+}) => {
   // Create columns from task items, grouped by status
   // Create fixed column IDs to ensure consistent droppableIds
   const columnIds = {
@@ -137,13 +159,51 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ taskItems, userRole, onColumn
   };
 
   const initialColumns: KanbanColumns = useMemo(() => {
+    // Default titles based on mode
+    const defaultTitles = isInterestMode 
+      ? {
+          unsorted: 'Unsorted',
+          highest: 'Highest Interest',
+          high: 'High Interest',
+          medium: 'Medium Interest',
+          low: 'Low Interest'
+        }
+      : {
+          unsorted: 'Unsorted',
+          highest: 'Highest Priority',
+          high: 'High Priority',
+          medium: 'Medium Priority',
+          low: 'Low Priority'
+        };
+
+    // Default colors based on mode
+    const defaultColors = isInterestMode
+      ? {
+          unsorted: '#666666', // Grey for Unsorted
+          highest: '#4A5CFF', // Darkest blue
+          high: '#5D78F7', // Dark blue-purple
+          medium: '#7A90F5', // Medium blue-purple
+          low: '#9BAEF0' // Light blue-purple
+        }
+      : {
+          unsorted: '#666666', // Grey for Unsorted
+          highest: '#6a1b9a', // Darkest purple
+          high: '#8e24aa', // Dark purple
+          medium: '#ab47bc', // Medium purple
+          low: '#ce93d8' // Light purple
+        };
+    
+    // Use provided custom titles and colors or fallback to defaults
+    const titles = columnTitles || defaultTitles;
+    const colors = columnColors || defaultColors;
+    
     // Create a base structure with empty columns
     const baseColumns: KanbanColumns = {
-      [columnIds.unsorted]: { title: 'Unsorted', items: [], color: '#666666' },         // Lighter grey for Unsorted
-      [columnIds.highest]: { title: 'Highest Priority', items: [], color: '#6a1b9a' },  // Darkest purple
-      [columnIds.high]: { title: 'High Priority', items: [], color: '#8e24aa' },        // Dark purple
-      [columnIds.medium]: { title: 'Medium Priority', items: [], color: '#ab47bc' },     // Medium purple
-      [columnIds.low]: { title: 'Low Priority', items: [], color: '#ce93d8' }           // Light purple
+      [columnIds.unsorted]: { title: titles.unsorted, items: [], color: colors.unsorted },
+      [columnIds.highest]: { title: titles.highest, items: [], color: colors.highest },
+      [columnIds.high]: { title: titles.high, items: [], color: colors.high },
+      [columnIds.medium]: { title: titles.medium, items: [], color: colors.medium },
+      [columnIds.low]: { title: titles.low, items: [], color: colors.low }
     };
     
     // Add items to appropriate columns based on their status

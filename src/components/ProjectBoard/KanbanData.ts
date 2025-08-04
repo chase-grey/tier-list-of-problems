@@ -28,15 +28,41 @@ export interface KanbanColumns {
 // Helper function to convert projects to task items
 export const convertProjectsToTaskItems = (
   projects: Project[], 
-  votes: Record<string, ProjectVote>
+  votes: Record<string, ProjectVote>,
+  isInterestMode: boolean = false
 ): TaskItem[] => {
-  return projects.map(project => ({
-    id: project.id,
-    task: project.title,
-    assigned_To: project.details.pointPerson || 'Unassigned',
-    assignee: 'Team',
-    Status: votes[project.id]?.priority || 'To-Do',
-    priority: project.appetite,
-    due_Date: project.details.targetDate || 'Not set',
-  }));
+  return projects.map(project => {
+    // Get the vote for this project
+    const vote = votes[project.id];
+    
+    // Determine status based on mode (interest or priority)
+    let status = 'unsorted'; // Default status
+    
+    if (isInterestMode) {
+      // Interest mode - map interestLevel to Status
+      if (vote?.interestLevel) {
+        // Convert interest level to column ID format (lowercase)
+        switch(vote.interestLevel) {
+          case 'HIGHEST': status = 'highest'; break;
+          case 'HIGH': status = 'high'; break;
+          case 'MEDIUM': status = 'medium'; break;
+          case 'LOW': status = 'low'; break;
+          default: status = 'unsorted';
+        }
+      }
+    } else {
+      // Priority mode - use priority directly
+      status = vote?.priority || 'unsorted';
+    }
+    
+    return {
+      id: project.id,
+      task: project.title,
+      assigned_To: project.details.pointPerson || 'Unassigned',
+      assignee: 'Team',
+      Status: status,
+      priority: project.appetite,
+      due_Date: project.details.targetDate || 'Not set',
+    };
+  });
 };

@@ -185,6 +185,20 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
         projectVotes: {}
       };
       
+    case 'SET_PROJECT_INTEREST_VOTES':
+      // Set project interest votes
+      return {
+        ...state,
+        projectInterestVotes: action.projectInterestVotes
+      };
+      
+    case 'SET_PROJECT_INTEREST_PROGRESS':
+      // Set project interest progress for timeline
+      return {
+        ...state,
+        projectInterestProgress: action.progress
+      };
+      
     case 'RESET_ALL':
       // Reset everything including voter name but keep the current stage based on app configuration
       return {
@@ -897,7 +911,21 @@ const AppContent: React.FC = () => {
               bottom: 0,
               overflow: 'hidden'
             }}>
-              <KanbanBoardTest />
+              <KanbanBoardTest 
+                userRole={state.voterRole}
+                projectVotes={state.projectVotes}
+                projectInterestVotes={state.projectInterestVotes}
+                onSetProjectInterestVotes={(projectInterestVotes) => {
+                  dispatch({ type: 'SET_PROJECT_INTEREST_VOTES', projectInterestVotes });
+                }}
+                onUpdateInterestProgress={(completed, total) => {
+                  // Set project interest progress for the timeline
+                  dispatch({
+                    type: 'SET_PROJECT_INTEREST_PROGRESS',
+                    progress: { completed, total }
+                  });
+                }}
+              />
             </Box>
           ) : (
             // Project priority stage with integrated ProjectPriorityApp
