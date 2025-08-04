@@ -28,7 +28,7 @@ export interface DragEndResult {
  */
 export function useDragDrop(
   projects: Project[],
-  votes: Record<string, ProjectVote>, // Used for activeProject lookup
+  _votes: Record<string, ProjectVote>, // Prefixed with underscore to indicate it's intentionally unused
   onDragComplete: (result: DragEndResult) => void
 ) {
   // State for active drag item
@@ -75,9 +75,12 @@ export function useDragDrop(
     console.log(`Drag started: ${String(active.id)}`);
   }, []);
   
-  // Handler for drag end
+  // Handler for drag end with performance optimizations
   const handleDragEnd = useCallback((event: DragEndEvent) => {
     const { active, over } = event;
+    
+    // Performance measurement
+    const dragEndStartTime = performance.now();
     
     // Clear safety timeout
     if (dragTimerRef.current) {
@@ -89,58 +92,65 @@ export function useDragDrop(
     const dragDuration = dragStartTime ? Date.now() - dragStartTime : 0;
     console.log(`Drag duration: ${dragDuration}ms`);
     
+    // Extract project ID once to avoid repeated processing
+    const projectId = String(active.id).replace('project-', '');
+    const activeContainer = active.data.current?.sortable?.containerId || 'unsorted';
+    const activeIndex = active.data.current?.sortable?.index || 0;
+    
+    // Prepare result object once instead of creating it multiple times
+    let result: DragEndResult | null = null;
+    
     // Check for valid drop with a destination
     if (isDraggingRef.current && over && active.id !== over.id) {
-      const activeContainer = active.data.current?.sortable?.containerId;
-      const overContainer = over.data.current?.sortable?.containerId;
+      const overContainer = over.data.current?.sortable?.containerId || 'unsorted';
+      const overIndex = over.data.current?.sortable?.index || 0;
       
-      // Extract project ID from the drag element ID
-      const projectId = String(active.id).replace('project-', '');
+      result = {
+        source: {
+          droppableId: activeContainer,
+          index: activeIndex,
+        },
+        destination: {
+          droppableId: overContainer,
+          index: overIndex,
+        },
+        draggableId: projectId,
+      };
       
-      // Add small delay to avoid race conditions with React rendering
-      setTimeout(() => {
-        onDragComplete({
-          source: {
-            droppableId: activeContainer || 'unsorted',
-            index: active.data.current?.sortable?.index || 0,
-          },
-          destination: {
-            droppableId: overContainer || 'unsorted',
-            index: over.data.current?.sortable?.index || 0,
-          },
-          draggableId: projectId,
-        });
-        
-        console.log(`State updated for drag of project ${projectId}`);
-      }, 10);
+      console.log(`State updated for drag of project ${projectId}`);
     } 
     // Handle drops outside valid drop areas but with last known droppable
     else if (isDraggingRef.current && !over && lastKnownDroppableRef.current) {
       console.log(`Using last known droppable: ${lastKnownDroppableRef.current}`);
       
-      const activeContainer = active.data.current?.sortable?.containerId;
-      const projectId = String(active.id).replace('project-', '');
+      result = {
+        source: {
+          droppableId: activeContainer,
+          index: activeIndex,
+        },
+        destination: {
+          droppableId: lastKnownDroppableRef.current,
+          index: 0, // Default to top of column
+        },
+        draggableId: projectId,
+      };
       
-      setTimeout(() => {
-        onDragComplete({
-          source: {
-            droppableId: activeContainer || 'unsorted',
-            index: active.data.current?.sortable?.index || 0,
-          },
-          destination: {
-            droppableId: lastKnownDroppableRef.current || 'unsorted',
-            index: 0, // Default to top of column
-          },
-          draggableId: projectId,
-        });
-        
-        console.log(`Recovered drop for project ${projectId} to ${lastKnownDroppableRef.current}`);
-      }, 10);
+      console.log(`Recovered drop for project ${projectId} to ${lastKnownDroppableRef.current}`);
     } else {
       console.log('Drag cancelled or ended without a destination change');
     }
     
-    // Reset drag state
+    // Call the callback outside of setTimeout to avoid setState delays
+    if (result) {
+      // Use requestAnimationFrame for smoother updates that are still batched
+      requestAnimationFrame(() => {
+        onDragComplete(result!);
+        // Performance measurement
+        console.log(`Drag end processing took: ${performance.now() - dragEndStartTime}ms`);
+      });
+    }
+    
+    // Reset drag state immediately to clear the UI
     resetDragState();
   }, [dragStartTime, onDragComplete]);
   

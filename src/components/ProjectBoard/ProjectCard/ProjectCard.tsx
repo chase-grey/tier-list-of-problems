@@ -1,10 +1,9 @@
-import React, { useState, useRef, memo } from 'react';
+import React, { useState, useRef, memo, useMemo } from 'react';
 import { Paper, Typography, Box, IconButton, Tooltip, Link } from '@mui/material';
 import { InfoOutlined } from '@mui/icons-material';
 import { Draggable } from '@hello-pangea/dnd';
 import type { DraggableProvided, DraggableStateSnapshot } from '@hello-pangea/dnd';
 import type { Project, ProjectVote } from '../../../types/project-models';
-import type { Appetite } from '../../../types/models';
 import { colorTokens } from '../../../theme';
 // Force TypeScript to recognize the ProjectDetailsModal component
 // @ts-ignore - Module exists but TypeScript can't find type declarations
@@ -13,8 +12,9 @@ import ProjectDetailsModal from './ProjectDetailsModal';
 interface ProjectCardProps {
   project: Project;
   vote: ProjectVote | undefined;
-  index: number;
+  index: number; // Needed for @hello-pangea/dnd
   userRole?: string | null;
+  isDragging?: boolean; // Added for drag overlay optimization
 }
 
 /**
@@ -24,25 +24,24 @@ const ProjectCard = ({
   project, 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   vote, 
-  index, 
-  userRole 
+  index,
+  userRole,
+  isDragging = false
 }: ProjectCardProps) => {
   // NOTE: The vote prop appears unused but is actually used in the memo comparison function at the bottom
   // of this file. It's essential for optimization to prevent unnecessary re-renders when votes change.
   const [detailsOpen, setDetailsOpen] = useState(false);
   const cardRef = useRef<HTMLElement>(null);
   
-  // Get color for appetite indicator
-  const getAppetiteColor = (appetite: Appetite): string => {
-    switch (appetite) {
+  // Use useMemo for expensive calculations to prevent recalculation on every render
+  const appetiteColor = useMemo(() => {
+    switch (project.appetite) {
       case 'S': return colorTokens.appetites.small;
       case 'M': return colorTokens.appetites.medium;
       case 'L': return colorTokens.appetites.large;
       default: return colorTokens.appetites.unset;
     }
-  };
-
-  
+  }, [project.appetite]);
   
   // Format the project ID with or without a hyperlink based on user role
   const getFormattedProjectId = () => {
@@ -164,7 +163,7 @@ const ProjectCard = ({
             }}
             {...provided.draggableProps}
             {...provided.dragHandleProps}
-            elevation={snapshot.isDragging ? 6 : 1}
+            elevation={isDragging || snapshot.isDragging ? 6 : 1}
             onKeyDown={handleKeyDown}
             sx={{
               p: 2,
@@ -218,7 +217,7 @@ const ProjectCard = ({
                   <Box sx={{ 
                     display: 'flex',
                     alignItems: 'center',
-                    bgcolor: getAppetiteColor(project.appetite),
+                    bgcolor: appetiteColor,
                     px: 0.75,
                     py: 0.25,
                     borderRadius: 1,
@@ -317,6 +316,9 @@ const ProjectCard = ({
 
 // Use memo to avoid unnecessary re-renders
 export default memo(ProjectCard, (prevProps: ProjectCardProps, nextProps: ProjectCardProps) => {
+  // More comprehensive equality check to prevent unnecessary re-renders
   return prevProps.vote?.priority === nextProps.vote?.priority && 
-         prevProps.index === nextProps.index;
+         prevProps.project.id === nextProps.project.id &&
+         prevProps.userRole === nextProps.userRole &&
+         prevProps.isDragging === nextProps.isDragging;
 });

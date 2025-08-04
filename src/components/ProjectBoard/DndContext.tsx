@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef } from 'react';
 import { 
   DndContext as DndKitContext, 
   TouchSensor, 
@@ -106,37 +106,78 @@ export const DndContext: React.FC<DndContextProps> = ({
     })
   );
   
-  // Create enhanced collision detection strategy
-  const collisionDetectionStrategy = (args: any) => {
-    // First try standard pointer collision detection
-    const pointerCollisions = pointerWithin(args);
-    
-    if (pointerCollisions.length > 0) {
-      // If we have pointer collisions, use those
-      updateLastKnownDroppable(pointerCollisions[0].id as string);
-      return pointerCollisions;
-    }
-    
-    // Otherwise, try rect intersection for broader collision detection
-    const rectCollisions = rectIntersection(args);
-    
-    if (rectCollisions.length > 0) {
-      updateLastKnownDroppable(rectCollisions[0].id as string);
-      return rectCollisions;
-    }
-    
-    return [];
-  };
+  // Optimized collision detection strategy for better performance
+  const collisionDetectionStrategy = useMemo(() => {
+    return (args: any) => {
+      // Use rectIntersection as primary strategy (more performant)
+      const rectCollisions = rectIntersection(args);
+      
+      if (rectCollisions.length > 0) {
+        updateLastKnownDroppable(rectCollisions[0].id as string);
+        return rectCollisions;
+      }
+      
+      // Only fall back to pointerWithin when needed
+      const pointerCollisions = pointerWithin(args);
+      
+      if (pointerCollisions.length > 0) {
+        updateLastKnownDroppable(pointerCollisions[0].id as string);
+        return pointerCollisions;
+      }
+      
+      return [];
+    };
+  }, [updateLastKnownDroppable]); // Only recreate if updateLastKnownDroppable changes
 
   // Internal component for monitoring drag events
   // This ensures useDndMonitor is called inside the DndContext
   const DragMonitor = () => {
+    // Performance tracking variables
+    const dragStartTimeRef = useRef<number | null>(null);
+    const lastFrameTimeRef = useRef<number>(0);
+    const frameCountRef = useRef<number>(0);
+    const slowFramesRef = useRef<number>(0);
+
     // Setup drag event monitoring
     useDndMonitor({
+      onDragStart: () => {
+        // Reset performance metrics at start of drag
+        dragStartTimeRef.current = performance.now();
+        lastFrameTimeRef.current = performance.now();
+        frameCountRef.current = 0;
+        slowFramesRef.current = 0;
+        console.log('Drag operation started - monitoring performance');
+      },
       onDragMove: (event) => {
         // Store last known valid droppable during drag
         if (event.over) {
           updateLastKnownDroppable(String(event.over.id));
+        }
+
+        // Measure frame rate during drag
+        const now = performance.now();
+        const frameDuration = now - lastFrameTimeRef.current;
+        
+        // Track number of slow frames (> 16ms = less than 60fps)
+        if (frameDuration > 16) {
+          slowFramesRef.current++;
+        }
+        
+        frameCountRef.current++;
+        lastFrameTimeRef.current = now;
+      },
+      onDragEnd: () => {
+        // Log performance metrics
+        if (dragStartTimeRef.current) {
+          const dragDuration = performance.now() - dragStartTimeRef.current;
+          const avgFrameTime = dragDuration / (frameCountRef.current || 1);
+          const slowFramePercentage = (slowFramesRef.current / (frameCountRef.current || 1)) * 100;
+          
+          console.log(`Drag Performance Metrics:`);
+          console.log(`- Total duration: ${dragDuration.toFixed(2)}ms`);
+          console.log(`- Frames processed: ${frameCountRef.current}`);
+          console.log(`- Average frame time: ${avgFrameTime.toFixed(2)}ms`);
+          console.log(`- Slow frames: ${slowFramesRef.current} (${slowFramePercentage.toFixed(2)}%)`);
         }
       }
     });
@@ -170,34 +211,35 @@ export const DndContext: React.FC<DndContextProps> = ({
       {/* Internal monitor for drag events */}
       <DragMonitor />
       
-      {/* Enhanced overlay shows a preview of the item being dragged with better styling */}
+      {/* Simplified overlay with minimal styling for better performance */}
       <DragOverlay 
         dropAnimation={dropAnimation}
         modifiers={[constrainToWindowEdges]}
         zIndex={1000}
-        adjustScale={true}
+        adjustScale={false} // Disable scale adjustment for better performance
       >
         {activeId && activeProject ? (
           <div 
             style={{
-              transform: 'rotate(2deg) scale(1.05)', // Slight rotation for better feedback
-              boxShadow: '0px 8px 15px rgba(0,0,0,0.25)',
-              opacity: 0.9,
+              // Simplified transform with less expensive operations
+              transform: 'rotate(1deg)', 
+              boxShadow: '0px 5px 10px rgba(0,0,0,0.2)',
+              opacity: 0.95,
               pointerEvents: 'none',
-              width: 'calc(100% / 6 - 16px)', // Match column width minus padding
+              width: 'calc(100% / 6 - 16px)',
               maxWidth: '250px',
-              transition: 'transform 100ms cubic-bezier(0.18, 0.67, 0.6, 1.22)',
-              backgroundColor: 'white', // Ensure background is visible
+              // Remove transition for better performance during dragging
+              backgroundColor: 'white',
               borderRadius: '4px',
             }}
             className="drag-overlay-container"
           >
+            {/* Use React.memo version of ProjectCard for overlay */}
             <ProjectCard
               project={activeProject}
               vote={votes[activeProject.id]}
-              index={-1} // Special index for the overlay
               userRole={userRole}
-              isDragging={true} // New prop to indicate this is being dragged
+              isDragging={true}
             />
           </div>
         ) : null}

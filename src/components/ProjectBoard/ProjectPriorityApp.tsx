@@ -3,7 +3,7 @@ import { Box, Alert } from '@mui/material';
 // Import KanbanBoard instead of ProjectBoard for consistent UI
 import KanbanBoard from './KanbanBoard';
 import { convertProjectsToTaskItems } from './KanbanData';
-import type { Project, ProjectVote, ProjectPriority } from '../../types/project-models';
+import type { Project, ProjectVote } from '../../types/project-models';
 
 interface ProjectPriorityAppProps {
   projects: Project[];
@@ -23,19 +23,21 @@ const ProjectPriorityApp = ({
   userRole = '',
   onSaveVotes 
 }: ProjectPriorityAppProps) => {
-  // State for user's votes
-  // Using direct state instead of reducer since we're not updating it directly anymore
+  // State for user's votes - initialize from props but don't recreate on each render
   const [votes] = useState(initialVotes);
   
   // Export functionality was removed, only keeping error state for UI feedback if needed
   const [exportError] = useState<string | null>(null);
   
-  // Effect to save votes whenever they change
+  // Effect to save votes on initial load only
+  // Removed dependency on votes to prevent infinite update loop
   useEffect(() => {
     if (onSaveVotes) {
       onSaveVotes(votes);
     }
-  }, [votes, onSaveVotes]);
+    // Only run once on component mount or when onSaveVotes changes
+    // Deliberately NOT including votes in dependencies to break circular update loop
+  }, [onSaveVotes]);
   
   // KanbanBoard has its own internal drag handling, but we need to update our votes
   // when the KanbanBoard's state changes. We'll implement a callback for this in the future

@@ -11,8 +11,8 @@ const Container = (props: React.HTMLAttributes<HTMLDivElement>) => (
       display: 'flex',
       flexDirection: 'row',
       padding: '10px 0',
-      overflowX: 'auto',
-      overflowY: 'hidden', /* Hide vertical scrollbar at container level */
+      // IMPORTANT: Removed overflowX and overflowY to avoid nested scroll container issues
+      // Only TaskList should manage overflow behavior as the direct parent of Droppable
       width: '100%',
       height: '100%',
       gap: 0,
@@ -37,6 +37,8 @@ const TaskList = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivEl
       // Removed the inset box-shadow that was creating the border/line
       height: 'calc(100% - 46px)', // Adjust height to account for header
       maxHeight: 'calc(100% - 46px)', // Ensure it doesn't exceed container minus header
+      // IMPORTANT: This is the only scroll container allowed for a Droppable
+      // All parent elements must NOT have overflow settings
       overflowY: 'auto', // Enable vertical scrolling for each column independently
       overflowX: 'hidden', // Hide horizontal scrollbar
       userSelect: 'none',
@@ -171,13 +173,101 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ taskItems, userRole }) => {
   
   const [columns, setColumns] = useState<KanbanColumns>(initialColumns);
 
-  // Console log to help debug drag events
-  const onDragStart = () => {
-    console.log('Drag started');
+  // Performance tracking variables and active item tracking
+  const performanceMetricsRef = React.useRef({
+    startTime: 0,
+    frameCount: 0,
+    slowFrames: 0,
+    lastFrameTime: 0,
+    isDragging: false,
+    activeItemId: null as string | null // Track currently dragged item ID
+  });
+  
+  // Single efficient monitoring system for drag operations
+  React.useEffect(() => {
+    let rafId: number | null = null;
+    
+    // Function to monitor frame performance
+    const monitorFrame = (time: number) => {
+      if (!performanceMetricsRef.current.isDragging) {
+        return;
+      }
+      
+      const now = time; // Use timestamp from rAF for more accuracy
+      const lastTime = performanceMetricsRef.current.lastFrameTime;
+      
+      if (lastTime > 0) {
+        const frameDuration = now - lastTime;
+        performanceMetricsRef.current.frameCount++;
+        
+        // Track slow frames (>16ms means less than 60fps)
+        if (frameDuration > 16) {
+          performanceMetricsRef.current.slowFrames++;
+        }
+      }
+      
+      performanceMetricsRef.current.lastFrameTime = now;
+      rafId = requestAnimationFrame(monitorFrame);
+    };
+    
+    // Start monitoring when dragging begins
+    const startMonitoring = () => {
+      if (performanceMetricsRef.current.isDragging) {
+        rafId = requestAnimationFrame(monitorFrame);
+      }
+    };
+    
+    // Watch for changes in isDragging state
+    if (performanceMetricsRef.current.isDragging && !rafId) {
+      startMonitoring();
+    }
+    
+    // Cleanup
+    return () => {
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+      }
+    };
+  }, []);
+  
+  const onDragStart = (event: any) => {
+    console.log('Started dragging', event);
+    
+    // Get the active item ID from the drag event
+    const activeId = event?.active?.id || null;
+    
+    // Reset and start performance monitoring
+    performanceMetricsRef.current = {
+      startTime: performance.now(),
+      frameCount: 0,
+      slowFrames: 0,
+      lastFrameTime: performance.now(),
+      isDragging: true,
+      activeItemId: activeId // Track which item is being dragged
+    };
+    
+    console.log(`Active item ID: ${activeId}`);
+    
+    // Monitoring is now handled by the useEffect hook above
+    // The initial frame time is set but the actual monitoring happens in the effect
+    performanceMetricsRef.current.lastFrameTime = performance.now();
   };
 
-  const onDragEnd = (result: any, columns: KanbanColumns, setColumns: React.Dispatch<React.SetStateAction<KanbanColumns>>) => {
-    console.log('Drag ended', result);
+  const onDragEnd = (result: any) => {
+    // Stop performance monitoring
+    performanceMetricsRef.current.isDragging = false;
+    
+    // Log performance metrics
+    const { startTime, frameCount, slowFrames } = performanceMetricsRef.current;
+    const dragDuration = performance.now() - startTime;
+    const avgFrameTime = dragDuration / (frameCount || 1);
+    const slowFramePercentage = (slowFrames / (frameCount || 1)) * 100;
+    
+    console.log(`Drag Performance Metrics:`);
+    console.log(`- Total duration: ${dragDuration.toFixed(2)}ms`);
+    console.log(`- Frames processed: ${frameCount}`);
+    console.log(`- Average frame time: ${avgFrameTime.toFixed(2)}ms`);
+    console.log(`- Slow frames: ${slowFrames} (${slowFramePercentage.toFixed(2)}%)`);
     
     if (!result.destination) {
       console.log('No destination, canceling');
@@ -186,80 +276,84 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ taskItems, userRole }) => {
     
     const { source, destination } = result;
     console.log(`Moving from ${source.droppableId} to ${destination.droppableId}`);
-
-    // If the source and destination columns are different
-    if (source.droppableId !== destination.droppableId) {
-      const sourceColumn = columns[source.droppableId];
-      const destColumn = columns[destination.droppableId];
-      
-      if (!sourceColumn || !destColumn) {
-        console.error('Could not find source or destination column', { 
-          source: source.droppableId, 
-          destination: destination.droppableId,
-          availableColumns: Object.keys(columns)
-        });
-        return;
+    
+    // Use state updater function for better performance
+    setColumns(prevColumns => {
+      // If the source and destination columns are different
+      if (source.droppableId !== destination.droppableId) {
+        const sourceColumn = prevColumns[source.droppableId];
+        const destColumn = prevColumns[destination.droppableId];
+        
+        if (!sourceColumn || !destColumn) {
+          console.error('Could not find source or destination column', { 
+            source: source.droppableId, 
+            destination: destination.droppableId,
+            availableColumns: Object.keys(prevColumns)
+          });
+          return prevColumns; // Return unchanged state
+        }
+        
+        // Create new arrays only for the affected columns
+        const sourceItems = Array.from(sourceColumn.items);
+        const destItems = Array.from(destColumn.items);
+        
+        // Move the item
+        const [removed] = sourceItems.splice(source.index, 1);
+        destItems.splice(destination.index, 0, removed);
+        
+        // Return new state with only the changed columns updated
+        return {
+          ...prevColumns,
+          [source.droppableId]: {
+            ...sourceColumn,
+            items: sourceItems,
+          },
+          [destination.droppableId]: {
+            ...destColumn,
+            items: destItems,
+          },
+        };
+      } else {
+        // OPTIMIZED: Same-column reordering
+        const columnId = source.droppableId;
+        const column = prevColumns[columnId];
+        
+        if (!column) {
+          console.error('Could not find column', columnId);
+          return prevColumns; // Return unchanged state
+        }
+        
+        // Only create new array for the affected column
+        const items = Array.from(column.items);
+        
+        // Reorder the items efficiently
+        const [movedItem] = items.splice(source.index, 1);
+        items.splice(destination.index, 0, movedItem);
+        
+        // Only update the one affected column - much more efficient
+        return {
+          ...prevColumns,
+          [columnId]: {
+            ...column,
+            items
+          }
+        };
       }
-      
-      const sourceItems = [...sourceColumn.items];
-      const destItems = [...destColumn.items];
-      
-      // Remove item from source column
-      const [removed] = sourceItems.splice(source.index, 1);
-      console.log('Removed item:', removed);
-      
-      // Add item to destination column
-      destItems.splice(destination.index, 0, removed);
-      
-      const newColumns = {
-        ...columns,
-        [source.droppableId]: {
-          ...sourceColumn,
-          items: sourceItems,
-        },
-        [destination.droppableId]: {
-          ...destColumn,
-          items: destItems,
-        },
-      };
-      
-      console.log('Setting new columns state:', newColumns);
-      setColumns(newColumns);
-    } else {
-      // If the source and destination columns are the same
-      const column = columns[source.droppableId];
-      if (!column) {
-        console.error('Could not find column', source.droppableId);
-        return;
-      }
-      
-      const copiedItems = [...column.items];
-      
-      // Remove the item from its original position
-      const [removed] = copiedItems.splice(source.index, 1);
-      
-      // Add the item to its new position
-      copiedItems.splice(destination.index, 0, removed);
-      
-      const newColumns = {
-        ...columns,
-        [source.droppableId]: {
-          ...column,
-          items: copiedItems,
-        },
-      };
-      
-      console.log('Setting new columns state (same column):', newColumns);
-      setColumns(newColumns);
-    }
+    });
+    
+    // Use requestAnimationFrame to batch any additional UI updates
+    // This ensures smoother visual feedback after drag operations
+    requestAnimationFrame(() => {
+      // Optionally trigger any animations or additional updates here
+    });
   };
 
   return (
     <Box sx={{ 
       width: '100%', 
       height: '100%', 
-      overflowX: 'auto',
-      overflowY: 'hidden', // Hide vertical scrollbar at container level
+      // IMPORTANT: Removed overflowX and overflowY to avoid nested scroll container issues
+      // The TaskList component is the only element that should have overflow settings
       backgroundColor: '#000000', // Black background
       borderRadius: 0,
       position: 'relative',
@@ -271,7 +365,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ taskItems, userRole }) => {
       
       <DragDropContext 
         onDragStart={onDragStart}
-        onDragEnd={(result) => onDragEnd(result, columns, setColumns)}
+        onDragEnd={onDragEnd}
       >
         <Container style={{ flex: '1 1 auto', display: 'flex', flexDirection: 'column' }}>
           <TaskColumnStyles>
@@ -295,7 +389,8 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ taskItems, userRole }) => {
                   height: 'calc(100% - 10px)', // Ensure it takes the full height minus margin
                   position: 'relative', // For proper scroll containment
                   minHeight: '100%', // Minimum height to fill available space
-                  overflow: 'hidden', // Prevent content from expanding outside the box
+                  // IMPORTANT: Removed overflow:hidden to prevent nested scroll container issues
+                  // Only TaskList should have overflow settings as the direct parent of the Droppable
                 }}>
                   <Droppable key={columnId} droppableId={columnId}>
                   {(provided: any, snapshot: any) => (
@@ -312,7 +407,8 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ taskItems, userRole }) => {
                         display: 'flex',
                         flexDirection: 'column',
                         position: 'relative', // For proper scroll containment
-                        overflow: 'hidden', // Prevent expanding outside the box during drag
+                        // IMPORTANT: Removed overflow:hidden to prevent nested scroll container issues
+                        // Only TaskList should control overflow behavior in the drag-and-drop hierarchy
                       }}
                     >
                       <TaskList
@@ -323,9 +419,41 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ taskItems, userRole }) => {
                         }}
                       >
                       
-                      {column.items.map((item, index) => (
-                        <TaskCard key={item.id} item={item} index={index} userRole={userRole} />
-                      ))}
+                      {/* Simple windowing solution to only render visible cards */}
+                      {column.items.map((item, index) => {
+                        // Simple visibility check based on item index
+                        // Only render items that are likely to be visible (first 20)
+                        // or close to being dragged (±5 from active index)
+                        const isItemVisible = 
+                          index < 20 || 
+                          (performanceMetricsRef.current.isDragging && 
+                           performanceMetricsRef.current.activeItemId && 
+                           Math.abs(index - (column.items.findIndex(i => i.id === performanceMetricsRef.current.activeItemId) || 0)) < 5);
+                          
+                        if (!isItemVisible) {
+                          // Return an empty placeholder with proper height to maintain scrolling
+                          return (
+                            <Box 
+                              key={item.id} 
+                              sx={{ 
+                                height: '120px', // Approximate height of a card
+                                mb: 1.5,
+                                visibility: 'hidden',
+                              }} 
+                            />
+                          );
+                        }
+                        
+                        // Render the actual card if visible
+                        return (
+                          <TaskCard 
+                            key={item.id} 
+                            item={item} 
+                            index={index} 
+                            userRole={userRole} 
+                          />
+                        );
+                      })}
                       {provided.placeholder}
                       
                       {/* Empty columns no longer show placeholder text */}

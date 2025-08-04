@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo, memo } from "react";
 import { Draggable } from "@hello-pangea/dnd";
 import { Paper, Typography, Box, IconButton, Tooltip, Link } from "@mui/material";
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
@@ -36,7 +36,10 @@ const TaskCard = ({ item, index, userRole }: TaskCardProps) => {
   const draggableId = `task-${item.id}`;
   
   // Find the full project data from our complete data using the ID
-  const project = allProjects.find(p => p.id === item.id);
+  // Using useMemo to cache the expensive find operation
+  const project = useMemo(() => {
+    return allProjects.find(p => p.id === item.id);
+  }, [item.id]);
   
   // Handle info button click to open details modal
   const handleInfoButtonClick = (event: React.MouseEvent) => {
@@ -82,16 +85,26 @@ const TaskCard = ({ item, index, userRole }: TaskCardProps) => {
             ref={provided.innerRef}
             {...provided.draggableProps}
             {...provided.dragHandleProps}
-            elevation={1}
+            elevation={snapshot.isDragging ? 3 : 1}
             sx={{
               p: 1,
               mb: 0.75,
               borderRadius: '12px',
-              backgroundColor: '#333333',
+              backgroundColor: snapshot.isDragging ? '#2a2a2a' : '#333333',
               minHeight: '80px',
+              // Simplified styles for better performance during drag
+              ...(snapshot.isDragging ? {
+                boxShadow: '0 5px 10px rgba(0,0,0,0.3)',
+                opacity: 0.9
+              } : {})
             }}
           >
-            <Typography variant="subtitle2">{item.task}</Typography>
+            {/* Simplified content when dragging for better performance */}
+            {snapshot.isDragging ? (
+              <Typography variant="subtitle2" noWrap>{item.task}</Typography>
+            ) : (
+              <Typography variant="subtitle2">{item.task}</Typography>
+            )}
           </Paper>
         )}
       </Draggable>
@@ -227,4 +240,10 @@ const TaskCard = ({ item, index, userRole }: TaskCardProps) => {
   );
 };
 
-export default TaskCard;
+// Use memo with custom comparison to prevent unnecessary re-renders
+export default memo(TaskCard, (prevProps, nextProps) => {
+  // Only re-render if these specific props change
+  return prevProps.item.id === nextProps.item.id && 
+         prevProps.index === nextProps.index &&
+         prevProps.userRole === nextProps.userRole;
+});
