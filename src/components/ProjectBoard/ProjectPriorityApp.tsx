@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Box } from '@mui/material';
 import KanbanBoard from './KanbanBoard';
 import { convertProjectsToTaskItems } from './KanbanData';
@@ -31,15 +31,32 @@ const ProjectPriorityApp = ({
   // State for user's votes - initialize from props 
   const [votes, setVotes] = useState(initialVotes);
   
+  // Only save votes when they're actually updated (not on every render)
+  const saveVotes = useCallback((updatedVotes: Record<string, ProjectVote>) => {
+    if (onSaveVotes) {
+      console.log('Saving votes to App state:', updatedVotes);
+      console.log('Object.keys(votes).length:', Object.keys(updatedVotes).length);
+      onSaveVotes(updatedVotes);
+    }
+  }, [onSaveVotes]);
+  
+  // Initial load effect - only run once
+  useEffect(() => {
+    console.log('Initial votes prop:', initialVotes);
+    // Only log but don't save on initial load
+  }, []);
+
   // Effect to save votes when they change
   // Add a short delay to prevent excessive updates
   useEffect(() => {
+    // Always log the current state of votes 
+    console.log('Current votes state:', votes);
+    
     // Make sure onSaveVotes exists and we have votes to save
-    if (onSaveVotes && Object.keys(votes).length > 0) {
+    if (onSaveVotes) {
       // Add a short debounce to prevent excessive updates
       const handler = setTimeout(() => {
-        console.log('Saving votes to App state:', votes);
-        onSaveVotes(votes);
+        saveVotes(votes);
       }, 300);
       
       // Clean up timeout on unmount
@@ -76,55 +93,71 @@ const ProjectPriorityApp = ({
           taskItems={taskItems} 
           userRole={userRole}
           onColumnsChange={(columnCounts) => {
+            // Memoize this handler to prevent unnecessary re-renders
             // Calculate ranked and total counts
             const ranked = columnCounts.highest + columnCounts.high + 
                          columnCounts.medium + columnCounts.low;
             const total = ranked + columnCounts.unsorted;
             
-            // Update project votes based on current column positions
-            const newVotes = {...votes};
-            
-            // For each project in each priority column, update its vote
-            Object.entries(columnCounts).forEach(([columnName, count]) => {
-              // Skip processing if the column is empty
-              if (count === 0) return;
+            // Use a function to update votes to ensure we're working with the latest state
+            setVotes(currentVotes => {
+              // Create a new votes object based on current state
+              const newVotes = {...currentVotes};
               
-              // Find the items in this column from taskItems
-              const columnItems = taskItems.filter(item => {
-                // Map column names to status values
-                let status = '';
-                if (columnName === 'unsorted') status = 'To-Do';
-                else if (columnName === 'highest') status = 'Highest';
-                else if (columnName === 'high') status = 'High';
-                else if (columnName === 'medium') status = 'Medium';
-                else if (columnName === 'low') status = 'Low';
+              // For each project in each priority column, update its vote
+              Object.entries(columnCounts).forEach(([columnName, count]) => {
+                // Skip processing if the column is empty
+                if (count === 0) return;
                 
-                return item.Status === status;
+                // Find the items in this column from taskItems
+                const columnItems = taskItems.filter(item => {
+                  // Map column names to status values
+                  let status = '';
+                  if (columnName === 'unsorted') status = 'To-Do';
+                  else if (columnName === 'highest') status = 'Highest';
+                  else if (columnName === 'high') status = 'High';
+                  else if (columnName === 'medium') status = 'Medium';
+                  else if (columnName === 'low') status = 'Low';
+                  
+                  return item.Status === status;
+                });
+                
+                // Update votes for each item in this column
+                columnItems.forEach(item => {
+                  if (columnName !== 'unsorted') {
+                    // Convert column name to a proper ProjectPriority type
+                    let priority: ProjectPriority = 'Medium Priority';
+                    
+                    if (columnName === 'highest') priority = 'Highest priority';
+                    else if (columnName === 'high') priority = 'High priority';
+                    else if (columnName === 'medium') priority = 'Medium Priority';
+                    else if (columnName === 'low') priority = 'Low priority';
+                    
+                    // Create a proper ProjectVote object with timestamp
+                    newVotes[item.id] = { 
+                      projectId: item.id, 
+                      priority: priority,
+                      timestamp: Date.now() // Add timestamp to ensure the vote is counted
+                    };
+                    console.log(`Added vote for project ${item.id} with priority ${priority}`);
+                  } else {
+                    // Remove vote for unsorted projects
+                    if (newVotes[item.id]) {
+                      delete newVotes[item.id];
+                      console.log(`Removed vote for project ${item.id} (unsorted)`);
+                    }
+                  }
+                });
               });
               
-              // Update votes for each item in this column
-              columnItems.forEach(item => {
-                if (columnName !== 'unsorted') {
-                  // Convert column name to a proper ProjectPriority type
-                  let priority: ProjectPriority = 'Medium Priority';
-                  
-                  if (columnName === 'highest') priority = 'Highest priority';
-                  else if (columnName === 'high') priority = 'High priority';
-                  else if (columnName === 'medium') priority = 'Medium Priority';
-                  else if (columnName === 'low') priority = 'Low priority';
-                  
-                  newVotes[item.id] = { projectId: item.id, priority: priority };
-                } else {
-                  // Remove vote for unsorted projects
-                  if (newVotes[item.id]) {
-                    delete newVotes[item.id];
-                  }
-                }
-              });
+              // Log updated votes info
+              console.log('New votes count:', Object.keys(newVotes).length);
+              
+              // Save votes immediately with the latest state
+              saveVotes(newVotes);
+              
+              return newVotes;
             });
-            
-            // Update votes state
-            setVotes(newVotes);
             
             // Report counts to parent component if callback exists
             if (onColumnCountsChange) {

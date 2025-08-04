@@ -6,7 +6,8 @@ import {
   LocalActivity as RankProjectsIcon,
   GetApp as FinishIcon,
   RestaurantMenu as AppetiteIcon,
-  FormatListNumbered as RankIcon
+  FormatListNumbered as RankIcon,
+  Check as CompletedIcon
 } from '@mui/icons-material';
 
 // Define the available application stages
@@ -70,91 +71,198 @@ const StageNavigation: React.FC<StageNavigationProps> = ({
   available,
   projectInterestCount = 0
 }) => {
+  // Helper function to normalize role names for consistent comparison
+  const normalizeRoleName = (role: string | null): string => {
+    if (!role) return '';
+    return role.toLowerCase().trim();
+  };
+  
   // Determine whether user can help with projects next quarter
   const canHelpNextQuarter = available === true;
   
-  // Determine if user is a developer (needs Problem Interest)
-  const isDeveloper = voterRole === 'developer';
+  // Determine user role categories (case-insensitive)
+  const normalizedRole = normalizeRoleName(voterRole);
+  const isDeveloper = normalizedRole === 'developer';
+  const isQM = normalizedRole === 'qm';
+  const isDevTL = normalizedRole === 'dev tl' || normalizedRole === 'dev-tl';
+  const isQMTL = normalizedRole === 'qm tl' || normalizedRole === 'qm-tl';
+  const isUXD = normalizedRole === 'uxd';
+  const isTLTL = normalizedRole === 'tltl';
+  const isCustomer = normalizedRole === 'customer';
+  // Determine if role is Other or unrecognized (used in role documentation)
+  const isOtherRole = normalizedRole === 'other' || 
+    (!isDeveloper && !isQM && !isDevTL && !isQMTL && !isUXD && !isTLTL && !isCustomer);
   
-  // Determine which roles have access to Project Interest section
-  const canShowProjectInterest = (
-    (voterRole === 'qm' || voterRole === 'dev-tl') && canHelpNextQuarter
-  ) || (isDeveloper && canHelpNextQuarter);
+  // Determine section visibility based on user role and ability to help next quarter
+  
+  // Stage 1: Problem Interest section is only shown to Developers who can help next quarter
+  const canShowProblemInterest = isDeveloper && canHelpNextQuarter;
+  
+  // Stage 2: Project Interest section is shown to QMs, Devs, and Dev TLs who can help next quarter
+  const canShowProjectInterest = canHelpNextQuarter && (isDeveloper || isQM || isDevTL);
+  
+  // Define the completion requirements for each section based on user role
+  const getSectionCompletionRequirement = (section: AppStage): boolean => {
+    // Calculate minimum thresholds (50% of tasks)
+    const problemMinimum = Math.ceil(totalPitchCount / 2);
+    const projectMinimum = Math.ceil(totalProjectCount / 2);
+    
+    switch(section) {
+      case 'priority':
+        // All roles need to rank half the problems and set half the appetites
+        return rankCount >= problemMinimum && appetiteCount >= problemMinimum;
+      
+      case 'interest':
+        // Only relevant for developers who can help, need half the problem interests
+        return interestCount >= problemMinimum;
+      
+      case 'projects':
+        // All roles need to rank half the projects
+        return rankedProjectCount >= projectMinimum;
+      
+      case 'project-interest':
+        // Only relevant for roles who can help, need half the project interests
+        return projectInterestCount >= projectMinimum;
+      
+      default:
+        return false;
+    }
+  };
+    
+  // Determine if current stage is Stage 1 (Problems) or Stage 2 (Projects)
+  const inStage1 = activeStage === 'priority' || activeStage === 'interest';
 
-  // Define all potential stages with their labels, icons, and progress counters
-  const allStages = [
+  // Determine when Finish button should become active based on role, availability and progress
+  const shouldEnableFinishButton = () => {
+    // Stage 1 (Problems) finish conditions
+    if (inStage1) {
+      // Basic requirement for all users: need minimum problem ranking
+      if (!getSectionCompletionRequirement('priority')) {
+        return false;
+      }
+      
+      // Extra requirement for developers who can help: need problem interest
+      if (isDeveloper && canHelpNextQuarter && !getSectionCompletionRequirement('interest')) {
+        return false;
+      }
+      
+      // All conditions passed
+      return true;
+    }
+    
+    // Stage 2 (Projects) finish conditions
+    else {
+      // Basic requirement for all users: need minimum project ranking
+      if (!getSectionCompletionRequirement('projects')) {
+        return false;
+      }
+      
+      // Extra requirement for relevant roles who can help: need project interest
+      if (canShowProjectInterest && !getSectionCompletionRequirement('project-interest')) {
+        return false;
+      }
+      
+      // All conditions passed
+      return true;
+    }
+  };
+  
+  // Function to calculate section completion percentage (0-100)
+  const getSectionCompletionPercentage = (section: AppStage): number => {
+    switch (section) {
+      case 'priority':
+        return Math.floor(((rankCount / totalPitchCount) + (appetiteCount / totalPitchCount)) * 50);
+      case 'interest':
+        return Math.floor((interestCount / totalPitchCount) * 100);
+      case 'projects':
+        return Math.floor((rankedProjectCount / totalProjectCount) * 100);
+      case 'project-interest':
+        return Math.floor((projectInterestCount / totalProjectCount) * 100);
+      default:
+        return 0;
+    }
+  };
+
+  // Determine if a section meets the 50% completion threshold
+  const isSectionCompleted = (section: AppStage): boolean => {
+    return getSectionCompletionPercentage(section) >= 50;
+  };
+  
+  // Logic to show finish button after the appropriate stage based on user role and availability
+  let finishButtonPosition = -1;
+  
+  if (inStage1) {
+    if (isDeveloper && canHelpNextQuarter) {
+      finishButtonPosition = 1; // After interest for Developers in Stage 1
+    } else {
+      finishButtonPosition = 0; // After priority for all others in Stage 1
+    }
+  } else {
+    if (canShowProjectInterest) {
+      finishButtonPosition = 3; // After project-interest in Stage 2 for those who can help
+    } else {
+      finishButtonPosition = 2; // After projects in Stage 2 for others
+    }
+  }
+  
+  // Determine if Finish button should be enabled based on progress and permissions
+  const finishEnabled = isExportEnabled && shouldEnableFinishButton();
+  
+  // Define all the available stages with their configuration based on user role
+  const stageDefinitions = [
     {
       value: 'priority' as AppStage,
       label: 'Rank Problems',
       icon: <RankProblemsIcon fontSize="small" />,
-      tooltip: 'Prioritize problems and assign appetites',
-      progressCounts: {
-        appetite: appetiteCount,
-        rank: rankCount,
-        total: totalPitchCount
-      },
-      // Always show this stage for all users
-      show: true
+      tooltip: 'Rank problems by priority and set appetites',
+      progressCounts: true,
+      getCompletionPercentage: () => getSectionCompletionPercentage('priority'),
+      isCompleted: () => isSectionCompleted('priority'),
+      show: true, // Always show for all users
+      // Include role-specific details for documentation
+      roleInfo: `Required for all users: ${normalizedRole}`
     },
     {
       value: 'interest' as AppStage,
       label: 'Problem Interest',
       icon: <RankInterestIcon fontSize="small" />,
-      tooltip: 'Indicate your interest level in problems',
-      progressCounts: {
-        interest: interestCount,
-        total: totalPitchCount
-      },
-      // Only show for developers who can help next quarter
-      show: isDeveloper && canHelpNextQuarter
+      tooltip: 'Indicate your interest in each problem',
+      progressCounts: true,
+      getCompletionPercentage: () => getSectionCompletionPercentage('interest'),
+      isCompleted: () => isSectionCompleted('interest'),
+      show: canShowProblemInterest, // Only show for developers who can help
+      // Include role-specific details for documentation
+      roleInfo: `Only for developers who can help: ${isDeveloper && canHelpNextQuarter}`
     },
     {
       value: 'projects' as AppStage,
       label: 'Rank Projects',
       icon: <RankProjectsIcon fontSize="small" />,
-      tooltip: 'Prioritize projects based on previous rankings',
-      progressCounts: {
-        ranked: rankedProjectCount,
-        total: totalProjectCount
-      },
-      // Always show this stage for all users
-      show: true
+      tooltip: 'Rank the proposed projects by priority',
+      progressCounts: true,
+      getCompletionPercentage: () => getSectionCompletionPercentage('projects'),
+      isCompleted: () => isSectionCompleted('projects'),
+      show: true, // Always show for all users
+      // Include role-specific details for documentation
+      roleInfo: `Required for all users: ${normalizedRole}`
     },
     {
       value: 'project-interest' as AppStage,
       label: 'Project Interest',
       icon: <RankInterestIcon fontSize="small" />,
       tooltip: 'Indicate your interest level in projects',
-      progressCounts: {
-        ranked: projectInterestCount,
-        total: totalProjectCount
-      },
-      // Only show for certain roles who can help next quarter
-      show: canShowProjectInterest
+      progressCounts: true,
+      getCompletionPercentage: () => getSectionCompletionPercentage('project-interest'),
+      isCompleted: () => isSectionCompleted('project-interest'),
+      show: canShowProjectInterest, // Only show for roles who can help
+      // Include details about which roles can see this section
+      roleInfo: `For Devs/QMs/DevTLs who can help: ${isDeveloper || isQM || isDevTL} and ${canHelpNextQuarter}`
     }
   ];
   
   // Filter stages based on user role and availability
-  const stages = allStages.filter(stage => stage.show);
+  const stages = stageDefinitions.filter(stage => stage.show);
 
-  // Determine where to show the Finish button based on stage and available sections
-  const hasProblemInterest = allStages.some(stage => stage.value === 'interest' && stage.show);
-  const hasProjectInterestStage = allStages.some(stage => stage.value === 'project-interest' && stage.show);
-  
-  // In Stage 1 (Priority/Interest), show finish button after Problem Interest for devs with canHelp=true
-  // otherwise show it after Rank Problems
-  // In Stage 2 (Projects), show finish button after Project Interest for roles with canHelp=true
-  // otherwise show it after Rank Projects
-  
-  // We're in Stage 1 when we're not in the Projects stage
-  // Treat both 'projects' and 'project-priority' as the same stage for UI purposes
-  const inStage1 = activeStage !== 'projects' && activeStage !== 'project-interest' && activeStage !== 'project-priority';
-  
-  // Determine where to show the finish button
-  const finishButtonPosition = inStage1 ? 
-    (hasProblemInterest ? 1 : 0) : // After Problem Interest or Rank Problems in Stage 1
-    (hasProjectInterestStage ? stages.length - 1 : stages.findIndex(s => s.value === 'projects')); // After Project Interest or Projects in Stage 2
-  
   return (
     <Box sx={{ 
       display: 'flex', 
@@ -238,7 +346,19 @@ const StageNavigation: React.FC<StageNavigationProps> = ({
                   }}
                 >
                   <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                    <Box>{stage.label}</Box>
+                    {/* Show green checkmark for completed stages */}
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      {stage.label}
+                      {isCompleted && (
+                        <CompletedIcon 
+                          sx={{ 
+                            ml: 0.5, 
+                            fontSize: '0.9rem', 
+                            color: '#4caf50' 
+                          }} 
+                        />
+                      )}
+                    </Box>
                     
                     {/* Progress counter displays */}
                     {stage.progressCounts && stage.value === 'priority' && (
@@ -315,14 +435,14 @@ const StageNavigation: React.FC<StageNavigationProps> = ({
             
             {/* Add Finish button at the appropriate position based on stage and user role */}
             {inStage1 && index === finishButtonPosition && (
-              <Tooltip title={!isExportEnabled ? "Complete required fields first" : "Finish and export results"}>
+              <Tooltip title={!finishEnabled ? "Complete required fields first" : "Finish and export results"}>
                 <span>
                   <NavButton
                     variant={isExportEnabled ? "contained" : "outlined"}
                     color={isExportEnabled ? "secondary" : "inherit"}
                     startIcon={<FinishIcon fontSize="small" />}
                     onClick={onFinish}
-                    disabled={!isExportEnabled}
+                    disabled={!finishEnabled}
                     sx={{ 
                       opacity: isExportEnabled ? 1 : 0.5,
                       ml: 1,
@@ -348,12 +468,12 @@ const StageNavigation: React.FC<StageNavigationProps> = ({
               color={isExportEnabled ? "secondary" : "inherit"}
               startIcon={<FinishIcon fontSize="small" />}
               onClick={onFinish}
-              disabled={!isExportEnabled}
+              disabled={!finishEnabled}
               sx={{ 
-                opacity: isExportEnabled ? 1 : 0.5,
+                opacity: finishEnabled ? 1 : 0.5,
                 ml: 1,
                 // Add highlight effect when active, regardless of stage
-                boxShadow: isExportEnabled ? 2 : 0,
+                boxShadow: finishEnabled ? 2 : 0,
               }}
             >
               Finish

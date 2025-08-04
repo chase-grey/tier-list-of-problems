@@ -106,8 +106,8 @@ const BucketColumn = ({ tier, pitches, votes, onAppetiteChange, columnCount = 9,
       {/* Column header */}
       <Paper 
         sx={{
-          p: 0.75,
-          mb: 1,
+          p: 0.5, // Standardized padding (8px)
+          mb: 0.5, // Standardized margin
           backgroundColor: getHeaderColor(),
           color: getHeaderTextColor(),
           textAlign: 'center',
@@ -129,7 +129,7 @@ const BucketColumn = ({ tier, pitches, votes, onAppetiteChange, columnCount = 9,
             }}
             {...provided.droppableProps}
             sx={{
-              p: 1,
+              p: 0.5, // Standardized padding (8px)
               flexGrow: 1,
               backgroundColor: snapshot.isDraggingOver 
                 ? 'action.hover' 

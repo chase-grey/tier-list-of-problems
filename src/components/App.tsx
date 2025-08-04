@@ -1,5 +1,19 @@
 import React, { useEffect, useReducer, memo, useState } from 'react';
-import { ThemeProvider, CssBaseline, Box } from '@mui/material';
+import { 
+  ThemeProvider, 
+  CssBaseline, 
+  Box, 
+  AppBar, 
+  Toolbar, 
+  Button, 
+  Typography, 
+  IconButton, 
+  Tooltip 
+} from '@mui/material';
+import {
+  HelpOutline as HelpIcon,
+  RestartAlt as ResetIcon
+} from '@mui/icons-material';
 import { darkTheme } from '../theme';
 import { NameGate } from './NameGate/NameGate';
 
@@ -14,8 +28,9 @@ export const updateAppStage = (stage: 'problems' | 'projects') => {
   APP_CONFIG.CURRENT_APP_STAGE = stage;
 };
 
-import { TopBar } from './TopBar/TopBar';
-import type { AppStage } from './Timeline/Timeline';
+// Import the new RoleBasedTimeline component
+import { RoleBasedTimeline } from './RoleBasedTimeline/RoleBasedTimeline';
+import type { AppStage } from './RoleBasedTimeline/RoleBasedTimeline';
 import KanbanContainer from './VotingBoard/KanbanContainer';
 import AvailabilityDialog from './AvailabilityDialog/AvailabilityDialog';
 import InterestRanking from './InterestRanking/InterestRanking';
@@ -37,8 +52,6 @@ import { isContributorRole } from '../types/models';
 
 // Import pitch data
 import pitchesData from '../assets/pitches.json';
-// Import project data
-import { mockProjects } from './ProjectBoard/mockData';
 // Import our complete projects data
 import { allProjects } from '../data/allProjectsData';
 
@@ -230,8 +243,8 @@ const AppContent: React.FC = () => {
   const completeState = {
     ...initialState,
     ...savedState,
-    // Set initial stage based on current app stage
-    stage: APP_CONFIG.CURRENT_APP_STAGE === 'projects' ? 'project-priority' : 'priority',
+    // Set initial stage based on current app stage with proper type assertion
+    stage: APP_CONFIG.CURRENT_APP_STAGE === 'projects' ? 'project-priority' as AppStage : 'priority' as AppStage,
     // Ensure voterRole exists if voterName exists
     voterRole: savedState.voterRole || (savedState.voterName ? null : initialState.voterRole)
   };
@@ -293,8 +306,6 @@ const AppContent: React.FC = () => {
   // Count a problem as having interest if it either has an interestLevel OR it has a tier set (i.e., not in Unsorted)
   const interestCount = needsInterestRanking ? 
     Object.values(state.votes).filter(v => v.interestLevel !== undefined || v.tier !== null && v.tier !== undefined).length : 0;
-  // The minimum interest count needed to complete the interest stage
-  const hasMinimumInterestCount = interestCount >= minimumRequired;
   
   // Identify user role for finish button activation rules
   const isDeveloper = state.voterRole === 'developer';
@@ -333,8 +344,13 @@ const AppContent: React.FC = () => {
   
   // Stage 2: Projects
   else if (state.stage === 'projects' || state.stage === 'project-interest') {
-    // For QMs, Dev TLs, and devs who can help out with projects next quarter
-    if ((isDeveloper || isQM || isDevTL) && canHelpNextQuarter) {
+    // Special case for QM who can help next quarter - only need project rankings per requirements
+    if (isQM && canHelpNextQuarter) {
+      // QMs only need to have ranked projects, no need for project interest
+      isExportEnabled = projectVoteCount >= projectThreshold;
+    }
+    // For Dev TLs and devs who can help out with projects next quarter
+    else if ((isDeveloper || isDevTL) && canHelpNextQuarter) {
       if (state.stage === 'project-interest') {
         // Need half of projects ranked and half of project interest set
         isExportEnabled = projectVoteCount >= projectThreshold && 
@@ -669,29 +685,48 @@ const AppContent: React.FC = () => {
     // Can access priority stage only in Stage 1
     if (stage === 'priority' && !isInStage2) return true;
     
-    const isDeveloper = state.voterRole === 'developer';
-    const isQM = state.voterRole === 'qm';
-    const isDevTL = state.voterRole === 'dev-tl';
+    // Normalize role name for case-insensitive comparison
+    const normalizeRoleName = (role: string | null): string => {
+      if (!role) return '';
+      return role.toLowerCase().trim();
+    };
+    
+    // Determine user role categories (case-insensitive)
+    const normalizedRole = normalizeRoleName(state.voterRole);
+    const isDeveloper = normalizedRole === 'developer';
+    const isQM = normalizedRole === 'qm';
+    const isDevTL = normalizedRole === 'dev tl' || normalizedRole === 'dev-tl';
+    // Note: Unused role checks have been removed
     const canHelpNextQuarter = state.available === true;
     
-    // For Stage 1 progression:
-    // Priority -> Problem Interest -> Finish
-    // Priority -> Finish
+    // Log roles and availability for debugging
+    console.log('Role:', normalizedRole, 'Can help:', canHelpNextQuarter);
     
-    // For Stage 2 progression:
-    // Projects -> Project Interest -> Finish
-    // Projects -> Finish
+    // Calculate completion thresholds for different sections
+    const problemMinimum = Math.ceil(TOTAL / 2); // Half of all problems
+    const projectMinimum = Math.ceil((totalProjectCount || 8) / 2); // Half of all projects
     
-    // For interest stage (Problem Interest), must be a developer who can help with projects next quarter
-    if (stage === 'interest') {
-      const hasEnoughProgress = appetiteCount >= Math.ceil(TOTAL / 2) && rankCount >= Math.ceil(TOTAL / 2);
-      return isDeveloper && canHelpNextQuarter && hasEnoughProgress;
+    // Calculate problem ranking progress
+    const problemRankCount = rankCount;
+    const problemAppetiteCount = appetiteCount;
+    const hasCompletedProblemRanking = problemRankCount >= problemMinimum && 
+                                     problemAppetiteCount >= problemMinimum;
+    
+    // Calculate project ranking progress
+    const projectRankCount = Object.keys(state.projectVotes).length;
+    const hasCompletedProjectRanking = projectRankCount >= projectMinimum;
+    
+    // Stage 1 progression logic based on user role
+    if (stage === 'interest' && !isInStage2) {
+      // Problem Interest section is only available to Devs who can help next quarter
+      // and have completed enough of the problem ranking
+      return isDeveloper && canHelpNextQuarter && hasCompletedProblemRanking;
     }
     
     // For projects stage (Stage 2), access depends on app configuration
     if (stage === 'projects') {
       // Only allow access if the app is configured for Stage 2
-      if (APP_CONFIG.CURRENT_APP_STAGE !== 'projects') {
+      if (!isInStage2) {
         return false;
       }
       
@@ -702,24 +737,40 @@ const AppContent: React.FC = () => {
     // For project-interest stage (only available in Stage 2)
     if (stage === 'project-interest') {
       // Only allow access if the app is configured for Stage 2
-      if (APP_CONFIG.CURRENT_APP_STAGE !== 'projects') {
+      if (!isInStage2) {
         return false;
       }
       
-      // Only QMs, Dev TLs and devs who can help next quarter can access this stage
+      // Project Interest is only available to:
+      // - Devs who can help next quarter
+      // - QMs who can help next quarter
+      // - Dev TLs who can help next quarter
       const canAccessProjectInterest = canHelpNextQuarter && 
         (isDeveloper || isQM || isDevTL);
       
       // Additionally, need to have ranked half of the projects to access project interest
-      const projectVoteCount = Object.keys(state.projectVotes).length;
-      const projectMinimum = Math.ceil((totalProjectCount || 8) / 2); // Default to 8 if totalProjectCount not provided
-      const hasRankedEnoughProjects = projectVoteCount >= projectMinimum;
+      // Log project interest access conditions for debugging
+      console.log('Project Interest Access:', {
+        canAccessProjectInterest,
+        projectVotes: projectRankCount,
+        requiredVotes: projectMinimum,
+        hasCompletedProjectRanking,
+        userRole: normalizedRole,
+        isQM: isQM,
+        canHelpNextQuarter: canHelpNextQuarter
+      });
       
-      return canAccessProjectInterest && hasRankedEnoughProjects;
+      // Simply check if the user can access project interest and has completed project ranking
+      // The role checks are already part of canAccessProjectInterest, so we don't need additional conditions
+      return canAccessProjectInterest && hasCompletedProjectRanking;
     }
     
     return false;
   };
+
+  // Note: The isFinishButtonEnabled logic has been moved to the RoleBasedTimeline component
+  // This function has been removed as it's no longer needed
+
   
   // After all the function declarations, return the component's JSX
   return (
@@ -735,28 +786,88 @@ const AppContent: React.FC = () => {
       />
       
       <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
-        <TopBar 
-          voterName={state.voterName}
-          voterRole={state.voterRole}
-          available={state.available}
-          totalPitchCount={TOTAL}
-          appetiteCount={appetiteCount}
-          rankCount={rankCount}
-          interestCount={interestCount}
-          onFinish={handleFinish}
-          isExportEnabled={isExportEnabled}
-          onHelpClick={handleHelpClick}
-          onResetClick={handleResetClick}
-          stage={state.stage}
-          onStageChange={handleStageChange}
-          canAccessStage={canAccessStage}
-          completedStages={completedStages}
-          totalProjectCount={projectCounts.total} // Pass the column-based project count total
-          rankedProjectCount={projectCounts.ranked} // Pass the column-based project count ranked
-          projectInterestCount={0} // Add project interest count tracking when implemented
-        />
+        {/* Replace TopBar with our new RoleBasedTimeline component */}
+      <AppBar 
+        position="static" 
+        color="transparent"
+        elevation={0}
+        sx={{ 
+          zIndex: 1100, // Ensure it's above other content
+          boxShadow: 0, // No shadow
+          mb: 0, // No margin below the AppBar
+          bgcolor: 'transparent' // Transparent background
+        }}
+      >
+        <Toolbar 
+          sx={{ 
+            py: 0.5, // Standardized vertical padding (8px)
+            px: 0.5, // Standardized horizontal padding (8px)
+            minHeight: 'unset', // Remove default height constraint
+            display: 'flex',
+            flexDirection: 'row', // Use row layout instead of column
+            justifyContent: 'space-between', // Space between left controls and timeline
+            alignItems: 'center' // Vertically center items
+          }}
+          variant="dense" // Use compact toolbar
+        >
+          {/* Left section with title and controls */}
+          <Box sx={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+            <Button
+              variant="outlined"
+              color="error"
+              size="small"
+              startIcon={<ResetIcon />}
+              onClick={handleResetClick}
+              aria-label="Reset all votes"
+              sx={{
+                mr: 2,
+                height: 28, // Smaller reset button
+                '&:hover': {
+                  bgcolor: 'rgba(244, 67, 54, 0.08)'
+                }
+              }}
+            >
+              Reset
+            </Button>
+            
+            <Typography variant="subtitle1" component="div" sx={{ fontSize: '0.95rem' }}>
+              Problem Polling: {state.voterName}
+            </Typography>
+            
+            <Tooltip title="View Instructions">
+              <IconButton 
+                color="inherit"
+                size="small" 
+                onClick={handleHelpClick}
+                sx={{ ml: 1 }}
+                aria-label="Help"
+              >
+                <HelpIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          </Box>
+          
+          {/* Right section with timeline - now inline with title */}
+          <RoleBasedTimeline
+            userRole={state.voterRole}
+            canHelpNextQuarter={state.available}
+            activeStage={state.stage}
+            onStageSelect={handleStageChange}
+            completedStages={completedStages}
+            problemRankCount={rankCount}
+            problemTotal={TOTAL}
+            problemAppetiteCount={appetiteCount}
+            problemInterestCount={interestCount}
+            projectRankCount={projectCounts.ranked}
+            projectTotal={totalProjectCount || 8}
+            projectInterestCount={Object.keys(state.projectInterestVotes).length}
+            onFinish={handleFinish}
+            currentAppStage={APP_CONFIG.CURRENT_APP_STAGE as 'problems' | 'projects'}
+          />
+        </Toolbar>
+      </AppBar>
         
-        <Box component="main" sx={{ flexGrow: 1, overflow: 'hidden', p: 1 }}>
+        <Box component="main" sx={{ flexGrow: 1, overflow: 'hidden', p: 0.5 }}> {/* Standardized padding (8px) */}
           {state.stage === 'priority' ? (
             <KanbanContainer
               pitches={pitches}
