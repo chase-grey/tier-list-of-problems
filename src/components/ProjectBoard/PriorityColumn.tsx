@@ -7,13 +7,13 @@ import type { Project, ProjectVote, ProjectPriority } from '../../types/project-
 import ProjectCard from './ProjectCard/ProjectCard';
 import { registerDroppable } from '../../utils/enhancedDropDetection';
 
-// Custom colors for priority columns - using different shades of grayish-green as requested
+// Custom colors for priority columns - using purple color scheme as requested
 const PRIORITY_COLORS = {
-  'Highest priority': '#496A5C', // Darkest shade of grayish-green
-  'High priority': '#5E8272',    // Dark shade of grayish-green
-  'Medium Priority': '#739A89',  // Medium shade of grayish-green
-  'Low priority': '#88B19F',     // Light shade of grayish-green
-  'Not a priority': '#9DC9B6',   // Lightest shade of grayish-green
+  'Highest priority': '#4A1E9E', // Deep purple
+  'High priority': '#6036B3',    // Royal purple
+  'Medium Priority': '#7A52C7',  // Medium purple
+  'Low priority': '#9575D9',     // Light purple
+  'Not a priority': '#B8A2E3',   // Very light purple
   'Unsorted': 'background.paper' // Default paper color
 };
 

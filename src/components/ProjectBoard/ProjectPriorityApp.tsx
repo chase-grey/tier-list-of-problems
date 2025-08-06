@@ -1,7 +1,7 @@
-import { useState, useReducer, useEffect } from 'react';
-import { Box, Alert } from '@mui/material';
-import type { DropResult } from '@hello-pangea/dnd';
-import ProjectBoard from './ProjectBoard';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { Box } from '@mui/material';
+import KanbanBoard from './KanbanBoard';
+import { convertProjectsToTaskItems } from './KanbanData';
 import type { Project, ProjectVote, ProjectPriority } from '../../types/project-models';
 
 interface ProjectPriorityAppProps {
@@ -9,38 +9,14 @@ interface ProjectPriorityAppProps {
   initialVotes?: Record<string, ProjectVote>;
   userRole?: string;
   onSaveVotes?: (votes: Record<string, ProjectVote>) => void;
+  onColumnCountsChange?: (counts: {
+    unsorted: number;
+    ranked: number; // Sum of highest, high, medium, low columns
+    total: number; // Sum of all columns
+  }) => void;
 }
 
-// Simple reducer for vote state management
-type VoteAction = 
-  | { type: 'SET_PRIORITY'; projectId: string; priority: ProjectPriority }
-  | { type: 'UNSET_PRIORITY'; projectId: string }
-  | { type: 'RESET_ALL' };
 
-function votesReducer(state: Record<string, ProjectVote>, action: VoteAction): Record<string, ProjectVote> {
-  switch (action.type) {
-    case 'SET_PRIORITY': {
-      return {
-        ...state,
-        [action.projectId]: {
-          projectId: action.projectId,
-          priority: action.priority,
-          timestamp: Date.now()
-        }
-      };
-    }
-    case 'UNSET_PRIORITY': {
-      const newState = { ...state };
-      delete newState[action.projectId];
-      return newState;
-    }
-    case 'RESET_ALL': {
-      return {};
-    }
-    default:
-      return state;
-  }
-}
 
 /**
  * Main component for the Project Prioritization Poll
@@ -49,72 +25,149 @@ const ProjectPriorityApp = ({
   projects, 
   initialVotes = {}, 
   userRole = '',
-  onSaveVotes 
+  onSaveVotes,
+  onColumnCountsChange
 }: ProjectPriorityAppProps) => {
-  // State for user's votes
-  const [votes, dispatchVote] = useReducer(votesReducer, initialVotes);
+  // State for user's votes - initialize from props 
+  const [votes, setVotes] = useState(initialVotes);
   
-  // Export functionality was removed, only keeping error state for UI feedback if needed
-  const [exportError] = useState<string | null>(null);
-  
-  // Effect to save votes whenever they change
-  useEffect(() => {
+  // Only save votes when they're actually updated (not on every render)
+  const saveVotes = useCallback((updatedVotes: Record<string, ProjectVote>) => {
     if (onSaveVotes) {
-      onSaveVotes(votes);
+      console.log('Saving votes to App state:', updatedVotes);
+      console.log('Object.keys(votes).length:', Object.keys(updatedVotes).length);
+      onSaveVotes(updatedVotes);
+    }
+  }, [onSaveVotes]);
+  
+  // Initial load effect - only run once
+  useEffect(() => {
+    console.log('Initial votes prop:', initialVotes);
+    // Only log but don't save on initial load
+  }, []);
+
+  // Effect to save votes when they change
+  // Add a short delay to prevent excessive updates
+  useEffect(() => {
+    // Always log the current state of votes 
+    console.log('Current votes state:', votes);
+    
+    // Make sure onSaveVotes exists and we have votes to save
+    if (onSaveVotes) {
+      // Add a short debounce to prevent excessive updates
+      const handler = setTimeout(() => {
+        saveVotes(votes);
+      }, 300);
+      
+      // Clean up timeout on unmount
+      return () => clearTimeout(handler);
     }
   }, [votes, onSaveVotes]);
-  
-  // Handle when a project card is dragged to a priority column
-  const handleDragEnd = (result: DropResult) => {
-    const { destination, draggableId } = result;
-    
-    // If dropped outside a droppable area, do nothing
-    if (!destination) return;
-    
-    const dropId = destination.droppableId;
-    
-    // Handle drop in different columns
-    if (dropId.startsWith('priority-')) {
-      // Extract priority from column id (format: priority-highest-priority, etc.)
-      const priorityParts = dropId.replace('priority-', '').split('-');
-      const priority = priorityParts.join(' ') as ProjectPriority;
-      
-      // Update vote
-      dispatchVote({
-        type: 'SET_PRIORITY',
-        projectId: draggableId,
-        priority
-      });
-    } else if (dropId === 'unsorted') {
-      // If dropped in unsorted, remove priority
-      dispatchVote({
-        type: 'UNSET_PRIORITY',
-        projectId: draggableId
-      });
-    }
-  };
-  
-  // Export functionality removed as it's not currently being used
 
-  // Project counting code removed as it's not being used
+  // Convert projects to task items format needed by KanbanBoard
+  const taskItems = useMemo(() => {
+    // Pass the votes directly to the convertProjectsToTaskItems function
+    // since it expects a record of ProjectVote objects
+    return convertProjectsToTaskItems(projects, votes);
+  }, [projects, votes]);
 
   return (
     <Box sx={{ width: '100%', height: '100vh', overflow: 'hidden' }}>
-      {/* Remove the header section with instructions and export CSV button as requested */}
+
       
-      {/* Show error alert if export fails (keeping this for functionality) */}
-      {exportError && (
-        <Alert severity="error" sx={{ mb: 1 }}>
-          {exportError}
-        </Alert>
-      )}
+
       
-      <Box sx={{ height: '100%', pt: 0 }}>
-        <ProjectBoard 
-          projects={projects} 
-          votes={votes} 
-          onDragEnd={handleDragEnd}
-          userRole={userRole} 
+      <Box sx={{ 
+        width: '100%', 
+        height: 'calc(100vh - 64px)', 
+        bgcolor: '#000000',
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        top: 64, // Account for header height
+        bottom: 0,
+        overflow: 'hidden'
+      }}>
+
+        <KanbanBoard 
+          taskItems={taskItems} 
+          userRole={userRole}
+          onColumnsChange={(columnCounts) => {
+            // Memoize this handler to prevent unnecessary re-renders
+            // Calculate ranked and total counts
+            const ranked = columnCounts.highest + columnCounts.high + 
+                         columnCounts.medium + columnCounts.low;
+            const total = ranked + columnCounts.unsorted;
+            
+            // Use a function to update votes to ensure we're working with the latest state
+            setVotes(currentVotes => {
+              // Create a new votes object based on current state
+              const newVotes = {...currentVotes};
+              
+              // For each project in each priority column, update its vote
+              Object.entries(columnCounts).forEach(([columnName, count]) => {
+                // Skip processing if the column is empty
+                if (count === 0) return;
+                
+                // Find the items in this column from taskItems
+                const columnItems = taskItems.filter(item => {
+                  // Map column names to status values
+                  let status = '';
+                  if (columnName === 'unsorted') status = 'To-Do';
+                  else if (columnName === 'highest') status = 'Highest';
+                  else if (columnName === 'high') status = 'High';
+                  else if (columnName === 'medium') status = 'Medium';
+                  else if (columnName === 'low') status = 'Low';
+                  
+                  return item.Status === status;
+                });
+                
+                // Update votes for each item in this column
+                columnItems.forEach(item => {
+                  if (columnName !== 'unsorted') {
+                    // Convert column name to a proper ProjectPriority type
+                    let priority: ProjectPriority = 'Medium Priority';
+                    
+                    if (columnName === 'highest') priority = 'Highest priority';
+                    else if (columnName === 'high') priority = 'High priority';
+                    else if (columnName === 'medium') priority = 'Medium Priority';
+                    else if (columnName === 'low') priority = 'Low priority';
+                    
+                    // Create a proper ProjectVote object with timestamp
+                    newVotes[item.id] = { 
+                      projectId: item.id, 
+                      priority: priority,
+                      timestamp: Date.now() // Add timestamp to ensure the vote is counted
+                    };
+                    console.log(`Added vote for project ${item.id} with priority ${priority}`);
+                  } else {
+                    // Remove vote for unsorted projects
+                    if (newVotes[item.id]) {
+                      delete newVotes[item.id];
+                      console.log(`Removed vote for project ${item.id} (unsorted)`);
+                    }
+                  }
+                });
+              });
+              
+              // Log updated votes info
+              console.log('New votes count:', Object.keys(newVotes).length);
+              
+              // Save votes immediately with the latest state
+              saveVotes(newVotes);
+              
+              return newVotes;
+            });
+            
+            // Report counts to parent component if callback exists
+            if (onColumnCountsChange) {
+              onColumnCountsChange({
+                unsorted: columnCounts.unsorted,
+                ranked,
+                total
+              });
+            }
+          }}
         />
       </Box>
     </Box>

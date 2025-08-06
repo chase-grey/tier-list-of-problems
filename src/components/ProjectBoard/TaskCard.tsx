@@ -1,11 +1,12 @@
-import React, { useState } from "react";
+import React, { useState, useMemo, memo } from "react";
 import { Draggable } from "@hello-pangea/dnd";
 import { Paper, Typography, Box, IconButton, Tooltip, Link } from "@mui/material";
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import { type TaskItem } from "./KanbanData";
 import { colorTokens } from '../../theme';
 import ProjectDetailsModal from './ProjectCard/ProjectDetailsModal';
-import { sampleProjects } from '../../data/sampleProjectInterestData';
+// Use the complete data source with all 29 projects
+import { allProjects } from '../../data/allProjectsData';
 
 interface TaskCardProps {
   item: TaskItem;
@@ -34,8 +35,11 @@ const TaskCard = ({ item, index, userRole }: TaskCardProps) => {
   // Ensure draggable ID is always a string
   const draggableId = `task-${item.id}`;
   
-  // Find the full project data from our sample data using the ID
-  const project = sampleProjects.find(p => p.id === item.id);
+  // Find the full project data from our complete data using the ID
+  // Using useMemo to cache the expensive find operation
+  const project = useMemo(() => {
+    return allProjects.find(p => p.id === item.id);
+  }, [item.id]);
   
   // Handle info button click to open details modal
   const handleInfoButtonClick = (event: React.MouseEvent) => {
@@ -81,16 +85,26 @@ const TaskCard = ({ item, index, userRole }: TaskCardProps) => {
             ref={provided.innerRef}
             {...provided.draggableProps}
             {...provided.dragHandleProps}
-            elevation={1}
+            elevation={snapshot.isDragging ? 3 : 1}
             sx={{
               p: 1,
               mb: 0.75,
               borderRadius: '12px',
-              backgroundColor: '#333333',
+              backgroundColor: snapshot.isDragging ? '#2a2a2a' : '#333333',
               minHeight: '80px',
+              // Simplified styles for better performance during drag
+              ...(snapshot.isDragging ? {
+                boxShadow: '0 5px 10px rgba(0,0,0,0.3)',
+                opacity: 0.9
+              } : {})
             }}
           >
-            <Typography variant="subtitle2">{item.task}</Typography>
+            {/* Simplified content when dragging for better performance */}
+            {snapshot.isDragging ? (
+              <Typography variant="subtitle2" noWrap>{item.task}</Typography>
+            ) : (
+              <Typography variant="subtitle2">{item.task}</Typography>
+            )}
           </Paper>
         )}
       </Draggable>
@@ -139,46 +153,44 @@ const TaskCard = ({ item, index, userRole }: TaskCardProps) => {
           >
             {/* Project ID, Appetite indicator, Hours and Info Button in one row */}
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.75 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexGrow: 1, minWidth: 0 }}>
-                {/* Project ID with smaller font */}
-                <Box sx={{ fontSize: '0.75rem' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexGrow: 1, minWidth: 0, flexWrap: 'wrap' }}>
+                {/* Project ID - Made more prominent */}
+                <Box sx={{ fontWeight: 'bold' }}>
                   {getFormattedProjectId()}
                 </Box>
                 
-                {/* Appetite circle */}
-                <Box 
-                  sx={{ 
-                    width: 16, 
-                    height: 16, 
-                    borderRadius: '50%',
-                    bgcolor: getAppetiteColor(item.priority),
+                {/* Appetite indicator with text in colored box */}
+                <Tooltip title={item.priority === 'L' ? 'Large' : item.priority === 'M' ? 'Medium' : 'Small'}>
+                  <Box sx={{ 
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'center',
-                    color: '#FFFFFF',
+                    bgcolor: getAppetiteColor(item.priority),
+                    px: 0.75,
+                    py: 0.25,
+                    borderRadius: 1,
+                    color: '#000',
                     fontWeight: 'bold',
-                    fontSize: '10px',
-                    flexShrink: 0,
-                    ml: 0.5
-                  }}
-                  title={`Appetite: ${item.priority}`}
-                >
-                  {item.priority}
-                </Box>
+                    fontSize: '0.7rem'
+                  }}>
+                    {item.priority}
+                  </Box>
+                </Tooltip>
                 
-                {/* Hour estimate */}
+                {/* Hour estimate - Simplified */}
                 {project && (
-                  <Typography 
-                    variant="body2" 
-                    sx={{ 
-                      fontSize: '0.65rem', 
-                      fontWeight: 'bold',
-                      whiteSpace: 'nowrap',
-                      flexShrink: 0
-                    }}
-                  >
-                    {project.details.hourEstimate} hrs
-                  </Typography>
+                  <Tooltip title={`Hour estimate: ${project.details.hourEstimate} hours`}>
+                    <Typography 
+                      variant="body2" 
+                      sx={{ 
+                        fontSize: '0.75rem', 
+                        fontWeight: 'bold',
+                        whiteSpace: 'nowrap',
+                        flexShrink: 0,
+                      }}
+                    >
+                      {project.details.hourEstimate} hrs
+                    </Typography>
+                  </Tooltip>
                 )}
               </Box>
               
@@ -228,4 +240,10 @@ const TaskCard = ({ item, index, userRole }: TaskCardProps) => {
   );
 };
 
-export default TaskCard;
+// Use memo with custom comparison to prevent unnecessary re-renders
+export default memo(TaskCard, (prevProps, nextProps) => {
+  // Only re-render if these specific props change
+  return prevProps.item.id === nextProps.item.id && 
+         prevProps.index === nextProps.index &&
+         prevProps.userRole === nextProps.userRole;
+});
