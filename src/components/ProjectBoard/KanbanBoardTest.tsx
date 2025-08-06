@@ -122,9 +122,6 @@ const KanbanBoardTest: React.FC<KanbanBoardTestProps> = ({
         return;
       }
       
-      // Since we already have a counter in columnCounts, let's use it directly
-      // instead of trying to re-analyze all taskItems (which can cause loops)
-      
       // Always update the progress based on column counts
       if (onUpdateInterestProgress) {
         const total = columnCounts.unsorted + categorizedCount;
@@ -132,10 +129,46 @@ const KanbanBoardTest: React.FC<KanbanBoardTestProps> = ({
         
         // Update progress in the timeline
         onUpdateInterestProgress(categorizedCount, total);
-        
-        // Note: We're intentionally NOT updating the votes object here
-        // to avoid the infinite update cycle that was occurring
       }
+      
+      // CRITICAL FIX: Update the interest votes based on column contents
+      // Create a copy of the current votes object to modify
+      const updatedVotes = { ...projectInterestVotes };
+      
+      // Update votes for each task item based on its current column
+      taskItems.forEach(item => {
+        const projectId = item.id;
+        
+        // Determine which column this task is in based on its Status
+        if (item.Status === 'To-Do' || item.Status === undefined) {
+          // For unsorted items, remove any existing vote
+          if (updatedVotes[projectId]) {
+            delete updatedVotes[projectId];
+            console.log(`DEBUG: Removed interest vote for project ${projectId} (unsorted)`);
+          }
+        } else {
+          // Determine interest level based on column
+          let interestLevel;
+          switch(item.Status) {
+            case 'Highest': interestLevel = 'HIGHEST'; break;
+            case 'High': interestLevel = 'HIGH'; break;
+            case 'Medium': interestLevel = 'MEDIUM'; break;
+            case 'Low': interestLevel = 'LOW'; break;
+            default: interestLevel = 'MEDIUM'; // Fallback
+          }
+          
+          // Add or update vote for this project with the determined interest level
+          updatedVotes[projectId] = { 
+            interestLevel, 
+            timestamp: Date.now() 
+          };
+          console.log(`DEBUG: Set interest vote for project ${projectId} to ${interestLevel}`);
+        }
+      });
+      
+      // Update the interest votes in App state
+      console.log('DEBUG: Saving updated interest votes:', Object.keys(updatedVotes).length);
+      onSetProjectInterestVotes(updatedVotes);
     } finally {
       // Clear the updating flag after a short delay
       setTimeout(() => {
