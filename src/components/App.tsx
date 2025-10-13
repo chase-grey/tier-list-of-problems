@@ -323,17 +323,13 @@ const AppContent: React.FC = () => {
       
       // Convert numeric interest level to descriptive label
       const interestLabels = [
-        'Extremely Interested',  // Level 8
-        'Very Interested',      // Level 7
-        'Fairly Interested',    // Level 6
-        'Interested',           // Level 5
-        'Moderately Interested', // Level 4
-        'Somewhat Interested',  // Level 3
-        'Slightly Interested',  // Level 2
+        'Very Interested',      // Level 4
+        'Interested',           // Level 3
+        'Somewhat Interested',  // Level 2
         'Not Interested'        // Level 1
       ];
       
-      const levelIndex = 8 - interestLevel; // Convert from level (8-1) to index (0-7)
+      const levelIndex = 4 - interestLevel; // Convert from level (4-1) to index (0-3)
       showSnackbar(`Interest level set to ${interestLabels[levelIndex]}`, 'info');
     }
   };
@@ -383,14 +379,12 @@ const AppContent: React.FC = () => {
         
         // Map tier to default interest level (same mapping logic as in InterestRanking component)
         let defaultInterestLevel: InterestLevel;
-        if (tier === 1) defaultInterestLevel = 8;        // Tier 1 → Extremely Interested
-        else if (tier === 2) defaultInterestLevel = 7;   // Tier 2 → Very Interested
-        else if (tier === 3) defaultInterestLevel = 6;   // Tier 3 → Fairly Interested
-        else if (tier === 4) defaultInterestLevel = 5;   // Tier 4 → Interested
-        else if (tier === 5) defaultInterestLevel = 4;   // Tier 5 → Moderately Interested
-        else if (tier === 6) defaultInterestLevel = 3;   // Tier 6 → Somewhat Interested
-        else if (tier === 7) defaultInterestLevel = 2;   // Tier 7 → Slightly Interested
-        else defaultInterestLevel = 1;                   // Tier 8 → Not Interested
+        
+        // Map tier 1 (highest priority) to level 4 (very interested), and so on
+        if (tier === 1) defaultInterestLevel = 4;      // Tier 1 → Very Interested
+        else if (tier === 2) defaultInterestLevel = 3; // Tier 2 → Interested
+        else if (tier === 3) defaultInterestLevel = 2; // Tier 3 → Somewhat Interested
+        else defaultInterestLevel = 1;                 // Tier 4 → Not Interested
         
         // Set the default interest level and use the same timestamp
         const timestamp = vote.timestamp || new Date().getTime();

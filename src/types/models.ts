@@ -17,10 +17,10 @@ export interface Pitch {
 
 /* ─────────────–– RUNTIME ───────────── */
 export type Appetite = 'S' | 'M' | 'L';   // Small | Medium | Large
-export type Tier     = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | null;
+export type Tier     = 1 | 2 | 3 | 4 | null;
 
 // Interest levels for the second stage
-export type InterestLevel = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | null;
+export type InterestLevel = 1 | 2 | 3 | 4 | null;
 
 // Roles that can participate in interest ranking if available
 export const CONTRIBUTOR_ROLES = [

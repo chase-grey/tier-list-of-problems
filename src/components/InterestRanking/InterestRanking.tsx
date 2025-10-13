@@ -11,31 +11,23 @@ import { initEnhancedDropDetection, cleanupEnhancedDropDetection } from '../../u
 
 // Use InterestColumn component now
 
-// Interest level labels that correspond to each level (1-8)
+// Interest level labels that correspond to each level (1-4)
 // We're displaying these in reverse order so the most interested is on the left
 const INTEREST_LEVEL_LABELS = [
-  'Extremely Interested',  // Level 8
-  'Very Interested',      // Level 7
-  'Fairly Interested',    // Level 6
-  'Interested',           // Level 5
-  'Moderately Interested', // Level 4
-  'Somewhat Interested',  // Level 3
-  'Slightly Interested',  // Level 2
+  'Very Interested',      // Level 4
+  'Interested',           // Level 3
+  'Somewhat Interested',  // Level 2
   'Not Interested'        // Level 1
 ];
 
-// Map from display index (0-7) to actual interest level (8-1)
-const DISPLAY_TO_INTEREST_LEVEL = [8, 7, 6, 5, 4, 3, 2, 1];
+// Map from display index (0-3) to actual interest level (4-1)
+const DISPLAY_TO_INTEREST_LEVEL = [4, 3, 2, 1];
 
 // Interest level column header colors (matches the tier column style but with purple hues)
 const INTEREST_LEVEL_COLORS = [
-  '#4a148c',  // Very dark purple (Extremely Interested)
-  '#6a1b9a',  // Dark purple (Very Interested)
-  '#7b1fa2',  // Medium-dark purple (Fairly Interested)
-  '#8e24aa',  // Medium purple (Interested) 
-  '#9c27b0',  // Purple (Moderately Interested)
+  '#4a148c',  // Very dark purple (Very Interested)
+  '#7b1fa2',  // Medium-dark purple (Interested)
   '#ab47bc',  // Light purple (Somewhat Interested)
-  '#ba68c8',  // Very light purple (Slightly Interested)
   '#ce93d8'   // Pale purple (Not Interested)
 ];
 
@@ -95,7 +87,7 @@ const InterestRanking: React.FC<InterestRankingProps> = ({
     columns['interest-unsorted'] = [];
     
     // Initialize interest level columns with empty arrays
-    for (let i = 1; i <= 8; i++) {
+    for (let i = 1; i <= 4; i++) {
       columns[`interest-${i}`] = [];
     }
     
@@ -129,21 +121,17 @@ const InterestRanking: React.FC<InterestRankingProps> = ({
       // If pitch has a tier but no interest level, default its interest level based on its priority tier
       let defaultInterestLevel: InterestLevel;
       
-      // Map tier 1 (highest priority) to level 8 (extremely interested), and so on
-      if (tier === 1) defaultInterestLevel = 8;       // Tier 1 → Extremely Interested
-      else if (tier === 2) defaultInterestLevel = 7;  // Tier 2 → Very Interested
-      else if (tier === 3) defaultInterestLevel = 6;  // Tier 3 → Fairly Interested
-      else if (tier === 4) defaultInterestLevel = 5;  // Tier 4 → Interested
-      else if (tier === 5) defaultInterestLevel = 4;  // Tier 5 → Moderately Interested
-      else if (tier === 6) defaultInterestLevel = 3;  // Tier 6 → Somewhat Interested
-      else if (tier === 7) defaultInterestLevel = 2;  // Tier 7 → Slightly Interested
-      else defaultInterestLevel = 1;                  // Tier 8 → Not Interested
+      // Map tier 1 (highest priority) to level 4 (very interested), and so on
+      if (tier === 1) defaultInterestLevel = 4;       // Tier 1 → Very Interested
+      else if (tier === 2) defaultInterestLevel = 3;  // Tier 2 → Interested
+      else if (tier === 3) defaultInterestLevel = 2;  // Tier 3 → Somewhat Interested
+      else defaultInterestLevel = 1;                  // Tier 4 → Not Interested
       
       columns[`interest-${defaultInterestLevel}`].push(pitch);
     });
     
     // Sort interest level columns by timestamp for consistent ordering
-    for (let i = 1; i <= 8; i++) {
+    for (let i = 1; i <= 4; i++) {
       const columnId = `interest-${i}`;
       columns[columnId].sort((a, b) => {
         const timestampA = votes[a.id]?.timestamp || 0;
@@ -213,7 +201,7 @@ const InterestRanking: React.FC<InterestRankingProps> = ({
             {/* Unsorted column */}
             <Box 
               sx={{ 
-                width: `calc((100% - 16px) / 9)`, // Dynamic width based on 9 columns (8 interest levels + 1 unsorted)
+                width: `calc((100% - 16px) / 5)`, // Dynamic width based on 5 columns (4 interest levels + 1 unsorted)
                 minWidth: '200px', // Minimum usable width
                 mx: 1, // Margin on both sides for spacing
                 height: '100%'
@@ -229,8 +217,8 @@ const InterestRanking: React.FC<InterestRankingProps> = ({
               />
             </Box>
 
-            {/* Interest level columns 1-8 */}
-            {Array.from({ length: 8 }).map((_, index) => {
+            {/* Interest level columns 1-4 */}
+            {Array.from({ length: 4 }).map((_, index) => {
               // Map the display index to the actual interest level
               const level = DISPLAY_TO_INTEREST_LEVEL[index];
               const columnId = `interest-${level}`;
@@ -241,7 +229,7 @@ const InterestRanking: React.FC<InterestRankingProps> = ({
               return (
                 <Box 
                   sx={{ 
-                    width: `calc((100% - 16px) / 9)`, // Dynamic width based on 9 columns (8 interest levels + 1 unranked)
+                    width: `calc((100% - 16px) / 5)`, // Dynamic width based on 5 columns (4 interest levels + 1 unranked)
                     minWidth: '200px', // Minimum usable width
                     mx: 1, // Margin on both sides for spacing
                     height: '100%'

@@ -33,14 +33,14 @@ const KanbanContainer = ({
   const [isDndSupported, setIsDndSupported] = useState<boolean | null>(null);
   const [hasDndError, setHasDndError] = useState(false);
   
-  // Generate array of tier numbers 1-8
-  const tiers = Array.from({ length: 8 }, (_, i) => i + 1) as Tier[];
+  // Generate array of tier numbers 1-4
+  const tiers = Array.from({ length: 4 }, (_, i) => i + 1) as Tier[];
   
   // Show total pitch count for validation
   const TOTAL = pitches.length;
   
   // We always show the unsorted column now regardless of whether there are any uncategorized pitches
-  const columnCount = 9; // Always 9 columns (8 tier columns + 1 unsorted column)
+  const columnCount = 5; // Always 5 columns (4 tier columns + 1 unsorted column)
 
   // Detect drag-and-drop support on mount and setup auto-scroll and enhanced drop detection
   useEffect(() => {
@@ -107,13 +107,9 @@ const KanbanContainer = ({
                   const priorityName = (() => {
                     switch (tier) {
                       case 1: return 'Highest Priority';
-                      case 2: return 'Very High Priority';
-                      case 3: return 'High Priority';
-                      case 4: return 'Moderate Priority';
-                      case 5: return 'Low-Moderate Priority';
-                      case 6: return 'Low Priority';
-                      case 7: return 'Very Low Priority';
-                      case 8: return 'Not a Priority';
+                      case 2: return 'High Priority';
+                      case 3: return 'Medium Priority';
+                      case 4: return 'Low Priority';
                       default: return `Tier ${tier}`;
                     }
                   })();

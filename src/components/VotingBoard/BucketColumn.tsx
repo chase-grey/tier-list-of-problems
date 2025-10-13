@@ -38,13 +38,9 @@ const BucketColumn = ({ tier, pitches, votes, onAppetiteChange, columnCount = 9,
     
     switch (tierNumber) {
       case 1: return 'Highest Priority';
-      case 2: return 'Very High Priority';
-      case 3: return 'High Priority';
-      case 4: return 'Moderate Priority';
-      case 5: return 'Low-Moderate Priority';
-      case 6: return 'Low Priority';
-      case 7: return 'Very Low Priority';
-      case 8: return 'Not a Priority';
+      case 2: return 'High Priority';
+      case 3: return 'Medium Priority';
+      case 4: return 'Low Priority';
       default: return `Tier ${tierNumber}`;
     }
   };
