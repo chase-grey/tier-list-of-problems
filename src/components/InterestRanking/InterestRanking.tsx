@@ -8,8 +8,7 @@ import InterestColumn from './InterestColumn';
 import type { DropResult } from '@hello-pangea/dnd';
 import type { Pitch, Vote, InterestLevel } from '../../types/models';
 import { initEnhancedDropDetection, cleanupEnhancedDropDetection } from '../../utils/enhancedDropDetection';
-
-// Use InterestColumn component now
+import { mapTierToInterestLevel } from '../../utils/voteActions';
 
 // Interest level labels that correspond to each level (1-4)
 // We're displaying these in reverse order so the most interested is on the left
@@ -60,6 +59,7 @@ const InterestRanking: React.FC<InterestRankingProps> = ({
       cleanupEnhancedDropDetection();
     };
   }, []);
+  
   // Get all pitches that should be shown in this stage (includes all pitches now)
   const pitchesForInterestStage = React.useMemo(() => {
     return pitches
@@ -119,14 +119,8 @@ const InterestRanking: React.FC<InterestRankingProps> = ({
       }
       
       // If pitch has a tier but no interest level, default its interest level based on its priority tier
-      let defaultInterestLevel: InterestLevel;
-      
-      // Map tier 1 (highest priority) to level 4 (very interested), and so on
-      if (tier === 1) defaultInterestLevel = 4;       // Tier 1 → Very Interested
-      else if (tier === 2) defaultInterestLevel = 3;  // Tier 2 → Interested
-      else if (tier === 3) defaultInterestLevel = 2;  // Tier 3 → Somewhat Interested
-      else defaultInterestLevel = 1;                  // Tier 4 → Not Interested
-      
+      // Now using our centralized mapping function
+      const defaultInterestLevel = mapTierToInterestLevel(tier);
       columns[`interest-${defaultInterestLevel}`].push(pitch);
     });
     

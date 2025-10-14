@@ -1,4 +1,4 @@
-import React, { useEffect, useReducer, memo, useState } from 'react';
+import React, { useEffect, memo, useState } from 'react';
 import { ThemeProvider, CssBaseline, Box } from '@mui/material';
 import { darkTheme } from '../theme';
 import { NameGate } from './NameGate/NameGate';
@@ -17,8 +17,9 @@ import { useLocalStorage } from '../hooks/useLocalStorage';
 import { exportVotes } from '../utils/csv';
 import { isDevelopmentMode } from '../utils/testUtils';
 import type { DropResult } from '@hello-pangea/dnd';
-import type { AppState, AppAction, Pitch, Vote, Appetite, Tier, InterestLevel } from '../types/models';
+import type { AppState, Pitch, Vote, Appetite, Tier, InterestLevel } from '../types/models';
 import { isContributorRole } from '../types/models';
+import { useVoteManagement } from '../hooks/useVoteManagement';
 
 // Import pitch data
 import pitchesData from '../assets/pitches.json';
@@ -30,111 +31,6 @@ const initialState: AppState = {
   available: null,
   stage: 'priority',
   votes: {},
-};
-
-// Reducer for state management
-const appReducer = (state: AppState, action: AppAction): AppState => {
-  switch (action.type) {
-    case 'SET_NAME':
-      return { ...state, voterName: action.name, voterRole: action.role };
-      
-    case 'SET_AVAILABILITY':
-      return { ...state, available: action.available };
-      
-    case 'SET_STAGE':
-      return { ...state, stage: action.stage };
-    
-    case 'SET_APPETITE':
-      return {
-        ...state,
-        votes: {
-          ...state.votes,
-          [action.id]: {
-            ...state.votes[action.id] || { pitchId: action.id },
-            appetite: action.appetite as Appetite,
-          } as Vote,
-        },
-      };
-    
-    case 'SET_TIER':
-      return {
-        ...state,
-        votes: {
-          ...state.votes,
-          [action.id]: {
-            ...state.votes[action.id] || { pitchId: action.id },
-            tier: action.tier,
-            // Always use provided timestamp or current time to ensure consistent ordering
-            timestamp: action.timestamp || new Date().getTime(),
-          } as Vote,
-        },
-      };
-      
-    case 'UNSET_TIER':
-      // Set tier to null explicitly (don't remove the property)
-      {
-        return {
-          ...state,
-          votes: {
-            ...state.votes,
-            [action.id]: {
-              ...state.votes[action.id] || { pitchId: action.id },
-              tier: null,  // Set the tier value
-              timestamp: action.timestamp || new Date().getTime(),
-            } as Vote,
-          },
-        };
-      }
-      
-    case 'SET_INTEREST':
-      return {
-        ...state,
-        votes: {
-          ...state.votes,
-          [action.id]: {
-            ...state.votes[action.id] || { pitchId: action.id },
-            interestLevel: action.interestLevel,
-            // Always use provided timestamp or current time to ensure consistent ordering
-            timestamp: action.timestamp || new Date().getTime(),
-          } as Vote
-        }
-      };
-    
-    case 'RESET_FROM_PITCHES': {
-      // Sync votes with current pitch IDs
-      const syncedVotes = Object.fromEntries(
-        action.pitchIds.map(id => [
-          id, 
-          state.votes[id] ?? { pitchId: id, appetite: undefined!, tier: undefined! }
-        ])
-      );
-      
-      return {
-        ...state,
-        votes: syncedVotes,
-      };
-    }
-      
-    case 'RESET_ALL_VOTES':
-      // Reset all votes while keeping voter name
-      return {
-        ...state,
-        votes: {}
-      };
-      
-    case 'RESET_ALL':
-      // Reset everything including voter name
-      return {
-        voterName: null,
-        voterRole: null,
-        available: null,
-        stage: 'priority',
-        votes: {}
-      };
-    
-    default:
-      return state;
-  }
 };
 
 /**
@@ -152,10 +48,6 @@ const AppContent: React.FC = () => {
   // Get pitches from JSON
   const pitches = pitchesData as Pitch[];
   const TOTAL = pitches.length;
-  
-  // Force clear localStorage if you're getting a black screen
-  // Uncomment this line if you see a black screen after updates
-  // window.localStorage.clear();
   
   // Use localStorage for persistence with a safety wrapper
   const [savedState, setSavedState] = (() => {
@@ -183,19 +75,22 @@ const AppContent: React.FC = () => {
     voterRole: savedState.voterRole || (savedState.voterName ? null : initialState.voterRole)
   };
   
-  // Set up reducer with saved state
-  const [state, dispatch] = useReducer(appReducer, completeState);
+  // Use our centralized vote management hook
+  const {
+    state,
+    dispatch,
+    setTier,
+    setInterest,
+    setAppetite,
+    setStage,
+    resetAll,
+    syncPitches,
+    setNameAndRole,
+    setAvailability,
+    setDefaultInterestLevels,
+    getCompletionStats
+  } = useVoteManagement(completeState);
 
-  // Additionally store the voter name in a separate key as per spec ('polling.voterName')
-  useEffect(() => {
-    if (state.voterName) {
-      localStorage.setItem('polling.voterName', state.voterName);
-      if (state.voterRole) {
-        localStorage.setItem('polling.voterRole', state.voterRole);
-      }
-    }
-  }, [state.voterName, state.voterRole]);
-  
   // Access snackbar
   const { showSnackbar } = useSnackbar();
   
@@ -207,16 +102,33 @@ const AppContent: React.FC = () => {
     
     return () => clearTimeout(timer);
   }, [state, setSavedState]);
+
+  // Additionally store the voter name in a separate key as per spec ('polling.voterName')
+  useEffect(() => {
+    if (state.voterName) {
+      localStorage.setItem('polling.voterName', state.voterName);
+      if (state.voterRole) {
+        localStorage.setItem('polling.voterRole', state.voterRole);
+      }
+    }
+  }, [state.voterName, state.voterRole]);
   
   // Sync pitches with votes on initial load or when pitches change
   useEffect(() => {
     const pitchIds = pitches.map(pitch => pitch.id);
-    dispatch({ type: 'RESET_FROM_PITCHES', pitchIds });
+    syncPitches(pitchIds);
   }, [pitches]);
   
-  // Calculate completion counters
-  const appetiteCount = Object.values(state.votes).filter(v => v.appetite).length;
-  const rankCount = Object.values(state.votes).filter(v => v.tier).length;
+  // Get completion stats using our utility function
+  const stats = getCompletionStats(pitches);
+  const { 
+    appetiteCount,
+    rankCount,
+    interestCount,
+    minimumRequired,
+    isPriorityComplete,
+    isInterestComplete 
+  } = stats;
   
   // Check if the user has a role that can access interest ranking
   // Only QMs, devs, QM TLs, and dev TLs who are available for next quarter can see interest section
@@ -226,37 +138,27 @@ const AppContent: React.FC = () => {
   
   // Check if the user needs to rank interest (same logic as canAccessInterestStage, kept for backward compatibility)
   const needsInterestRanking = canAccessInterestStage;
-    
-  // Calculate required minimums (50% of total)
-  const minimumRequired = Math.ceil(TOTAL / 2);
   
   // Calculate completion status based on role and availability (now only requires 50%)
-  const priorityStageComplete = appetiteCount >= minimumRequired && rankCount >= minimumRequired;
-  
-  // Calculate interest completion for users who need it
-  const interestCount = needsInterestRanking ? 
-    Object.values(state.votes).filter(v => v.interestLevel !== undefined).length : 0;
-  const interestStageComplete = !needsInterestRanking || interestCount >= minimumRequired;
+  const priorityStageComplete = isPriorityComplete;
   
   // Check if export is enabled based on role and stage
   const isExportEnabled = priorityStageComplete && 
     // For users who don't need to rank interest, enable export immediately
     // For users who need to rank interest, they need 50% completion and must visit the interest page
-    (!needsInterestRanking || (needsInterestRanking && state.stage === 'interest' && interestStageComplete));
+    (!needsInterestRanking || (needsInterestRanking && state.stage === 'interest' && isInterestComplete));
   
   // Handle name and role submission
   const handleNameSubmit = (name: string, role: string) => {
-    dispatch({ type: 'SET_NAME', name, role });
+    setNameAndRole(name, role);
     showSnackbar(`Welcome, ${name}!`, 'success');
     
     // If this is a non-contributor role, automatically set available to false
     // This ensures they skip the availability dialog and can't access interest section
     if (!isContributorRole(role)) {
       // Set availability to false for non-contributors
-      dispatch({ type: 'SET_AVAILABILITY', available: false });
+      setAvailability(false);
     }
-    
-    // No need to show help dialog after name is submitted since we show it first
   };
   
   // Handle drag end for priority stage
@@ -270,57 +172,24 @@ const AppContent: React.FC = () => {
     
     // If dropped in the unsorted column
     if (destId === 'unsorted') {
-      // Remove tier assignment but keep any other data (like appetite)
-      const timestamp = new Date().getTime();
-      dispatch({ 
-        type: 'UNSET_TIER', 
-        id: draggableId,
-        timestamp
-      });
-      
+      setTier(draggableId, null);
       showSnackbar('Pitch moved to unsorted', 'info');
     }
     // If dropped in a tier column
     else {
       const tier = parseInt(destId.replace('tier-', '')) as Tier;
-      
-      // Get the current timestamp for consistent ordering (newer items will have higher values)
-      const timestamp = new Date().getTime();
-      
-      // Add timestamp to ensure consistent ordering - later added items always go to the bottom
-      dispatch({ 
-        type: 'SET_TIER', 
-        id: draggableId, 
-        tier,
-        timestamp // Pass timestamp to reducer
-      });
-      
+      setTier(draggableId, tier);
       showSnackbar(`Pitch moved to Tier ${tier}`, 'info');
     }
   };
 
   // Handle interest level change
   const handleInterestChange = (pitchId: string, interestLevel: InterestLevel) => {
-    const timestamp = new Date().getTime();
+    setInterest(pitchId, interestLevel);
     
     if (interestLevel === null) {
-      // Use UNSET_INTEREST action to remove the interest level assignment
-      dispatch({
-        type: 'UNSET_INTEREST',
-        id: pitchId,
-        timestamp
-      });
       showSnackbar('Pitch moved to unsorted', 'info');
     } else {
-      // Set the interest level
-      dispatch({ 
-        type: 'SET_INTEREST', 
-        id: pitchId, 
-        interestLevel,
-        timestamp 
-      });
-    
-      
       // Convert numeric interest level to descriptive label
       const interestLabels = [
         'Very Interested',      // Level 4
@@ -336,7 +205,7 @@ const AppContent: React.FC = () => {
   
   // Handle appetite change
   const handleAppetiteChange = (pitchId: string, appetite: Appetite | null) => {
-    dispatch({ type: 'SET_APPETITE', id: pitchId, appetite });
+    setAppetite(pitchId, appetite);
     if (appetite) {
       showSnackbar(`Appetite set to ${appetite === 'S' ? 'Small' : appetite === 'M' ? 'Medium' : 'Large'}`, 'info');
     }
@@ -344,7 +213,7 @@ const AppContent: React.FC = () => {
 
   // Handle availability setting
   const handleAvailabilitySet = (available: boolean) => {
-    dispatch({ type: 'SET_AVAILABILITY', available });
+    setAvailability(available);
     showSnackbar(`Availability ${available ? 'confirmed' : 'noted - thanks for letting us know'}`, 'success');
   };
 
@@ -365,40 +234,12 @@ const AppContent: React.FC = () => {
     }
     
     // If switching to interest stage, set default interest levels for all cards
-    // that don't already have an interest level set
     if (newStage === 'interest') {
-      // Process each pitch that has a tier but no interest level
-      pitches.forEach(pitch => {
-        const vote = state.votes[pitch.id];
-        const tier = vote?.tier;
-        
-        // Skip if no tier or already has interest level
-        if (!tier || vote?.interestLevel) {
-          return;
-        }
-        
-        // Map tier to default interest level (same mapping logic as in InterestRanking component)
-        let defaultInterestLevel: InterestLevel;
-        
-        // Map tier 1 (highest priority) to level 4 (very interested), and so on
-        if (tier === 1) defaultInterestLevel = 4;      // Tier 1 → Very Interested
-        else if (tier === 2) defaultInterestLevel = 3; // Tier 2 → Interested
-        else if (tier === 3) defaultInterestLevel = 2; // Tier 3 → Somewhat Interested
-        else defaultInterestLevel = 1;                 // Tier 4 → Not Interested
-        
-        // Set the default interest level and use the same timestamp
-        const timestamp = vote.timestamp || new Date().getTime();
-        dispatch({ 
-          type: 'SET_INTEREST', 
-          id: pitch.id, 
-          interestLevel: defaultInterestLevel,
-          timestamp 
-        });
-      });
+      setDefaultInterestLevels(pitches);
     }
     
     // Set the new stage
-    dispatch({ type: 'SET_STAGE', stage: newStage });
+    setStage(newStage);
   };
 
   // Handle showing help dialog
@@ -420,7 +261,7 @@ const AppContent: React.FC = () => {
   // Handle reset confirmation
   const handleResetConfirm = () => {
     // Reset all votes and clear voter name
-    dispatch({ type: 'RESET_ALL' });
+    resetAll();
     // Close confirmation dialog
     setShowResetConfirmation(false);
     // Reset help dialog tracking to show instructions again
@@ -468,28 +309,19 @@ const AppContent: React.FC = () => {
     // Set the name if not already set
     if (!state.voterName) {
       // Default to 'developer' role for auto-populate
-      dispatch({ type: 'SET_NAME', name, role: 'developer' });
+      setNameAndRole(name, 'developer');
     }
     
     // Apply each vote
     Object.entries(votes).forEach(([pitchId, vote]) => {
       // Set appetite if present
       if (vote.appetite) {
-        dispatch({ 
-          type: 'SET_APPETITE', 
-          id: pitchId, 
-          appetite: vote.appetite 
-        });
+        setAppetite(pitchId, vote.appetite);
       }
       
       // Set tier if present
       if (vote.tier) {
-        dispatch({ 
-          type: 'SET_TIER', 
-          id: pitchId, 
-          tier: vote.tier,
-          timestamp: vote.timestamp || new Date().getTime()
-        });
+        setTier(pitchId, vote.tier);
       }
     });
     
@@ -503,8 +335,6 @@ const AppContent: React.FC = () => {
     state.voterRole !== null &&
     isContributorRole(state.voterRole) && 
     state.available === null;
-
-  // We've removed the showNextStageButton variable since we're now always showing the button but conditionally enabling it
 
   return (
     <>
@@ -553,7 +383,7 @@ const AppContent: React.FC = () => {
             />
           )}
                   
-                  {/* Help dialog */}
+          {/* Help dialog */}
           <HelpDialog 
             open={showHelp} 
             onClose={handleInitialHelpClose}
