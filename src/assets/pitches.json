@@ -1,63 +1,521 @@
 [
   {
-    "id": "7993629",
-    "title": "SmartTool Editors / Use AI to swap out placeholders for SmartLinks",
+    "id": "951785",
+    "title": "ST / Spell Checker / Add Spanish Lexicon",
     "details": {
-      "problem": "As a SmartTool builder in the Tapestry space, I have content imported from the 3rd party payors that needs to be updated to swap out placeholders with Epic's SmartLinks. This is a very time consuming process to identify these placeholders (which are formatted differently from document to document) and also find the correct SmartLink to use instead. As an end user, after importing my SmartPhrases from another organization I need to replace non-Epic released SmartLinks and non-user SmartLists with the correct SmartTool for the new organization. This is a tedious and time consuming process that takes time away from caring for patients.",
-      "ideaForSolution": "AI can help me both identify the placeholders in the imported content along with the replacement.",
-      "characteristics": "There might be a confidence score or something for automatic swaps vs something that needs manual review.",
-      "whyNow": "This change could be a big time saver for builders and end users (depending on who uses it).",
-      "epicFit": "Solving existing pain points",
-      "success": "We might want to develop/SU something for tracking time it takes to make these updates without any big changes. However, that is not something that has a really obvious thing to measure besides time in activity until placeholders are resolved.",
+      "problem": "As a Spanish translator, I type almost exclusively in Spanish. And Epic underlines every single word that I type as being misspelled. Thankfully, Epic finally supports choosing the spell check language per user (XDS 661862). But Epic doesn't provide a Spanish lexicon!",
+      "ideaForSolution": "Please provide a Spanish lexicon.",
+      "whyNow": "Supporting Spanish Spell Check (and other common secondary languages) is the logical next step after XDS 661862, which shipped with the August 2025 Release. It is now reasonable for users to expect that Epic supports spell check for at least the most common secondary languages. And Spanish is by far the most common secondary language in the US.",
+      "smartToolsFit": "\"Create tools to improve efficiency of documentation\". With erroneous underlining of typed Spanish content, it hinders rather than helps users to write good content. Users may instead learn to ignore the underline or disable that feature.",
+      "epicFit": "\"Solving existing pain points, such as ideas frequently reported during immersion, submitted through ideas.epic.com, or from other forms of feedback.\" Notice that this QAN already has 7 SLGs attached.",
+      "maintenance": "Unsure. On the initial release, we'll need to do some extensive testing to verify that the lexicon is decent. But after that, we'll be able to mostly leave it alone, making only small tweaks as customers report spurious or missing words.",
       "internCandidate": false
     }
   },
   {
-    "id": "7993631",
-    "title": "Infrastructure / CREATE MASTERFILE FOR SMARTTOOLS CONTEXTS",
+    "id": "7462287",
+    "title": "ST / Usage / Add SmartPhrase Usage Information to SmartPhrase Manager",
     "details": {
-      "problem": "As a builder within the Epic system, SmartTool contexts make my life harder than it needs to be: Epic releases SmartLinks, but they aren't available in the fields I want them to be. They are available in some activities within the patient chart, but not others that it should be. I then need to create copies of the Epic SmartLinks with makes future maintenance harder with more records fall out of sync with other changes Epic has made. I have a hard time figuring out what context to list on a SmartText so it shows up in the activity within the patient chart but not in other places where it doesn't make sense. When building SmartTexts, I don't have the options available to me that I always want to configure and instead need to switch between different SmartText Editor activities to do everything I want. For example, I can use the Letter Template Editor to build a letter template and configure headers/footers. However, I need to switch to the SmartText Editor to be able to configure overrides to use a different letter template when the letter is created for a child instead of an adult. As an Epic developer / TS: Creating a new SmartTool context is time consuming because I need to update many SmartLinks to include that new context so I instead typically just use MR Charting / IP Charting because its quick and easy for clinical focused SmartLinks. I don't know what SmartTool contexts I should all list when creating a new SmartLinks so I just copy something from an existing SmartLink or mark it as being available to all contexts even though it doesn't make sense to be used to billing / patient access workflows.",
-      "ideaForSolution": "Create a new INI for storing SmartTools contexts. Have that include a hierarchy so SmartLinks available to \"patient\" (ex: DOB, patient name, etc) are automatically available to anything more specific. Have the SmartText Editor change what cards are available based on the chosen contexts so header/footer configuration options are available when someone is building a letter template no matter how they opened the SmartText Editor.",
-      "whyNow": "Saves time / mental load for Epic and customers.",
+      "problem": "As a physician, I created many SmartPhrases over the years and often forgot about how I named those. I end up recreating a lot duplicates on the fly and now I have several similar SmartPhrases with different names. When I update my template, I updated one but end up not being the one I recently used. Users often ask how they can easily tell which SmartPhrase have been used and what they can delete since those are not used.",
+      "ideaForSolution": "When users open SmartPhrase, it would be nice to see a column of how often a SmartPhrase is used so that they can clean up the SmartPhrases that are rarely used. As a physician builder, I'd also like to see what are the SmartPhrases used most often by my colleagues when I shared those phrases with them so that I know which ones I should keep up to date.",
+      "characteristics": "Intuitive to use but not overwhelming. Also possibly having personalization options so that the users can customize the view a bit.",
+      "whyNow": "Top requested feature. Often brought up in customer feedback.",
+      "epicFit": "Solving existing pain points, such as ideas frequently reported during immersion, submitted through ideas.epic.com, or from other forms of feedback",
+      "success": "Feature tracking on usage and possibly the deletion on phrases with usage under certain threshold.",
+      "maintenance": "Low",
+      "internCandidate": true
+    }
+  },
+  {
+    "id": "7749945",
+    "title": "ST / AI Text Assistant / Custom text actions are saved off as a string in EUR (continue)",
+    "details": {
+      "problem": "Currently, each custom text action is saved as free text in the EUR global for a clinician. This means there is not a unique ID or record per text action. This means developers here at Epic are unable to reference custom text actions by ID, preventing them from building enhancements like sharing records, customers creating their own custom text actions, or using custom text actions for AI SmartTexts or SmartPhrases (PRJ 321865).",
+      "ideaForSolution": "Switch to using HH1 records (*Chase Grey 3/21/2025 10:49 AM updating based on Aiden's research) for each custom text action. This will allow developers at Epic to reference custom text actions by a unique ID, setting us up for success with future enhancements.",
+      "characteristics": "Custom text actions are able to be referenced by a unique ID. A specific custom text action can be created so it is broadly available to clinicians across an organization. This infrastructure sets us up for potentially exporting custom text actions to Epic Earth, similar to SmartPhrases. Find a way (likely a conversion) to allow people to keep custom text actions they have already built.",
+      "whyNow": "This was a corner we cut to release custom text actions faster. This seems like a good infrastructure level chance to do now before there are large number of custom text actions that need to be converted.",
+      "success": "We will have succeeded if we can reference custom text actions by a unique ID and take on other enhancement projects next.",
+      "maintenance": "We will likely need one time testing on a conversion and maybe performance testing on switching to EGX rather than EUR. I am not anticipating an ongoing maintenance or testing cost."
+    }
+  },
+  {
+    "id": "709400",
+    "title": "ST / ALLOW MARKING USER SMARTPHRASES AS PERSONAL/SENSITIVE TO HIDE FROM OTHER EDITORS",
+    "details": {
+      "problem": "Users might create a SmartPhrase for a signature that doesn't make sense for other people to have access to or as a personal reference that isn't meant for others to use. If other people use their private SmartPhrases, this can make them feel like their privacy has been violated or annoyed that they can't control their personal smartphrases",
+      "ideaForSolution": "Allow end users the choice to hide their SmartPhrases that aren't appropriate for others to use, preventing other users from searching or sharing SmartPhrases without the user's permission. This will make end users feel like they have control over their SmartPhrases",
+      "characteristics": "Create a button in the user SmartPhrase editor that allows it to only be searchable or viewable by editors so SmartPhrases that aren't meant to be shared don't have to be. There could also be an HDF setting to allow organizations to turn this feature off if they don't think SmartPhrases should ever be private. Private SmartPhrases should able to be changed back to public SmartPhrases at any point and vice versa, and allow it to be shared limitedly if users are added as editors so it can be shared if the owner gives permission",
+      "whyNow": "It was recently marked as a potential SPRE by a customer because they saw it as such a concern and it is regularly requested in ideas.epic.com",
+      "smartToolsFit": "It will improve effectiveness because users already have the signature SmartPhrases but it will increase trust and feelings of security if they know that their personal information can't be taken by others",
+      "epicFit": "This fits ST priorities because it would solve long standing existing pain points",
+      "success": "SmartPhrases can be made private"
+    }
+  },
+  {
+    "id": "803923",
+    "title": "ST / SMARTTEXTBOX / ADD HIGHLIGHT FUNCTIONALITY",
+    "details": {
+      "problem": "Users would copy text from an external document that has highlighting but wouldn't be able to remove the highlighting without a lot of effort. They also couldn't highlight text that they wanted to emphasize and bolding or changing word color just doesn't catch attention like highlights do",
+      "ideaForSolution": "Users can use highlighting in the STB, similar to how they use text color",
+      "characteristics": "There's already a design and DLG! It has a good outline, it just needs to be continued",
+      "whyNow": "We have been getting this request regularly, including from 4 months ago. It's a paper cut that would be a big win for lots of people if we fixed it",
+      "smartToolsFit": "It would improve efficiency with documentation by allowing users to remove highlighting they don't want without having to un-highlight in external programs or cut/paste as plain text but that would remove all other formatting too. If the highlighting is throughout a document, it's really inefficient to try to fix each individual line that has highlighting. It also would improve effectiveness of documentation because leaving in unnecessary highlighting might call attention to something while more important information for this context is skipped. It can also make the most important parts of a note or template really stand out, much more than bolding",
+      "epicFit": "This fits ST priorities because it would solve long standing existing pain points",
+      "success": "Can users highlight and remove highlighting within the STB",
+      "maintenance": "Shouldn't have maintenance, might need regression testing checks when changes are made to STB accessibility or certain types of copy/pasting changes",
       "internCandidate": false
     }
   },
   {
-    "id": "7993912",
-    "title": "Improve comparison with original text",
+    "id": "3401552",
+    "title": "ST / SmartLists / Allow Unicode SmartList selections (limited RTF or Unicode plaintext)",
     "details": {
-      "problem": "Currently, when a user runs a text action on a selected block of text, they are able to view the original text in a bubble for comparison. However, in the case of text actions that make minimal changes (e.g. Fix spelling and grammar), it can be difficult to spot the differences. This makes it more likely that a user would click Looks Good without thoroughly reviewing the generated text, allowing hallucinations or other discrepancies to slip through. The same holds true for text actions that are geared towards reformatting the text (e.g. Format as list). Additionally, for text actions that make larger changes to the text (e.g. Summarize), it can be painstaking to match each piece of generated text to the corresponding original text in the bubble. This either results in users taking longer than ideal to verify the summary or forgo proper review to save time. In the latter case, not only could hallucinations slip through, but also key omissions.",
-      "ideaForSolution": "We have three ideas for fixing this: Highlight key medical terms between the original content and the AI generated content when viewing the two side by side. This could look like highlighting the word \"concussion\" so a clinician can see if this key word was preserved, omitted, or added through a hallucination. Highlight numbers between the original content and the AI generated content when viewing the two side by side. This could look like highlighting key lab values, vitals, dates, or other numbers so a clinician can see if these numbers were preserved, omitted, or added through a hallucination. Create a \"metal detector\" option. The idea here is a user could hover over a word in either the AI generated content or the original content. All instances of that word between the AI generated content and original content would then be highlighted, making it easier for users to spot what was preserved, omitted, or added through a hallucination.",
-      "characteristics": "Seamless integration with our current comparison UI. Discoverable without being intrusive. Facilitates accurate and more efficient review of generated text.",
-      "whyNow": "Users have requested this in demos and usability testing sessions.",
+      "problem": "As a builder, creating SmartLists with Arabic, Chinese, or other languages that need Unicode support is time consuming to do because you need to create many extra SmartText records for that text. This also means that features like refreshable SmartLists and SDEs don't work or aren't reliable because picking an option with a nested SmartTool forces the SmartList to become non-reselectable.",
+      "ideaForSolution": "If I was allowed to add Arabic, Chinese, etc directly in the SmartList then I could more quickly build out SmartLists that include these languages.",
+      "characteristics": "Allow for Unicode text entry whether that is supporting RTF (in a fairly locked down sense -- tables likely shouldn't be an option, but text styling (color, bolding) have been requested in the past) or just Unicode plaintext. Stretch goal could be allowing for \"display text\" (QAN 4282536) to make picking options from the SmartList easier for people that aren't able to read the language.",
+      "whyNow": "Frequently requested and our software has an increasing focus on supporting languages outside of the standard Latin characters you get with Windows-1252 encodings.",
+      "smartToolsFit": "Make good SmartTools (tools) build intuitive. Tools we develop should be easy to build.​",
+      "epicFit": "Solving existing pain points, such as ideas frequently reported during immersion, submitted through ideas.epic.com, or from other forms of feedback",
+      "maintenance": "Low once stable if we limit the things you can embed in a SmartList.",
       "internCandidate": false
     }
   },
   {
-    "id": "7993933",
-    "title": "Support pinning as quick button",
+    "id": "3450155",
+    "title": "AC / SMARTTOOLS / ADD A FANCY WAY TO APPLY A SELECTION TO ALL INSTANCES OF A SMARTLIST",
     "details": {
-      "problem": "Currently, users have the ability to pin text actions such that they appear at the top of the drop down menu for text actions. Beyond requiring a minimum of two clicks to run such text actions, we currently limit the pinned list to five entries before additional items fall into a More menu, all but eliminating the point of pinning them.",
-      "ideaForSolution": "Allow users the option to pin text actions to the SmartTextBox toolbar as a quick button, similar how items under the Epic button work. Once pinned this way, users would be able to run these text actions with a single click, rather than needing to open the text action drop down menu first. To save space, we could use the icon of the category the text action falls under (one of the 4 below), only showing the display name if multiple pinned buttons are present for a single category.",
-      "characteristics": "Discoverable. Allows users quick access to the text actions they use most. Space efficient.",
-      "whyNow": "Requested in usability testing sessions. The current behavior of pinned items beyond the fifth falling into a More menu was particularly disliked.",
+      "problem": "When completing notes/note templates, users often have to repeat document SmartList content, ie laterality for an ortho procedure. This is repetitive and preventable.",
+      "ideaForSolution": "Allow selecting a SmartList to automatically populate linked SmartLists elsewhere in the note (simplist implementation), or update SmartList options) to reduce documentation in the note."
+    }
+  },
+  {
+    "id": "3752427",
+    "title": "SMARTTOOLS / SPELL CHECK / EXCLUDE PATIENT FIRST AND LAST NAME IN SPELL CHECK",
+    "details": {
+      "problem": "As a physician, I get frustrated when my patient's name is flagged as misspelled by the spell checker. This adds extra clicks for me to ensure I'm creating professional documentation.",
+      "ideaForSolution": "Have the spell checker not flag the patient's name. Ideally also include other information like names of the patient's spouse, children, care team, etc.",
+      "characteristics": "Minimally the patient's name is not marked as misspelled. Stretch goal could be having the patient name be able to be suggested by the spell checker for minor typos to the name.",
+      "whyNow": "This may be worth prioritizing now that Ambient technology is becoming more commonplace. Before, when patient's names were largely pulled into notes with SmartLinks (which are exempt from spell checking) this wasn't as big of an issue. Text generated by Nuance, Abridge, etc. and eventually our own Ambient product will commonly include the patient's name and it seems we're not excluding ambient-generated content from spell check.",
+      "smartToolsFit": "Create tools to improve efficiency of documentation.​",
+      "epicFit": "Innovate with system intelligence to reduce clinician burnout and improve user efficiency. Software must work, maintain high quality",
       "internCandidate": false
     }
   },
   {
-    "id": "7993935",
-    "title": "AI Text Assistant / Switch to two-column menu",
+    "id": "4320574",
+    "title": "ST/HSWEB/RTL/TYPED MATCHING PARENTHESIS OR BRACES WITHOUT DIRECTIONAL TEXT DOESN'T MATCH/ORIENT BRACES CORRECTLY",
     "details": {
-      "problem": "Currently, as the user begins running and pinning text actions, the drop down menu can grow very tall. Pinning a sixth item then collapses Recent into a submenu while introducing a More menu to the Pinned section, making these items less accessible. In either case, the menu is tall enough that it limits are ability to add more categories in the future (such as Shared Text Actions) without further obstructing the surrounding UI.",
-      "ideaForSolution": "We should make the menu two columns that span the width of the search field, similar to the Epic button. This would also facilitate us fixing QAN 7881495 by turning the main toolbar and Adjust split buttons into regular submenus.",
-      "characteristics": "Space efficient. Allows for quick access to the most possible text actions. Extensible.",
-      "whyNow": "Usability testing showed people disliked having pinned items beyond the fifth fall into a More menu, yet letting this list grow unbounded would causes other usability issues. Additionally, with our plan to support sharing text actions, a new category submenu will likely soon be needed, growing our current one column menu beyond what we deemed its limit. We're also now introducing the ability for individual workflows to add their own categories, further increasing the need to move categories to their own column.",
+      "problem": "As a builder, I struggle to recreate documents in Arabic within Epic. We get these from translation firms and I am not fluent in Arabic so making sure I am creating documents that make sense to our patients is a challenge when I can see punctuation moves around compared to what I see in the original document in Word.",
+      "ideaForSolution": "Epic should be smarter about handling Arabic so punctuation (parenthesis, periods, dashes, etc) is handled consistently with Word.",
+      "characteristics": "Ideally this would just work after copy/paste or inserting the document without extra steps to manually set text direction.",
+      "whyNow": "This is a common pain point across customers. The workaround for this is to take a screenshot of the Arabic text, but this is not a good workaround because: Images can resize slightly to greatly degrade image/text quality. Images won't be accessible for patients that use screen readers. SmartTools won't work within images.",
+      "smartToolsFit": "Ensure consistencies in the end-user experience, leading to efficient, effective, and happy users.​ SmartTools (tools) we develop should be easy to build and expand on.​",
+      "epicFit": "Software must work, maintain high quality. Solving existing pain points, such as ideas frequently reported during immersion, submitted through ideas.epic.com, or from other forms of feedback",
+      "success": "Hard to do with this type of change but see if we see a decrease in complaints about this, or survey customers that have previously reported these issues after their build environments have upgraded.",
+      "maintenance": "Overall a decrease if these documents just format correctly without tweaking, a lot of manual comparison, etc.",
       "internCandidate": false
+    }
+  },
+  {
+    "id": "5027515",
+    "title": "ST/SMARTTEXT EDITOR/ADD ABILITY TO COMMENT IN SMARTTEXT WITHOUT APPEARING TO THE END USER",
+    "details": {
+      "problem": "We don't have tools for feedback when users are editing SmartText - this means that the workflow happens in Word, creating extra work, and need to reconcile versions/SmartLinks. There is also build that is not clear at a glance -- comments would allow folks to add info re: rule logic and embedded SmartTools at a glance.",
+      "ideaForSolution": "Have comment functionality in the SmartText editor, so folks can have conversations about edits/add info about the build for reference."
+    }
+  },
+  {
+    "id": "5094667",
+    "title": "ST / HSTTRANSLATE / HANDLE SMARTLINK PARAMETERS THAT UNDERGO TRANSLATION IN HIGHER VERSIONS BUT NOT IN LOWER VERSIONS",
+    "details": {
+      "problem": "As a customer builder, I am frustrated that SmartLink user parameters have issues when moved via Data Courier where the ID is converted to a CID, but fail to convert back. Further more, I am frustrated that copies of CERMSG (and other SmartLinks) don't automatically update the embedded record IDs, although that is a future problem to fix according to my Epic TS (QAN 4694963).",
+      "ideaForSolution": "It would be nice if we had a way to just use the original values I configure in cases where the Epic system doesn't know how to process the SmartLink user parameters.",
+      "characteristics": "Works automatically!",
+      "whyNow": "Makes development and customer support easier since custom handling doesn't need to be made for each affected SmartLinks, updates for customer created copies of these SmartLinks, etc. This is a pre-req needed for addressing QAN 4694963 which would fully automate Data Courier / Turbocharger dependency calculation, EMFI/DC/TC ID translation, etc which is where the biggest benefit will be seen.",
+      "smartToolsFit": "Tools we develop should be easy to build.",
+      "epicFit": "Solving existing pain points, such as ideas frequently reported during immersion, submitted through ideas.epic.com, or from other forms of feedback. Other types of app team support",
+      "maintenance": "Overall a decrease for maintenance.",
+      "internCandidate": false
+    }
+  },
+  {
+    "id": "6246577",
+    "title": "ST - SPELL CHECK - USE VOIKKO FOR FINNISH",
+    "details": {
+      "problem": "I am a doctor in Finland. Spell checking is something I expect all programs to have, but our Epic system doesn't have spell checking. So my notes and letters have silly misspellings, making me look unprofessional.",
+      "ideaForSolution": "Other software that we use has decent Finnish spell checking, so clearly it's possible. Please give us this basic feature.",
+      "characteristics": "Spell Check will work for Finnish. It will recognize the vast majority of words that our users use on a daily basis. And the suggestions it gives for misspellings will be reasonably good.",
+      "whyNow": "We are currently in a legal gray area with Apotti. Our contract says that we need to provide Finnish Spell Check, which we technically do. However, our Finnish Spell Check functionality is bad enough that Apotti has taken every step possible to disable it across their entire organization. So effectively, they don't have Spell Check right now. Before they disabled it, users reported that the suggestions it gave for misspellings were \"useless and disturbing\" (see QAN 4957237).",
+      "smartToolsFit": "Software must work (and users should agree that it does)",
+      "epicFit": "Software must work",
+      "success": "Apotti will re-enable Spell Check and keep it enabled",
+      "internCandidate": false
+    }
+  },
+  {
+    "id": "7446923",
+    "title": "SmartSection formatting lost on adding sections and cannot be restored",
+    "details": {
+      "problem": "When I use DAN in my note, the font from the SmartSection header is different from the rest of the note and it makes my note look unprofessional. My organization is pushing a new branding campaign and asking everyone to create standard and consistent template. If DAN use different font in part of it would make it hard to format the whole note. I cannot change the header font at all without asking the admin to do that. When I use DAN to pull A&P note into a progress note. If A&P note uses a different font, the SmartSection content won't match to the progress note font so my progress note looks unprofessional.",
+      "ideaForSolution": "Make SmartSection work like any other SmartTools that can match the font of the template.",
+      "characteristics": "No manual action needed from user.",
+      "whyNow": "DAN and other SmartSection are adopted more and more so it is a very common request or soon will be.",
+      "success": "This is filling the request from end user",
+      "maintenance": "none",
+      "internCandidate": false
+    }
+  },
+  {
+    "id": "7557419",
+    "title": "ST / Generative AI / Text Actions / Check for logical contradictions",
+    "details": {
+      "problem": "From talking to various customers, there can be logical contradictions in what gets documented in the patient's chart. As one example, a user copies forward a note that says \"all lab results normal\" but then adds in documentation for a new abnormal lab result. These types of contradictions have also been observed in ambient generated notes coming from DAX.",
+      "ideaForSolution": "We develop a new prompt that can take in text and return any logical contradictions that exist in that text. This can then be plugged into other AI workflows, such as native ambient. Native ambient devs have already expressed interest in building on this idea. We could also consider releasing this as a prompt in the text assistant. Users could then highlight a note, right click, run this prompt, and see any contradictions in it displayed at the bottom. We could look at integrating this type of contradiction check into the background, similar to ideas we're exploring for catching stigmatizing language in the background."
+    }
+  },
+  {
+    "id": "7691740",
+    "title": "MM / UM / Use AI to evaluate reading level in letter review",
+    "details": {
+      "problem": "Many payers have recently made a commitment to provide simple explanations and easy-to-access assistance for any prior authorizations that were denied. Users that are attempting to write these explanations may struggle to know if what they are writing is simple and easy enough to understand for a patient. Users at Sutter were copying & pasting their letters into Word, using Word's Editor functionality to determine the text's reading level, then copying that info & pasting it into a note to document the reading level. This is a clunky copy/paste workflow that makes it clear Epic is missing functionality these clinicians need.",
+      "ideaForSolution": "A simple wave 1: As users type into a textbox, they have an option to view stats on what the reading level is of what they are writing. A potential wave 2: If a user clicks on these stats, they could also click to have AI lower this reading level and rewrite the content. This sets us up well for other types of improvements to SmartTexts and SmartPhrases. Here are a few ideas: - Have an LLM review the SmartText or SmartPhrase for stigmatizing language and suggest alternatives - Have an LLM review for ambiguous language, such as abbreviations that could have different meanings in different contexts - In the future, plug into a potential SmartLink search agent to suggest SmartLinks that the template could benefit from - In the future, plug into the Epic wide translation workflow. This could let people send a SmartText off to be translated to another language, like Spanish. It would send an In Basket message to a translator with the original English content, an AI draft at a Spanish translation, and then once the translator has reviewed it, we could update SmartText build in the background.",
+      "characteristics": "- Use AI to solve an upstream problem. By using AI here, end users don't need to use AI as frequently for improving reading level, removing ambiguous language, removing stigmatizing language, updating SmartLinks, or translation.",
+      "whyNow": "Payers just announced this commitment last week (week of 6/23/2025). This is also important for improving a painful friction point in US healthcare.",
+      "smartToolsFit": "Aligns with our values to make it easy for users to do the right thing.",
+      "epicFit": "Aligns with efforts to improve system intelligence to improve efficiency and patient outcomes.",
+      "internCandidate": false
+    }
+  },
+  {
+    "id": "7882764",
+    "title": "ST / Pitch / Improve reporting and auditing on custom text actions",
+    "details": {
+      "problem": "Analysts and AI project managers will not have good insight into how custom text actions are being used once they go live. To get more details, they will have to reach out to TS to pull data from the global tracking all prompts that are written, then manually go through this data. This is tedious, slow, and will not scale well. Currently, organizations default to saving off each prompt that is sent for 30 days.",
+      "characteristics": "Analysts and AI project managers can get details on who is using custom text actions, rates of accepted/adjusted/reverted, and where they are using them without reaching out to TS. Analysts and AI project managers can get details on how often safeguards are being hit by different users without reaching out to TS. Ideally, analysts and AI project managers can get details on how custom text actions are being used without reaching out to a TS. From talking to Brian Jacobson and Katie, a lawyer at Mercy, auditing this tool, including customers ability to save prompts longer than 30 days, is important. Potentially, orgs will want to save off the original text as well so if there is a litigation, they can go back and see how this tool changed the text in a note. (It is unclear to me now if this might be needed for defined text actions as well. The sense I get is people are far less worried about defined text actions. If this is an option for custom text actions though, it might be worth adding for defined text actions too).",
+      "whyNow": "We are about to go on by default with custom prompts, meaning many more organizations will be looking for ways to understand how this tool is being used.",
+      "smartToolsFit": "We want to make it easy for our users to do the right thing. Improving reporting and auditing of custom text actions makes it easier for our customers to roll out this powerful tool in a more ethical and safe way.",
+      "epicFit": "This aligns with Epic's priorities to innovate with system intelligence to reduce clinician burnout and improve user efficiency. This aligns with SmartTools' team priorities to continue making progress on the AI Text Assistant"
+    }
+  },
+  {
+    "id": "7914897",
+    "title": "ST / SmartTextBox / Support webp Image File Format",
+    "details": {
+      "problem": "Epic is the leading EHR company and identifies itself as an \"R&D Shop\". So as a user, I expect Epic to be on the cutting edge of technology. Unfortunately, Epic does not yet support the webp file format, which is supported by 97% of browsers. The webp file format is supposedly superior to jpeg and png, which makes me think that I should prefer that format. However, if I try to insert or paste a webp image, Epic flat-out refuses it.",
+      "ideaForSolution": "Let me use webp files. If you have to, convert them to something else behind the scenes.",
+      "characteristics": "It should \"just work\"",
+      "whyNow": "The webp file format has had wide support since 2018. And as of 2024, it is supported by 97% of all browsers in use. In particular, it is supported by all of the browsers that Epic targets. Furthermore, webp is becoming ubiquitous in web searches. And its prevalence is only likely to increase. This is a trend we should keep up with.",
+      "smartToolsFit": "Software Must Work > Address compatibility with 3rd party products",
+      "epicFit": "Innovate and solve existing pain points",
+      "success": "Pasting/inserting webp images will work",
+      "maintenance": "Low",
+      "internCandidate": false
+    }
+  },
+  {
+    "id": "7936231",
+    "title": "ST / Feb '26 Pitch / Improve As-Needed SmartLink Search (Continued, May26)",
+    "details": {
+      "problem": "Users frequently have difficulty finding a SmartLink that pulls in the data that they need. This can be relatively simple data, a SmartLink that they know exists because it's in a template, or something that they aren't sure exists but need for the first time. On immersion, I've been asked about a range of these, from ones that they probably should have learned during training (ME) to ones that are much more niche (ADMPROV, the pile of LABS SmartLinks, the various HISTORY SmartLinks). We have the Find SmartLinks report, but not many people know about it, and it's disruptive to people's workflows",
+      "ideaForSolution": "Users are able to insert a new Epic-released SmartLink with one user-entered parameter, the query to find relevant SmartLinks. The system finds the relevant SmartLinks (I haven't given this too much thought, but I know Peter Wei Lin is working on something that could be useful to this), then returns some number of results based on confidence as a SmartList that will pull in the found SmartLinks. *Jonathan Ray 10/13/2025 10:53 AM Continued from Feb26 research: Some other approaches could also work, such as improving what SmartLinks are recommended based on usage data from similar users or print groups you frequently touch",
+      "characteristics": "Users are able to reliably find relevant SmartLinks on the first try. Does not require leaving the note-writing workflow. Result is returned fast enough that it's not annoying to use",
+      "whyNow": "This has been an issue for a long time, but AI classification makes the system intelligence required much more feasible than it would have been previously.",
+      "smartToolsFit": "Make it easy for users to do the right thing by reducing the time and mental load to find and share SmartTools.",
+      "epicFit": "Reduce clinicial burnout and improve user efficiency; solve existing pain points.",
+      "success": "To be determined, will depend on our design",
+      "maintenance": "Depending on our approach, will require at least some additional data logging to keep track of what a user has done. Some of this already exists, but may need to be expanded."
+    }
+  },
+  {
+    "id": "7963351",
+    "title": "ST / EpicCommand Link / Provide A Better Way For User To Insert EpicCommand Link",
+    "details": {
+      "problem": "As a user of EpicCommand links, I want to enter parameters in a clear and structured way, so that I don't have to remember or worry about delimiters, formatting rules, or accidentally entering invalid values.",
+      "ideaForSolution": "As a user creating an EpicCommand link, I can select a parameter type (e.g., patient ID, record ID, etc.) and enter its value in a dedicated field with built-in validation, so that I can easily construct links without worrying about delimiters, formatting rules, or invalid inputs.",
+      "whyNow": "Saves build time for EpicCommand link. Work is being done in this area right now, but it is fairly bare bones without this proposed development. We are actively recommending organizations transition from EpicAct links to EpicCommand links. The smoother and more intuitive the EpicCommand link experience becomes, the easier it will be for organizations to adopt it and fully move away from EpicAct links. By improving usability and reducing errors now, we remove barriers to adoption and accelerate the retirement of outdated functionality.",
+      "success": "Average users can build an EpicCommand link without any confusion.",
+      "internCandidate": false
+    }
+  },
+  {
+    "id": "7974971",
+    "title": "st / pitch / hsweb / smarttextbox - stylesheets",
+    "details": {
+      "problem": "Content referenced by users throughout the day are easier to interpret at scale when they are managed consistently. This is part of why we have set standards in our own internal usability guides. If our users want to maintain formatting consistency, they often need to take manual steps to ensure that one document's styling matches another, individually specifying each piece of formatting. We have the format painter tool to help with this concept, but that is limited to a single instance of an individual editor. There is not a current way to bring styling into line at scale (easily).",
+      "ideaForSolution": "We should provide support for formatting stylesheets in SmartTextBox controls which are RichText-enabled. These will represent groupings of stylings which can easily be applied to a selected region with a single click (potentially). Similarly, we could apply table-level stylesheets to help users create better-looking table structures without excessive manual intervention. Ideally, we could also support (for those interested) customizable style definitions so that customers can lean into their own branding paradigms (different color schemes, fonts, etc.) to allow this to scale infinitely into the future.",
+      "characteristics": "A good solution would likely \"feel\" similar to MS Word, which provides a good barometer for success.",
+      "whyNow": "As we continue to roll out more AI features our customers will be much more likely to have large quantities of content inserted into their notes/documents where the formatting is not immediately defined by them. Therefore, they are more likely to want to reformat the content after the fact. Pre-defined stylesheets can help users to accomplish this task more quickly, and therefore makes it more likely for them to actually do it.",
+      "smartToolsFit": "This fits our mission on several levels. First, it helps create a consistency between our editor and MS Word (as well as other similar tools). It will help improve efficiency by joining multiple tasks into a single action. By adding this functionality, we make it easier for users to build and expand on existing SmartTools, simplifying the steps involved and making it easier to do the \"right thing\". Lastly, this helps make users' SmartTools more of a joy to use because they can easily take bland content and make it more user-friendly.",
+      "epicFit": "This aligns with Epic's priorities to innovate with system intelligence to reduce clinician burnout and improve user efficiency. This aligns with SmartTools' team priorities to solve existing pain points and improve AI-related workflows.",
+      "success": "A good solution would likely \"feel\" similar to MS Word, which provides a good barometer for success.",
+      "maintenance": "This will likely require a bit more testing overall. However, since this is mostly just grouping together existing pieces of functionality, it will likely not be more of a cost than it reaps in benefits.",
+      "internCandidate": false
+    }
+  },
+  {
+    "id": "7983072",
+    "title": "st / pitch / hsweb / smarttextbox - inline header/footer support",
+    "details": {
+      "problem": "Complex documents, such as letters, may desire to leverage header and/or footer segments to meet their needs. Sometimes this is due to external requirements (3rd party content, governmental forms, etc.) while other times it is just to make things look better for their users/patients. Managing these headers and footers is currently a bit cumbersome, as the SubSystem component did not provide a good mechanism for what was needed. Sometimes the header/footer content is specific to that unique template record while other times it may be shared across records. In either case, current templates support only the disjointed header/footer records. There is an existing effort to conditionally allow switching to only an \"embedded\" version of this implementation. Ideally we could always support both and leave the details to be dealt with behind the scenes.",
+      "ideaForSolution": "We currently allow a form of inline header/footer editing when it comes to SmartLists which exist within them. However, that still only works if the header/footer is directly within the document and does not function for things like letter templates where the headers and footers are completely separate SmartText records. One potential solution would be to leverage this existing implementation and simply echo the content back to the underlying SmartText records which stores the \"body\" of the header/footer. Another option would be to leverage SmartSections, as that already has a concept for a single document which is maintained in multiple locations. In both situations, the goal would be to store header/footer information both discretely and as part of the whole, and allow the downstream mechanisms to dynamically respond to whatever the build might look like.",
+      "characteristics": "A good solution would allow users to always view the most up-to-date rendering of the header/footer content while still allowing them to hot-swap with a different record and share that header/footer information across templates without duplicate records.",
+      "whyNow": "The recent push to allow Tapestry to embed header/footer information within the templates themselves (PRJ 338470) illustrates that there is a need which we are not fully meeting. Part of the hesitation around implementing this outside of Tapestry is that downstream workflows may not be able to function without expecting the header/footer content to be defined externally. One goal here would be to overhaul the downstream consumers to stabilize this infrastructure.",
+      "smartToolsFit": "This fits our mission on several levels. First, it helps create a consistency between our editor and MS Word (as well as other similar tools). It will help improve efficiency by allowing edits to happen directly within the SmartTextBox instead of requiring sending back and forth between the STB and a 3rd party application (for the embedded header/footer cases). By adding this functionality, we make it easier for users to build and expand on existing SmartTools, simplifying the steps involved and making it easier to do the \"right thing\". Lastly, this helps make users' SmartTools more of a joy to use because they can create more user-friendly, modern content.",
+      "epicFit": "This aligns with Epic's priorities to innovate with system intelligence to reduce clinician burnout and improve user efficiency. This aligns with SmartTools' team priorities to solve existing pain points.",
+      "success": "Success could be measured by ensuring that we can properly render header/footer content using both the historical implementation (separate ETX records) as well as the new implementation being worked up for Tapestry. If both can be managed simultaneously and rendered similarly even though they are represented differently under the hood, that would be a great success.",
+      "maintenance": "In a way this would require additional maintenance/testing, since this will be additional logic, but ultimately it will be similar to what we would already have. We are simply going to make the content render similarly regardless of your decisions around storage/interoperability.",
+      "internCandidate": false
+    }
+  },
+  {
+    "id": "7983256",
+    "title": "st / pitch / hsweb / smarttextbox - RTL update and TS migration",
+    "details": {
+      "problem": "As a developer, I want the TextLine.js component of the SmartTextBox codebase to be converted from raw JavaScript to TypeScript, so that it aligns with the rest of the codebase. This will ensure type safety, improve code readability, and facilitate easier maintenance and implementation of RTL-related updates, ultimately enhancing the functionality and usability of the templates for end users.",
+      "ideaForSolution": "As a developer, I want to convert the existing TextLine logic into one or more TypeScript files before implementing numerous functional changes, so that I can ensure type safety and avoid unnecessary complications that arise from the lack of type safety in other parts of the codebase.",
+      "characteristics": "Having all of the RTL-related logic included in TypeScript instead of JavaScript should be sufficient to solve this completely.",
+      "whyNow": "We are actively pursuing new RTL changes in the near future (touched on in QAN 7938948), and this type of restructuring is better to be done before any large functional changes. With new customers and new workflows looking to leverage RTL content as of late, now seems like an opportune moment for bringing this code in line with the rest of the code base.",
+      "smartToolsFit": "It will help improve efficiency and code stability by providing more structure around one of our most-sensitive areas.",
+      "epicFit": "This aligns with Epic's priorities to innovate with system intelligence to improve user/developer efficiency. This aligns with SmartTools' team priorities to help maintain our high quality product by enforcing type safety like we do elsewhere in our codebase.",
+      "success": "Having all of the RTL-related logic included in TypeScript instead of JavaScript should be sufficient to solve this completely.",
+      "maintenance": "Theoretically this should help with lowering long-term maintenance costs as we will get more for free with the TypeScript platform.",
+      "internCandidate": false
+    }
+  },
+  {
+    "id": "7987855",
+    "title": "ST / Project Pitch / Improve context menu usability",
+    "details": {
+      "problem": "As a physician, I am overwhelmed when I right click in SmartText Box to try do some copy and paste and got a long context menu that covers half of the editable areas. The menu options often not on the same spot as the context menu items keep changing when I right click on different spot in the note. I would like a streamlined context menu with only the most relevant options, so that I can quickly and easily find and use the features I need most often. A lot of the options I never really used.",
+      "ideaForSolution": "As a physician, I would recommend implementing a system that intelligently tracks and analyzes user habits to optimize their experience. By monitoring usage patterns, the system can automatically tailor the available options to align with the individual's preferences and needs. This personalized approach not only enhances user satisfaction but also promotes more efficient and effective utilization of resources.",
+      "characteristics": "Show less options but also reduce the need of digging into deeper menus to find the option",
+      "whyNow": "Saving time, reduce cluster, meet the simplification goal",
+      "epicFit": "Solving existing pain points, such as ideas frequently reported during immersion, submitted through ideas.epic.com, or from other forms of feedback",
+      "success": "Measure by clicking and time the user goes to submenu.",
+      "internCandidate": true
+    }
+  },
+  {
+    "id": "7987877",
+    "title": "ST / Generative AI / Text Actions / Model seems unwilling to rewrite text to use the patient's name and pronouns",
+    "details": {
+      "problem": "Clinicians using ambient often get a response that does not use the patient's correct pronouns. Other times, clinicians writing text, such as in a note, use sterile language like \"Patient presents for multiple conditions. They are accompanied by their father\". Other times, a clinician uses pronouns and/or names for the patient, but may not be using the patient's preferred name or pronouns. All this means the patient is not being referred to in the way they want to be, which has an impact on trust, bias, and quality of health care received.",
+      "ideaForSolution": "Make it so that whenever a user runs a text action over text, the model will automatically swap in the patient's preferred name and pronouns, making it easy for the clinician to do the right thing. With DLG 2153040, we now send the patient's preferred name and pronouns with all defined and custom text actions. We have a line in the prompt that reads as The patient's name is <preferred first name> and the patient's pronouns are <subject><object><possessive>. This means the AI model will use the correct names and pronouns if generating from scratch or acting on text without names/pronouns. What we actually want though is for the AI model to be more assertive and always use the correct name and pronouns. If we add in an instruction like \"",
+      "characteristics": "Correctly changes the patient's name and pronouns to their preferred name and pronouns. Doesn't change other person's name/pronoun if mentioned in the content. Meet other criteria we had for text action to ensure safety.",
+      "whyNow": "A top request from Mayo is for a text action to update patient's pronouns. We could accomplish this in a more generic way than a dedicated text action though.",
+      "epicFit": "Continue making progress on the AI Text Assistant as it's one of the starter kit AI features that is quickly being broadly adopted across the Epic community.",
+      "success": "Direct feedback. Feature tracking metrics on accept rate and usage.",
+      "maintenance": "Testing is likely pretty involved. Maintain can potentially be high if we are adding this extra piece to all prompt meaning we need to verify it for model upgrade/and other changes.",
+      "internCandidate": false
+    }
+  },
+  {
+    "id": "8098521",
+    "title": "ST / May '26 Pitch / SmartTextBox background color changes should be limited based on Theme",
+    "details": {
+      "problem": "Currently, users can select any background color for the SmartTextBox, regardless of whether it is visually compatible with the current theme. This can lead to poor user experiences where the text is difficult to read or doesn't match the aesthetic of the workspace.",
+      "ideaForSolution": "Implement theme-aware background color restrictions for SmartTextBoxes to ensure that selected colors are visually compatible. (Ex: You can't use a light background color with the dark room theme) Color options consider readability (contrast between text and background) and alignment with the overall theme's design palette. Users are prevented from selecting background colors that would cause poor readability or conflict with the theme. Documentation or a tooltip explains why some background colors may not be available for certain themes.",
+      "characteristics": "Wave 0 (May26) Investigate (Pulsar Search) what Hyperspace theme and SmartTextBox background colors are paired together Visualize the data (in a graph of some kind?) to help show what end users are doing today. Wave 1 (future version) Provide limits to what background color can be chosen for a particular theme. For example, if you are using the dark room theme you almost certainly don't want to use a light background color in the SmartTextBox. You might however want to use a dark SmartTextBox background color when using one of the darker (ex: Deep Blue) themes though. Probably track the user's background color with light /dark / high contrast (?) themes so switching themes keeps the SmartTextBox color preference. Maybe provide a way to easily toggle between light and dark backgrounds to allow a builder the ability to preview the SmartTool in a different background color.",
+      "whyNow": "Color handling is challenging and a frequent source of issues, especially with copy/paste and color changing workflows. End users will rarely do this though.",
+      "smartToolsFit": "Software Must Work",
+      "epicFit": "Software must work, maintain high quality. Preventative quality improvements, such as automated testing and refactoring",
+      "success": "Initial wave should be a smaller investigation project to see what color/theme combinations are used today.",
+      "maintenance": "None",
+      "internCandidate": false
+    }
+  },
+  {
+    "id": "8100957",
+    "title": "ST \\ May '26 Pitch \\ Reduce Calls to Action Validation Agent for Previously-Validated Actions",
+    "details": {
+      "problem": "As an organization, I want Epic to optimize the tokens used in their AI tool sets. When users run the same custom prompt repeatedly, we don't think there is a reason to continually validate the action.",
+      "ideaForSolution": "Now, the AI Text Assistant will only validate the prompt periodically.",
+      "characteristics": "Any previously-defined text action should not call the action validation agent - we can save that information to the database and save the tokens.",
+      "whyNow": "Give users the best experience with AI. AITA is one of the ST cornerstone AI features.",
+      "smartToolsFit": "Reduce organizational cost.",
+      "success": "Track token expenditure by organizations using custom text actions",
+      "maintenance": "None",
+      "internCandidate": false
+    }
+  },
+  {
+    "id": "8101556",
+    "title": "ST / May '26 Pitch / Loosen the Safeguards on Custom Text Actions",
+    "details": {
+      "problem": "As a user, I want to take advantage of Epic's integration while writing my note. However, the AI Text Assistant will not answer any questions specifically about the patient. This is prohibitive to using the tool, so I just go to ChatGPT instead.",
+      "ideaForSolution": "Now, I don't have to go to ChatGPT. Additionally, the medical guidance is tailored to the patient because the system has access to their full medical record.",
+      "characteristics": "Remove the safeguards and surface relevant information in a way that is not medical advice.",
+      "whyNow": "ChatGPT already answers questions that we refuse to answer under the current AI Text Assistant safeguards. Users will give up on the tool if we don't adapt to the current climate. Additionally, if we don't loosen these safeguards, there is no reason to forage for data.",
+      "smartToolsFit": "Create tools to improve efficiency of documentation",
+      "epicFit": "Continue making progress on the AI Text Assistant. Innovate with infrastructure for system intelligence",
+      "success": "Continued use of the tool.",
+      "maintenance": "Low/no.",
+      "internCandidate": false
+    }
+  },
+  {
+    "id": "8101802",
+    "title": "ST - SmartTextBox - Required SmartTools Indicator",
+    "details": {
+      "problem": "When I am filling out a large template, I cannot see at a glance whether I have completed all of the required fields in the template. Sometimes, I try to sign a note, thinking I've finished filling it out, but then I get a popup saying that there are still SmartLists and wildcards to fill out. That popup tells me to \"press F2\", which may jump me to a non-required field. Furthermore, filling out a SmartList sometimes brings in a whole block of text with additional required fields, making it hard for me to track whether I've filled everything out.",
+      "ideaForSolution": "EntryFields have a handy stop sign that makes it obvious what I still have to fill out. Could the SmartTextBox show a similar indicator that doesn't require me to scroll the STB or hit F2 to see it?",
+      "characteristics": "The user can easily see that there are required SmartTools in the STB without needing to scroll.",
+      "whyNow": "The topic of a Required SmartTools Indicator was actually conceived in discussions about the Navigation Menu and Minimap development. I think the indicator could synergize with that functionality. We are also reimagining the STB toolbar for the Simplify project, and I expect that the solution for this QAN will involve the STB Toolbar.",
+      "smartToolsFit": "\"Make it easy for users to do the right thing\". \"Create tools to improve efficiency of documentation\"",
+      "epicFit": "\"Solving existing pain points\"",
+      "maintenance": "Unsure",
+      "internCandidate": false
+    }
+  },
+  {
+    "id": "8103394",
+    "title": "ST / May '26 Pitch / Consolidate toolbar options for rich SmartTextBox",
+    "details": {
+      "problem": "When a new Epic user (or one who hasn't configured the STB toolbar) launches Notes in the sidebar, it will look something like this: Beyond including rarely used buttons like Next/Previous Field (as proven by feature tracking metrics), the Insert SmartText field takes up so much space that the toolbar is forced to wrap. Worse, in workflows that opt out of letting the toolbar wrap, the majority of these items fall into a More menu, including the ones users have shown to use most frequently (e.g. Refresh All SmartLinks). In the case of Handoff, they even resorted to offering a duplicate Refresh All SmartLinks button to account account for this. While the buttons can be removed via right-click, the user will discover that, unlike the main Hyperspace toolbar, they cannot drag the buttons to reorder them so options they use more frequently appear first. Moreover, the Insert SmartText field doesn't even offer the right-click option, requiring the user to launch the Modify Toolbar dialog from the Star menu or another button's right-click menu. At which point they'll discover just how many additional tools are at their disposal. Should the user prove inspired enough to add all available item to their toolbar, they'll be faced with this monstrosity: Compare this to the the floating formatting toolbar, which, beyond being organized more logically (and not consuming space on the view), consolidates the six indentation buttons into a single split button. Of course, that's assuming they discover this floating toolbar, as it's collapsed by default. The result? The user is forced to choose between a cluttered toolbar or only having quick access to a fraction of the SmartTextBox's features, while the rest are relegated to a cluttered submenu with next to no organization. It's enough to wish everything could be as simple as plain SmartTextBoxes, with their minimal buttons and the ability to easily pin the few you care about. And look at that. It would seem the Insert SmartText feature need not take up so much space after all.",
+      "ideaForSolution": "The user should have more flexibility in configuring the SmartTextBox toolbar. Specifically: The ability to reorder buttons via drag/drop or the Modify Toolbar dialog. The ability to pin items from the Star menu to the toolbar without launching Modify dialog. Similar to the triple-dot menu in plain text SmartTextBoxes. The ability to group related button into a split button on the toolbar to conserve space while allowing quicker access to related features. Similar to the Indentation split button on the formatting toolbar. The ability to turn fields into buttons (e.g. Insert SmartText) to conserve space without losing access to the feature. Even better, we could leverage MFT data to assist or automate this configuration for the user, as originally detailed in QAN 7968293.",
+      "characteristics": "Star menu should be better organized and it should be easier to find SmartTextBox features. It should be consistent with other toolbars and menus that leverage pins and drag/drop for personalization, minimizing the need to open the Modify Toolbar dialog. It should allow access to the most features with the least space. Ideally should be automated based on machine learning",
+      "whyNow": "The SmartTextBox toolbar is only getting more complex as new features are added (Generative AI, Go to Section, etc.), forcing us to either bloat the toolbar further by default or bury new features where they're unlikely to be discovered or leveraged.",
+      "smartToolsFit": "Makes it easier for customs to discover and leverage new features.",
+      "epicFit": "Aligns with the Simplify initiative.",
+      "success": "How many more tools are used. How many more users customize their toolbar. How much less often the Star menu needs to be opened, whether to access the Recent list or the All Other Tools submenu",
+      "maintenance": "Their will be additional maintenance and testing required to account for there being more ways to configure the SmartTextBox toolbar.",
+      "internCandidate": false
+    }
+  },
+  {
+    "id": "8103427",
+    "title": "ST / May '26 Pitch / Allow for easier navigation within sectioned notes",
+    "details": {
+      "problem": "Users are commonly confronted with long notes, particularly as Ambient adoption increases. Important information is often scattered throughout the note, and they must resort to scrolling in search of it, since most is either pulled in via SmartLink or generated by AI. Whether they use the mouse wheel, drag the scrollbar thumb, or use the Page Up/Down keys, the resulting workflow is tedious and time-consuming. All the more given how easy it is to overshoot what they're looking for and having to backtrack. Or worse, if they need to jump back and forth to reconcile discrepancies located in different parts of the note, such as the HPI and A&P. While some may resort to using Ctrl+F to search for section headers or other keywords in lieu of scrolling, doing so is less than optimal. That leaves the F2 and F8 shortcuts for jumping to the next unresolved SmartTool or SmartSection, but those work only situationally. F2 requires each pertinent section of the document to minimally have a wildcard, yet Ambient sections are unlikely to include those. Whereas F8 skips all non-SmartSection sections and requires knowledge of the unadvertised shortcut besides. The result? More time spent on documentation and review while patients are left waiting. And over time, just one more thing increasing the risk of burnout.",
+      "ideaForSolution": "Imagine instead that users are greeted to the following sight upon opening their note. Instead of an uncooperative scroll thumb, the scrollbar presents easily identifiable tags for each of the sections they need to review. A single click on each is all it to takes to jump to them. No more foraging blindly. Better still, if they encounter a scenario where they need to reconcile different parts of the note, rather than jump back and forth, they can simply hover one of these scroll tags for a quick preview of the corresponding section's contents.",
+      "characteristics": "Accurate determination of the sections in the document. Intuitive and unobtrusive. Keyboard accessible. Configurable if user prefers the normal scrollbar. Opt-in by workflow (since not all SmartTextBoxes don't use sectioned templates or involve much scrolling). Ideally available anywhere the note could be viewed, including both SmartTextBox and Report Viewer",
+      "whyNow": "As Ambient workflows become more prevalent, so too will the need for users to be able to quickly find and review specific parts of their note. A challenge we've previously tackled by focusing on reducing note length, which is less in our control in a world where a large portion of the note is AI-generated. Never mind government regulations and other factors than lead to note bloat, despite our best efforts to the contrary. More generally, we are seeing a trend of notes being used for review purposes, which further necessitates ease of navigation over blind foraging, particularly in notes you didn't write yourself.",
+      "smartToolsFit": "Makes navigating within notes a joy instead of a pain.",
+      "epicFit": "Reducing clicks is one of our top goals for UX design. And I would argue removing the need to blindly scroll with the mouse wheel or dragging the scrollbar thumb is worth a dozen clicks saved.",
+      "success": "How much less users resort to scrolling with the mousewheel (or at all, if they can make do with preview bubbles). How often users interact with the minimap or navigation menu. How ofter users choose to pin the navigation menu to the toolbar. How rarely users choose to turn off the minimap",
+      "maintenance": "The algorithm for detecting sections in the document will require a large swath of different templates to test against. We'll want a robust suite of unit tests to minimize the maintenance cost, particularly if and when the algorithm needs tweaking.",
+      "internCandidate": false
+    }
+  },
+  {
+    "id": "8103446",
+    "title": "ST / May '26 Pitch / Improve and consolidate User Settings views",
+    "details": {
+      "problem": "For users that want to customize their SmartTextBox experience, there are currently four different activities for them to choose from: SmartTool Accessibility Settings, Spell Check Settings, SmartTool Formatting Settings, Modify Toolbar. Of these, only Formatting Settings and SmartTool Accessibility Settings are available on the main SmartTools view in the User Settings workspace. And even then, both views are cut off, introducing multiple vertical scrollbars. Formatting Settings, in particular, has turned into a dumping ground, featuring settings like Autocomplete that aren't related to formatting. Meanwhile, Modify Toolbar is not discoverable through Search, requiring users to know they need to click the Star menu on a rich text box. Additionally, PRJ 343129 will soon be introducing a new set of Scrollbar Settings which are currently confined to a flyout menu instead of having a proper view.",
+      "ideaForSolution": "Instead of users needing to hunt down the right view, they should be able to open up the SmartTools view on the User Settings workspace and have access to all of these settings. But rather than simply stacking these views one on top of another and having to scroll through them, the different categories of settings should be organized into a navigation tree, along with a search field to find the setting the user cares about. Similar to the User Security activity: The main Hyperspace search field then jump straight to the appropriate category within this view, rather than launching a standalone modal. Similar with Modify Toolbar and Formatting Settings in the SmartTextBox. We could also consider taking this a step further and reorganzing all the tabs on User Settings into a tree, with SmartTools being a top-level category. Spell check might then make more sense as a sibling category.",
+      "characteristics": "All SmartTool settings should be discoverable and organized.",
+      "whyNow": "The current array of SmartTool Settings views are only becoming more cumbersome and disorganized as new features are introduced. As indicated the 20+ related QANs I was able to find and link.",
+      "smartToolsFit": "This will help with making the SmartTools infrastructure more scalable by making it far easier to introduce new settings without needing to muddy a view where it doesn't belong or create an entirely new view.",
+      "epicFit": "This is a natural extension of the Simplify initiative.",
+      "success": "How many more people choose to customize their SmartTextBox experience now that all the settings are together.",
+      "maintenance": "This should actually reduce maintenance, as it will consolidate several views into one and make it easier to test.",
+      "internCandidate": false
+    }
+  },
+  {
+    "id": "8103527",
+    "title": "ST / May '26 Pitch / Support graph display mode for numeric tables",
+    "details": {
+      "problem": "A clinician is writing a progress note for a patient suffering from high cholesterol. They wish to include a trend graph in their note, but the only SmartLink they can find is .FLOW, which pulls the data in a tabular format. Unsatisfied, the user hops over to Flowsheets, generates a graph there, then copy pastes a screenshot of it into their note. Problem solved. At least, until the attending nurse discovers the flowsheet data has a typo.",
+      "ideaForSolution": "When inserting the .FLOW SmartLink, the user is offered a parameter to switch the display mode from Table to Graph. The result is exactly what they wanted, and they decide to create a .XIMCHOLTREND SmartPhrase for next time that pulls the cholesterol trend graph in pre-configured. Now, when the nurse fixes that typo, the note need only be refreshed to update the graph.",
+      "characteristics": "·         Available for the most commonly used numeric table SmartLinks. Offers the same flexibility in graphing style (trend, bar, etc.) as other places in Epic. Reversible such that graph can be easily turned back into table. Should work with hover bubble SmartLinks",
+      "whyNow": "AI Insights features often leverage graphs for presenting such numerical data to users, and we run the risks of such graphs being copy pasted in a non-refreshable way if we don't offer an alternative.",
+      "internCandidate": true
+    }
+  },
+  {
+    "id": "8103951",
+    "title": "ST - Spell Check - Word Mining in Customer Systems",
+    "details": {
+      "problem": "As a clinician, I expect Epic, the leading EHR vendor, to know and recognize medical terms. However, Epic underlines words that I commonly use in my specialty as misspelled. I've heard there's a way to make it stop doing this, but it should just work. In some cases, our Epic system has even suggested offensive words for misspellings (QANs 1079217, 1149262, 2810496).",
+      "ideaForSolution": "Epic should be able to provide the best medical dictionary in the world. Show me that you understand healthcare and my specialty.",
+      "characteristics": "Epic would have a lexicon for each locale that is made of all the words that our users actually use in their system – ALL the medical words, NO offensive words, and NO archaic or \"Shakespearean\" words.",
+      "whyNow": "The development for this is already ~85% done per an Epixperiment. The lack of medical terms in our lexicons has historically been a pain point for users. And it's not a good look for us that our EHR doesn't recognize medical terms that specialists view as common. There was also a case where the system made an offensive suggestion, and screenshots of it ended up on Twitter! Given the high visibility of this functionality, it's important that we get it right. Epic has the data and the know-how to provide the very best medical dictionary in the world. And we should do so. Furthermore, with the in-progress project of Spell Check in Standalone, we also now have a reason to trim down the number of files we use and their size. All of the files for a given lexicon need to be fetched to the client when initializing the Spell Checker. If there are too many files or they are too big, it hurts performance. However, most of the files we currently use are from a third party, and we can't decompile, combine, or modify them. We could, however, create our own from scratch. But first, we need the list of words.",
+      "smartToolsFit": "Providing quality software",
+      "epicFit": "Solve existing pain points",
+      "success": "We will be able to build a data set including: All the words our users use as well as frequency counts. Spell Check interactions, such as a user accepting a suggestion for a given misspelling. With this data, we can finally build a complete, streamlined, medical dictionary. However, building the dictionary doesn't have to be a part of the development. Building the dictionary doesn't require programming; it can possibly be done by a TS or QM; and it should be done every few years.",
+      "maintenance": "Once the infrastructure for building and fetching the words and usage counts exists, we can leave it alone to be reactivated as needed. Once we build the dictionary, we will need to make minor tweaks (which we already have to do) as users report errors.",
+      "internCandidate": false
+    }
+  },
+  {
+    "id": "8105838",
+    "title": "ST / Personalization Station, May26 Pitch / Improve system status and error reporting visibility",
+    "details": {
+      "problem": "As a provider moving my SmartPhrases with Personalization Station, I'm confused when I'm downloading because notifications don't appear when the actual SmartPhrases have been created. Additionally, I have run into an issue where my SmartPhrases didn't show up, but the support team was unable to determine the cause.",
+      "whyNow": "We get at least a few questions per week about technical issues. Investigating what actually went wrong is currently difficult since our error logging is poor. Additionally, some of these issues aren't actually issues and are just caused by confusion due to imprecise pop up notifications.",
+      "smartToolsFit": "Improves provider satisfaction by allowing us to support users better who are running into technical difficulties, maintain high quality throughput, and improve the usability of this feature.",
+      "epicFit": "Software must work - ensures that we can more easily fix technical issues that arise and can respond to support requests faster, improving satisfaction",
+      "success": "DeLorean time logging for myself, Derek Strehlow, Mitch Miller, Jason Mitchell, some TS, and some other Epic Earth support staff will likely decrease for support TLPs.",
+      "maintenance": "Low maintenance cost, only concern may want to be cautious about how long we retain error logging data, may need some scheduled job to clean up the error data periodically.",
+      "internCandidate": false
+    }
+  },
+  {
+    "id": "8105976",
+    "title": "ST / May 26 Pitches / AI Text Assistant / Prompts will become harder to find in AITA menu once custom prompts and sharing are enabled",
+    "details": {
+      "problem": "As a clinician with particular text I want to generate, and looking for an AI prompt that fits my goal, I have access to many custom prompts - both ones that I've created and ones that my colleagues have shared with me. However, I have to dig through a very long list of prompts in the AI Text Assistant to find one that might match, and even then, I'm not sure if the prompt will fit my needs until I try it. This is not only time consuming, it is also frustrating enough that I will either just write my own prompt on the fly (inefficient and defeats the purpose of sharing functionality), stick to pre-defined prompts (don't get to leverage the benefits of custom prompts), or avoid using the Text Assistant altogether. Without redesigning the menu, that could result in a menu like one of these, where we either add more subcategories or funnel all prompts into the existing \"My Prompts\". Either one would lead to an extremely bloated and hard-to-sort through list: Related questions: Discoverability of shared prompts (both user and system). How do users know when they have new prompts available? How can users keep track of prompts they have/what they can be used for? (particularly if we don't have a manager)",
+      "ideaForSolution": "More investigation is needed before coming to a solution, however some potential ideas are: Surface relevant prompt suggestions based on the text and surrounding workflow context. Maybe this even replaces the Recent prompts. Turn the AITA search into a semantic search, rather than exact word matching (similar to what Chart Search is doing with Cloud Search). Others?",
+      "characteristics": "\"Just in time\" rather than \"just in case\" - it should be easy for me to find the prompt that fits my needs when I want it, rather than making me look through every possible option",
+      "whyNow": "Once users can share prompts with each other, it's very likely that users will have access to many more prompts than they already have, and they might not be familiar with the ins and outs of each one. We don't want to introduce the potential for users' menus to get very bloated without a way for them to effectively navigate all the available options. (Similar to how users have to go to the SmartPhrase Manager today to find the SmartPhrase they want to use, because memorizing the mnemonics is impossible)",
+      "internCandidate": false
+    }
+  },
+  {
+    "id": "8107064",
+    "title": "ST / Pitch / Add touch support for autocomplete",
+    "details": {
+      "problem": "As a touch screen user, I currently don't get access to SmartTextBox autocomplete functionality, since it is disabled while in touch mode. This causes additional time/mental burden while typing content.",
+      "ideaForSolution": "As a touch screen user, I should see clinically relevant autocomplete suggestions while I'm typing, that I can easily and intuitively interact with using touch gestures."
+    }
+  },
+  {
+    "id": "8107734",
+    "title": "ST / Gen AI / Text Actions / Dashboard component for Text Assistant Templates",
+    "details": {
+      "problem": "Text Assistant Templates (TATs) are an incredibly powerful way to embed AI into templates both at an organizational and a user level. However, as an administrator, I cannot easily differentiate the use of these from the usage of the rest of the AI Text Assistant.",
+      "ideaForSolution": "As an administrator, when I look at the AITA dashboard, I should be able to do this differentiation and, at a glance, judge the effectiveness of my organizations use of it.",
+      "characteristics": "Quantifiable. Builds on existing reporting infrastructure",
+      "whyNow": "TATs are being released in Feb 26.",
+      "smartToolsFit": "This will make our features more intuitive to maintain for organizations.",
+      "epicFit": "It is a reporting tool for AI, an important priority for both SmartTools and Epic.",
+      "success": "We will measure success by seeing more customers adopting the TAT feature.",
+      "maintenance": "Minimal.",
+      "internCandidate": false
+    }
+  },
+  {
+    "id": "8107786",
+    "title": "ST / May '26 pitch / Text assistant dashboard doesn't display info from feedback",
+    "details": {
+      "problem": "Starting in Feb '26, users will be able to give feedback on responses from the text assistant through thumbs up/down buttons. A leader reviewing the text assistant dashboard will not see any info from this feedback, meaning they are missing out on potentially valuable insights into how the tool is being used.",
+      "ideaForSolution": "Have a new metric users can see for overall % thumbs up and % thumbs down <- might want to be careful here since there is a bias for people to not leave feedback unless it's negative. Have new metrics that show ratio of thumbs up/thumbs down per prompt. (If possible due to PHI concerns) find ways to allow people to drill down into free text feedback from the dashboard. (If possible due to PHI concerns) find ways to have an LLM categorize and distill free text feedback, helping to make this large amount of data digestible to a leader at an org who would otherwise be overwhelmed with al the data"
+    }
+  },
+  {
+    "id": "8107804",
+    "title": "ST / May '26 pitch / Highlighting UX is challenging for the text assistant",
+    "details": {
+      "problem": "Users who have access to the AI Text Assistant but not custom prompts see a disabled bloom in the toolbar. This has led users to thinking the tool isn't set up properly for them or not know how to use it, including two internal clinicians here at Epic. Users who have access to the text assistant and custom prompts see the bloom icon in the toolbar and often start their interaction by clicking it. They then write their prompt and click enter, sometimes expecting it to act on the full document. We see this show up as prompts like \"change pronouns to she/her\" with no text highlighted. Users who are using a trackpad, have shaky hands, are using touch mode on a tablet, or for any other reason struggle with highlighting text accurately will struggle to use the tool. This can come across when users highlight most of a paragraph but don't successfully highlight the last word or last part of a word, leading to a poor result.",
+      "ideaForSolution": "Have users go into a \"selection mode\". The bloom icon is always enabled in the toolbar, regardless of if users have custom prompts turned on or not. Users can click that bloom icon to start the interaction. Users click or write the prompt they want to execute. We go into a \"selection mode\". Here' some ideas on this: Here, we can change the users cursor to have a highlighting icon, similar to what we do for format painter. We can provide a quick button to select all text. For users with custom prompts, we can prove a quick button for \"no text needed\". If users click this, then when this custom prompt is used in the future, we skip the selection mode step. We could provide ways for people to easily select sections, such as letting them single click on a paragraph to highlight the whole paragraph. Or if users click a heading, it could auto select the entire section. This is especially helpful for touch mode, where accurately drag/dropping with a finger is challenging and slow. After users have highlighted text, then the prompt runs just like before. For users that prefer to highlight text first, the text assistant continues to behave just as before.",
+      "characteristics": "From talking to some customers about this, here's what we learned about what a good solution would need. Note, the sample size here was small, ~5 clinician leads. Deterministic: users already have enough to think about when using an AI tool. Having the UI be predictable and deterministic helps them understand the tool. Discoverable: allow users to always see the bloom icon and start the interaction by clicking the bloom icon. This is a more natural entry point for many users than highlighting. Fast: these users pointed out that they'd be ok with an extra click to make characteristics 1 and 2 happen. Even so, let's aim to make this workflow as few clicks as possible.",
+      "whyNow": "From looking at data from Mercy, watching users and internal clinicians use the tool, and from chatting to AI leads in the community, highlighting as the first step is the largest barrier to good UX that the text assistant currently has."
+    }
+  },
+  {
+    "id": "8107845",
+    "title": "ST / May '26 pitch / AI projects at Epic don't have a great method for determining language",
+    "details": {
+      "problem": "Currently, developers working on AI projects that have flexible inputs need to add safeguards for working only on appropriate languages, such as English to start. Each time they do this, each project needs to come up with a new way of creating this, often through an LLM prompt. This is inefficient, not all that accurate, and expensive to do.",
+      "ideaForSolution": "A while ago, LJ created a local language detection model that works very well and is small! See design 684757. If devs on SmartTools finish this, then devs across the company can use this in their AI projects to accurately detect languages. Devs on SmartTools could also then plug this into the text assistant to improve the accuracy of our translation safeguards.",
+      "whyNow": "The text assistant is now starting to be used for translation in Tapestry with design 724681. So far, we can't enable custom prompts for translation though because our language detection is not granular enough for us to allow some languages but not others. It only allows one language at at time. This is also an increasing pain point across the company and slowing us down.",
+      "epicFit": "Generalize to benefit more, help more AI projects."
     }
   },
   {
     "id": "6191585",
-    "title": "Support spell check in standalone",
+    "title": "ST / SMARTTEXTBOX WEB / Support spell check in standalone",
     "details": {
       "problem": "As an end user, I like using the Epic system directly from a web browser because it is quicker to log in to and I don't need to keep the Hyperdrive app updated. I know I can't use Dragon and some other non-Epic apps like tap badgers for authentication, but I also can't use the spell checker which Epic provides. This means my notes have a lot of misspellings making me look unprofessional. I also can't use simple text expansions so when I type \"afib\" it gets expanded to \"Atrial fibrillation\" so the patients reading my notes in MyChart know what I'm talking about.",
       "ideaForSolution": "Add the spell checker to work in a browser!",
@@ -68,639 +526,34 @@
     }
   },
   {
-    "id": "6855847",
-    "title": "Create an easier way to have vanishing tips",
+    "id": "7882759",
+    "title": "ST / Text Actions / Add in user to user sharing",
     "details": {
-      "problem": "As a physician builder for my specialty, I want to provide hints, tips, or other types of information that show up in a note when it is being edited, but disappear when the note is signed to not clutter the note. I can use an optional SmartList, but there are a number of issues with this: The SmartLinks I want to pull in sometimes include colons in the text which prevents signing the note. My analysts tell me there are issues with my build when they try to move it to production using Data Courier when I use a colon in the text where Data Courier finds the wrong SmartList or doesn't update the optional SmartList's record ID correctly.",
-      "ideaForSolution": "If Epic created a new way to adding disappearing help text to a note that would allow me, and the analysts that help me, be more efficient.",
-      "characteristics": "SmartSection!",
-      "whyNow": "Questions about this come up every couple weeks which means it happens more frequently and aren't getting reported to the development team.",
-      "maintenance": "Overall improvement.",
+      "problem": "Currently, users who create custom text actions are unable to share them with others easily.",
+      "ideaForSolution": "Add in a sharing card to the \"create text action\" popup:"
+    }
+  },
+  {
+    "id": "8053138",
+    "title": "EMC2 / Design / Some standard keyboard shortcuts don't work on macOS",
+    "details": {
+      "problem": "As a user, I expect Epic to just work. And I expect my muscle memory for standard shortcuts on my device of choice to hold true in Epic. However, certain standard shortcuts on macOS currently don't work in the SmartTextBox.",
+      "ideaForSolution": "The behavior of the SmartTextBox should match my expectations. Specifically, standard macOS shortcuts should work there. And the SmartTextBox should never force Windows-style shortcuts on me.",
+      "characteristics": "Standard macOS shortcuts would work. And the standard document-editing shortcuts – like Ctrl+C, Ctrl+V, and Ctrl+X in Windows – would change based on the OS to match users' expectations. Any tooltips mentioning the key combinations would also change.",
+      "whyNow": "It's a simple thing that can be glaringly obvious to certain users. We want to build trust with our users by matching their most basic expectations.",
+      "smartToolsFit": "This aligns with our values: Make it easy for our users to do the right thing and our products a Joy to Use.",
+      "epicFit": "I think this falls under \"Software must work; maintain high quality\"",
+      "success": "The shortcuts will work.",
+      "maintenance": "Minimal",
       "internCandidate": false
     }
   },
   {
-    "id": "7992604",
-    "title": "Spell Check - Compile Wintertree from Source for Windows Version of Hyperdrive Plugin",
+    "id": "8109595",
+    "title": "ST / Pitch / The text assistant cannot be used for translation by qualified users",
     "details": {
-      "problem": "When we first created the Spell Check Plugin for Hyperdrive, we used the pre-compiled Sentry Spell Check Engine (SSCE) from Wintertree. This same component was already in use in the VB Spell Checker. When we added support for macOS, we couldn't use the pre-compiled DLL because it is specific to Windows. So we purchased a new, more expensive license to obtain Wintertree's source code so that we could compile SSCE from source for macOS. Currently, we have both licenses, and we are still using the pre-compiled DLL for Windows. Our older license for the pre-compiled Windows-specific DLL will soon lapse. But it doesn't make sense to renew that license because we can just compile SSCE from source for Windows like we do for macOS. As an added bonus, compiling SSCE from source gives us more control. For instance, it opens the door for supporting unicode in the future.",
-      "internCandidate": false
-    }
-  },
-  {
-    "id": "7989552",
-    "title": "RTF/HTML - Lightweight RTF Component for Views",
-    "details": {
-      "problem": "Developers do not have a complete set of options for easily displaying RTF-backed content in their views. The wiki calls out that the ReportViewer is an ideal container because of the extra functionality it provides. Without the ability to use one (which is sometimes the case), developers have to fall back to setting something like \"dangerouslySetInnerHTML\" on a component and dealing with the risks (and shortcomings) of native HTML rendering.",
-      "ideaForSolution": "Ideally, we could provide a lightweight component which is somewhere between a full ReportViewer and a simple DOM element wrapped around a string. This would remove a large amount of duplicative/boilerplate code and make it simpler for new views to include RTF-backed content.",
-      "characteristics": "Being able to simply render RTF as HTML by setting a string value on a component would be a huge win. If we could also pull in all/most of the extra bells and whistles we are able to support in ReportViewer workflows (attribution, low vision, etc.) that would be a complete package.",
-      "whyNow": "Now that web transitions are done, people are looking for ways to do new things and have already started reaching out (Varghese Mathew would be interested in hearing about any updates here). Additionally, now that we are no longer bound by IE limitations, we could start looking on implementing PRJ 287784 to optimize/simplify the HTML we output. By adding an extra level of abstraction we can get around a lot of the struggles we have had fighting against CSPs.",
-      "smartToolsFit": "This fits our mission on several levels. First, it helps create a consistency between different implementations of RTF viewing in Hyperspace by avoiding app-specific implementation discrepancies. It will help improve efficiency of others by avoiding duplicative/boilerplate code in all of the application codebases. By adding this functionality, we make it easier for developers to consume RTF-backed content and make it easier to do the \"right thing\". Lastly, this helps make out tools easier to access by other Epic developers.",
-      "epicFit": "This aligns with Epic's priorities to innovate with system intelligence to reduce developer overhead and frustration. This aligns with SmartTools' team priorities to solve existing pain points.",
-      "success": "Success will be measured by being able to remove all (or at least almost all) direct implementations of the RTF-to-HTML APIs and instead route them through components which we control (and can, therefore, standardize).",
-      "maintenance": "This will definitely require more testing/maintenance, as it will essentially be a new \"product\" for developers. However, it will also help alleviate some of the app-specific issues we encounter and allow us an easy way to test \"realistic\" setups by avoiding one-off situations.",
-      "internCandidate": true
-    }
-  },
-  {
-    "id": "7987877",
-    "title": "Text Actions to Use Patient's Name and Preferred Pronouns",
-    "details": {
-      "problem": "Clinicians using ambient often get a response that does not use the patient's correct pronouns. Other times, clinicians writing text, such as in a note, use sterile language like \"Patient presents for multiple conditions. They are accompanied by their father\". Other times, a clinician uses pronouns and/or names for the patient, but may not be using the patient's preferred name or pronouns. All this means the patient is not being referred to in the way they want to be, which has an impact on trust, bias, and quality of health care received.",
-      "ideaForSolution": "Make it so that whenever a user runs a text action over text, the model will automatically swap in the patient's preferred name and pronouns, making it easy for the clinician to do the right thing. With DLG 2153040, we now send the patient's preferred name and pronouns with all defined and custom text actions. We have a line in the prompt that reads as The patient's name is <preferred first name> and the patient's pronouns are <subject><object><possessive>. This means the AI model will use the correct names and pronouns if generating from scratch or acting on text without names/pronouns. What we actually want though is for the AI model to be more assertive and always use the correct name and pronouns.",
-      "characteristics": "Correctly changes the patient's name and pronouns to their preferred name and pronouns. Doesn't change other person's name/pronoun if mentioned in the content. Meet other criteria we had for text action to ensure safety.",
-      "whyNow": "A top request from Mayo is for a text action to update patient's pronouns. We could accomplish this in a more generic way than a dedicated text action though.",
-      "epicFit": "Continue making progress on the AI Text Assistant as it's one of the starter kit AI features that is quickly being broadly adopted across the Epic community.",
-      "success": "Direct feedback. Feature tracking metrics on accept rate and usage.",
-      "maintenance": "Testing is likely pretty involved. Maintain can potentially be high if we are adding this extra piece to all prompt meaning we need to verify it for model upgrade/and other changes.",
-      "internCandidate": false
-    }
-  },
-  {
-    "id": "7987855",
-    "title": "Improve Context Menu Usability",
-    "details": {
-      "problem": "As a physician, I want a streamlined context menu with only the most relevant options, so that I can quickly and easily find and use the features I need most often without being overwhelmed by unnecessary choices.",
-      "ideaForSolution": "As a physician, I would recommend implementing a system that intelligently tracks and analyzes user habits to optimize their experience. By monitoring usage patterns, the system can automatically tailor the available options to align with the individual's preferences and needs. This personalized approach not only enhances user satisfaction but also promotes more efficient and effective utilization of resources.",
-      "characteristics": "Show less options but also reduce the need of digging into deeper menus to find the option.",
-      "whyNow": "Saving time, reduce cluster, meet the simplification goal.",
-      "epicFit": "Solving existing pain points, such as ideas frequently reported during immersion, submitted through ideas.epic.com, or from other forms of feedback.",
-      "success": "Measure by clicking and time the user goes to submenu.",
-      "internCandidate": true
-    }
-  },
-  {
-    "id": "7983256",
-    "title": "SmartTextBox - RTL Update and TS Migration",
-    "details": {
-      "problem": "As a developer, I want the TextLine.js component of the SmartTextBox codebase to be converted from raw JavaScript to TypeScript, so that it aligns with the rest of the codebase. This will ensure type safety, improve code readability, and facilitate easier maintenance and implementation of RTL-related updates, ultimately enhancing the functionality and usability of the templates for end users.",
-      "ideaForSolution": "As a developer, I want to convert the existing TextLine logic into one or more TypeScript files before implementing numerous functional changes, so that I can ensure type safety and avoid unnecessary complications that arise from the lack of type safety in other parts of the codebase.",
-      "characteristics": "Having all of the RTL-related logic included in TypeScript instead of JavaScript should be sufficient to solve this completely.",
-      "whyNow": "We are actively pursuing new RTL changes in the near future (touched on in QAN 7938948), and this type of restructuring is better to be done before any large functional changes.",
-      "smartToolsFit": "It will help improve efficiency and code stability by providing more structure around one of our most-sensitive areas.",
-      "epicFit": "This aligns with Epic's priorities to innovate with system intelligence to improve user/developer efficiency. This aligns with SmartTools' team priorities to help maintain our high quality product by enforcing type safety like we do elsewhere in our codebase.",
-      "success": "Having all of the RTL-related logic included in TypeScript instead of JavaScript should be sufficient to solve this completely.",
-      "maintenance": "Theoretically this should help with lowering long-term maintenance costs as we will get more for free with the TypeScript platform.",
-      "internCandidate": false
-    }
-  },
-  {
-    "id": "7983072",
-    "title": "SmartTextBox - Inline Header/Footer Support",
-    "details": {
-      "problem": "Complex documents, such as letters, may desire to leverage header and/or footer segments to meet their needs. Sometimes this is due to external requirements (3rd party content, governmental forms, etc.) while other times it is just to make things look better for their users/patients. Managing these headers and footers is currently a bit cumbersome, as the SubSystem component did not provide a good mechanism for what was needed. Sometimes the header/footer content is specific to that unique template record while other times it may be shared across records. In either case, current templates support only the disjointed header/footer records.",
-      "ideaForSolution": "One potential solution would be to leverage this existing implementation and simply echo the content back to the underlying SmartText records which stores the \"body\" of the header/footer. Another option would be to leverage SmartSections, as that already has a concept for a single document which is maintained in multiple locations.",
-      "characteristics": "A good solution would allow users to always view the most up-to-date rendering of the header/footer content while still allowing them to hot-swap with a different record and share that header/footer information across templates without duplicate records.",
-      "whyNow": "The recent push to allow Tapestry to embed header/footer information within the templates themselves (PRJ 338470) illustrates that there is a need which we are not fully meeting. Part of the hesitation around implementing this outside of Tapestry is that downstream workflows may not be able to function without expecting the header/footer content to be defined externally.",
-      "smartToolsFit": "This fits our mission on several levels. First, it helps create a consistency between our editor and MS Word (as well as other similar tools). It will help improve efficiency by allowing edits to happen directly within the SmartTextBox instead of requiring sending back and forth between the STB and a 3rd party application (for the embedded header/footer cases). By adding this functionality, we make it easier for users to build and expand on existing SmartTools, simplifying the steps involved and making it easier to do the right thing. Lastly, this helps make users' SmartTools more of a joy to use because they can create more user-friendly, modern content.",
-      "epicFit": "This aligns with Epic's priorities to innovate with system intelligence to reduce clinician burnout and improve user efficiency. This aligns with SmartTools' team priorities to solve existing pain points.",
-      "success": "Success could be measured by ensuring that we can properly render header/footer content using both the historical implementation (separate ETX records) as well as the new implementation being worked up for Tapestry.",
-      "maintenance": "In a way this would require additional maintenance/testing, since this will be additional logic, but ultimately it will be similar to what we would already have. We are simply going to make the content render similarly regardless of your decisions around storage/interoperability.",
-      "internCandidate": false
-    }
-  },
-  {
-    "id": "7983035",
-    "title": "Display SmartLists with Few Options as Option List in SmartTextBox",
-    "details": {
-      "problem": "SmartList require users to click into the list, and then make a selection. It would be much more efficient if for short lists, particularly Yes/No, or similar, we had the options inline, similar to an option list.",
-      "ideaForSolution": "Users will be able to see and pick SmartList options with a single click.",
-      "characteristics": "Good UX.",
-      "whyNow": "Simplifies the end user workflow for common workflows."
-    }
-  },
-  {
-    "id": "7975409",
-    "title": "SmartTextBox - Improved Shape Support",
-    "details": {
-      "problem": "Shapes (notably positioned shapes) are sometimes a crucial piece of the puzzle for users to solve a problem at hand. Sometimes it is to meet governmental requirements while other times it is simply finding the best way to fit the necessary content into the limited space available to them. While we support displaying and maintaining some types of shapes which already exist, we have limited options available for actively creating them from scratch, or even simply moving them around within the document. This means that users need to copy and paste from external sources and hope that things copy over correctly, as they are largely unable to modify them after-the-fact.",
-      "ideaForSolution": "A user may need to take a document from a third party (such as an insurance provider) and implement it as a SmartText record to be able to integrate it into other Epic workflows such as letters or other communication methods. Once it is inside of the SmartTextBox, we can allow the user to click-and-drag to move the shape around on-screen, support more advanced wrapping styles, provide mechanisms for editing inner-content, and introduce the ability to create new shapes from scratch.",
-      "characteristics": "Ideally, we would be able to construct any document which a user can do in MS Word, to avoid the dependence on that 3rd party product. A more likely situation is that we would be able to properly handle any document which our users receive from their vendors, or at least be able to take it in and bend it to our will in terms of layout.",
-      "whyNow": "With the migration of the SmartText editor to web, we are regularly running into situations where users attempt to perform workflows which were previously possible (albeit a bit buggy in some situations) with the SubSystems-backed control.",
-      "smartToolsFit": "This fits our mission on several levels. First, it helps create a consistency between our editor and MS Word (as well as other similar tools). It will help improve efficiency by allowing edits to happen directly within the SmartTextBox instead of requiring sending back and forth between the STB and a 3rd party application. By adding this functionality, we make it easier for users to build and expand on existing SmartTools, simplifying the steps involved and making it easier to do the right thing. Lastly, this helps make users' SmartTools more of a joy to use because they can create more user-friendly, modern content.",
-      "epicFit": "This aligns with Epic's priorities to innovate with system intelligence to reduce clinician burnout and improve user efficiency. This aligns with SmartTools' team priorities to solve existing pain points.",
-      "success": "Success can be measured in levels; we may need to iterate on this across multiple versions to reach the ideal end result. Being able to support documents which customers are encountering will be a great start.",
-      "maintenance": "This will likely require a lot of additional testing/maintenance, as the majority of the features needed here are net-new concepts for the SmartTextBox control - that is why they haven't been implemented yet.",
-      "internCandidate": false
-    }
-  },
-  {
-    "id": "7974873",
-    "title": "SmartTextBox - Manual Jagged Table Cell Creation",
-    "details": {
-      "characteristics": "We should be able to re-create any jagged table we find in our test documents from scratch within a web STB. If we can choose a random existing document and recreate it reliably (and without an unnecessary amount of effort compared to other editors), we will be in a good spot.",
-      "whyNow": "We have received many concerns over users struggling to recreate 3rd party documents for things such as insurance or governmental forms, where matching styling is very important. Similarly, label-based workflows have encountered struggles when attempting to best-utilize the limited space available on their size of labels.",
-      "smartToolsFit": "This fits our mission on several levels. First, it helps create a consistency between our editor and MS Word (as well as other similar tools). It will help improve efficiency by avoiding the need for users to migrate their content between Epic and a 3rd party application to make (seemingly) minor edits. By improving this functionality, we make it easy for users to expand on existing SmartTools, as many templates (ETX, HH1) involve tables and many of those tables are jagged in some way. Lastly, this helps make users' SmartTools easier to build and hopefully more of a joy to use because of that.",
-      "epicFit": "This aligns with Epic's priorities to innovate with system intelligence to reduce clinician burnout and improve user efficiency. This aligns with SmartTools' team priorities to solve existing pain points.",
-      "success": "We should be able to re-create any jagged table we find in our test documents from scratch within a web STB. If we can choose a random existing document and recreate it reliably (and without an unnecessary amount of effort compared to other editors), we will be in a good spot.",
-      "maintenance": "This will add some new options for testing moving forward. Realistically, these types of workflows should probably be tested now - we will just be changing the expected behaviors to be more helpful ones.",
-      "internCandidate": false
-    }
-  },
-  {
-    "id": "7968764",
-    "title": "Make the Text Assistant Context Aware",
-    "details": {
-      "problem": "When a clinician uses the AI text assistant, it will give responses that clearly do not pay attention to the surrounding context. This means responses are less useful than they could be and it makes the tool less useful and usable. An example is in In Basket, where the model doesn't understand most information about the patient or what the last patient message was, making it difficult for it to suggest useful responses to the patient.",
-      "ideaForSolution": "Build a generic infrastructure that allows app team devs to pass relevant context for their workflows to the AI Text Assistant. For IB, this could look like devs passing IB Insights and the last patient message. For OP Notes, this could look like passing the patient chart summary. For IP and ED notes, this could look like passing IP and ED insights. Clinicians using the text assistant would then likely get far better and more tailored responses.",
-      "whyNow": "This gives us a chance to stand on our hill of having a deeply integrated system. No other AI editing tool can integrate with the rest of the patient's chart in the way we can. This is a clear differentiator and potentially makes using the text assistant consistently more useful than going to ChatGPT, not just more convenient and safer.",
-      "epicFit": "System intelligence improvements.",
-      "success": "Consider feature tracking logging once for each context aware text action that is available and another for each time it gets used. Consider logging / reporting for the individual text action for more granular data."
-    }
-  },
-  {
-    "id": "7968293",
-    "title": "Use MFT Data to Autofit/Simplify Rich Text STB Toolbar",
-    "details": {
-      "problem": "Fred views Hyperspace as being complex and cluttered, since there are features onscreen that he doesn't need to use. One way to simplify the system for Fred would be to tuck away low-use actions. While Fred clicks some of the buttons in the rich text STB toolbar during his workday, he uses hotkeys for some others and does not regularly click them all. He sees the STB toolbar less frequently around Hyperspace now that they have been tucked away in plain text SmartTextBoxes, but buttons in the rich-text STB toolbar that he doesn't use still add clutter.",
-      "ideaForSolution": "Now that we have feature tracking data of STB buttons (SmartTextbox - Power BI Report Server), we should consider adjusting the default rich-text STB toolbar for users we don't have usage data for, and to leverage the auto-fit dev to auto-fit the toolbar when we do have data available for a user. We have been able to collect usage data for Fred, which shows that there are four buttons he clicks regularly but that he clicks other buttons very infrequently. Depending on how we want to approach the design, we could consider removing all other buttons from his toolbars so that he only has those four buttons in them (while giving him the option to decline the autofit suggestion if he would prefer).",
-      "characteristics": "Our current default options actually look quite good based on usage data. This makes sense if you assume most people don't customize their toolbar to add buttons to it that are tucked away. Some initial ideas: Create SmartPhrases is one that might not be used as frequently as the others, but it could be kept in the default toolbar because it doesn't have a hotkey. It doesn't seem necessary to add any well-used formatting options since we have the floating formatting toolbar. This would be a good opportunity to evaluate if we can get rid of Next/Last to push users to use other ways of moving between SmartLists.",
-      "whyNow": "We're already planning to incorporate auto-fit into our plain text STB project by auto-pinning a users' most frequently used buttons. This would be a good opportunity to leverage the functionality further for the rich text STB.",
-      "smartToolsFit": "It will be consistent with implementing auto-fit for the plain text STB and our mission to simplify SmartTextBoxes in general.",
-      "success": "Reduced clutter scores in the report, feedback from users adopting autofit."
-    }
-  },
-  {
-    "id": "7967434",
-    "title": "Show Where SmartTexts Are Configured Beyond SmartTool Records",
-    "details": {
-      "problem": "As an analyst, I find SmartText maintenance difficult because I have a hard time finding where a given SmartText is all used when looking outside of other SmartTool records.",
-      "ideaForSolution": "A generic report that can show any place a SmartText is used (within certain limitations -- code/static INI, item must be networked to ETX, etc) will make my life easier because I can find places a SmartText is plugged in within needing to maintain a tracker spreadsheet.",
-      "characteristics": "Automatically works for any new item that networks to ETX. Works with the INI/record ID pairs used for E3P values.",
-      "whyNow": "Ease of maintenance is a focus area to allow analysts to do more.",
-      "epicFit": "Solving existing pain points, such as ideas frequently reported during immersion, submitted through ideas.epic.com, or from other forms of feedback.",
-      "success": "Probably direct feedback.",
-      "maintenance": "None, but can make maintenance quicker and easier overall.",
-      "internCandidate": false
-    }
-  },
-  {
-    "id": "7964399",
-    "title": "Mac / Accessibility APIs Can't Detect Text in SmartTextBox",
-    "details": {
-      "problem": "As a user, I can't use Nabla or Abridge to dictate into SmartTextBoxes within Hyperspace for MacOS. This means Hyperspace for MacOS isn't as usable as Hyperdrive for Windows is because I, and my colleagues, greatly prefer to use speech to text over typing.",
-      "ideaForSolution": "One relatively quick fix for this issue of \"opaqueness\" of the smart note editor would be to have the note editor surface a representation of its contents to the AX API, e.g. by setting the value of its aria-description attribute to a JSON serialization of its content and current selection.",
-      "characteristics": "Ideally vendor agnostic.",
-      "whyNow": "This is a key reason that physicians at Emory switched back to using Hyperdrive for Windows instead of Hyperspace for MacOS.",
-      "success": "Physicians at Emory, Cedars, and others start using Hyperspace for MacOS instead of Hyperdrive for Windows.",
-      "maintenance": "Low once developed.",
-      "internCandidate": false
-    }
-  },
-  {
-    "id": "7963374",
-    "title": "Support Render Rich Text Content in Plain Text STB",
-    "details": {
-      "problem": "Some teams would like to use AI SmartLink with AI citations but in plain text STB. We already support rendering AI SmartLink return as AI SmartSection in plain text STB. However, citation itself is a rich text concept in SmartText Box and based on RTF markup. Currently plain text STB won't really process raw RTF and render as rich text content. It is something needed to allow AI SmartLink with citation to use in plain text STB. It is a growing needs and start with Cupid PRJ PRJ 322135: CV / Cath / LLM / Citations Support for Narrative Generation.",
-      "ideaForSolution": "Ideally, we would have a way to load, parse and render rich text content in plain text STB so that AI citation workflow won't really rely on rich text STB and application can use the general AI citation RTF API for their use cases.",
-      "characteristics": "Flexible and safe. Don't open a loop hole of allow any random rich text to be inserted into plain text STB.",
-      "whyNow": "A pre-requisite of app's AI project (PRJ CV / LLM / Citations Support for Narrative Generation [338354], relating to in flight PRJ CV / LLM / Consolidate Workflows for Draft Invasive Procedure Narrative LLM Feature + Framework Update [322135]).",
-      "smartToolsFit": "Infrastructure -> Generalize to benefit more -> Scalability -> Make SmartTools infrastructure salable to future use cases.",
-      "epicFit": "Support app team commitments, including pair programming, PQA, charters, QA passes, design review, or dev. Continue making progress on the AI Text Assistant as it's one of the starter kit AI features that is quickly being broadly adopted across the Epic community.",
-      "success": "Success of App team's project.",
-      "maintenance": "Full ST owned infrastructure.",
-      "internCandidate": false
-    }
-  },
-  {
-    "id": "7963351",
-    "title": "Enhance SmartLink User Parameter for Segmented Parameter Validation",
-    "details": {
-      "problem": "DLG 2049486 is proposing a new SmartLink to allow building EpicCommand link using SmartLink user entered parameter. Because of technical limitations of the SmartLink user parameter popup, user still need to manually build the delimited string for the EpicCommand link parameter.",
-      "ideaForSolution": "On a high level, we would like to enhance the SmartLink that can build all types of EpicCommand link with good validation and simple UI so it's easier for average user to build a link without having to build out the delimited string manually. For the generic SmartLink we will have two parameters: EpicCommand type - custom search type parameter that returns the available EpicCommand(This is done in DLG 2049486), and Parameters - segmented parameter with two segments: parameterType and parameterValue with dynamic validation.",
-      "whyNow": "Saves build time for EpicCommand link. Work is being done in this area right now, but it is fairly bare bones without this proposed development."
-    }
-  },
-  {
-    "id": "7945918",
-    "title": "Improve Automated Testing for Model Responses for the Text Assistant",
-    "details": {
-      "problem": "Each time Microsoft upgrades their AI models or we want to switch to a new model, QMs and devs on Notes and SmartTools spend time manually reviewing and testing our prompts to see if they perform well or need any changes. This problem will only increase in magnitude as we aim to support all primary languages.",
-      "ideaForSolution": "Build out the same type of testing for our two custom text action prompts. Expand the testing for defined text actions and this new testing for custom text actions to work for all other primary locales. Clearly document how to generate these outputs, so when devs are making prompt changes in the future, they can easily run this automated testing to see the impact of the changes they've made. Work with translators and other AI projects to build an example of how this can scale and work well across other AI features.",
-      "characteristics": "Devs and QMs can easily test new prompts and spot issues with prompt changes. Devs and QMs have limited manual work to do for each quarterly upgrade. We build a good example for other AI projects to follow. We have good systems built out for testing internationalized prompts.",
-      "whyNow": "SmartTools is taking over more prompt ownership, meaning it's important for us to support our QM with better automated testing.",
-      "smartToolsFit": "Software must work - our prompts are designed to work as well as possible and we catch issues before they get to our customers. Generalize to benefit more - we can set precedent here for other teams across Epic to follow in building out good automated testing.",
-      "epicFit": "First, do no harm - have better systems in place to catch glaring issues that may arrise. Innovate with system intelligence. Continue making progress on the text assistant."
-    }
-  },
-  {
-    "id": "7936231",
-    "title": "Improve As-Needed SmartLink Search",
-    "details": {
-      "problem": "Users frequently have difficulty finding a SmartLink that pulls in the data that they need. This can be relatively simple data, a SmartLink that they know exists because it's in a template, or something that they aren't sure exists but need for the first time. On immersion, I've been asked about a range of these, from ones that they probably should have learned during training (ME) to ones that are much more niche (ADMPROV, the pile of LABS SmartLinks, the various HISTORY SmartLinks). We have the Find SmartLinks report, but not many people know about it, and it's disruptive to people's workflows.",
-      "ideaForSolution": "Users are able to insert a new Epic-released SmartLink with one user-entered parameter, the query to find relevant SmartLinks. The system finds the relevant SmartLinks, then returns some number of results based on confidence as a SmartList that will pull in the found SmartLinks.",
-      "characteristics": "Users are able to reliably find relevant SmartLinks on the first try. Does not require leaving the note-writing workflow. Result is returned fast enough that it's not annoying to use.",
-      "whyNow": "This has been an issue for a long time, but AI classification makes the system intelligence required much more feasible than it would have been previously.",
-      "smartToolsFit": "Make it easy for users to do the right thing by reducing the time and mental load to find and share SmartTools.",
-      "epicFit": "Reduce clinicial burnout and improve user efficiency; solve existing pain points."
-    }
-  },
-  {
-    "id": "7882764",
-    "title": "Improve Reporting and Auditing on Custom Text Actions",
-    "details": {
-      "problem": "Analysts and AI project managers will not have good insight into how custom text actions are being used once they go live. To get more details, they will have to reach out to TS to pull data from the global tracking all prompts that are written, then manually go through this data. This is tedious, slow, and will not scale well. Currently, organizations default to saving off each prompt that is sent for 30 days.",
-      "ideaForSolution": "Provide better analytics and auditing tools for custom text actions to allow organizations to monitor usage, safeguard triggers, and maintain records for compliance.",
-      "characteristics": "Analysts and AI project managers can get details on who is using custom text actions, rates of accepted/adjusted/reverted, and where they are using them without reaching out to TS. Analysts and AI project managers can get details on how often safeguards are being hit by different users without reaching out to TS. Ideally, analysts and AI project managers can get details on how custom text actions are being used without reaching out to a TS. From talking to Brian Jacobson and Katie, a lawyer at Mercy, auditing this tool, including customers ability to save prompts longer than 30 days, is important.",
-      "whyNow": "Custom text actions are now live in prod at a few orgs. Not having good reporting and auditing could be a barrier to rolling this feature out more broadly. If there are litigations, organizations or clinicians may be in legal trouble if they are not able to show that they used this tool responsibly.",
-      "smartToolsFit": "We want to make it easy for our users to do the right thing. Improving reporting and auditing of custom text actions makes it easier for our customers to roll out this powerful tool in a more ethical and safe way.",
-      "epicFit": "This aligns with Epic's priorities to innovate with system intelligence to reduce clinician burnout and improve user efficiency. This aligns with SmartTools' team priorities to continue making progress on the AI Text Assistant."
-    }
-  },
-  {
-    "id": "7879768",
-    "title": "Create Feedback Buttons in AI SmartSections",
-    "details": {
-      "problem": "Currently, users don't have a way to give feedback on AI generated text. This is inconsistent with other AI features and is a highly requested features from customers. This will improve transparency, safety, and monitoring of these AI tools. This would be useful for defined text actions, shared custom text actions, and app team created AI workflows that use AI SmartSections. For custom text actions, it would also be useful if users have a way of giving feedback when they hit our safeguards and think they should not have.",
-      "ideaForSolution": "Indicate to folks that are monitoring these AI projects stats on thumbs up/thumbs down, such as in our text assistant dashboard. For shared custom text actions, surface stats on these to the user who wrote the prompt. This could then let them get a sense for how well their custom text action is performing and make adjustments if needed. For shared custom text actions, surface stats on these to the user who is being shared to. This could then let them get a sense for how well this custom text action performs and make a more informed decision on whether or not to use it.",
-      "whyNow": "From talking to customers at AI office hours, this was their highest priority enhancement for us to work on next. Here's the enhancements we talked about in order: 1. Feedback buttons, 2. Drill down in the dashboard, 3. Better auditing and reporting for custom text actions, 4. Share custom text actions."
-    }
-  },
-  {
-    "id": "7774673",
-    "title": "Text Actions / Support Summary Levels in the Dashboard",
-    "details": {
-      "problem": "Currently, analysts, CMIOs, and other leaders of AI projects at customer sites cannot drill down to see service areas, departments, or individual user stats with the text assistant. This is how other dashboards, like the IB Art dashboard, work and is now a base expectation from the reporting core group here at Epic.",
-      "ideaForSolution": "Allow for drilling down in the text assistant dashboard.",
-      "whyNow": "At office hours, this was the second highest request from customers for us to work on next. Here's the list of enhancements and order we discussed: 1. Feedback buttons, 2. Drill down in the dashboard, 3. Better auditing and reporting for custom text actions, 4. Share custom text actions."
-    }
-  },
-  {
-    "id": "7691740",
-    "title": "Use AI to Evaluate Reading Level in Letter Review",
-    "details": {
-      "problem": "Many payers have recently made a commitment to provide simple explanations and easy-to-access assistance for any prior authorizations that were denied. Users that are attempting to write these explanations may struggle to know if what they are writing is simple and easy enough to understand for a patient. Users at Sutter were copying & pasting their letters into Word, using Word's Editor functionality to determine the text's reading level, then copying that info & pasting it into a note to document the reading level. This is a clunky copy/paste workflow that makes it clear Epic is missing functionality these clinicians need.",
-      "ideaForSolution": "A simple wave 1: As users type into a textbox, they have an option to view stats on what the reading level is of what they are writing. A potential wave 2: If a user clicks on these stats, they could also click to have AI lower this reading level and rewrite the content.",
-      "whyNow": "Payers just announced this commitment last week (week of 6/23/2025). This is also important for improving a painful friction point in US healthcare.",
-      "smartToolsFit": "Aligns with our values to make it easy for users to do the right thing.",
-      "epicFit": "Aligns with efforts to improve system intelligence to improve efficiency and patient outcomes."
-    }
-  },
-  {
-    "id": "7663584",
-    "title": "Add Ability to Hide/Collapse/Reorder Columns in SmartPhrase Manager",
-    "details": {
-      "problem": "Clinicians are growing increasingly frustrated and burnt out by managing and maintaining their growing lists of SmartPhrases. Users have reported through immersions, user interviews, and ideas.epic.com that there is a lot of bloat in the SmartPhrase Manager. Proposed ideas like a last edited column or a last used column (among others) aim to help alleviate this problem by making maintenance easier, but adding additional columns further bloats the manager which makes the problem even worse.",
-      "ideaForSolution": "Make it easier for clinicians to do the right thing by giving them the ability to reorganize, hide, or collapse their columns in the SmartPhrase Manager. This will simplify their screens and remove another source of burnout.",
-      "characteristics": "Allows users to move their columns and hide the ones they don't need.",
-      "whyNow": "We have requests to add more information to the SmartPhrase Manager, but have run out of space. Users cannot change the order/visibility of unused columns.",
-      "epicFit": "5. Software must work, maintain high quality. 8. Solving existing pain points, such as ideas frequently reported during immersion, submitted through ideas.epic.com, or from other forms of feedback.",
-      "success": "Immersions, customer calls, and user surveys.",
-      "maintenance": "Low",
-      "internCandidate": false
-    }
-  },
-  {
-    "id": "7462287",
-    "title": "Add SmartPhrase Usage Information to SmartPhrase Manager",
-    "details": {
-      "problem": "As a physician, I created many SmartPhrases over the years and often forgot about how I named those. I end up recreating a lot duplicates on the fly and now I have several similar SmartPhrases with different names. When I update my template, I updated one but end up not being the one I recently used. Users often ask how they can easily tell which SmartPhrase have been used and what they can delete since those are not used.",
-      "ideaForSolution": "When users open SmartPhrase, it would be nice to see a column of how often a SmartPhrase is used so that they can clean up the SmartPhrases that are rarely used. As a physician builder, I'd also like to see what are the SmartPhrases used most often by my colleagues when I shared those phrases with them so that I know which ones I should keep up to date.",
-      "characteristics": "Intuitive to use but not overwhelming. Also possibly having personalization options so that the users can customize the view a bit.",
-      "whyNow": "Top requested feature. Often brought up in customer feedback.",
-      "epicFit": "Solving existing pain points, such as ideas frequently reported during immersion, submitted through ideas.epic.com, or from other forms of feedback.",
-      "success": "Feature tracking on usage and possibly the deletion on phrases with usage under certain threshold.",
-      "maintenance": "Low",
-      "internCandidate": true
-    }
-  },
-  {
-    "id": "349115",
-    "title": "SmartList Wildcard Entry Box Not SmartTool Enabled When List Is Refreshable",
-    "details": {
-      "problem": "Users create and use many SmartPhrases and are often aware of some useful SmartLinks that help speed up their documentation. If a user is documenting with a template that has a refreshable SmartList that contains a wildcard, they can't use their useful SmartPhrases or SmartLinks on this wildcard. Instead, users have to manually type out their answer to fill out this wildcard, slowing them down.",
-      "ideaForSolution": "Allow users to add SmartPhrases and SmartLinks in SmartList wildcards to speed up their documentation and allow them to take full advantage of the SmartPhrases they created.",
-      "characteristics": "The SmartLinks/SmartPhrases would have to be converted into plain text and have line breaks removed from the text so that it can be used in the wildcard even if it isn't initially the right format but the SmartTools should be able to work together.",
-      "smartToolsFit": "Wildcards would become more efficient in SmartLists, it would make simple smartphrases more usable, and would remove a frustration that end users encounter regularly.",
-      "epicFit": "This fits ST priorities because it would solve long standing existing pain points."
-    }
-  },
-  {
-    "id": "709400",
-    "title": "Allow Marking User SmartPhrases as Personal/Sensitive to Hide from Other Editors",
-    "details": {
-      "problem": "Users might create a SmartPhrase for a signature that doesn't make sense for other people to have access to or as a personal reference that isn't meant for others to use. If other people use their private SmartPhrases, this can make them feel like their privacy has been violated or annoyed that they can't control their personal smartphrases.",
-      "ideaForSolution": "Allow end users the choice to hide their SmartPhrases that aren't appropriate for others to use, preventing other users from searching or sharing SmartPhrases without the user's permission. This will make end users feel like they have control over their SmartPhrases.",
-      "characteristics": "Create a button in the user SmartPhrase editor that allows it to only be searchable or viewable by editors so SmartPhrases that aren't meant to be shared don't have to be. There could also be an HDF setting to allow organizations to turn this feature off if they don't think SmartPhrases should ever be private. Private SmartPhrases should able to be changed back to public SmartPhrases at any point and vice versa, and allow it to be shared limitedly if users are added as editors so it can be shared if the owner gives permission.",
-      "whyNow": "It was recently marked as a potential SPRE by a customer because they saw it as such a concern and it is regularly requested in ideas.epic.com.",
-      "smartToolsFit": "It will improve effectiveness because users already have the signature SmartPhrases but it will increase trust and feelings of security if they know that their personal information can't be taken by others.",
-      "epicFit": "This fits ST priorities because it would solve long standing existing pain points.",
-      "success": "SmartPhrases can be made private."
-    }
-  },
-  {
-    "id": "722043",
-    "title": "Create Calendar SmartLink or SmartLink You Can Pick Dates From",
-    "details": {
-      "problem": "Users want to add dates to their notes but may not know the exact date. .reldate can pull in a date but only based on the current date so users have to look at another calendar if they want to find out what the date is 2 weeks from Friday. There are plenty of date fields with the calendar across hyperspace and other applications and it's functionality users want in their notes as well.",
-      "ideaForSolution": "Users can use a calendar SmartLink that would popup an inline calendar for users to choose dates from.",
-      "characteristics": "It's easy to use, doesn't require knowing about the t+1/w-2 shortcuts, and matches UI that is used across Hyperspace and other apps.",
-      "whyNow": "Users have been requesting this for a long time, there are a bunch of linked SLGs and ideas.epic.com links and solving this now is better than putting it off for forever.",
-      "smartToolsFit": "This improves efficiency because users don't have to open their phone or computer calendar to find the date they're looking for. The reldate parameter popup isn't particularly user friendly so picking a date from better UI would make this more of a joy to use.",
-      "epicFit": "This fits ST priorities because it would solve long standing existing pain points.",
-      "success": "Having a SmartLink that shows a calendar to pick a date on.",
-      "maintenance": "Shouldn't have much maintenance or testing costs once the SmartLink is made."
-    }
-  },
-  {
-    "id": "736777",
-    "title": "Add Display Name Item for SmartText Record Lookup for Mixed Case Names in Hyperspace",
-    "details": {
-      "problem": "End users can have SmartTexts with the name showing where patients see the title of the SmartText, which is in all caps. There's no way to change this currently so the end user or patient will see the title of the SmartText and may feel like the name is yelling at them. This is off putting and isn't appropriate for patients to be seeing.",
-      "ideaForSolution": "Allow analysts to add a display name to a SmartText so that anywhere the name of a SmartText is displayed, end users and patients can see a more readable title.",
-      "characteristics": "Display name can be personalized to be end user or patient facing but should be required.",
-      "smartToolsFit": "This would make the system look better and be more of a joy to use because the SmartText title wouldn't look like it was really important because it was in all caps without having an option to change it.",
-      "epicFit": "This fits ST priorities because it would solve long standing existing pain points."
-    }
-  },
-  {
-    "id": "803923",
-    "title": "Add Highlight Functionality",
-    "details": {
-      "problem": "Users would copy text from an external document that has highlighting but wouldn't be able to remove the highlighting without a lot of effort. They also couldn't highlight text that they wanted to emphasize and bolding or changing word color just doesn't catch attention like highlights do.",
-      "ideaForSolution": "Users can use highlighting in the STB, similar to how they use text color.",
-      "characteristics": "There's already a design and DLG! It has a good outline, it just needs to be continued.",
-      "whyNow": "We have been getting this request regularly, including from 4 months ago. It's a paper cut that would be a big win for lots of people if we fixed it.",
-      "smartToolsFit": "It would improve efficiency with documentation by allowing users to remove highlighting they don't want without having to un-highlight in external programs or cut/paste as plain text but that would remove all other formatting too. If the highlighting is throughout a document, it's really inefficient to try to fix each individual line that has highlighting. It also would improve effectiveness of documentation because leaving in unnecessary highlighting might call attention to something while more important information for this context is skipped. It can also make the most important parts of a note or template really stand out, much more than bolding.",
-      "epicFit": "This fits ST priorities because it would solve long standing existing pain points.",
-      "success": "Can users highlight and remove highlighting within the STB.",
-      "maintenance": "Shouldn't have maintenance, might need regression testing checks when changes are made to STB accessibility or certain types of copy/pasting changes.",
-      "internCandidate": false
-    }
-  },
-  {
-    "id": "1123619",
-    "title": "SmartTool Admin: Add Ability to Map/Link a SmartPhrase to a SmartData Element",
-    "details": {
-      "problem": "Analysts add SDEs to SmartTexts and SmartLists so compliance officers can track all kinds of metrics and to pull in data for reporting. Since SmartPhrases can't have SDEs, analysts are having to build workarounds with SmartTexts in SmartLinks to allow for SDE use in SmartPhrases, requiring some analysts to spend extra time making those records. This can also prevent some analysts from adding SDEs if they don't know about this work around and compliance officers not getting all of the data they need for meaningful use analysis.",
-      "ideaForSolution": "Allow analysts to add SDEs to system SmartPhrases in the SmartPhrase editor so SmartPhrases will add SDEs when end users add those SmartPhrases to their notes.",
-      "characteristics": "SDEs are applied when the SmartPhrase is used, removed if the SmartPhrase text is removed, and can be used to track usage for reporting.",
-      "whyNow": "It's still being requested regularly.",
-      "smartToolsFit": "Make it easy to do the right thing.",
-      "epicFit": "This fits ST priorities because it would solve long standing existing pain points."
-    }
-  },
-  {
-    "id": "2005922",
-    "title": "Prevent Parts of a Note Template from Being Deleted",
-    "details": {
-      "problem": "Organizational leads and compliance officers often have required SmartLists or documentation that they add for legal reasons. These sections must be filled out but end users can just delete it from any note and not have to do the documentation.",
-      "ideaForSolution": "Add a SmartLink that could be used similarly to a sectioning SmartLink but nothing in that section can be deleted in the note. This allows it to be more flexible and only added to certain parts of a template. We could also make the section more like a warn on delete SmartLink so that if any part of it is about to get deleted, there is a warning saying something like 'this is required documentation, are you sure you want to delete this?' to allow more flexibility for end users. Or maybe have both options with different SmartLinks.",
-      "characteristics": "Allow sections of a SmartText to be required in a note in a way that makes deleting it difficult.",
-      "smartToolsFit": "This would be a part of making it easy for users to do the right thing so that required documentation is actually filled out.",
-      "epicFit": "This fits ST priorities because it would solve long standing existing pain points.",
-      "success": "Parts of a template can be restricted from being deleted when added to a STB."
-    }
-  },
-  {
-    "id": "2058026",
-    "title": "SmartTool Editors Should Have a Preview Option",
-    "details": {
-      "problem": "Currently, the SmartPhrase/Link Editors do not have preview options, so end users are unable to see how the SmartTools they are creating will look when actually inserted into a SmartTextBox. It would be awesome if we provided them with a way to preview how their SmartTools would look, similar to the Barcode preview. As a physician builder who consistently creating template to be shared, I would expect SmartPhrase to has same feature that SmartText had, preview is the big one. Also a lot of organization feels SmartPhrase actually provides more flexibility and easy to update template with urgent need so they lean toward using SmartPhrase more than SmartText.",
-      "ideaForSolution": "Support similar preview we did in ETX editor.",
-      "characteristics": "First fill the need and ensure consistent user experience on other similar feature they familiar with. Easy to use and flexible enough.",
-      "whyNow": "A long standing pain point.",
-      "epicFit": "Solving existing pain points, such as ideas frequently reported during immersion, submitted through ideas.epic.com, or from other forms of feedback.",
-      "success": "User satisfaction based on directly feedback/immersion. We can have feature tracking on usage of the preview feature which can be done in both POC and PRD.",
-      "maintenance": "low",
-      "internCandidate": true
-    }
-  },
-  {
-    "id": "2430009",
-    "title": "SmartLists to Use Capitalization for Sentence Case",
-    "details": {
-      "problem": "Multi-select SmartLists are common in STBs but they cause sentences to be gramatically incorrect because the selections may have the first letter capitalized of the word, which makes the sentence look wrong. If the end user is normally a big stickler about grammar, this would probably drive them nuts. If they want to change the letter to fit the sentence, they would have to have a non-refreshable SmartList or remove the reselectability, which makes the tool less efficient to use in the future.",
-      "ideaForSolution": "If the SmartList is multiselect, only respect sentence case in the SmartList for the first selection but not the others. Optionally, add a button in the SmartList editor in case the capitalization should be respected so this option can be opted in or out. Ideally, the SmartList would also remove the capitalization of the first selection if it wasn't the beginning of a paragraph but that might not be feasible.",
-      "characteristics": "Customizable, allows for proper grammar without the builder having to anticipate where or how the SmartList options will be used.",
-      "smartToolsFit": "Makes SmartLists more of a joy to use because end users don't have grammatically incorrect sentences all over their notes with no way to correct it.",
-      "epicFit": "This fits ST priorities because it would solve long standing existing pain points."
-    }
-  },
-  {
-    "id": "3892341",
-    "title": "SmartPhrase Manager List - Add Column to Display the Last Contact Time",
-    "details": {
-      "problem": "As a physician, I want to have a \"last edited\" column for my SmartPhrases, so that I can easily track which phrases I am actively maintaining and identify those that haven't been updated in a long time, allowing me to efficiently manage and clean up my collection of SmartPhrases.",
-      "ideaForSolution": "Users could open the SmartPhrase manager and see a column showing when each SmartPhrase was last edited. Users would then know which SmartPhrases they have been maintaining and which ones they haven't touched for a long time.",
-      "characteristics": "Efficiently and clearly display the information they want.",
-      "whyNow": "Top requested feature on idea.com and constantly mentioned from customer feedback.",
-      "epicFit": "Well fit in almost all of our values.",
-      "smartToolsFit": "Solving existing pain points, such as ideas frequently reported during immersion, submitted through ideas.epic.com, or from other forms of feedback.",
-      "success": "Customer happiness. We know for sure this would make them happy.",
-      "maintenance": "Low",
-      "internCandidate": true
-    }
-  },
-  {
-    "id": "7991592",
-    "title": "Citations for text actions",
-    "details": {
-      "problem": "As a user, when I've used the AI Text Assistant, I would like to be able to know what pertinent pieces of content were left in, what was left out, and where pieces of included content came from.",
-      "ideaForSolution": "As a user, I'd like to have citations that match the UI seen in summaries for text actions so I can consistently find my source content.",
-      "characteristics": "Provide useful information but not interruptive.",
-      "whyNow": "Citation in AI gen content becomes more common with upcoming app workflow starting in Nov 25.",
-      "epicFit": "Continue making progress on the AI Text Assistant as it's one of the starter kit AI features that is quickly being broadly adopted across the Epic community. Innovate with infrastructure for system intelligence, such as building new agent components and UI for app teams to leverage.",
-      "internCandidate": false
-    }
-  },
-  {
-    "id": "7991593",
-    "title": "Forager for custom text actions",
-    "details": {
-      "problem": "As a user, I expect that custom text actions to know information about my patient, but they do not.",
-      "ideaForSolution": "As a user, I would want my text actions to be able to look up the required information from the chart.",
-      "characteristics": "Make it easy for user to create custom text action without needing to provide all the patient context each time manually. Save time on creating build.",
-      "epicFit": "Continue making progress on the AI Text Assistant as it's one of the starter kit AI features that is quickly being broadly adopted across the Epic community. Innovate with infrastructure for system intelligence, such as building new agent components and UI for app teams to leverage.",
-      "success": "Probably can track accept rate and maybe time spent on building the custom action.",
-      "maintenance": "Relatively high because patient information is more sensitive information that we need to take extra cautious and effort to verify the accuracy.",
-      "internCandidate": false
-    }
-  },
-  {
-    "id": "7991596",
-    "title": "Move AITA to Sous",
-    "details": {
-      "problem": "As an analyst, if Epic released an update to a text assistant prompt, I must wait to get an SU. As a developer, the existing infrastructure for AITA is not reusable such that I can take advantage of the prompt AITA offers for my agents.",
-      "ideaForSolution": "As an analyst, I would like the actions to live in Nebula so they can update with the model. As a developer, I would like the actions to be in Sous so they are reusable.",
-      "characteristics": "No end user behavior change. Faster or as fast.",
-      "whyNow": "greatly making prompt engineering update faster and save dev and QM time by reducing SU overhead.",
-      "epicFit": "Continue making progress on the AI Text Assistant as it's one of the starter kit AI features that is quickly being broadly adopted across the Epic community. Innovate with infrastructure for system intelligence, such as building new agent components and UI for app teams to leverage. Software must work, maintain high quality.",
-      "success": "Faster prompt change turn around.",
-      "maintenance": "Much lower maintenance cost going forward.",
-      "internCandidate": false
-    }
-  },
-  {
-    "id": "7991597",
-    "title": "Documentation agent",
-    "details": {
-      "problem": "As a user, it is challenging to find SmartTools because they have poor descriptions. As a user, it is challenging to know what a SmartTool does because it may have a low quality description.",
-      "ideaForSolution": "As a builder, I'd expect that I can get suggestions or improvements for my SmartTool descriptions with minimal effort.",
-      "characteristics": "Make it easy to find SmartTools and how to use it without too much knowledge on SmartTools and how each type of SmartTools structured.",
-      "whyNow": "The benefits of universal search will be lessened without better documentation throughout Epic. This will also help AI tools to be able to find content more easily.",
-      "epicFit": "Continue making progress on the AI Text Assistant as it's one of the starter kit AI features that is quickly being broadly adopted across the Epic community. Innovate with infrastructure for system intelligence, such as building new agent components and UI for app teams to leverage. Software must work, maintain high quality. Innovate with system intelligence for new SmartTools AI features. Solving existing pain points, such as ideas frequently reported during immersion, submitted through ideas.epic.com, or from other forms of feedback.",
-      "success": "This is one of the main pain point and has been requested for a better solution for a very long time. So we should be able to get a lot of direct feedback.",
-      "internCandidate": false
-    }
-  },
-  {
-    "id": "7991598",
-    "title": "Refreshability for AI SmartSections",
-    "details": {
-      "problem": "As a user, my use of AI nukes refreshability from my notes, preventing me from seeing the most up-to-date information if the refreshable content should be able to update. As a user of templated text actions and AI SmartLinks, information summarized will not update past the initial resolution of AI content.",
-      "ideaForSolution": "As a user, I'd like to be notified if content may be out of date and be given the option to refresh and regenerate content.",
-      "characteristics": "Flexible and scalable. Consistent UI with existing AI feature.",
-      "whyNow": "Templated text actions will make this more necessary, as will AI SmartLinks. This is also very similar to what we've seen teams do to modify existing content in the event that they are acting upon the existing text box contents.",
-      "epicFit": "As part of template text action, this is sort of needed since otherwise, it is loss of functionality. So fit in Software must work, maintain high quality.",
-      "internCandidate": false
-    }
-  },
-  {
-    "id": "7991600",
-    "title": "Accessibility agent",
-    "details": {
-      "problem": "As a builder, ensuring that my content is easily accessible via tagging is a lot of effort: it requires a lot of highlighting and clicking. As a builder, I rarely add captions to my images because that also requires a lot of clicking.",
-      "ideaForSolution": "As a builder, I'd like the system to do most of the heavy lifting of tagging and captioning for me. As a developer, I'd like these things to be agents that are reusable for my team which also desires to make documents or images accessible.",
-      "characteristics": "Reduce the time spent on doing accessibility related template build.",
-      "whyNow": "There might be regulation requirements coming up in future to support more accessibility features in SmartTools build and/or reduce the burden to maintain the build.",
-      "epicFit": "Continue making progress on the AI Text Assistant as it's one of the starter kit AI features that is quickly being broadly adopted across the Epic community. Innovate with infrastructure for system intelligence, such as building new agent components and UI for app teams to leverage. Software must work, maintain high quality. Innovate with system intelligence for new SmartTools AI features. Solving existing pain points, such as ideas frequently reported during immersion, submitted through ideas.epic.com, or from other forms of feedback.",
-      "success": "Time saved on making SmartTools change.",
-      "internCandidate": false
-    }
-  },
-  {
-    "id": "7991974",
-    "title": "Support SmartList reset in SmartSections",
-    "details": {
-      "problem": "DAN provides streamlined documentation -- for many notes, the primary documentation is in the Assessment and Plan note. As a place of heavy review/editing, autoreset SmartLists would allow for quicker documentation, and less need for manual combing through contents and manually reselecting SmartLinks. This would be a particular win in IP workflows where Diagnosis Aware Notes auto-copy forward, but we do not reset SmartLists.",
-      "ideaForSolution": "Reset auto-reset SmartList in SmartSection (DAN) workflows). This would mean that in DAN, users could have a set of SmartLists that they need to automatically re-complete when their A+P notes are copy forwarded...less accidentally old data, easier updates.",
-      "characteristics": "Consistent with current SmartList reset feature. Properly define what valid case to allow reset. Easy for customer to setup the workflow.",
-      "whyNow": "Without this, the whole SmartList reset feature could make it feel like incomplete. However, we also don't know if this would be pushed from customer until we have the first wave of the resetting feature out.",
-      "epicFit": "Solving existing pain points, such as ideas frequently reported during immersion, submitted through ideas.epic.com, or from other forms of feedback",
-      "success": "Direct feedback",
-      "maintenance": "This requires build on ELT records but should be relatively small effort.",
-      "internCandidate": false
-    }
-  },
-  {
-    "id": "7992270",
-    "title": "Create custom autocomplete model for EMC2",
-    "details": {
-      "problem": "EMC2 users will soon see autocomplete predictions as they type in SmartTextBoxes throughout the software. However, the word completion piece of the current autocomplete model was built using data from Cosmos Notes, meaning that the predictions are often for medical terms that are less relevant in EMC2 workflows.",
-      "ideaForSolution": "As an EMC2 user, it would be great to see autocomplete suggestions as I type that are relevant to the language and structure used by Epic while writing designs, QA notes, or QA instructions. To accomplish this, we could collect data from EMC2 sources such as DLGs, QANs, SLGs, XDSs, etc. to create a new word completion model specific to EMC2 workflows.",
-      "characteristics": "EMC2 users get better autocomplete suggestions within SmartTextBoxes.",
-      "whyNow": "We're planning to turn autocomplete on for all users in the November 25 version. If users find the suggestions unhelpful, they will likely turn off the functionality entirely, meaning they would miss out on any future improvements.",
-      "internCandidate": false
-    }
-  },
-  {
-    "id": "7992275",
-    "title": "Improve touch mode support",
-    "details": {
-      "problem": "As a user who utilizes the SmartText Box (STB) in touch mode, I want the ability to seamlessly use STB on tablets and other touch screen devices, so that I can efficiently document skin exams and other workflows as they become available on these platforms. Although my current day-to-day workflow does not heavily rely on tablets, I anticipate a shift with the upcoming release of Derm's first workflow designed for tablet use, which will enhance my documentation process.",
-      "ideaForSolution": "Address all ITF issues on PRJ 308851. The user would like to have similar experience in touch mode as if they were in hyperspace on desktop, this means to provide good experience with hover behavior, handle UX better on a relatively small screen, provide good user interaction with touch mode specific feature like virtual keyboard.",
-      "characteristics": "Feature complete and good usability and accessibility",
-      "whyNow": "This is soon impacting customer when the first touch mode customer facing feature: Derm skin exam gets released.",
-      "internCandidate": false
-    }
-  },
-  {
-    "id": "7992375",
-    "title": "Organizations cannot disable individual text actions",
-    "details": {
-      "problem": "Currently, analysts and TS cannot disable certain text actions, only the entire AI Text Assistant. This means that if a text action is misbehaving, they are stuck between two unpleasant options, disable the text assistant or attempt to educate all users to not use this text action until we at Epic release a solution.",
-      "ideaForSolution": "Allow customers to work with TS to temporarily disable text actions.",
-      "whyNow": "Highly requested enhancement from customers that would allow them to feel more confident rolling out broadly across their organization. LJ has already done much of the dev to create a TS utility to do this in DLG 2117627. We just need someone to finish this.",
-      "internCandidate": false
-    }
-  },
-  {
-    "id": "7992394",
-    "title": "Agents don't have an easy way to write text to a textbox",
-    "details": {
-      "problem": "Developers who are creating agents here at Epic are missing a key tool for agents to use, the ability to write to a textbox. With AI SmartSections, we have great UI and infrastructure setup for handling unreviewed AI generated text being placed in a textbox. What's missing is exposing these APIs to agents to allow an agent to put this unreviewed AI generated text in a textbox.",
-      "whyNow": "Based on this 6/24/25 GenAI strategy monthly, a key way that agents will interact with the rest of the Epic system is through tools, which are: An API to do one thing, Usually deterministic, Has a structured input & output contract, Is used by agents, often via function calling. Exposing an API to allow agents to use function calling to write text to a textbox seems like an obvious foundation agent that would be useful in many workflows across Epic. Most of the work here is already done with AI SmartSections, we just need to expose it to agents now.",
-      "internCandidate": false
-    }
-  },
-  {
-    "id": "7992395",
-    "title": "Personalization Station - Allow multiple versions of SmartPhrases on download",
-    "details": {
-      "problem": "From the perspective of a doctor working at two organizations each week: When I upload SmartPhrases from St Elsewhere Health, then go to download them at the second hospital, PPTH, that works fine. However, when I make changes to these SmartPhrases and upload from PPTH, it creates a second copy at St Elsewhere when I re-download. I would prefer if making changes at PPTH would carry over back to St Elsewhere. Additionally, if I re-upload at St Elsewhere and re-download at PPTH, it overwrote my build changes which wasted hours of work.",
-      "ideaForSolution": "It would be useful to have multiple versions of a SmartPhrase record, so the different versions are still logically linked, and the list of SmartPhrases isn't bloated. Regarding the second use case, this would also give a way to recover previous versions of the SmartPhrase when I re-download.",
-      "characteristics": "Allows users to avoid losing changes. Avoid duplication of SmartPhrases for providers working at multiple organizations.",
-      "whyNow": "Losing changes to SmartPhrases could lead to severe provider frustration. Avoiding duplication makes the process less confusing and more cleanly aligns with the mental model of a single source of truth, even if there are still different versions of the SmartPhrase.",
-      "epicFit": "Cleaner experience, prevents frustrating mistakes, higher perceived quality since mental model is more intuitive and isn't creating bloat with extra copies of SmartPhrases.",
-      "success": "Useful feature tracking metrics: How often we create multiple versions on a download, How often a user has changed the active version of a SmartPhrase. Would also be good to revisit estimated numbers for how many providers have used this feature at multiple locations (could probably check Epic Earth database).",
-      "maintenance": "Requires some additional handling for multiple contacts for SmartPhrases, requires considering this. Technically, not required, since our solution doesn't have to be to treat these as different contacts.",
-      "internCandidate": false
-    }
-  },
-  {
-    "id": "7992406",
-    "title": "Using ctrl+A does not pull up the text assistant like some folks expect it would",
-    "details": {
-      "problem": "When a user highlights all text using the keyboard shortcut, Ctrl+A, the AI Text Assistant does not appear. Some clinicians, Dr. Velasco in particular and others on office hours calls agreed, that this is confusing and slows them down in their keyboard workflows.",
-      "ideaForSolution": "A user selects all with Ctrl+A intending to take action on all the text in their text box, and the AI Text Assistant to give them options to reformat, rephrase, etc.",
-      "characteristics": "Make highlight all text -> pick or write a text action -> resolve the text action an easy all keyboard workflow. Make sure that focus isn't confusing or disruptive, for both non-screen reader and scree reader users.",
-      "whyNow": "This seems like a potential quick win. Ctrl+F6 to open the text assistant is not likely to be a commonly used keyboard shortcut. Ctrl+A is far more common. Please note though that some more thought is worth putting into this. For example, in word, Ctrl+A does not open a mini toolbar, perhaps there is good reason for this.",
-      "epicFit": "Making progress on AI text assistant",
-      "internCandidate": false
-    }
-  },
-  {
-    "id": "7992420",
-    "title": "People can click looks good without reviewing all AI text",
-    "details": {
-      "problem": "Currently, users can click looks good on unreviewed AI generated text without even having seen all of the AI content. This means they could be accepting text that is inaccurate.",
-      "ideaForSolution": "Users could be guided by the UI to scroll down throughout the full unreviewed AI generated text before they can click looks good.",
-      "characteristics": "Make this intuitive, easy, and as friction free as possible. Feature tracking on this seems valuable to know more about the reading habits of users using the text assistant and other AI features with unreviewed text.",
-      "whyNow": "Folks at office hours were a big fan of this idea, even though it does reduce usability. This is the same group that was on board with off-by-default for SDE safeguards, so to see them prioritize safety over usability here is quite telling of how important at least some folks in the community view this as.",
-      "epicFit": "Making progress on AI Text Assistant",
-      "internCandidate": false
-    }
-  },
-  {
-    "id": "7992424",
-    "title": "Personalization Station - Create editor card to highlight reconciliation issues",
-    "details": {
-      "problem": "From perspective of a doctor who has moved to a new organization: I have downloaded my SmartPhrases, but some build is missing. I don't understand what I need to do to fix it. This is especially difficult for large SmartPhrases that use a lot of SmartLinks.",
-      "ideaForSolution": "Improve the upload/download actions card in the SmartPhrase editor to highlight with clickable links which parts of the SmartPhrase need to be resolved.",
-      "characteristics": "Streamlines the process of resolving SmartPhrases.",
-      "whyNow": "Avoids confusion when build is removed from downloaded SmartPhrases.",
-      "epicFit": "Improves quality and helps an existing pain point, sets us up to improve finding build in the further future (e.g., relating to Peter Wei Lin or Tim's project).",
-      "success": "Feature track how often this card is interacted with, detect how many SmartPhrases have been marked as reviewed.",
-      "maintenance": "New UI to maintain, could be useful candidate for automated scripts.",
-      "internCandidate": false
-    }
-  },
-  {
-    "id": "5094667",
-    "title": "Handle SmartLink Parameters that Undergo Translation in Higher Versions but Not in Lower Versions",
-    "details": {
-      "problem": "As a customer builder, I am frustrated that SmartLink user parameters have issues when moved via Data Courier where the ID is converted to a CID, but fails to convert back. Further more, I am frustrated that copies of CERMSG (and other SmartLinks) don't automatically update the embedded record IDs, although that is a future problem to fix according to my Epic TS (QAN 4694963).",
-      "ideaForSolution": "It would be nice if we had a way to just use the original values I configure in cases where the Epic system doesn't know how to process the SmartLink user parameters.",
-      "characteristics": "Works automatically!",
-      "whyNow": "Makes development and customer support easier since custom handling doesn't need to be made for each affected SmartLinks, updates for customer created copies of these SmartLinks, etc. This is a pre-req needed for addressing QAN 4694963 which would fully automate Data Courier / Turbocharger dependency calculation, EMFI/DC/TC ID translation, etc which is where the biggest benefit will be seen.",
-      "epicFit": "Solving existing pain points, such as ideas frequently reported during immersion, submitted through ideas.epic.com, or from other forms of feedback. Other types of app team support.",
-      "smartToolsFit": "Tools we develop should be easy to build.",
-      "maintenance": "Overall a decrease for maintenance.",
-      "internCandidate": false
-    }
-  },
-  {
-    "id": "6360073",
-    "title": "Allow User To Switch Spell Check Language Ad-Hoc",
-    "details": {
-      "problem": "As a physician who is fluent in multiple languages, I meet with patients that speak a variety of languages. When I type out patient instructions for my patients, many words are marked as misspelled because spell checking only works for the default language used for the Epic system.",
-      "ideaForSolution": "If I could switch the language I use for spell checking on the fly I can entire the notes and letters I create include words that are spelled correctly.",
-      "characteristics": "Allow user specific default used across all SmartTextBoxes. Allow user level overrides for a given SmartTextBox (on the fly). Allow app teams to specify the language (via locale ID) building off of the change made in DLG 2127300.",
-      "whyNow": "We increasingly see more and more content being created across a variety of languages. Translation workflows are also becoming increasingly an area of focus for R&D.",
-      "success": "Feature tracking around users changing these settings, especially for the on the fly case.",
-      "maintenance": "Expected to be low since these would be user settings.",
-      "internCandidate": false
+      "problem": "Users that are fluent in multiple languages cannot use the text assistant on these multiple languages. For example, a clinician who is bilingual in English and Spanish will be blocked from running any prompt on Spanish text and cannot use the tool to assist in translation between English and Spanish.",
+      "whyNow": "Translation has been a highly requested feature and even demo'd at XGM years ago when we were first prototyping the text assistant. We've gotten many requests to allow this and instead have to have a conversation about why we safeguard against this use case, even for users who are qualified to do this type of translation work. Design 721091 outlines creating a new translation agent which is nearly complete. Now that are text assistant is being moved to Nebula and the agent infrastructure, we can build off of this. This takes care of the complexity for actually translating content well and means another team owns the prompt for how to do this translation. Design 727660 already handled the complexity for enhancing user security to add a new user language configuration field for what languages a user knows and if they are qualified to translate to these languages. Design 730122 already created a new tapestry specific submenu for translate that we could build off of. This means all the hard parts are already done! All that's left is plugging this in to the text assistant for clinical workflows and linking up to the new translation agent."
     }
   }
 ]
