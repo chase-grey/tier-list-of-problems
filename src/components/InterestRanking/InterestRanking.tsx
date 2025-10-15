@@ -135,7 +135,9 @@ const InterestRanking: React.FC<InterestRankingProps> = ({
     }
     
     // Randomize unsorted pitches to ensure more even data collection
-    columns['interest-unsorted'] = unsortedPitches.sort(() => Math.random() - 0.5);
+    // Make sure unsortedPitches is initialized properly to prevent runtime errors
+    columns['interest-unsorted'] = Array.isArray(unsortedPitches) ? 
+      unsortedPitches.sort(() => Math.random() - 0.5) : [];
     
     return columns;
   }, [pitchesForInterestStage, votes]);

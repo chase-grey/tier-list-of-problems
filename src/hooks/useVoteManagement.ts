@@ -198,7 +198,8 @@ export const useVoteManagement = (initialState: AppState) => {
       const defaultInterestLevel = mapTierToInterestLevel(tier);
       
       // Set the default interest level and use the same timestamp
-      const timestamp = vote.timestamp || new Date().getTime();
+      // Ensure vote exists and handle case where vote or timestamp might be undefined
+      const timestamp = vote && vote.timestamp ? vote.timestamp : new Date().getTime();
       dispatch({ 
         type: 'SET_INTEREST', 
         id: pitch.id, 

@@ -234,8 +234,15 @@ const AppContent: React.FC = () => {
     }
     
     // If switching to interest stage, set default interest levels for all cards
+    // But only do this if the user can access the interest stage and has completed priority ranking
     if (newStage === 'interest') {
-      setDefaultInterestLevels(pitches);
+      if (canAccessInterestStage && priorityStageComplete) {
+        setDefaultInterestLevels(pitches);
+      } else {
+        // If requirements aren't met, stay on priority stage and show an error
+        showSnackbar('You cannot access the interest stage until priority ranking is completed', 'error');
+        return;
+      }
     }
     
     // Set the new stage

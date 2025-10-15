@@ -57,7 +57,7 @@ const InterestColumn = ({
         }}
       >
         <Typography variant="subtitle1" sx={{ fontSize: '0.9rem' }}>
-          {label} ({pitches.length})
+          {label} ({Array.isArray(pitches) ? pitches.length : 0})
         </Typography>
       </Paper>
       
@@ -95,7 +95,7 @@ const InterestColumn = ({
               },
             }}
           >
-            {pitches.length === 0 && !snapshot.isDraggingOver && (
+            {(!Array.isArray(pitches) || pitches.length === 0) && !snapshot.isDraggingOver && (
               <Typography 
                 sx={{ 
                   textAlign: 'center', 
@@ -107,7 +107,7 @@ const InterestColumn = ({
               </Typography>
             )}
             
-            {pitches.map((pitch, index) => (
+            {Array.isArray(pitches) && pitches.map((pitch, index) => (
               <Draggable 
                 key={pitch.id} 
                 draggableId={pitch.id} 
