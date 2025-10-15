@@ -129,7 +129,18 @@ const InterestColumn = ({
               </Typography>
             )}
             
-            {Array.isArray(pitches) && pitches.filter(pitch => pitch && pitch.id).map((pitch, index) => (
+            {Array.isArray(pitches) && pitches.filter(pitch => {
+              // Additional error handling for invalid pitches
+              if (!pitch) {
+                console.error(`[DEBUG] Null or undefined pitch found in ${columnId} column`);
+                return false;
+              }
+              if (!pitch.id) {
+                console.error(`[DEBUG] Pitch without ID found in ${columnId} column:`, pitch.title || 'No title');
+                return false;
+              }
+              return true;
+            }).map((pitch, index) => (
               <Draggable 
                 key={pitch.id} 
                 draggableId={pitch.id} 
