@@ -1,5 +1,5 @@
 import React, { useEffect, memo, useState } from 'react';
-import { ThemeProvider, CssBaseline, Box } from '@mui/material';
+import { ThemeProvider, CssBaseline, Box, Typography } from '@mui/material';
 import { darkTheme } from '../theme';
 import { NameGate } from './NameGate/NameGate';
 import { TopBar } from './TopBar/TopBar';
@@ -17,7 +17,7 @@ import { useLocalStorage } from '../hooks/useLocalStorage';
 import { exportVotes } from '../utils/csv';
 import { isDevelopmentMode } from '../utils/testUtils';
 import type { DropResult } from '@hello-pangea/dnd';
-import type { AppState, Pitch, Vote, Appetite, Tier, InterestLevel } from '../types/models';
+import type { AppState, Pitch, Appetite, Tier, InterestLevel } from '../types/models';
 import { isContributorRole } from '../types/models';
 import { useVoteManagement } from '../hooks/useVoteManagement';
 
@@ -78,7 +78,7 @@ const AppContent: React.FC = () => {
   // Use our centralized vote management hook
   const {
     state,
-    dispatch,
+    // dispatch is not used directly
     setTier,
     setInterest,
     setAppetite,
@@ -125,7 +125,7 @@ const AppContent: React.FC = () => {
     appetiteCount,
     rankCount,
     interestCount,
-    minimumRequired,
+    // minimumRequired is not used directly
     isPriorityComplete,
     isInterestComplete 
   } = stats;
@@ -185,21 +185,39 @@ const AppContent: React.FC = () => {
 
   // Handle interest level change
   const handleInterestChange = (pitchId: string, interestLevel: InterestLevel) => {
-    setInterest(pitchId, interestLevel);
+    console.log(`[DEBUG] Setting interest level ${interestLevel} for pitch ${pitchId}`);
     
-    if (interestLevel === null) {
-      showSnackbar('Pitch moved to unsorted', 'info');
-    } else {
-      // Convert numeric interest level to descriptive label
-      const interestLabels = [
-        'Very Interested',      // Level 4
-        'Interested',           // Level 3
-        'Somewhat Interested',  // Level 2
-        'Not Interested'        // Level 1
-      ];
+    try {
+      // Find the pitch title for better logging
+      const pitch = pitches.find(p => p.id === pitchId);
+      const pitchTitle = pitch ? pitch.title.substring(0, 20) : 'unknown';
       
-      const levelIndex = 4 - interestLevel; // Convert from level (4-1) to index (0-3)
-      showSnackbar(`Interest level set to ${interestLabels[levelIndex]}`, 'info');
+      console.log(`[DEBUG] Interest change for "${pitchTitle}..."`, {
+        pitchId,
+        interestLevel,
+        previousLevel: state.votes[pitchId]?.interestLevel,
+        previousTier: state.votes[pitchId]?.tier
+      });
+      
+      // Set the interest level in state
+      setInterest(pitchId, interestLevel);
+      
+      if (interestLevel === null) {
+        showSnackbar('Pitch moved to unsorted', 'info');
+      } else {
+        // Convert numeric interest level to descriptive label
+        const interestLabels = [
+          'Very Interested',      // Level 4
+          'Interested',           // Level 3
+          'Somewhat Interested',  // Level 2
+          'Not Interested'        // Level 1
+        ];
+        
+        const levelIndex = 4 - interestLevel; // Convert from level (4-1) to index (0-3)
+        showSnackbar(`Interest level set to ${interestLabels[levelIndex]}`, 'info');
+      }
+    } catch (error) {
+      console.error('[DEBUG] Error handling interest change:', error);
     }
   };
   
@@ -219,11 +237,28 @@ const AppContent: React.FC = () => {
 
   // Toggle between priority and interest stages
   const handleStageChange = () => {
+    console.log('[DEBUG] Starting stage transition', {
+      currentStage: state.stage,
+      voterRole: state.voterRole,
+      canAccessInterestStage,
+      priorityStageComplete,
+      available: state.available,
+      votesCount: Object.keys(state.votes || {}).length,
+      pitchesCount: Array.isArray(pitches) ? pitches.length : 0
+    });
+
     // Toggle between stages
     const newStage = state.stage === 'priority' ? 'interest' : 'priority';
     
     // Only allow switching to interest stage if conditions are met
     if (newStage === 'interest' && (!canAccessInterestStage || !priorityStageComplete)) {
+      console.warn('[DEBUG] Interest stage transition blocked', { 
+        canAccessInterestStage, 
+        priorityStageComplete,
+        voterRole: state.voterRole,
+        available: state.available 
+      });
+      
       // Show appropriate error message
       if (!canAccessInterestStage) {
         showSnackbar('Only QM, developers, QM TLs, and dev TLs who have indicated availability can rank interest', 'error');
@@ -237,8 +272,15 @@ const AppContent: React.FC = () => {
     // But only do this if the user can access the interest stage and has completed priority ranking
     if (newStage === 'interest') {
       if (canAccessInterestStage && priorityStageComplete) {
+        console.log('[DEBUG] Setting default interest levels', { 
+          pitchCount: Array.isArray(pitches) ? pitches.length : 0 
+        });
         setDefaultInterestLevels(pitches);
       } else {
+        console.error('[DEBUG] Failed to set interest levels - requirements not met', { 
+          canAccessInterestStage, 
+          priorityStageComplete 
+        });
         // If requirements aren't met, stay on priority stage and show an error
         showSnackbar('You cannot access the interest stage until priority ranking is completed', 'error');
         return;
@@ -246,6 +288,7 @@ const AppContent: React.FC = () => {
     }
     
     // Set the new stage
+    console.log(`[DEBUG] Setting stage to ${newStage}`);
     setStage(newStage);
   };
 
@@ -382,12 +425,22 @@ const AppContent: React.FC = () => {
               userRole={state.voterRole}
             />
           ) : (
-            <InterestRanking
-              pitches={pitches}
-              votes={state.votes}
-              onSetInterest={handleInterestChange}
-              userRole={state.voterRole}
-            />
+            // Only render interest ranking if the user has access and priority stage is complete
+            canAccessInterestStage && priorityStageComplete ? (
+              <InterestRanking
+                pitches={Array.isArray(pitches) ? pitches : []}
+                votes={state.votes || {}}
+                onSetInterest={handleInterestChange}
+                userRole={state.voterRole}
+              />
+            ) : (
+              // If user somehow got to interest stage but shouldn't be there, show fallback UI
+              <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+                <Typography variant="h5" color="text.secondary">
+                  You need to complete priority ranking before accessing this section.
+                </Typography>
+              </Box>
+            )
           )}
                   
           {/* Help dialog */}

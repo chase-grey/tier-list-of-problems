@@ -49,13 +49,24 @@ const InterestRanking: React.FC<InterestRankingProps> = ({
   // Reference to the scrollable container
   const containerRef = useRef<HTMLDivElement>(null);
   
+  // Debug logging on component mount
+  useEffect(() => {
+    console.log('[DEBUG] InterestRanking component mounted', {
+      pitchesProvided: Array.isArray(pitches) ? pitches.length : 'not an array',
+      votesProvided: votes ? Object.keys(votes).length : 'null votes',
+      userRole
+    });
+  }, []);
+  
   // Setup enhanced drop detection for the container
   useEffect(() => {
     // Initialize enhanced drop detection
+    console.log('[DEBUG] Initializing enhanced drop detection');
     initEnhancedDropDetection();
     
     // Return cleanup function
     return () => {
+      console.log('[DEBUG] Cleaning up enhanced drop detection');
       cleanupEnhancedDropDetection();
     };
   }, []);
@@ -81,6 +92,8 @@ const InterestRanking: React.FC<InterestRankingProps> = ({
   
   // For each interest level, get pitches that have been assigned to it
   const interestColumns = React.useMemo(() => {
+    console.log('[DEBUG] Creating interest columns');
+    
     const columns: Record<string, Pitch[]> = {};
     
     // Add unsorted column
@@ -94,73 +107,189 @@ const InterestRanking: React.FC<InterestRankingProps> = ({
     // Create arrays to collect pitches for each column before randomizing
     const unsortedPitches: Pitch[] = [];
     
+    console.log('[DEBUG] Column initialization complete', { 
+      columnKeys: Object.keys(columns),
+      pitchesForInterestStage: Array.isArray(pitchesForInterestStage) ? pitchesForInterestStage.length : 'not an array' 
+    });
+    
     // Add pitches to their respective columns
-    pitchesForInterestStage.forEach(pitch => {
-      const interestLevel = votes[pitch.id]?.interestLevel;
-      const tier = votes[pitch.id]?.tier;
-
-      // If the pitch has an explicit interestLevel set (including null which means "unsorted"),
-      // respect that placement
-      if (interestLevel !== undefined) {
-        // If interestLevel is null, it was explicitly set to unsorted
-        if (interestLevel === null) {
-          unsortedPitches.push(pitch);
+    console.log('[DEBUG] Starting to assign pitches to columns');
+    
+    let processedCount = 0;
+    let errorCount = 0;
+    
+    pitchesForInterestStage.forEach((pitch, index) => {
+      try {
+        if (!pitch || !pitch.id) {
+          console.error(`[DEBUG] Invalid pitch at index ${index}`, pitch);
+          errorCount++;
           return;
         }
-        // Otherwise place in the appropriate interest level column
-        columns[`interest-${interestLevel}`].push(pitch);
-        return;
+        
+        const interestLevel = votes && pitch.id ? votes[pitch.id]?.interestLevel : undefined;
+        const tier = votes && pitch.id ? votes[pitch.id]?.tier : undefined;
+        
+        console.log(`[DEBUG] Processing pitch ${index}: ${pitch.title?.substring(0, 20)}...`, {
+          id: pitch.id,
+          interestLevel,
+          tier,
+          hasVote: votes && pitch.id ? !!votes[pitch.id] : false
+        });
+
+        // If the pitch has an explicit interestLevel set (including null which means "unsorted"),
+        // respect that placement
+        if (interestLevel !== undefined) {
+          // If interestLevel is null, it was explicitly set to unsorted
+          if (interestLevel === null) {
+            unsortedPitches.push(pitch);
+            console.log(`[DEBUG] Pitch ${pitch.id} placed in unsorted (explicit unsorted)`);
+            return;
+          }
+          // Otherwise place in the appropriate interest level column
+          columns[`interest-${interestLevel}`].push(pitch);
+          console.log(`[DEBUG] Pitch ${pitch.id} placed in interest level ${interestLevel} (explicit)`);
+          return;
+        }
+        
+        // If pitch has no tier (was unsorted in priority step), keep it unsorted in interest step
+        if (!tier) {
+          unsortedPitches.push(pitch);
+          console.log(`[DEBUG] Pitch ${pitch.id} placed in unsorted (no tier)`);
+          return;
+        }
+        
+        // If pitch has a tier but no interest level, default its interest level based on its priority tier
+        // Now using our centralized mapping function
+        const defaultInterestLevel = mapTierToInterestLevel(tier);
+        console.log(`[DEBUG] Mapped tier ${tier} to interest level ${defaultInterestLevel} for pitch ${pitch.id}`);
+        
+        // Handle the case where defaultInterestLevel could be null
+        if (defaultInterestLevel === null) {
+          // Put in unsorted if the mapping returns null
+          columns['interest-unsorted'].push(pitch);
+          console.log(`[DEBUG] Pitch ${pitch.id} placed in unsorted (null default interest)`);
+        } else {
+          // Otherwise put in the appropriate interest level column
+          const columnKey = `interest-${defaultInterestLevel}`;
+          if (columns[columnKey]) {
+            columns[columnKey].push(pitch);
+            console.log(`[DEBUG] Pitch ${pitch.id} placed in interest level ${defaultInterestLevel} (default)`);
+          } else {
+            console.error(`[DEBUG] Column not found for interest level ${defaultInterestLevel} for pitch ${pitch.id}`);
+            // Fallback to unsorted column
+            columns['interest-unsorted'].push(pitch);
+            console.log(`[DEBUG] Pitch ${pitch.id} placed in unsorted (fallback - column not found)`);
+          }
+        }
+        
+        processedCount++;
+      } catch (error) {
+        console.error(`[DEBUG] Error processing pitch at index ${index}:`, error);
+        errorCount++;
       }
-      
-      // If pitch has no tier (was unsorted in priority step), keep it unsorted in interest step
-      if (!tier) {
-        unsortedPitches.push(pitch);
-        return;
-      }
-      
-      // If pitch has a tier but no interest level, default its interest level based on its priority tier
-      // Now using our centralized mapping function
-      const defaultInterestLevel = mapTierToInterestLevel(tier);
-      columns[`interest-${defaultInterestLevel}`].push(pitch);
+    });
+    
+    console.log('[DEBUG] Finished assigning pitches to columns', {
+      processedCount,
+      errorCount,
+      unsortedCount: unsortedPitches.length
     });
     
     // Sort interest level columns by timestamp for consistent ordering
-    for (let i = 1; i <= 4; i++) {
-      const columnId = `interest-${i}`;
-      columns[columnId].sort((a, b) => {
-        const timestampA = votes[a.id]?.timestamp || 0;
-        const timestampB = votes[b.id]?.timestamp || 0;
-        return timestampA - timestampB;
-      });
+    console.log('[DEBUG] Sorting interest level columns by timestamp');
+    
+    try {
+      for (let i = 1; i <= 4; i++) {
+        const columnId = `interest-${i}`;
+        const columnPitches = columns[columnId];
+        
+        if (Array.isArray(columnPitches) && columnPitches.length > 0) {
+          columns[columnId].sort((a, b) => {
+            try {
+              const timestampA = votes && a && a.id ? (votes[a.id]?.timestamp || 0) : 0;
+              const timestampB = votes && b && b.id ? (votes[b.id]?.timestamp || 0) : 0;
+              return timestampA - timestampB;
+            } catch (error) {
+              console.error(`[DEBUG] Error sorting column ${columnId}:`, error);
+              return 0;
+            }
+          });
+          console.log(`[DEBUG] Sorted column ${columnId} with ${columns[columnId].length} pitches`);
+        } else {
+          console.log(`[DEBUG] Column ${columnId} has no pitches to sort`);
+        }
+      }
+    } catch (error) {
+      console.error('[DEBUG] Error during column sorting:', error);
     }
     
     // Randomize unsorted pitches to ensure more even data collection
     // Make sure unsortedPitches is initialized properly to prevent runtime errors
-    columns['interest-unsorted'] = Array.isArray(unsortedPitches) ? 
-      unsortedPitches.sort(() => Math.random() - 0.5) : [];
+    console.log('[DEBUG] Randomizing unsorted pitches', { 
+      unsortedPitchesIsArray: Array.isArray(unsortedPitches),
+      unsortedPitchesLength: Array.isArray(unsortedPitches) ? unsortedPitches.length : 'N/A' 
+    });
+    
+    try {
+      columns['interest-unsorted'] = Array.isArray(unsortedPitches) ? 
+        unsortedPitches.sort(() => Math.random() - 0.5) : [];
+    } catch (error) {
+      console.error('[DEBUG] Error randomizing unsorted pitches:', error);
+      columns['interest-unsorted'] = [];
+    }
+    
+    // Final column summary for debugging
+    console.log('[DEBUG] Final interest columns', {
+      'interest-unsorted': columns['interest-unsorted']?.length || 0,
+      'interest-1': columns['interest-1']?.length || 0,
+      'interest-2': columns['interest-2']?.length || 0,
+      'interest-3': columns['interest-3']?.length || 0,
+      'interest-4': columns['interest-4']?.length || 0,
+      totalPitches: [
+        ...(columns['interest-unsorted'] || []),
+        ...(columns['interest-1'] || []),
+        ...(columns['interest-2'] || []),
+        ...(columns['interest-3'] || []),
+        ...(columns['interest-4'] || [])
+      ].length
+    });
     
     return columns;
   }, [pitchesForInterestStage, votes]);
   
   const handleDragEnd = (result: DropResult) => {
-    const { destination, draggableId } = result;
+    console.log('[DEBUG] Drag ended', result);
+    
+    const { destination, draggableId, source } = result;
     
     // Drop outside valid area
-    if (!destination) return;
+    if (!destination) {
+      console.log('[DEBUG] Dropped outside valid area');
+      return;
+    }
     
     const destId = destination.droppableId;
+    console.log(`[DEBUG] Dropped in ${destId} (from ${source.droppableId})`);
     
-    // If dropped in unsorted column
-    if (destId === 'interest-unsorted') {
-      // Use null to unset the interest level - the App component will handle it with the proper action
-      onSetInterest(draggableId, null);
-    }
-    // If dropped in an interest level column
-    else if (destId.startsWith('interest-')) {
-      const interestLevel = parseInt(destId.replace('interest-', '')) as InterestLevel;
-      
-      // Update the interest level for this pitch
-      onSetInterest(draggableId, interestLevel);
+    try {
+      // If dropped in unsorted column
+      if (destId === 'interest-unsorted') {
+        console.log(`[DEBUG] Setting interest level to null for pitch ${draggableId}`);
+        // Use null to unset the interest level - the App component will handle it with the proper action
+        onSetInterest(draggableId, null);
+      }
+      // If dropped in an interest level column
+      else if (destId.startsWith('interest-')) {
+        const interestLevel = parseInt(destId.replace('interest-', '')) as InterestLevel;
+        console.log(`[DEBUG] Setting interest level to ${interestLevel} for pitch ${draggableId}`);
+        
+        // Update the interest level for this pitch
+        onSetInterest(draggableId, interestLevel);
+      } else {
+        console.warn(`[DEBUG] Dropped in unknown destination: ${destId}`);
+      }
+    } catch (error) {
+      console.error('[DEBUG] Error handling drag end:', error);
     }
   };
   

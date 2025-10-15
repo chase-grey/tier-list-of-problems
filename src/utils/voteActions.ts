@@ -10,16 +10,20 @@ import type { Appetite, InterestLevel, Tier } from '../types/models';
  * This was duplicated across App.tsx and InterestRanking.tsx
  */
 export const mapTierToInterestLevel = (tier: Tier): InterestLevel => {
-  if (tier === 1) return 4;      // Tier 1 → Very Interested
-  else if (tier === 2) return 3; // Tier 2 → Interested
-  else if (tier === 3) return 2; // Tier 3 → Somewhat Interested
-  else return 1;                 // Tier 4 → Not Interested
+  if (tier === null) return null;  // Null tier → Null interest (unsorted)
+  else if (tier === 1) return 4;   // Tier 1 → Very Interested
+  else if (tier === 2) return 3;   // Tier 2 → Interested
+  else if (tier === 3) return 2;   // Tier 3 → Somewhat Interested
+  else return 1;                  // Tier 4 → Not Interested
 };
 
 /**
  * Converts an interest level to a human-readable label
  */
 export const getInterestLevelLabel = (interestLevel: InterestLevel): string => {
+  // Handle null case
+  if (interestLevel === null) return 'Unsorted';
+  
   const interestLabels = [
     'Very Interested',      // Level 4
     'Interested',           // Level 3

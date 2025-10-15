@@ -29,12 +29,34 @@ const InterestColumn = ({
 }: InterestColumnProps) => {
   const columnRef = useRef<HTMLDivElement>(null);
   
+  // Debug logging on component mount
+  useEffect(() => {
+    console.log(`[DEBUG] InterestColumn '${columnId}' mounted`, {
+      pitchesProvided: Array.isArray(pitches) ? pitches.length : 'not an array',
+      validPitches: Array.isArray(pitches) ? pitches.filter(p => p && p.id).length : 0,
+      votesProvided: votes ? Object.keys(votes).length : 'null votes',
+      label,
+      userRole
+    });
+  }, []);
+  
   // Register this column with the enhanced drop detection system
   useEffect(() => {
     if (columnRef.current) {
+      console.log(`[DEBUG] Registering droppable for column '${columnId}'`);
       registerDroppable(columnId, columnRef.current);
+    } else {
+      console.warn(`[DEBUG] Could not register droppable for column '${columnId}' - no ref`); 
     }
   }, [columnId]);
+  
+  // Debug when pitches change
+  useEffect(() => {
+    console.log(`[DEBUG] Pitches changed for column '${columnId}'`, {
+      count: Array.isArray(pitches) ? pitches.length : 'not an array',
+      validCount: Array.isArray(pitches) ? pitches.filter(p => p && p.id).length : 0
+    });
+  }, [pitches]);
   
   return (
     <Box 
@@ -107,7 +129,7 @@ const InterestColumn = ({
               </Typography>
             )}
             
-            {Array.isArray(pitches) && pitches.map((pitch, index) => (
+            {Array.isArray(pitches) && pitches.filter(pitch => pitch && pitch.id).map((pitch, index) => (
               <Draggable 
                 key={pitch.id} 
                 draggableId={pitch.id} 
@@ -160,7 +182,7 @@ const InterestColumn = ({
                       </Typography>
                       
                       {/* Info button reference passed from parent */}
-                      <InterestCardInfoButton pitch={pitch} vote={votes[pitch.id]} userRole={userRole} />
+                      <InterestCardInfoButton pitch={pitch} vote={votes && pitch && pitch.id ? votes[pitch.id] : undefined} userRole={userRole} />
                     </Box>
                   </Paper>
                 )}

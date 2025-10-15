@@ -177,53 +177,136 @@ export const useVoteManagement = (initialState: AppState) => {
 
   // Helper function to map tiers to interest levels
   const mapTierToInterestLevel = (tier: Tier): InterestLevel => {
-    if (tier === 1) return 4;      // Tier 1 → Very Interested
-    else if (tier === 2) return 3; // Tier 2 → Interested
-    else if (tier === 3) return 2; // Tier 3 → Somewhat Interested
-    else return 1;                 // Tier 4 → Not Interested
+    if (tier === null) return null;  // Null tier → Null interest (unsorted)
+    else if (tier === 1) return 4;   // Tier 1 → Very Interested
+    else if (tier === 2) return 3;   // Tier 2 → Interested
+    else if (tier === 3) return 2;   // Tier 3 → Somewhat Interested
+    else return 1;                  // Tier 4 → Not Interested
   };
 
   // Helper function to set default interest levels based on tiers
   const setDefaultInterestLevels = (pitches: Pitch[]) => {
-    pitches.forEach(pitch => {
-      const vote = state.votes[pitch.id];
-      const tier = vote?.tier;
-      
-      // Skip if no tier or already has interest level
-      if (!tier || vote?.interestLevel) {
-        return;
-      }
-      
-      // Map tier to default interest level
-      const defaultInterestLevel = mapTierToInterestLevel(tier);
-      
-      // Set the default interest level and use the same timestamp
-      // Ensure vote exists and handle case where vote or timestamp might be undefined
-      const timestamp = vote && vote.timestamp ? vote.timestamp : new Date().getTime();
-      dispatch({ 
-        type: 'SET_INTEREST', 
-        id: pitch.id, 
-        interestLevel: defaultInterestLevel,
-        timestamp 
-      });
+    console.log('[DEBUG] setDefaultInterestLevels called', {
+      pitchesProvided: pitches ? (Array.isArray(pitches) ? pitches.length : 'not an array') : 'undefined',
+      votesCount: state.votes ? Object.keys(state.votes).length : 0
     });
+    
+    if (!Array.isArray(pitches)) {
+      console.error('[DEBUG] setDefaultInterestLevels: pitches is not an array');
+      return;
+    }
+    
+    try {
+      let processedCount = 0;
+      let skippedCount = 0;
+      let mappedCount = 0;
+      let errorCount = 0;
+      
+      // Process all pitches
+      pitches.forEach((pitch, index) => {
+        try {
+          // Skip if pitch doesn't exist or has no ID
+          if (!pitch || !pitch.id) {
+            console.warn(`[DEBUG] setDefaultInterestLevels: invalid pitch object at index ${index}`);
+            skippedCount++;
+            return;
+          }
+          
+          console.log(`[DEBUG] Processing pitch ${index}: ${pitch.title?.substring(0, 20)}...`, {
+            id: pitch.id
+          });
+          
+          const vote = state.votes ? state.votes[pitch.id] : undefined;
+          const tier = vote?.tier;
+          
+          // Skip if no tier or already has interest level
+          if (tier === undefined || tier === null) {
+            console.log(`[DEBUG] Skipping pitch ${pitch.id}: no tier assigned`);
+            skippedCount++;
+            return;
+          }
+          
+          if (vote?.interestLevel !== undefined) {
+            console.log(`[DEBUG] Skipping pitch ${pitch.id}: interest level already set to ${vote.interestLevel}`);
+            skippedCount++;
+            return;
+          }
+          
+          // Map tier to default interest level
+          const defaultInterestLevel = mapTierToInterestLevel(tier);
+          console.log(`[DEBUG] Mapped tier ${tier} to interest level ${defaultInterestLevel} for pitch ${pitch.id}`);
+          
+          // Only set an interest level if the mapping produced a valid result
+          if (defaultInterestLevel !== null) {
+            // Set the default interest level and use the same timestamp
+            const timestamp = vote && vote.timestamp ? vote.timestamp : new Date().getTime();
+            console.log(`[DEBUG] Setting interest level ${defaultInterestLevel} for pitch ${pitch.id} with timestamp ${timestamp}`);
+            
+            dispatch({ 
+              type: 'SET_INTEREST', 
+              id: pitch.id, 
+              interestLevel: defaultInterestLevel,
+              timestamp 
+            });
+            
+            mappedCount++;
+          } else {
+            console.warn(`[DEBUG] Mapping returned null for pitch ${pitch.id} with tier ${tier}`);
+            skippedCount++;
+          }
+          
+          processedCount++;
+        } catch (error) {
+          console.error(`[DEBUG] Error processing pitch at index ${index}:`, error);
+          errorCount++;
+        }
+      });
+      
+      console.log('[DEBUG] setDefaultInterestLevels completed', {
+        totalPitches: pitches.length,
+        processedCount,
+        mappedCount,
+        skippedCount,
+        errorCount
+      });
+      
+    } catch (error) {
+      console.error('[DEBUG] Error setting default interest levels:', error);
+    }
   };
 
   // Analytics functions
   const getCompletionStats = (pitches: Pitch[]) => {
+    // Ensure pitches is an array
+    if (!Array.isArray(pitches)) {
+      console.error('getCompletionStats: pitches is not an array');
+      return {
+        total: 0,
+        appetiteCount: 0,
+        rankCount: 0,
+        interestCount: 0,
+        minimumRequired: 0,
+        isPriorityComplete: false,
+        isInterestComplete: false
+      };
+    }
+
     const totalCount = pitches.length;
-    const appetiteCount = Object.values(state.votes).filter(v => v.appetite).length;
-    const rankCount = Object.values(state.votes).filter(v => v.tier).length;
-    const interestCount = Object.values(state.votes).filter(v => v.interestLevel !== undefined).length;
+    const votes = state.votes || {};
+    const appetiteCount = Object.values(votes).filter(v => v && v.appetite).length;
+    const rankCount = Object.values(votes).filter(v => v && v.tier).length;
+    const interestCount = Object.values(votes).filter(v => v && v.interestLevel !== undefined).length;
+    
+    const minimumRequired = Math.ceil(totalCount / 2);
     
     return {
       total: totalCount,
       appetiteCount,
       rankCount,
       interestCount,
-      minimumRequired: Math.ceil(totalCount / 2),
-      isPriorityComplete: appetiteCount >= Math.ceil(totalCount / 2) && rankCount >= Math.ceil(totalCount / 2),
-      isInterestComplete: interestCount >= Math.ceil(totalCount / 2)
+      minimumRequired,
+      isPriorityComplete: appetiteCount >= minimumRequired && rankCount >= minimumRequired,
+      isInterestComplete: interestCount >= minimumRequired
     };
   };
 
