@@ -80,7 +80,7 @@ const InterestRanking: React.FC<InterestRankingProps> = ({
     }
     
     // Filter out any invalid pitches (those without an id)
-    const validPitches = pitches.filter(p => p && p.id);
+    const validPitches = pitches.filter(p => p && (p.id !== undefined && p.id !== null));
     console.log(`[DEBUG] Found ${validPitches.length}/${pitches.length} valid pitches`);
     
     // Sort the valid pitches

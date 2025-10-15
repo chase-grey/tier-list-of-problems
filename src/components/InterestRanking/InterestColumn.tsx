@@ -28,39 +28,39 @@ const InterestColumn = ({
   userRole
 }: InterestColumnProps) => {
   const columnRef = useRef<HTMLDivElement>(null);
-  
+
   // Debug logging on component mount
   useEffect(() => {
     console.log(`[DEBUG] InterestColumn '${columnId}' mounted`, {
       pitchesProvided: Array.isArray(pitches) ? pitches.length : 'not an array',
-      validPitches: Array.isArray(pitches) ? pitches.filter(p => p && p.id).length : 0,
+      validPitches: Array.isArray(pitches) ? pitches.filter(p => p && (p.id !== undefined && p.id !== null)).length : 0,
       votesProvided: votes ? Object.keys(votes).length : 'null votes',
       label,
       userRole
     });
   }, []);
-  
+
   // Register this column with the enhanced drop detection system
   useEffect(() => {
     if (columnRef.current) {
       console.log(`[DEBUG] Registering droppable for column '${columnId}'`);
       registerDroppable(columnId, columnRef.current);
     } else {
-      console.warn(`[DEBUG] Could not register droppable for column '${columnId}' - no ref`); 
+      console.warn(`[DEBUG] Could not register droppable for column '${columnId}' - no ref`);
     }
   }, [columnId]);
-  
+
   // Debug when pitches change
   useEffect(() => {
     console.log(`[DEBUG] Pitches changed for column '${columnId}'`, {
       count: Array.isArray(pitches) ? pitches.length : 'not an array',
-      validCount: Array.isArray(pitches) ? pitches.filter(p => p && p.id).length : 0
+      validCount: Array.isArray(pitches) ? pitches.filter(p => p && (p.id !== undefined && p.id !== null)).length : 0
     });
   }, [pitches]);
-  
+
   return (
-    <Box 
-      sx={{ 
+    <Box
+      sx={{
         height: '100%',
         display: 'flex',
         flexDirection: 'column'
@@ -68,7 +68,7 @@ const InterestColumn = ({
       data-column-id={columnId}
     >
       {/* Column header */}
-      <Paper 
+      <Paper
         sx={{
           p: 0.75,
           mb: 1,
@@ -82,7 +82,7 @@ const InterestColumn = ({
           {label} ({Array.isArray(pitches) ? pitches.length : 0})
         </Typography>
       </Paper>
-      
+
       {/* Droppable area */}
       <Droppable droppableId={columnId}>
         {(provided: DroppableProvided, snapshot: DroppableStateSnapshot) => (
@@ -95,13 +95,13 @@ const InterestColumn = ({
             sx={{
               p: 1,
               flexGrow: 1,
-              backgroundColor: snapshot.isDraggingOver 
-                ? 'action.hover' 
+              backgroundColor: snapshot.isDraggingOver
+                ? 'action.hover'
                 : 'background.paper',
               overflowY: 'auto',
               transition: 'background-color 0.2s ease',
-              border: pitches.length === 0 
-                ? '2px dashed rgba(255,255,255,0.2)' 
+              border: pitches.length === 0
+                ? '2px dashed rgba(255,255,255,0.2)'
                 : 'none',
               display: 'flex',
               flexDirection: 'column',
@@ -118,32 +118,32 @@ const InterestColumn = ({
             }}
           >
             {(!Array.isArray(pitches) || pitches.length === 0) && !snapshot.isDraggingOver && (
-              <Typography 
-                sx={{ 
-                  textAlign: 'center', 
+              <Typography
+                sx={{
+                  textAlign: 'center',
                   color: 'text.secondary',
-                  py: 2 
+                  py: 2
                 }}
               >
                 Drop cards here
               </Typography>
             )}
-            
+
             {Array.isArray(pitches) && pitches.filter(pitch => {
               // Additional error handling for invalid pitches
               if (!pitch) {
                 console.error(`[DEBUG] Null or undefined pitch found in ${columnId} column`);
                 return false;
               }
-              if (!pitch.id) {
+              if (pitch.id === undefined || pitch.id === null) {
                 console.error(`[DEBUG] Pitch without ID found in ${columnId} column:`, pitch.title || 'No title');
                 return false;
               }
               return true;
             }).map((pitch, index) => (
-              <Draggable 
-                key={pitch.id} 
-                draggableId={pitch.id} 
+              <Draggable
+                key={pitch.id}
+                draggableId={pitch.id}
                 index={index}
               >
                 {(provided, snapshot) => (
@@ -176,9 +176,9 @@ const InterestColumn = ({
                   >
                     {/* Top section with title and info button */}
                     <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexGrow: 1 }}>
-                      <Typography 
-                        variant="subtitle2" 
-                        sx={{ 
+                      <Typography
+                        variant="subtitle2"
+                        sx={{
                           mr: 1,
                           // Ensure text wraps to avoid overflow
                           overflowWrap: 'break-word',
@@ -191,7 +191,7 @@ const InterestColumn = ({
                       >
                         {pitch.title}
                       </Typography>
-                      
+
                       {/* Info button reference passed from parent */}
                       <InterestCardInfoButton pitch={pitch} vote={votes && pitch && pitch.id ? votes[pitch.id] : undefined} userRole={userRole} />
                     </Box>
@@ -211,25 +211,25 @@ const InterestColumn = ({
 const InterestCardInfoButton = ({ pitch, vote, userRole }: { pitch: Pitch; vote?: Vote; userRole?: string | null }) => {
   const buttonRef = React.useRef<HTMLButtonElement>(null);
   const [detailsOpen, setDetailsOpen] = React.useState(false);
-  
+
   const handleInfoButtonClick = (event: React.MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation();
     setDetailsOpen(true);
   };
-  
+
   const handleCloseDetails = () => {
     setDetailsOpen(false);
   };
-  
+
   return (
     <>
       <Tooltip title="View details">
-        <IconButton 
+        <IconButton
           ref={buttonRef}
-          size="small" 
+          size="small"
           onClick={handleInfoButtonClick}
           aria-label="View pitch details"
-          sx={{ 
+          sx={{
             color: 'primary.main',
             p: 0.5,
             mt: -0.5,
@@ -242,10 +242,10 @@ const InterestCardInfoButton = ({ pitch, vote, userRole }: { pitch: Pitch; vote?
           <InfoOutlined fontSize="small" />
         </IconButton>
       </Tooltip>
-      
+
       {/* Only render the details bubble when open - fixes the positioning bug */}
       {detailsOpen && (
-        <InterestDetailsBubble 
+        <InterestDetailsBubble
           pitch={pitch}
           vote={vote}
           anchorEl={buttonRef.current}
