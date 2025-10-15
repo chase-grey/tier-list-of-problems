@@ -51,8 +51,8 @@ const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose, userRole }) => {
           Step 1: Rank Problems by Priority
         </Typography>
         <Typography variant="body1" paragraph>
-          Drag each problem card into one of the eight tier columns based on how important you think it is to solve in this next version.
-          The tiers range from "Highest Priority" (Tier 1) to "Not a Priority" (Tier 8).
+          Drag each problem card into one of the four tier columns based on how important you think it is to solve in this next version.
+          The tiers range from "Highest Priority" (Tier 1) to "Not a Priority" (Tier 4).
         </Typography>
         <Typography variant="body1" paragraph sx={{ fontWeight: 'medium', color: 'primary.main' }}>
           You need to rank at least 50% of the problems to submit your feedback. However, ranking more helps our team make more informed decisions about what to work on next.
@@ -104,7 +104,7 @@ const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose, userRole }) => {
             </Typography>
             
             <Typography variant="body1" gutterBottom>
-              Drag each problem card into one of eight interest level columns, ranging from "Extremely Interested" to "Not Interested".
+              Drag each problem card into one of four interest level columns, ranging from "Very Interested" to "Not Interested".
             </Typography>
             <Typography variant="body1" paragraph sx={{ fontWeight: 'medium', color: 'primary.main' }}>
               You need to set your interest levels for at least 50% of the problems to submit your feedback. The more data you provide, the better we can match folks to their interests.
@@ -135,7 +135,7 @@ const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose, userRole }) => {
             <Typography 
               variant="body2" 
               component="a" 
-              href="https://epic1.sharepoint.com/:f:/s/SmartTools-Docs/EodUOVUDhwxKhuMUK3OeY2IBV_dj5j41GYqsqgu45MMEmQ?e=BYGkur"
+              href="https://epic1.sharepoint.com/:f:/s/SmartTools-Docs/Ejf7LBmWxQlLtges9A_BXDIBCzgQXNaHzM6VrjbC8C5cfw?e=LS8vvb"
               target="_blank"
               rel="noopener noreferrer"
               sx={{ 
@@ -147,7 +147,7 @@ const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose, userRole }) => {
                 }
               }}
             >
-              https://epic1.sharepoint.com/:f:/s/SmartTools-Docs/EodUOVUDhwxKhuMUK3OeY2IBV_dj5j41GYqsqgu45MMEmQ?e=BYGkur
+              https://epic1.sharepoint.com/:f:/s/SmartTools-Docs/Ejf7LBmWxQlLtges9A_BXDIBCzgQXNaHzM6VrjbC8C5cfw?e=LS8vvb
             </Typography>
           </Box>
         )}

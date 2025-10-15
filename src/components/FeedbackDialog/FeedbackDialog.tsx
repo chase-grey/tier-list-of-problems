@@ -86,7 +86,7 @@ export const FeedbackDialog: React.FC<FeedbackDialogProps> = ({ open, onClose, o
           {isCustomer ? (
             <>After downloading, please email your CSV file to Chase Grey (cgrey@epic.com).</>
           ) : (
-            <>After downloading, please save your CSV file to <Link href="https://epic1.sharepoint.com/:f:/s/SmartTools-Docs/EodUOVUDhwxKhuMUK3OeY2IBV_dj5j41GYqsqgu45MMEmQ?e=BYGkur" target="_blank" rel="noopener noreferrer">this SharePoint site</Link> using your full name as the filename, or email it to cgrey@epic.com.</>
+            <>After downloading, please save your CSV file to <Link href="https://epic1.sharepoint.com/:f:/s/SmartTools-Docs/Ejf7LBmWxQlLtges9A_BXDIBCzgQXNaHzM6VrjbC8C5cfw?e=9NMzx4" target="_blank" rel="noopener noreferrer">this SharePoint site</Link> using your full name as the filename, or email it to cgrey@epic.com.</>
           )}
         </Typography>
         <Box sx={{ py: 2 }}>
