@@ -3,6 +3,8 @@ import { Box, Button, Fab, Tooltip, Dialog, DialogTitle, DialogContent, DialogAc
 import { AutoFixHigh as AutoFillIcon } from '@mui/icons-material';
 import { generateRandomVotes } from '../utils/testUtils';
 
+const DEBUG_CYCLE_OVERRIDE_KEY = 'polling.debugCycleId';
+
 interface DevAutoPopulateProps {
   onPopulate: (name: string, votes: Record<string, any>, complete?: boolean) => void;
   pitchIds: string[];
@@ -15,6 +17,13 @@ const DevAutoPopulate: React.FC<DevAutoPopulateProps> = ({ onPopulate, pitchIds 
   const [open, setOpen] = React.useState(false);
   const [name, setName] = React.useState('Test User');
   const [mode, setMode] = React.useState('complete');
+  const [cycleOverride, setCycleOverride] = React.useState(() => {
+    try {
+      return localStorage.getItem(DEBUG_CYCLE_OVERRIDE_KEY) || '';
+    } catch {
+      return '';
+    }
+  });
   
   const handleOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);
@@ -62,6 +71,59 @@ const DevAutoPopulate: React.FC<DevAutoPopulateProps> = ({ onPopulate, pitchIds 
     handleClose();
   };
 
+  const incrementQuarter = (cycleId: string): string | null => {
+    const match = /^([0-9]{4})Q([1-4])$/.exec(cycleId);
+    if (!match) return null;
+
+    const year = Number(match[1]);
+    const quarter = Number(match[2]);
+
+    if (!Number.isFinite(year) || !Number.isFinite(quarter)) return null;
+
+    if (quarter < 4) {
+      return `${year}Q${quarter + 1}`;
+    }
+
+    return `${year + 1}Q1`;
+  };
+
+  const getBaseCycleId = (): string => {
+    const override = cycleOverride.trim();
+    if (override) return override;
+
+    return import.meta.env.VITE_POLLING_CYCLE_ID || '';
+  };
+
+  const handleApplyCycleOverride = () => {
+    const next = cycleOverride.trim();
+
+    try {
+      if (next) {
+        localStorage.setItem(DEBUG_CYCLE_OVERRIDE_KEY, next);
+      } else {
+        localStorage.removeItem(DEBUG_CYCLE_OVERRIDE_KEY);
+      }
+    } catch {
+      return;
+    }
+
+    window.location.reload();
+  };
+
+  const handleIncrementQuarter = () => {
+    const base = getBaseCycleId();
+    const next = incrementQuarter(base);
+    if (!next) return;
+
+    try {
+      localStorage.setItem(DEBUG_CYCLE_OVERRIDE_KEY, next);
+    } catch {
+      return;
+    }
+
+    window.location.reload();
+  };
+
   return (
     <>
       <Tooltip title="Auto-Populate (Dev Only)">
@@ -87,6 +149,25 @@ const DevAutoPopulate: React.FC<DevAutoPopulateProps> = ({ onPopulate, pitchIds 
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
               This development-only tool will set a test name and auto-populate votes.
             </Typography>
+
+            <TextField
+              label="Polling Cycle Override (Dev Only)"
+              value={cycleOverride}
+              onChange={(e) => setCycleOverride(e.target.value)}
+              fullWidth
+              margin="normal"
+              placeholder={import.meta.env.VITE_POLLING_CYCLE_ID || '2026Q1'}
+              helperText="Leave blank to use VITE_POLLING_CYCLE_ID. Example: 2026Q1. Changing this will reload the page."
+            />
+
+            <Box sx={{ display: 'flex', gap: 1, mt: 1, mb: 2 }}>
+              <Button onClick={handleApplyCycleOverride} variant="outlined">
+                Apply Cycle
+              </Button>
+              <Button onClick={handleIncrementQuarter} variant="outlined">
+                Increment Quarter
+              </Button>
+            </Box>
             
             <TextField
               label="Test Name"

@@ -25,6 +25,15 @@ export const isApiConfigured = (): boolean => {
 };
 
 export const getPollingCycleId = (): string => {
+  if (import.meta.env.DEV && typeof window !== 'undefined') {
+    try {
+      const override = window.localStorage.getItem('polling.debugCycleId');
+      if (override) return override;
+    } catch {
+      // ignore
+    }
+  }
+
   return import.meta.env.VITE_POLLING_CYCLE_ID || '';
 };
 
