@@ -25,7 +25,7 @@ export function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T 
         const parsedItem = JSON.parse(item);
         
         // Handle migration from old AppState to new AppState with voterRole
-        if (key === 'polling.appState') {
+        if (key.startsWith('polling.') && key.endsWith('.appState')) {
           // Check if we need to do a schema migration
           if (parsedItem && typeof parsedItem === 'object') {
             // Check if it has the required voterRole field

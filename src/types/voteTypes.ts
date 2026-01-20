@@ -1,4 +1,4 @@
-import { AppState, Appetite, InterestLevel, Tier } from './models';
+import type { AppState, Appetite, InterestLevel, Tier } from './models';
 
 // Define action types in a more structured way
 export type VoteAction = 

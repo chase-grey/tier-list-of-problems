@@ -1,4 +1,4 @@
-import React, { useEffect, memo, useState } from 'react';
+import React, { useEffect, memo, useState, useMemo } from 'react';
 import { ThemeProvider, CssBaseline, Box, Typography } from '@mui/material';
 import { darkTheme } from '../theme';
 import { NameGate } from './NameGate/NameGate';
@@ -20,6 +20,8 @@ import type { DropResult } from '@hello-pangea/dnd';
 import type { AppState, Pitch, Appetite, Tier, InterestLevel } from '../types/models';
 import { isContributorRole } from '../types/models';
 import { useVoteManagement } from '../hooks/useVoteManagement';
+import { getPollingCycleId } from '../utils/config';
+import { buildPollingKey, cleanupPollingStorageOnCycleChange, getEffectivePollingCycleId } from '../utils/pollingStorage';
 
 // Import pitch data
 import pitchesData from '../assets/pitches.json';
@@ -48,12 +50,22 @@ const AppContent: React.FC = () => {
   // Get pitches from JSON
   const pitches = pitchesData as Pitch[];
   const TOTAL = pitches.length;
+
+  const pollingCycleId = useMemo(() => getEffectivePollingCycleId(getPollingCycleId(), pitches), [pitches]);
+
+  useEffect(() => {
+    cleanupPollingStorageOnCycleChange(pollingCycleId);
+  }, [pollingCycleId]);
+
+  const appStateStorageKey = buildPollingKey(pollingCycleId, 'appState');
+  const voterNameStorageKey = buildPollingKey(pollingCycleId, 'voterName');
+  const voterRoleStorageKey = buildPollingKey(pollingCycleId, 'voterRole');
   
   // Use localStorage for persistence with a safety wrapper
   const [savedState, setSavedState] = (() => {
     try {
       // Try to use the normal localStorage hook
-      return useLocalStorage<AppState>('polling.appState', initialState);
+      return useLocalStorage<AppState>(appStateStorageKey, initialState);
     } catch (error) {
       // If localStorage fails completely, use a fallback implementation
       console.error('LocalStorage error, using initial state:', error);
@@ -106,12 +118,12 @@ const AppContent: React.FC = () => {
   // Additionally store the voter name in a separate key as per spec ('polling.voterName')
   useEffect(() => {
     if (state.voterName) {
-      localStorage.setItem('polling.voterName', state.voterName);
+      localStorage.setItem(voterNameStorageKey, state.voterName);
       if (state.voterRole) {
-        localStorage.setItem('polling.voterRole', state.voterRole);
+        localStorage.setItem(voterRoleStorageKey, state.voterRole);
       }
     }
-  }, [state.voterName, state.voterRole]);
+  }, [state.voterName, state.voterRole, voterNameStorageKey, voterRoleStorageKey]);
   
   // Sync pitches with votes on initial load or when pitches change
   useEffect(() => {

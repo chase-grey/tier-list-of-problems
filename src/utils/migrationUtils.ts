@@ -3,6 +3,8 @@
  */
 import type { Vote } from '../types/models';
 import { submitVotes, getCsrfToken } from '../services/api';
+import { getPollingCycleId } from './config';
+import { buildPollingKey, getStoredPollingCycleId } from './pollingStorage';
 
 /**
  * Migrate local storage votes to the backend API
@@ -47,7 +49,9 @@ export async function migrateLocalStorageToApi(
  */
 export function shouldMigrateVotes(localVotes: Record<string, Vote>): boolean {
   // If there are local votes and migration hasn't been performed
-  const migrationCompleted = localStorage.getItem('polling.migrationCompleted') === 'true';
+  const cycleId = getPollingCycleId() || getStoredPollingCycleId();
+  const migrationCompletedKey = buildPollingKey(cycleId, 'migrationCompleted');
+  const migrationCompleted = localStorage.getItem(migrationCompletedKey) === 'true';
   const hasLocalVotes = Object.keys(localVotes).length > 0;
   
   return hasLocalVotes && !migrationCompleted;
@@ -57,5 +61,7 @@ export function shouldMigrateVotes(localVotes: Record<string, Vote>): boolean {
  * Mark migration as completed
  */
 export function markMigrationComplete(): void {
-  localStorage.setItem('polling.migrationCompleted', 'true');
+  const cycleId = getPollingCycleId() || getStoredPollingCycleId();
+  const migrationCompletedKey = buildPollingKey(cycleId, 'migrationCompleted');
+  localStorage.setItem(migrationCompletedKey, 'true');
 }

@@ -24,6 +24,10 @@ export const isApiConfigured = (): boolean => {
   return !!import.meta.env.VITE_API_URL;
 };
 
+export const getPollingCycleId = (): string => {
+  return import.meta.env.VITE_POLLING_CYCLE_ID || '';
+};
+
 /**
  * Configuration object
  */
