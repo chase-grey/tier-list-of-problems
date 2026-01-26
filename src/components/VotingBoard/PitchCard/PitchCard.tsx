@@ -65,8 +65,8 @@ const PitchCard = ({ pitch, vote, index, onSendToBottom, userRole }: PitchCardPr
           elevation={snapshot.isDragging ? 6 : 1}
           onKeyDown={handleKeyDown}
           sx={{
-            p: 1,
-            mb: 0.75,
+            p: 0.75,
+            mb: 0,
             backgroundColor: (theme) =>
               theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.03)',
             transition: snapshot.isDragging ? 'none' : 'background-color 0.2s ease, box-shadow 0.2s ease',
@@ -79,7 +79,7 @@ const PitchCard = ({ pitch, vote, index, onSendToBottom, userRole }: PitchCardPr
               cursor: 'grabbing',
             },
             position: 'relative',
-            minHeight: '96px',
+            minHeight: '88px',
           }}
           role="button"
           tabIndex={0}
@@ -187,15 +187,16 @@ const PitchCard = ({ pitch, vote, index, onSendToBottom, userRole }: PitchCardPr
             </Box>
           </Box>
 
-          {/* Details bubble, loaded lazily */}
-          <React.Suspense fallback={<div />}>
-            <DetailsBubble 
-              pitch={pitch}
-              anchorEl={detailsAnchor}
-              onClose={handleCloseDetails}
-              userRole={userRole}
-            />
-          </React.Suspense>
+          {detailsAnchor && (
+            <React.Suspense fallback={<div />}>
+              <DetailsBubble 
+                pitch={pitch}
+                anchorEl={detailsAnchor}
+                onClose={handleCloseDetails}
+                userRole={userRole}
+              />
+            </React.Suspense>
+          )}
         </Paper>
       )}
     </Draggable>

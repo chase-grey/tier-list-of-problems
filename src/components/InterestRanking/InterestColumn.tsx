@@ -1,5 +1,5 @@
 import React, { useRef, useEffect } from 'react';
-import { Box, Typography, Paper, IconButton, Tooltip } from '@mui/material';
+import { Box, Typography, Paper, IconButton, Tooltip, Stack } from '@mui/material';
 import InfoOutlined from '@mui/icons-material/InfoOutlined';
 import Autorenew from '@mui/icons-material/Autorenew';
 import South from '@mui/icons-material/South';
@@ -118,144 +118,135 @@ const InterestColumn = ({
               </Typography>
             )}
 
-            {Array.isArray(pitches) && pitches.filter(pitch => {
-              // Additional error handling for invalid pitches
-              if (!pitch) {
-                console.error(`[DEBUG] Null or undefined pitch found in ${columnId} column`);
-                return false;
-              }
-              if (pitch.id === undefined || pitch.id === null) {
-                console.error(`[DEBUG] Pitch without ID found in ${columnId} column:`, pitch.title || 'No title');
-                return false;
-              }
-              return true;
-            }).map((pitch, index) => (
-              <Draggable
-                key={pitch.id}
-                draggableId={pitch.id}
-                index={index}
-              >
-                {(provided, snapshot) => (
-                  (() => {
-                    const { style, ...draggableProps } = provided.draggableProps;
+            <Stack spacing={1}>
+              {Array.isArray(pitches) && pitches.map((pitch, index) => {
+                if (!pitch?.id) return null;
 
-                    return (
-                  <Paper
-                    ref={provided.innerRef}
-                    {...draggableProps}
-                    {...provided.dragHandleProps}
-                    style={{ ...style, height: 'auto' }}
-                    elevation={snapshot.isDragging ? 6 : 1}
-                    sx={{
-                      p: 1,
-                      mb: 0.75,
-                      backgroundColor: (theme) =>
-                        theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.03)',
-                      transition: snapshot.isDragging ? 'none' : 'background-color 0.2s ease, box-shadow 0.2s ease',
-                      cursor: 'grab',
-                      '&:hover': {
-                        backgroundColor: 'background.paper',
-                        boxShadow: 3,
-                      },
-                      '&:active': {
-                        cursor: 'grabbing',
-                      },
-                      position: 'relative',
-                      minHeight: '96px',
-                      opacity: snapshot.isDragging ? 0.8 : 1
-                    }}
-                    role="button"
-                    tabIndex={0}
+                return (
+                  <Draggable
+                    key={pitch.id}
+                    draggableId={pitch.id}
+                    index={index}
                   >
-                    {/* Top section with title and info button */}
-                    <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-                      <Typography
-                        variant="subtitle2"
-                        sx={{
-                          mr: 1,
-                          minWidth: 0,
-                          flexGrow: 1,
-                          whiteSpace: 'normal',
-                          pr: 4,
-                          // Ensure text wraps to avoid overflow
-                          overflowWrap: 'break-word',
-                          wordBreak: 'break-word',
-                          fontSize: '0.85rem',
-                        }}
-                      >
-                        {pitch.title}
-                      </Typography>
+                    {(provided, snapshot) => {
+                      const { style, ...draggableProps } = provided.draggableProps;
 
-                      <Box
-                        sx={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 0.25,
-                          flexShrink: 0,
-                          flexDirection: 'column',
-                          position: 'absolute',
-                          top: 4,
-                          right: 4
-                        }}
-                      >
-                        {/* Info button reference passed from parent */}
-                        <InterestCardInfoButton pitch={pitch} vote={votes && pitch && pitch.id ? votes[pitch.id] : undefined} userRole={userRole} />
+                      return (
+                        <Paper
+                          ref={provided.innerRef}
+                          {...draggableProps}
+                          {...provided.dragHandleProps}
+                          style={{ ...style, height: 'auto', maxHeight: 'none' }}
+                          elevation={snapshot.isDragging ? 6 : 1}
+                          sx={{
+                            p: 0.75,
+                            mb: 0,
+                            backgroundColor: (theme) =>
+                              theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.03)',
+                            transition: snapshot.isDragging ? 'none' : 'background-color 0.2s ease, box-shadow 0.2s ease',
+                            cursor: 'grab',
+                            '&:hover': {
+                              backgroundColor: 'background.paper',
+                              boxShadow: 3,
+                            },
+                            '&:active': {
+                              cursor: 'grabbing',
+                            },
+                            position: 'relative',
+                            overflow: 'visible',
+                            minHeight: '88px',
+                            opacity: snapshot.isDragging ? 0.8 : 1
+                          }}
+                          role="button"
+                          tabIndex={0}
+                        >
+                          <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+                            <Typography
+                              variant="subtitle2"
+                              sx={{
+                                mr: 1,
+                                minWidth: 0,
+                                flexGrow: 1,
+                                whiteSpace: 'normal',
+                                pr: 4,
+                                overflowWrap: 'break-word',
+                                wordBreak: 'break-word',
+                                fontSize: '0.85rem',
+                              }}
+                            >
+                              {pitch.title}
+                            </Typography>
 
-                        {pitch.continuation && (
-                          <Tooltip title="Continuation of existing development">
                             <Box
-                              component="span"
-                              aria-label="Continuation of existing development"
                               sx={{
-                                display: 'inline-flex',
+                                display: 'flex',
                                 alignItems: 'center',
-                                justifyContent: 'center',
-                                color: 'text.secondary',
-                                p: 0.25,
-                                '& .MuiSvgIcon-root': {
-                                  fontSize: 18
-                                }
-                              }}
-                            >
-                              <Autorenew fontSize="small" />
-                            </Box>
-                          </Tooltip>
-                        )}
-
-                        {columnId === 'interest-unsorted' && onSendToBottomUnsorted && (
-                          <Tooltip title="Send to bottom">
-                            <IconButton
-                              size="small"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                onSendToBottomUnsorted(pitch.id);
-                              }}
-                              aria-label="Send to bottom"
-                              sx={{
-                                color: 'text.secondary',
-                                p: 0.25,
+                                gap: 0.25,
                                 flexShrink: 0,
-                                '&:hover': {
-                                  backgroundColor: 'rgba(255, 255, 255, 0.04)'
-                                },
-                                '& .MuiSvgIcon-root': {
-                                  fontSize: 18
-                                }
+                                flexDirection: 'column',
+                                position: 'absolute',
+                                top: 4,
+                                right: 4
                               }}
                             >
-                              <South fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                        )}
-                      </Box>
-                    </Box>
-                  </Paper>
-                    );
-                  })()
-                )}
-              </Draggable>
-            ))}
-            {provided.placeholder}
+                              <InterestCardInfoButton pitch={pitch} vote={votes[pitch.id]} userRole={userRole} />
+
+                              {pitch.continuation && (
+                                <Tooltip title="Continuation of existing development">
+                                  <Box
+                                    component="span"
+                                    aria-label="Continuation of existing development"
+                                    sx={{
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      color: 'text.secondary',
+                                      p: 0.25,
+                                      '& .MuiSvgIcon-root': {
+                                        fontSize: 18
+                                      }
+                                    }}
+                                  >
+                                    <Autorenew fontSize="small" />
+                                  </Box>
+                                </Tooltip>
+                              )}
+
+                              {columnId === 'interest-unsorted' && onSendToBottomUnsorted && (
+                                <Tooltip title="Send to bottom">
+                                  <IconButton
+                                    size="small"
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      onSendToBottomUnsorted(pitch.id);
+                                    }}
+                                    aria-label="Send to bottom"
+                                    sx={{
+                                      color: 'text.secondary',
+                                      p: 0.25,
+                                      flexShrink: 0,
+                                      '&:hover': {
+                                        backgroundColor: 'rgba(255, 255, 255, 0.04)'
+                                      },
+                                      '& .MuiSvgIcon-root': {
+                                        fontSize: 18
+                                      }
+                                    }}
+                                  >
+                                    <South fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
+                              )}
+                            </Box>
+                          </Box>
+                        </Paper>
+                      );
+                    }}
+                  </Draggable>
+                );
+              })}
+              {provided.placeholder}
+            </Stack>
           </Paper>
         )}
       </Droppable>
