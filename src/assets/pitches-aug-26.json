@@ -299,11 +299,12 @@
   },
   {
     "id": "8033379",
+    "continuation": true,
     "title": "ST/ SmartPhrase/ Show user tags in the smarttool butler",
     "details": {
       "problem": "A clinician has built many tags to organize SmartPhrases in the Manager but can't access or filter by those tags inside the SmartTool butler while editing notes, forcing context switches to the manager.",
-      "ideaForSolution": "Allow filtering by tags in the butler, add a tags column with edit button, and enable tagging for SmartLinks/SmartBlocks so tags are usable in-note.",
-      "characteristics": "Tags usable during authoring, easy to apply, visible, and searchable.",
+      "ideaForSolution": "Allow the SmartTool butler to display and filter by user tags, and support adding tags to SmartPhrases/SmartLinks directly from the butler.",
+      "characteristics": "Tags are usable within the note-writing workflow, easy to view/add, and improve SmartTool discoverability.",
       "whyNow": "Tags released Nov 25; users expect integration into in-note workflows.",
       "smartToolsFit": "Smarttool build and access should reduce time and mental load.",
       "epicFit": "Help reduce clinician burnout and improve efficiency.",
