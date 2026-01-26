@@ -667,16 +667,6 @@
     }
   },
   {
-    "id": "8079609",
-    "title": "ST / Generative AI / Text Actions / Text assistant is disabled on certain types of content",
-    "details": {
-      "problem": "When users use the text assistant, they sometimes see that the text assistant is disabled when they highlight certain types of content. This includes refreshable SmartLinks, SmartSections, sectioning SmartLinks, and SmartBlocks. This has been confusing and frustrating to end users. I've heard that it feels like the tool is unreliable for them since they can't count on it always being available. There are also valid use cases, like acting on an entire note, that get blocked and it may not be intuitive why this is.",
-      "ideaForSolution": "Users always have access to the text assistant and never see that it's disabled.",
-      "characteristics": "The system has reasonable defaults on what to do in all situations. Users can easily undo to go back to the previous state if the system reacted in an undesired way. We avoid harmful unintended impacts, such as deleting refreshability unnecessarily or breaking links elsewhere in the chart (like with DAN).",
-      "whyNow": "We're close to turning the text assistant on by default. What I've been hearing is this is a barrier to adoption and unintuitive, since people are struggling to figure out when they can/cannot use the tool."
-    }
-  },
-  {
     "id": "8219237",
     "title": "ST / Pitch / AI Text Assistant can misunderstand abbreviations",
     "details": {
