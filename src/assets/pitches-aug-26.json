@@ -678,4 +678,39 @@
       "internCandidate": false
     }
   }
+  ,
+  {
+    "id": "7968764",
+    "title": "ST / Feb '26 Pitch / The text assistant is not context aware",
+    "details": {
+      "problem": "When a clinician uses the AI text assistant, it will give responses that clearly do not pay attention to the surrounding context. This means responses are less useful than they could be and it makes the tool less useful and usable. An example is in In Basket, where the model doesn't understand most information about the patient or what the last patient message was, making it difficult for it to suggest useful responses to the patient.",
+      "ideaForSolution": "Build a generic infrastructure that allows app team devs to pass relevant context for their workflows to the AI Text Assistant. For IB, this could look like devs passing IB Insights and the last patient message. For OP Notes, this could look like passing the patient chart summary. For IP and ED notes, this could look like passing IP and ED insights. Clinicians using the text assistant would then likely get far better and more tailored responses.",
+      "whyNow": "This gives us a chance to stand on our hill of having a deeply integrated system. No other AI editing tool can integrate with the rest of the patient's chart in the way we can. This is a clear differentiator and potentially makes using the text assistant consistently more useful than going to ChatGPT, not just more convenient and safer.",
+      "epicFit": "System intelligence improvements.",
+      "success": "Consider feature tracking logging once for each context aware text action that is available and another for each time it gets used. Consider logging / reporting for the individual text action for more granular data."
+    }
+  },
+  {
+    "id": "8051800",
+    "title": "ST / Text Assistant / Let Users Supply Custom Context",
+    "details": {
+      "problem": "As a clinician, I want the ability to add my own context to the AI Text Assistant, such as replacing \"hello\" with \"aloha\", making it sound more like me by supplying a writing sample, or letting it reference 3rd party clinical documentation that I use for patient care. This will help reduce my cognitive burden and focus more on patient care.",
+      "ideaForSolution": "Now, the AI Text Assistant has an even better understanding of my tone and makes the note sound more like me.",
+      "characteristics": "Provide users (or organizations) a way to:\n1. Supply custom instructions to include as part of the prompt infrastructure\n2. Reference 3rd party documentation, such as clinical references, to include in their notes\n3. Create a flexible framework to expand on new use cases",
+      "whyNow": "Give users the best experience with AI. AITA is one of the ST cornerstone AI features.",
+      "smartToolsFit": "Reduce cognitive burden and duplicative documentation; make the text assistant feel more personal; make it more fun to use",
+      "epicFit": "This is (possibly) the next step of forager.",
+      "success": "Increased adoption and widespread use of the AI Text Assistant. Track the amount and types of custom context added by users. This can also help inform future out-of-the-box text actions.",
+      "maintenance": "No/low. Users would store their own context and/or opt into the behavior.",
+      "internCandidate": false
+    }
+  },
+  {
+    "id": "7557419",
+    "title": "ST / Generative AI / Text Actions / Check for logical contradictions",
+    "details": {
+      "problem": "From talking to various customers, there can be logical contradictions in what gets documented in the patient's chart. As one example, a user copies forward a note that says \"all lab results normal\" but then adds in documentation for a new abnormal lab result. These types of contradictions have also been observed in ambient generated notes coming from DAX.",
+      "ideaForSolution": "We develop a new prompt that can take in text and return any logical contradictions that exist in that text.\n\nThis can then be plugged into other AI workflows, such as native ambient. Native ambient devs have already expressed interest in building on this idea.\n\nWe could also consider releasing this as a prompt in the text assistant. Users could then highlight a note, right click, run this prompt, and see any contradictions in it displayed at the bottom.\n\nWe could look at integrating this type of contradiction check into the background, similar to ideas we're exploring for catching stigmatizing language in the background."
+    }
+  }
 ]
