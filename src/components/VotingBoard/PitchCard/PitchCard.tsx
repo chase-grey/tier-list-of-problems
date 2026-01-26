@@ -79,7 +79,7 @@ const PitchCard = ({ pitch, vote, index, onSendToBottom, userRole }: PitchCardPr
               cursor: 'grabbing',
             },
             position: 'relative',
-            minHeight: '84px',
+            minHeight: '96px',
           }}
           role="button"
           tabIndex={0}
@@ -124,10 +124,13 @@ const PitchCard = ({ pitch, vote, index, onSendToBottom, userRole }: PitchCardPr
                   aria-label="View pitch details"
                   sx={{
                     color: 'primary.main',
-                    p: 0.5,
+                    p: 0.25,
                     flexShrink: 0, // Prevent button from shrinking
                     '&:hover': {
                       backgroundColor: 'rgba(25, 118, 210, 0.04)'
+                    },
+                    '& .MuiSvgIcon-root': {
+                      fontSize: 18
                     }
                   }}
                 >
@@ -145,7 +148,10 @@ const PitchCard = ({ pitch, vote, index, onSendToBottom, userRole }: PitchCardPr
                       alignItems: 'center',
                       justifyContent: 'center',
                       color: 'text.secondary',
-                      p: 0.5
+                      p: 0.25,
+                      '& .MuiSvgIcon-root': {
+                        fontSize: 18
+                      }
                     }}
                   >
                     <Autorenew fontSize="small" />
@@ -164,10 +170,13 @@ const PitchCard = ({ pitch, vote, index, onSendToBottom, userRole }: PitchCardPr
                     aria-label="Send to bottom"
                     sx={{
                       color: 'text.secondary',
-                      p: 0.5,
+                      p: 0.25,
                       flexShrink: 0,
                       '&:hover': {
                         backgroundColor: 'rgba(255, 255, 255, 0.04)'
+                      },
+                      '& .MuiSvgIcon-root': {
+                        fontSize: 18
                       }
                     }}
                   >

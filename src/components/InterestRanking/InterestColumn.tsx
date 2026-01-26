@@ -177,7 +177,7 @@ const InterestColumn = ({
                         cursor: 'grabbing',
                       },
                       position: 'relative',
-                      minHeight: '84px',
+                      minHeight: '96px',
                       opacity: snapshot.isDragging ? 0.8 : 1
                     }}
                     role="button"
@@ -227,7 +227,10 @@ const InterestColumn = ({
                                 alignItems: 'center',
                                 justifyContent: 'center',
                                 color: 'text.secondary',
-                                p: 0.5
+                                p: 0.25,
+                                '& .MuiSvgIcon-root': {
+                                  fontSize: 18
+                                }
                               }}
                             >
                               <Autorenew fontSize="small" />
@@ -246,10 +249,13 @@ const InterestColumn = ({
                               aria-label="Send to bottom"
                               sx={{
                                 color: 'text.secondary',
-                                p: 0.5,
+                                p: 0.25,
                                 flexShrink: 0,
                                 '&:hover': {
                                   backgroundColor: 'rgba(255, 255, 255, 0.04)'
+                                },
+                                '& .MuiSvgIcon-root': {
+                                  fontSize: 18
                                 }
                               }}
                             >

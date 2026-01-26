@@ -11,10 +11,10 @@ import type { InterestLevel, Tier } from '../types/models';
  */
 export const mapTierToInterestLevel = (tier: Tier): InterestLevel => {
   if (tier === null) return null;  // Null tier → Null interest (unsorted)
-  else if (tier === 1) return 4;   // Tier 1 → Very Interested
-  else if (tier === 2) return 3;   // Tier 2 → Interested
-  else if (tier === 3) return 2;   // Tier 3 → Somewhat Interested
-  else return 1;                  // Tier 4 → Not Interested
+  else if (tier === 1) return 1;
+  else if (tier === 2) return 2;
+  else if (tier === 3) return 3;
+  else return 4;
 };
 
 /**
@@ -25,13 +25,12 @@ export const getInterestLevelLabel = (interestLevel: InterestLevel): string => {
   if (interestLevel === null) return 'Unsorted';
   
   const interestLabels = [
-    'Very Interested',      // Level 4
-    'Interested',           // Level 3
-    'Somewhat Interested',  // Level 2
-    'Not Interested'        // Level 1
+    'Very Interested',
+    'Interested',
+    'Somewhat Interested',
+    'Not Interested'
   ];
-  
-  const levelIndex = 4 - interestLevel; // Convert from level (4-1) to index (0-3)
-  return interestLabels[levelIndex];
+
+  return interestLabels[interestLevel - 1];
 };
 

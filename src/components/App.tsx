@@ -22,6 +22,7 @@ import { isContributorRole } from '../types/models';
 import { useVoteManagement } from '../hooks/useVoteManagement';
 import { getPollingCycleId } from '../utils/config';
 import { buildPollingKey, cleanupPollingStorageOnCycleChange, getEffectivePollingCycleId } from '../utils/pollingStorage';
+import { getInterestLevelLabel } from '../utils/voteActions';
 
 // Import pitch data
 import pitchesData from '../assets/pitches-aug-26.json';
@@ -294,16 +295,7 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
       if (interestLevel === null) {
         showSnackbar('Pitch moved to unsorted', 'info');
       } else {
-        // Convert numeric interest level to descriptive label
-        const interestLabels = [
-          'Very Interested',      // Level 4
-          'Interested',           // Level 3
-          'Somewhat Interested',  // Level 2
-          'Not Interested'        // Level 1
-        ];
-        
-        const levelIndex = 4 - interestLevel; // Convert from level (4-1) to index (0-3)
-        showSnackbar(`Interest level set to ${interestLabels[levelIndex]}`, 'info');
+        showSnackbar(`Interest level set to ${getInterestLevelLabel(interestLevel)}`, 'info');
       }
     } catch (error) {
       console.error('[DEBUG] Error handling interest change:', error);

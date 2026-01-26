@@ -1,5 +1,6 @@
 import { useReducer } from 'react';
 import type { AppState, AppAction, Pitch, Vote, Tier, InterestLevel } from '../types/models';
+import { mapTierToInterestLevel } from '../utils/voteActions';
 
 /**
  * Custom hook for managing votes in the application
@@ -166,15 +167,6 @@ export const useVoteManagement = (initialState: AppState) => {
 
   const setAvailability = (available: boolean) => {
     dispatch({ type: 'SET_AVAILABILITY', available });
-  };
-
-  // Helper function to map tiers to interest levels
-  const mapTierToInterestLevel = (tier: Tier): InterestLevel => {
-    if (tier === null) return null;  // Null tier → Null interest (unsorted)
-    else if (tier === 1) return 4;   // Tier 1 → Very Interested
-    else if (tier === 2) return 3;   // Tier 2 → Interested
-    else if (tier === 3) return 2;   // Tier 3 → Somewhat Interested
-    else return 1;                  // Tier 4 → Not Interested
   };
 
   // Helper function to set default interest levels based on tiers

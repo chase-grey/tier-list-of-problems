@@ -11,16 +11,16 @@ import { initEnhancedDropDetection, cleanupEnhancedDropDetection } from '../../u
 import { mapTierToInterestLevel } from '../../utils/voteActions';
 
 // Interest level labels that correspond to each level (1-4)
-// We're displaying these in reverse order so the most interested is on the left
+// Display most interested on the left. Saved data semantics: 1 = highest interest, 4 = lowest interest.
 const INTEREST_LEVEL_LABELS = [
-  'Very Interested',      // Level 4
-  'Interested',           // Level 3
-  'Somewhat Interested',  // Level 2
-  'Not Interested'        // Level 1
+  'Very Interested',
+  'Interested',
+  'Somewhat Interested',
+  'Not Interested'
 ];
 
-// Map from display index (0-3) to actual interest level (4-1)
-const DISPLAY_TO_INTEREST_LEVEL = [4, 3, 2, 1];
+// Map from display index (0-3) to actual interest level (1-4)
+const DISPLAY_TO_INTEREST_LEVEL = [1, 2, 3, 4];
 
 // Interest level column header colors (matches the tier column style but with purple hues)
 const INTEREST_LEVEL_COLORS = [
