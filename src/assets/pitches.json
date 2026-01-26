@@ -602,6 +602,7 @@
     },
     {
         "id": "8033379",
+        "continuation": true,
         "title": "ST/ SmartPhrase/ Show user tags in the smarttool butler",
         "details": {
             "problem": "A physician has built out a bunch of tags to organize her SmartPhrases in the Manager but can\u0027t find them to use in the note so she has to switch back to the SmartPhrase Manager to be able to benefit from her new organization system with tags",

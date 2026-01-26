@@ -86,7 +86,7 @@
   },
   {
     "id": "2164272",
-    "title": "AC/MR/NOTEWRITER/REF LAB/ASTERISK WILDCARDS IN RESULTS COMMENTS CAUSE FRUSTRATION WHEN PULLED INTO PHYSICIAN NOTE",
+    "title": "ST / Pitch / Only three asterisks should be a hardstop for unreoslved SmartTools, 4+ shouldn't block signing notes",
     "details": {
       "problem": "As an end user, I can be blocked from signing my note because content coming in over interfaces can have longer strings of asterisks (e.g., LabCorp) that get interpreted as wildcards when pulled into notes, preventing signing or creating confusion.",
       "ideaForSolution": "Make the system treat exactly three asterisks as a wildcard but ignore longer strings of asterisks, or otherwise avoid treating decorative long asterisk strings from interfaces as wildcards.",
