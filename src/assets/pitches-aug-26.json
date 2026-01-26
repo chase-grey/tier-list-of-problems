@@ -129,6 +129,7 @@
   },
   {
     "id": "7439274",
+    "continuation": true,
     "title": "Add \"Expand All\" Option for Hover Bubble SmartLinks",
     "details": {
       "problem": "As a user reviewing other people's notes, I see hover bubble SmartLinks and must hover each to view details; when many items are collapsed, this is time-consuming. I want a quick way to expand all hover bubble SmartLinks in a note (like \"expand all\" for collapsible sections).",
