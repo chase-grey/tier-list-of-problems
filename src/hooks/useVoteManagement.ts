@@ -117,21 +117,21 @@ export const useVoteManagement = (initialState: AppState) => {
   const [state, dispatch] = useReducer(voteReducer, initialState);
 
   // Utility functions for vote operations
-  const setTier = (id: string, tier: Tier | null) => {
-    const timestamp = new Date().getTime();
+  const setTier = (id: string, tier: Tier | null, timestamp?: number) => {
+    const resolvedTimestamp = timestamp ?? new Date().getTime();
     if (tier === null) {
-      dispatch({ type: 'UNSET_TIER', id, timestamp });
+      dispatch({ type: 'UNSET_TIER', id, timestamp: resolvedTimestamp });
     } else {
-      dispatch({ type: 'SET_TIER', id, tier, timestamp });
+      dispatch({ type: 'SET_TIER', id, tier, timestamp: resolvedTimestamp });
     }
   };
 
-  const setInterest = (id: string, interestLevel: InterestLevel | null) => {
-    const timestamp = new Date().getTime();
+  const setInterest = (id: string, interestLevel: InterestLevel | null, timestamp?: number) => {
+    const resolvedTimestamp = timestamp ?? new Date().getTime();
     if (interestLevel === null) {
-      dispatch({ type: 'UNSET_INTEREST', id, timestamp });
+      dispatch({ type: 'UNSET_INTEREST', id, timestamp: resolvedTimestamp });
     } else {
-      dispatch({ type: 'SET_INTEREST', id, interestLevel, timestamp });
+      dispatch({ type: 'SET_INTEREST', id, interestLevel, timestamp: resolvedTimestamp });
     }
   };
 

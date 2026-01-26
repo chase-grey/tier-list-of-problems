@@ -173,28 +173,85 @@ const AppContent: React.FC = () => {
   
   // Handle drag end for priority stage
   const handleDragEnd = (result: DropResult) => {
-    const { destination, draggableId } = result;
-    
+    const { destination, draggableId, source } = result;
+
     // Drop outside valid area
     if (!destination) return;
-    
-    const destId = destination.droppableId;
-    
-    // If dropped in the unsorted column
-    if (destId === 'unsorted') {
-      setTier(draggableId, null);
-      showSnackbar('Pitch moved to unsorted', 'info');
+
+    // No-op drop
+    if (
+      destination.droppableId === source.droppableId &&
+      destination.index === source.index
+    ) {
+      return;
     }
-    // If dropped in a tier column
-    else {
-      const tier = parseInt(destId.replace('tier-', '')) as Tier;
-      setTier(draggableId, tier);
-      showSnackbar(`Pitch moved to Tier ${tier}`, 'info');
+
+    const destId = destination.droppableId;
+
+    const getOrderedPitchIdsForPriorityColumn = (columnId: string): string[] => {
+      const safePitches = Array.isArray(pitches) ? pitches : [];
+
+      const filtered = safePitches.filter(pitch => {
+        if (columnId === 'unsorted') {
+          return !state.votes[pitch.id]?.tier;
+        }
+
+        const tier = parseInt(columnId.replace('tier-', '')) as Tier;
+        return state.votes[pitch.id]?.tier === tier;
+      });
+
+      return filtered
+        .sort((a, b) => {
+          const timestampA = state.votes[a.id]?.timestamp || 0;
+          const timestampB = state.votes[b.id]?.timestamp || 0;
+          if (timestampA !== timestampB) return timestampA - timestampB;
+          return a.id.localeCompare(b.id);
+        })
+        .map(p => p.id);
+    };
+
+    const computeInsertionTimestamp = (
+      prevTimestamp: number | undefined,
+      nextTimestamp: number | undefined
+    ): number => {
+      const now = new Date().getTime();
+
+      if (prevTimestamp === undefined && nextTimestamp === undefined) return now;
+      if (prevTimestamp === undefined) return (nextTimestamp ?? now) - 1;
+      if (nextTimestamp === undefined) return (prevTimestamp ?? now) + 1;
+
+      if (prevTimestamp >= nextTimestamp) return prevTimestamp + 1;
+
+      const mid = prevTimestamp + (nextTimestamp - prevTimestamp) / 2;
+      return Number.isFinite(mid) ? mid : now;
+    };
+
+    const destTier: Tier = destId === 'unsorted' ? null : (parseInt(destId.replace('tier-', '')) as Tier);
+
+    const destOrderedIds = getOrderedPitchIdsForPriorityColumn(destId).filter(id => id !== draggableId);
+    const insertIndex = Math.min(destination.index, destOrderedIds.length);
+
+    const prevId = insertIndex > 0 ? destOrderedIds[insertIndex - 1] : undefined;
+    const nextId = insertIndex < destOrderedIds.length ? destOrderedIds[insertIndex] : undefined;
+
+    const prevTimestamp = prevId ? state.votes[prevId]?.timestamp : undefined;
+    const nextTimestamp = nextId ? state.votes[nextId]?.timestamp : undefined;
+    const newTimestamp = computeInsertionTimestamp(prevTimestamp, nextTimestamp);
+
+    setTier(draggableId, destTier, newTimestamp);
+
+    // Only announce when the column changes (avoid noisy snackbars for reordering)
+    if (source.droppableId !== destination.droppableId) {
+      if (destId === 'unsorted') {
+        showSnackbar('Pitch moved to unsorted', 'info');
+      } else {
+        showSnackbar(`Pitch moved to Tier ${destTier}`, 'info');
+      }
     }
   };
 
   // Handle interest level change
-  const handleInterestChange = (pitchId: string, interestLevel: InterestLevel) => {
+  const handleInterestChange = (pitchId: string, interestLevel: InterestLevel, timestamp?: number) => {
     console.log(`[DEBUG] Setting interest level ${interestLevel} for pitch ${pitchId}`);
     
     try {
@@ -209,9 +266,16 @@ const AppContent: React.FC = () => {
         previousTier: state.votes[pitchId]?.tier
       });
       
+      const previousLevel = state.votes[pitchId]?.interestLevel;
+
       // Set the interest level in state
-      setInterest(pitchId, interestLevel);
-      
+      setInterest(pitchId, interestLevel, timestamp);
+
+      // Avoid noisy snackbars when the user is only reordering within a column
+      if (previousLevel === interestLevel) {
+        return;
+      }
+
       if (interestLevel === null) {
         showSnackbar('Pitch moved to unsorted', 'info');
       } else {

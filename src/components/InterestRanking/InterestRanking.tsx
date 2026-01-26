@@ -33,7 +33,7 @@ const INTEREST_LEVEL_COLORS = [
 interface InterestRankingProps {
   pitches: Pitch[];
   votes: Record<string, Vote>;
-  onSetInterest: (id: string, interestLevel: InterestLevel) => void;
+  onSetInterest: (id: string, interestLevel: InterestLevel, timestamp?: number) => void;
   userRole?: string | null;
 }
 
@@ -251,18 +251,20 @@ const InterestRanking: React.FC<InterestRankingProps> = ({
       console.error('[DEBUG] Error during column sorting:', error);
     }
     
-    // Randomize unsorted pitches to ensure more even data collection
-    // Make sure unsortedPitches is initialized properly to prevent runtime errors
-    console.log('[DEBUG] Randomizing unsorted pitches', { 
-      unsortedPitchesIsArray: Array.isArray(unsortedPitches),
-      unsortedPitchesLength: Array.isArray(unsortedPitches) ? unsortedPitches.length : 'N/A' 
-    });
-    
+    // Keep unsorted pitches in a stable order (randomization prevents precise insertion/reordering)
+    console.log('[DEBUG] Ordering unsorted pitches by timestamp');
+
     try {
-      columns['interest-unsorted'] = Array.isArray(unsortedPitches) ? 
-        unsortedPitches.sort(() => Math.random() - 0.5) : [];
+      columns['interest-unsorted'] = Array.isArray(unsortedPitches)
+        ? unsortedPitches.sort((a, b) => {
+            const timestampA = votes && a && a.id ? (votes[a.id]?.timestamp || 0) : 0;
+            const timestampB = votes && b && b.id ? (votes[b.id]?.timestamp || 0) : 0;
+            if (timestampA !== timestampB) return timestampA - timestampB;
+            return a.id.localeCompare(b.id);
+          })
+        : [];
     } catch (error) {
-      console.error('[DEBUG] Error randomizing unsorted pitches:', error);
+      console.error('[DEBUG] Error ordering unsorted pitches:', error);
       columns['interest-unsorted'] = [];
     }
     
@@ -325,13 +327,54 @@ const InterestRanking: React.FC<InterestRankingProps> = ({
     
     const destId = destination.droppableId;
     console.log(`[DEBUG] Dropped in ${destId} (from ${source.droppableId})`);
+
+    // No-op drop
+    if (
+      destination.droppableId === source.droppableId &&
+      destination.index === source.index
+    ) {
+      return;
+    }
+
+    const computeInsertionTimestamp = (
+      prevTimestamp: number | undefined,
+      nextTimestamp: number | undefined
+    ): number => {
+      const now = new Date().getTime();
+
+      if (prevTimestamp === undefined && nextTimestamp === undefined) return now;
+      if (prevTimestamp === undefined) return (nextTimestamp ?? now) - 1;
+      if (nextTimestamp === undefined) return (prevTimestamp ?? now) + 1;
+
+      if (prevTimestamp >= nextTimestamp) return prevTimestamp + 1;
+
+      const mid = prevTimestamp + (nextTimestamp - prevTimestamp) / 2;
+      return Number.isFinite(mid) ? mid : now;
+    };
     
     try {
+      const destInterestLevel: InterestLevel =
+        destId === 'interest-unsorted'
+          ? null
+          : (parseInt(destId.replace('interest-', '')) as InterestLevel);
+
+      const destOrderedIds = (interestColumns[destId] || [])
+        .map(p => p.id)
+        .filter(id => id !== draggableId);
+
+      const insertIndex = Math.min(destination.index, destOrderedIds.length);
+      const prevId = insertIndex > 0 ? destOrderedIds[insertIndex - 1] : undefined;
+      const nextId = insertIndex < destOrderedIds.length ? destOrderedIds[insertIndex] : undefined;
+
+      const prevTimestamp = prevId ? votes[prevId]?.timestamp : undefined;
+      const nextTimestamp = nextId ? votes[nextId]?.timestamp : undefined;
+      const newTimestamp = computeInsertionTimestamp(prevTimestamp, nextTimestamp);
+
       // If dropped in unsorted column
       if (destId === 'interest-unsorted') {
         console.log(`[DEBUG] Setting interest level to null for pitch ${draggableId}`);
         // Use null to unset the interest level - the App component will handle it with the proper action
-        onSetInterest(draggableId, null);
+        onSetInterest(draggableId, destInterestLevel, newTimestamp);
       }
       // If dropped in an interest level column
       else if (destId.startsWith('interest-')) {
@@ -339,7 +382,7 @@ const InterestRanking: React.FC<InterestRankingProps> = ({
         console.log(`[DEBUG] Setting interest level to ${interestLevel} for pitch ${draggableId}`);
         
         // Update the interest level for this pitch
-        onSetInterest(draggableId, interestLevel);
+        onSetInterest(draggableId, destInterestLevel, newTimestamp);
       } else {
         console.warn(`[DEBUG] Dropped in unknown destination: ${destId}`);
       }

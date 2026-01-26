@@ -68,20 +68,14 @@ const BucketColumn = ({ tier, pitches, votes, columnCount = 9, userRole }: Bucke
       return votes[pitch.id]?.tier === tier;
     });
     
-    // For unsorted column, randomize the order to ensure more even data collection
-    // For tier columns, maintain timestamp order
-    if (isUnsorted) {
-      // Fisher-Yates shuffle algorithm for truly random order
-      // We create a copy to avoid mutating the original array
-      return [...filtered].sort(() => Math.random() - 0.5);
-    } else {
-      // Sort by timestamp (oldest first, newest last)
-      return filtered.sort((a, b) => {
-        const timestampA = votes[a.id]?.timestamp || 0;
-        const timestampB = votes[b.id]?.timestamp || 0;
-        return timestampA - timestampB;
-      });
-    }
+    // Sort by timestamp (oldest first, newest last)
+    return filtered.sort((a, b) => {
+      const timestampA = votes[a.id]?.timestamp || 0;
+      const timestampB = votes[b.id]?.timestamp || 0;
+
+      if (timestampA !== timestampB) return timestampA - timestampB;
+      return a.id.localeCompare(b.id);
+    });
   }, [pitches, votes, isUnsorted, tier]);
 
   return (
@@ -160,9 +154,8 @@ const BucketColumn = ({ tier, pitches, votes, columnCount = 9, userRole }: Bucke
                   userRole={userRole}
                 />
               ))}
+              {provided.placeholder}
             </Stack>
-            
-            {provided.placeholder}
           </Paper>
         )}
       </Droppable>
