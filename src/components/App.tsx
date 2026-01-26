@@ -1,6 +1,6 @@
 import React, { useEffect, memo, useState, useMemo } from 'react';
 import { ThemeProvider, CssBaseline, Box, Typography } from '@mui/material';
-import { darkTheme } from '../theme';
+import { darkTheme, lightTheme } from '../theme';
 import { NameGate } from './NameGate/NameGate';
 import { TopBar } from './TopBar/TopBar';
 import KanbanContainer from './VotingBoard/KanbanContainer';
@@ -38,7 +38,7 @@ const initialState: AppState = {
 /**
  * Main App component
  */
-const AppContent: React.FC = () => {
+const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => void }> = ({ themeMode, onToggleTheme }) => {
   // State to control help dialog
   const [showHelp, setShowHelp] = useState(true); // Show help dialog by default
   // State to track if initial help dialog was shown
@@ -101,6 +101,21 @@ const AppContent: React.FC = () => {
     setDefaultInterestLevels,
     getCompletionStats
   } = useVoteManagement(completeState);
+
+  const handleSendToBottomPriorityUnsorted = (pitchId: string) => {
+    const unsortedPitchIds = pitches
+      .filter(p => !state.votes[p.id]?.tier)
+      .map(p => p.id);
+
+    const maxTimestamp = unsortedPitchIds.reduce((max, id) => {
+      const ts = state.votes[id]?.timestamp ?? 0;
+      return ts > max ? ts : max;
+    }, 0);
+
+    const now = new Date().getTime();
+    const newTimestamp = Math.max(now, maxTimestamp + 1);
+    setTier(pitchId, null, newTimestamp);
+  };
 
   // Access snackbar
   const { showSnackbar } = useSnackbar();
@@ -473,6 +488,8 @@ const AppContent: React.FC = () => {
           onNextStage={handleStageChange}
           canAccessInterestStage={canAccessInterestStage}
           priorityStageComplete={priorityStageComplete}
+          themeMode={themeMode}
+          onToggleTheme={onToggleTheme}
         />
         
         <Box component="main" sx={{ flexGrow: 1, overflow: 'hidden', p: 1 }}>
@@ -481,6 +498,7 @@ const AppContent: React.FC = () => {
               pitches={pitches}
               votes={state.votes}
               onDragEnd={handleDragEnd}
+              onSendToBottomUnsorted={handleSendToBottomPriorityUnsorted}
               userRole={state.voterRole}
             />
           ) : (
@@ -546,11 +564,19 @@ const AppContent: React.FC = () => {
  * Wrapped app with providers
  */
 const App: React.FC = () => {
+  const [themeMode, setThemeMode] = useState<'dark' | 'light'>('dark');
+
+  const theme = themeMode === 'dark' ? darkTheme : lightTheme;
+
+  const handleToggleTheme = () => {
+    setThemeMode(prev => (prev === 'dark' ? 'light' : 'dark'));
+  };
+
   return (
-    <ThemeProvider theme={darkTheme}>
+    <ThemeProvider theme={theme}>
       <CssBaseline />
       <SnackbarProvider>
-        <AppContent />
+        <AppContent themeMode={themeMode} onToggleTheme={handleToggleTheme} />
       </SnackbarProvider>
     </ThemeProvider>
   );

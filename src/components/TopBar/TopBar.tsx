@@ -14,7 +14,9 @@ import {
   RestartAlt as ResetIcon,
   NavigateNext as NextIcon,
   NavigateBefore as PrevIcon,
-  ThumbUp as InterestIcon
+  ThumbUp as InterestIcon,
+  DarkMode as DarkModeIcon,
+  LightMode as LightModeIcon
 } from '@mui/icons-material';
 
 
@@ -31,6 +33,8 @@ interface TopBarProps {
   onNextStage: () => void;
   canAccessInterestStage: boolean;
   priorityStageComplete: boolean;
+  themeMode?: 'dark' | 'light';
+  onToggleTheme?: () => void;
 }
 
 /**
@@ -48,7 +52,9 @@ export const TopBar = ({
   stage,
   onNextStage,
   canAccessInterestStage,
-  priorityStageComplete
+  priorityStageComplete,
+  themeMode,
+  onToggleTheme
 }: TopBarProps) => {
   return (
     <AppBar position="sticky" sx={{ height: 48 }}>
@@ -85,6 +91,19 @@ export const TopBar = ({
               <HelpIcon />
             </IconButton>
           </Tooltip>
+
+          {onToggleTheme && (
+            <Tooltip title={themeMode === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}>
+              <IconButton
+                color="inherit"
+                onClick={onToggleTheme}
+                sx={{ ml: 1 }}
+                aria-label={themeMode === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
+              >
+                {themeMode === 'light' ? <DarkModeIcon /> : <LightModeIcon />}
+              </IconButton>
+            </Tooltip>
+          )}
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', mr: 2 }}>
           <Typography variant="body2" sx={{ display: 'flex', gap: 1 }}>

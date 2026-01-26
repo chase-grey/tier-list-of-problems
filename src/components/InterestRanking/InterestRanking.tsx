@@ -313,6 +313,19 @@ const InterestRanking: React.FC<InterestRankingProps> = ({
     
     return columns;
   }, [pitchesForInterestStage, votes]);
+
+  const handleSendToBottomInterestUnsorted = (pitchId: string) => {
+    const unsortedPitchIds = (interestColumns['interest-unsorted'] || []).map(p => p.id);
+
+    const maxTimestamp = unsortedPitchIds.reduce((max, id) => {
+      const ts = votes[id]?.timestamp ?? 0;
+      return ts > max ? ts : max;
+    }, 0);
+
+    const now = new Date().getTime();
+    const newTimestamp = Math.max(now, maxTimestamp + 1);
+    onSetInterest(pitchId, null, newTimestamp);
+  };
   
   const handleDragEnd = (result: DropResult) => {
     console.log('[DEBUG] Drag ended', result);
@@ -403,7 +416,7 @@ const InterestRanking: React.FC<InterestRankingProps> = ({
               flexWrap: { xs: 'wrap', lg: 'nowrap' }, // Wrap on smaller screens, no wrap on large screens
               justifyContent: 'space-between',
               pb: 2, // Reduced bottom padding
-              height: { xs: 'auto', lg: 'calc(100vh - 100px)' }, // Increased vertical space on large screens
+              height: { xs: 'auto', lg: 'calc(100vh - 72px)' }, // Increased vertical space on large screens
               maxWidth: '100%', // Ensure it doesn't exceed viewport width
               overflowX: { xs: 'hidden', lg: 'auto' }, // Only allow horizontal scroll on large screens if needed
               overflowY: { xs: 'auto', lg: 'hidden' }, // Allow vertical scroll on small screens
@@ -437,6 +450,7 @@ const InterestRanking: React.FC<InterestRankingProps> = ({
                 pitches={interestColumns['interest-unsorted'] || []}
                 votes={votes}
                 userRole={userRole}
+                onSendToBottomUnsorted={handleSendToBottomInterestUnsorted}
               />
             </Box>
 

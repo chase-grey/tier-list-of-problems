@@ -12,6 +12,7 @@ interface KanbanContainerProps {
   pitches: Pitch[];
   votes: Record<string, Vote>;
   onDragEnd: (result: DropResult) => void;
+  onSendToBottomUnsorted?: (pitchId: string) => void;
   userRole?: string | null;
 }
 
@@ -23,6 +24,7 @@ const KanbanContainer = ({
   pitches, 
   votes, 
   onDragEnd,
+  onSendToBottomUnsorted,
   userRole
 }: KanbanContainerProps) => {
   // Reference to the scrollable container
@@ -149,7 +151,7 @@ const KanbanContainer = ({
               justifyContent: 'space-between',
               p: 1,
               pb: 2, // Reduced bottom padding
-              height: { xs: 'auto', lg: 'calc(100vh - 100px)' }, // More vertical space on large screens
+              height: { xs: 'auto', lg: 'calc(100vh - 72px)' }, // More vertical space on large screens
               maxWidth: '100%', // Ensure it doesn't exceed viewport width
               overflowX: { xs: 'hidden', lg: 'auto' }, // Only allow horizontal scroll on large screens if needed
               overflowY: { xs: 'auto', lg: 'hidden' }, // Allow vertical scroll on small screens
@@ -174,6 +176,7 @@ const KanbanContainer = ({
               pitches={pitches}
               votes={votes}
               columnCount={columnCount} // Always 9 columns
+              onSendToBottom={onSendToBottomUnsorted}
               userRole={userRole}
             />
             

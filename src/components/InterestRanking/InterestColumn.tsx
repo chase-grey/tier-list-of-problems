@@ -2,6 +2,7 @@ import React, { useRef, useEffect } from 'react';
 import { Box, Typography, Paper, IconButton, Tooltip } from '@mui/material';
 import InfoOutlined from '@mui/icons-material/InfoOutlined';
 import ArrowForward from '@mui/icons-material/ArrowForward';
+import South from '@mui/icons-material/South';
 import InterestDetailsBubble from './InterestDetailsBubble';
 import { Droppable, Draggable } from '@hello-pangea/dnd';
 import type { DroppableProvided, DroppableStateSnapshot } from '@hello-pangea/dnd';
@@ -15,6 +16,7 @@ interface InterestColumnProps {
   pitches: Pitch[];
   votes: Record<string, Vote>;
   userRole?: string | null;
+  onSendToBottomUnsorted?: (pitchId: string) => void;
 }
 
 /**
@@ -26,7 +28,8 @@ const InterestColumn = ({
   color,
   pitches,
   votes,
-  userRole
+  userRole,
+  onSendToBottomUnsorted
 }: InterestColumnProps) => {
   const columnRef = useRef<HTMLDivElement>(null);
 
@@ -156,6 +159,8 @@ const InterestColumn = ({
                     sx={{
                       p: 1,
                       mb: 0.75,
+                      backgroundColor: (theme) =>
+                        theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.03)',
                       transition: snapshot.isDragging ? 'none' : 'background-color 0.2s ease, box-shadow 0.2s ease',
                       cursor: 'grab',
                       '&:hover': {
@@ -195,6 +200,29 @@ const InterestColumn = ({
                       </Typography>
 
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25, flexShrink: 0, mt: -0.5 }}>
+                        {columnId === 'interest-unsorted' && onSendToBottomUnsorted && (
+                          <Tooltip title="Send to bottom">
+                            <IconButton
+                              size="small"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                onSendToBottomUnsorted(pitch.id);
+                              }}
+                              aria-label="Send to bottom"
+                              sx={{
+                                color: 'text.secondary',
+                                p: 0.5,
+                                flexShrink: 0,
+                                '&:hover': {
+                                  backgroundColor: 'rgba(255, 255, 255, 0.04)'
+                                }
+                              }}
+                            >
+                              <South fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        )}
+
                         {pitch.continuation && (
                           <Tooltip title="Continuation of existing development">
                             <Box

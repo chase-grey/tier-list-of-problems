@@ -1,6 +1,6 @@
 import React, { useState, useRef, memo } from 'react';
 import { Paper, Typography, Box, IconButton, Tooltip } from '@mui/material';
-import { InfoOutlined, ArrowForward } from '@mui/icons-material';
+import { InfoOutlined, ArrowForward, South } from '@mui/icons-material';
 import { Draggable } from '@hello-pangea/dnd';
 import type { DraggableProvided, DraggableStateSnapshot } from '@hello-pangea/dnd';
 import type { Pitch, Vote } from '../../../types/models';
@@ -15,13 +15,14 @@ interface PitchCardProps {
   pitch: Pitch;
   vote: Vote | undefined;
   index: number;
+  onSendToBottom?: (pitchId: string) => void;
   userRole?: string | null;
 }
 
 /**
  * Represents a single pitch card that can be dragged between tiers
  */
-const PitchCard = ({ pitch, vote, index, userRole }: PitchCardProps) => {
+const PitchCard = ({ pitch, vote, index, onSendToBottom, userRole }: PitchCardProps) => {
   const [detailsAnchor, setDetailsAnchor] = useState<HTMLElement | null>(null);
   // Using HTMLElement type to match what Draggable provides
   const cardRef = useRef<HTMLElement>(null);
@@ -66,6 +67,8 @@ const PitchCard = ({ pitch, vote, index, userRole }: PitchCardProps) => {
           sx={{
             p: 1,
             mb: 0.75,
+            backgroundColor: (theme) =>
+              theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.03)',
             transition: snapshot.isDragging ? 'none' : 'background-color 0.2s ease, box-shadow 0.2s ease',
             cursor: 'grab',
             '&:hover': {
@@ -102,6 +105,29 @@ const PitchCard = ({ pitch, vote, index, userRole }: PitchCardProps) => {
             </Typography>
 
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25, flexShrink: 0, mt: -0.5 }}>
+              {currentTier === null && onSendToBottom && (
+                <Tooltip title="Send to bottom">
+                  <IconButton
+                    size="small"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onSendToBottom(pitch.id);
+                    }}
+                    aria-label="Send to bottom"
+                    sx={{
+                      color: 'text.secondary',
+                      p: 0.5,
+                      flexShrink: 0,
+                      '&:hover': {
+                        backgroundColor: 'rgba(255, 255, 255, 0.04)'
+                      }
+                    }}
+                  >
+                    <South fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+              )}
+
               {pitch.continuation && (
                 <Tooltip title="Continuation of existing development">
                   <Box

@@ -24,6 +24,22 @@ const themeOptions: ThemeOptions = {
 // Create and export the theme
 export const darkTheme = createTheme(themeOptions);
 
+export const lightTheme = createTheme({
+  ...themeOptions,
+  palette: {
+    ...themeOptions.palette,
+    mode: 'light',
+    background: {
+      default: '#f5f5f5',
+      paper: '#ffffff',
+    },
+    text: {
+      primary: '#111111',
+      secondary: '#444444',
+    },
+  },
+});
+
 // Define color tokens for appetites and tiers
 export const colorTokens = {
   tiers: {
