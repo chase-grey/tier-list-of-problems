@@ -89,6 +89,7 @@ export const NameGate = ({ onNameSubmit, open }: NameGateProps) => {
                 aria-label="Select your role"
               >
                 <MenuItem value="developer">Developer</MenuItem>
+                <MenuItem value="TS">TS</MenuItem>
                 <MenuItem value="QM">QM</MenuItem>
                 <MenuItem value="UXD">UXD</MenuItem>
                 <MenuItem value="dev TL">Dev TL</MenuItem>

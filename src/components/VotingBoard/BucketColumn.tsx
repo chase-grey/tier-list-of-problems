@@ -84,7 +84,7 @@ const BucketColumn = ({ tier, pitches, votes, columnCount = 9, onSendToBottom, u
       sx={{ 
         width: `calc((100% - ${(columnCount - 1) * 2}px) / ${columnCount})`, // Dynamic width based on column count with 2px margin between
         minWidth: '200px', // Minimum usable width
-        mx: 1, // Margin on both sides for spacing
+        mx: 0.5, // Margin on both sides for spacing
         height: '100%',
         display: 'flex',
         flexDirection: 'column'

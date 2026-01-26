@@ -406,7 +406,7 @@ const InterestRanking: React.FC<InterestRankingProps> = ({
   
   return (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <Container maxWidth={false} sx={{ height: '100%', display: 'flex', flexDirection: 'column', pt: 0.5, px: 1 }}>
+      <Container disableGutters maxWidth={false} sx={{ height: '100%', display: 'flex', flexDirection: 'column', pt: 0.5, px: 0.5 }}>
         
         <DragDropContext onDragEnd={handleDragEnd}>
           <Box 
@@ -439,7 +439,7 @@ const InterestRanking: React.FC<InterestRankingProps> = ({
               sx={{ 
                 width: `calc((100% - 16px) / 5)`, // Dynamic width based on 5 columns (4 interest levels + 1 unsorted)
                 minWidth: '200px', // Minimum usable width
-                mx: 1, // Margin on both sides for spacing
+                mx: 0.5, // Margin on both sides for spacing
                 height: '100%'
               }}
               key="interest-unsorted">
@@ -468,7 +468,7 @@ const InterestRanking: React.FC<InterestRankingProps> = ({
                   sx={{ 
                     width: `calc((100% - 16px) / 5)`, // Dynamic width based on 5 columns (4 interest levels + 1 unranked)
                     minWidth: '200px', // Minimum usable width
-                    mx: 1, // Margin on both sides for spacing
+                    mx: 0.5, // Margin on both sides for spacing
                     height: '100%'
                   }}
                   key={columnId}>

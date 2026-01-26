@@ -57,7 +57,15 @@ export const TopBar = ({
   onToggleTheme
 }: TopBarProps) => {
   return (
-    <AppBar position="sticky" sx={{ height: 48 }}>
+    <AppBar
+      position="sticky"
+      color="default"
+      sx={(theme) => ({
+        height: 48,
+        bgcolor: theme.palette.mode === 'light' ? '#e0e0e0' : theme.palette.background.paper,
+        color: 'text.primary'
+      })}
+    >
       <Toolbar sx={{ minHeight: '48px !important', py: 0 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', flexGrow: 1 }}>
           <Button

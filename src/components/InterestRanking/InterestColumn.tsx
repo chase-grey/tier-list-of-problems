@@ -181,69 +181,93 @@ const InterestColumn = ({
                     tabIndex={0}
                   >
                     {/* Top section with title and info button */}
-                    <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexGrow: 1 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
                       <Typography
                         variant="subtitle2"
                         sx={{
                           mr: 1,
                           minWidth: 0,
+                          flexGrow: 1,
+                          whiteSpace: 'normal',
                           // Ensure text wraps to avoid overflow
                           overflowWrap: 'break-word',
                           wordBreak: 'break-word',
-                          // Add bottom padding to avoid text getting cut off
-                          paddingBottom: '24px',
                           fontSize: '0.85rem',
-                          flexGrow: 1
                         }}
                       >
                         {pitch.title}
                       </Typography>
 
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25, flexShrink: 0, mt: -0.5 }}>
-                        {columnId === 'interest-unsorted' && onSendToBottomUnsorted && (
-                          <Tooltip title="Send to bottom">
-                            <IconButton
-                              size="small"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                onSendToBottomUnsorted(pitch.id);
-                              }}
-                              aria-label="Send to bottom"
-                              sx={{
-                                color: 'text.secondary',
-                                p: 0.5,
-                                flexShrink: 0,
-                                '&:hover': {
-                                  backgroundColor: 'rgba(255, 255, 255, 0.04)'
-                                }
-                              }}
-                            >
-                              <South fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                        )}
+                      {columnId === 'interest-unsorted' ? (
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25, flexShrink: 0, mt: -0.5, flexDirection: 'column' }}>
+                          {/* Info button reference passed from parent */}
+                          <InterestCardInfoButton pitch={pitch} vote={votes && pitch && pitch.id ? votes[pitch.id] : undefined} userRole={userRole} />
 
-                        {pitch.continuation && (
-                          <Tooltip title="Continuation of existing development">
-                            <Box
-                              component="span"
-                              aria-label="Continuation of existing development"
-                              sx={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                color: 'text.secondary',
-                                p: 0.5
-                              }}
-                            >
-                              <ArrowForward fontSize="small" />
-                            </Box>
-                          </Tooltip>
-                        )}
+                          {onSendToBottomUnsorted && (
+                            <Tooltip title="Send to bottom">
+                              <IconButton
+                                size="small"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  onSendToBottomUnsorted(pitch.id);
+                                }}
+                                aria-label="Send to bottom"
+                                sx={{
+                                  color: 'text.secondary',
+                                  p: 0.5,
+                                  flexShrink: 0,
+                                  '&:hover': {
+                                    backgroundColor: 'rgba(255, 255, 255, 0.04)'
+                                  }
+                                }}
+                              >
+                                <South fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          )}
 
-                        {/* Info button reference passed from parent */}
-                        <InterestCardInfoButton pitch={pitch} vote={votes && pitch && pitch.id ? votes[pitch.id] : undefined} userRole={userRole} />
-                      </Box>
+                          {pitch.continuation && (
+                            <Tooltip title="Continuation of existing development">
+                              <Box
+                                component="span"
+                                aria-label="Continuation of existing development"
+                                sx={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  color: 'text.secondary',
+                                  p: 0.5
+                                }}
+                              >
+                                <ArrowForward fontSize="small" />
+                              </Box>
+                            </Tooltip>
+                          )}
+                        </Box>
+                      ) : (
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25, flexShrink: 0, mt: -0.5 }}>
+                          {pitch.continuation && (
+                            <Tooltip title="Continuation of existing development">
+                              <Box
+                                component="span"
+                                aria-label="Continuation of existing development"
+                                sx={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  color: 'text.secondary',
+                                  p: 0.5
+                                }}
+                              >
+                                <ArrowForward fontSize="small" />
+                              </Box>
+                            </Tooltip>
+                          )}
+
+                          {/* Info button reference passed from parent */}
+                          <InterestCardInfoButton pitch={pitch} vote={votes && pitch && pitch.id ? votes[pitch.id] : undefined} userRole={userRole} />
+                        </Box>
+                      )}
                     </Box>
                   </Paper>
                 )}

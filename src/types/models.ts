@@ -31,6 +31,7 @@ export const CONTRIBUTOR_ROLES = [
 export const NON_CONTRIBUTOR_ROLES = [
   'UXD',
   'TLTL',
+  'TS',
   'QM',
   'dev TL',
   'QM TL',
