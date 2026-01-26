@@ -145,7 +145,7 @@ export const TopBar = ({
         {(canAccessInterestStage || stage === 'interest') && (
           <Tooltip title={
             stage === 'priority' && !canAccessInterestStage ? 
-              "Only QM, developers, QM TLs, and dev TLs who have indicated availability can rank interest" : 
+              "Only developers who have indicated availability can rank interest" : 
               stage === 'priority' && !priorityStageComplete ? 
               "You must complete all appetites and priority rankings first" : 
               ""

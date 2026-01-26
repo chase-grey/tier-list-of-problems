@@ -273,7 +273,7 @@ const AppContent: React.FC = () => {
       
       // Show appropriate error message
       if (!canAccessInterestStage) {
-        showSnackbar('Only QM, developers, QM TLs, and dev TLs who have indicated availability can rank interest', 'error');
+        showSnackbar('Only developers who have indicated availability can rank interest', 'error');
       } else {
         showSnackbar('You must complete all appetites and priority rankings first', 'error');
       }
@@ -460,6 +460,7 @@ const AppContent: React.FC = () => {
             open={showHelp} 
             onClose={handleInitialHelpClose}
             userRole={state.voterRole} 
+            showInterestStep={canAccessInterestStage}
           />
           
           {/* Reset confirmation dialog */}
@@ -481,14 +482,6 @@ const AppContent: React.FC = () => {
             userRole={state.voterRole}
           />
 
-          {/* Show availability dialog on first name entry if not set */}
-          {state.voterName && state.available === null && (
-            <AvailabilityDialog 
-              open={true}
-              onAvailabilitySet={handleAvailabilitySet}
-            />
-          )}
-          
           {/* Development-only Auto-Populate Tool */}
           {isDevelopmentMode() && (
             <DevAutoPopulate 

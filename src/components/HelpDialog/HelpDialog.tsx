@@ -15,22 +15,16 @@ interface HelpDialogProps {
   open: boolean;
   onClose: () => void;
   userRole: string | null;
+  showInterestStep: boolean;
 }
 
 /**
  * Dialog with instructions on how to use the tier list app
  */
-const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose, userRole }) => {
+const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose, userRole, showInterestStep }) => {
   // Check if user is a customer
   const isCustomer = userRole === 'customer';
-  
-  // Determine if user should see interest level step
-  // Only QMs, developers, QM TLs, and dev TLs should see this step
-  const shouldShowInterestStep = 
-    userRole === 'developer' || 
-    userRole === 'QM' || 
-    userRole === 'dev TL' || 
-    userRole === 'QM TL';
+
   return (
     <Dialog
       open={open}
@@ -91,13 +85,13 @@ const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose, userRole }) => {
         
         <Divider sx={{ my: 3 }} />
         
-        {shouldShowInterestStep && (
+        {showInterestStep && (
           <>
             <Typography variant="h6" gutterBottom>
               Step 3: Rank Your Interest Level
             </Typography>
             <Typography variant="body1" paragraph>
-              <strong>Note: This step only applies to QMs, developers, QM TLs, and dev TLs that are contributing towards solutions to these problems next quarter.</strong>
+              <strong>Note: This step only applies to developers who indicated they are available to help next quarter.</strong>
             </Typography>
             <Typography variant="body1" paragraph>
               After ranking priorities, you'll be asked to rank your interest level in working on each problem. This information helps team leads match people with projects they're excited about working on. You will need to:
@@ -115,7 +109,7 @@ const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose, userRole }) => {
         )}
         
         <Typography variant="h6" gutterBottom>
-          {shouldShowInterestStep ? 'Step 4: Export Your Results' : 'Step 3: Export Your Results'}
+          {showInterestStep ? 'Step 4: Export Your Results' : 'Step 3: Export Your Results'}
         </Typography>
         <Typography variant="body1" paragraph>
           Once you've completed all the required steps, the Export button will become active.
