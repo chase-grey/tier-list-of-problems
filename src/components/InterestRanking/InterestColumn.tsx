@@ -1,6 +1,7 @@
 import React, { useRef, useEffect } from 'react';
 import { Box, Typography, Paper, IconButton, Tooltip } from '@mui/material';
 import InfoOutlined from '@mui/icons-material/InfoOutlined';
+import Autorenew from '@mui/icons-material/Autorenew';
 import InterestDetailsBubble from './InterestDetailsBubble';
 import { Droppable, Draggable } from '@hello-pangea/dnd';
 import type { DroppableProvided, DroppableStateSnapshot } from '@hello-pangea/dnd';
@@ -192,8 +193,28 @@ const InterestColumn = ({
                         {pitch.title}
                       </Typography>
 
-                      {/* Info button reference passed from parent */}
-                      <InterestCardInfoButton pitch={pitch} vote={votes && pitch && pitch.id ? votes[pitch.id] : undefined} userRole={userRole} />
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25, flexShrink: 0, mt: -0.5 }}>
+                        {pitch.continuation && (
+                          <Tooltip title="Continuation of existing development">
+                            <Box
+                              component="span"
+                              aria-label="Continuation of existing development"
+                              sx={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                color: 'text.secondary',
+                                p: 0.5
+                              }}
+                            >
+                              <Autorenew fontSize="small" />
+                            </Box>
+                          </Tooltip>
+                        )}
+
+                        {/* Info button reference passed from parent */}
+                        <InterestCardInfoButton pitch={pitch} vote={votes && pitch && pitch.id ? votes[pitch.id] : undefined} userRole={userRole} />
+                      </Box>
                     </Box>
                   </Paper>
                 )}

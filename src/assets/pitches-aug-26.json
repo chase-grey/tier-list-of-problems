@@ -376,6 +376,7 @@
   {
     "id": "8109595",
     "title": "ST / Pitch / The text assistant cannot be used for translation by qualified users",
+    "continuation": true,
     "details": {
       "problem": "Bilingual clinicians cannot use the text assistant to operate on non-English text (e.g., Spanish) even if they are qualified translators.",
       "ideaForSolution": "Integrate the translation agent and user-language qualification flags (designs already exist) to permit qualified users to use the Text Assistant for translation workflows.",
@@ -414,6 +415,7 @@
   {
     "id": "8205501",
     "title": "ST / Citation / Make AI citation UI follow the UX guide",
+    "continuation": true,
     "details": {
       "problem": "Different AI features show AI citations inconsistently across apps (e.g., hyperlink placement differs), causing user friction.",
       "ideaForSolution": "Make AI citation UI consistent and follow the released UX guide.",
@@ -501,6 +503,7 @@
   {
     "id": "8212130",
     "title": "ST / Toolbar / Allow configuring more features for one-click access",
+    "continuation": true,
     "details": {
       "problem": "Favorites/pinning still require extra clicks; one-click access requires app buttons or quick buttons which are limited to certain workflows and take UI space.",
       "ideaForSolution": "Allow configuring quick buttons in any SmartTextBox (customizable, grouped, split-button dropdown) to provide true one-click access to frequently used SmartTools.",
@@ -628,6 +631,7 @@
   {
     "id": "7983072",
     "title": "st / pitch / hsweb / smarttextbox - inline header/footer support",
+    "continuation": true,
     "details": {
       "problem": "Managing header/footer content for complex templates (letters) is cumbersome because they're often stored separately; authors need to edit and view the whole document inline.",
       "ideaForSolution": "Support inline header/footer editing and rendering, echo content to linked records, or use SmartSections to represent multi-part documents while keeping consumers stable.",
@@ -658,6 +662,7 @@
   {
     "id": "6855847",
     "title": "Create an easier way to have \"vanishing tips\" (aka help text)",
+    "continuation": true,
     "details": {
       "problem": "As a physician builder for my specialty, I want to provide hints, tips, or other types of information that show up in a note when it is being edited, but disappear when the note is signed to not clutter the note. I can use an optional SmartList, but there are a number of issues with this: The SmartLinks I want to pull in sometimes include colons in the text which prevents signing the note. My analysts tell me there are issues with my build when they try to move it to production using Data Courier when I use a colon in the text where Data Courier finds the wrong SmartList or doesn't update the optional SmartList's record ID correctly.",
       "ideaForSolution": "If Epic created a new way to adding disappearing help text to a note that would allow me, and the analysts that help me, be more efficient.",
@@ -682,6 +687,7 @@
   {
     "id": "7968764",
     "title": "ST / Feb '26 Pitch / The text assistant is not context aware",
+    "continuation": true,
     "details": {
       "problem": "When a clinician uses the AI text assistant, it will give responses that clearly do not pay attention to the surrounding context. This means responses are less useful than they could be and it makes the tool less useful and usable. An example is in In Basket, where the model doesn't understand most information about the patient or what the last patient message was, making it difficult for it to suggest useful responses to the patient.",
       "ideaForSolution": "Build a generic infrastructure that allows app team devs to pass relevant context for their workflows to the AI Text Assistant. For IB, this could look like devs passing IB Insights and the last patient message. For OP Notes, this could look like passing the patient chart summary. For IP and ED notes, this could look like passing IP and ED insights. Clinicians using the text assistant would then likely get far better and more tailored responses.",
@@ -708,6 +714,7 @@
   {
     "id": "7557419",
     "title": "ST / Generative AI / Text Actions / Check for logical contradictions",
+    "continuation": true,
     "details": {
       "problem": "From talking to various customers, there can be logical contradictions in what gets documented in the patient's chart. As one example, a user copies forward a note that says \"all lab results normal\" but then adds in documentation for a new abnormal lab result. These types of contradictions have also been observed in ambient generated notes coming from DAX.",
       "ideaForSolution": "We develop a new prompt that can take in text and return any logical contradictions that exist in that text.\n\nThis can then be plugged into other AI workflows, such as native ambient. Native ambient devs have already expressed interest in building on this idea.\n\nWe could also consider releasing this as a prompt in the text assistant. Users could then highlight a note, right click, run this prompt, and see any contradictions in it displayed at the bottom.\n\nWe could look at integrating this type of contradiction check into the background, similar to ideas we're exploring for catching stigmatizing language in the background."

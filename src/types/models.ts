@@ -2,6 +2,7 @@
 export interface Pitch {
   id: string;              // UUID or slug
   title: string;           // terse name on card
+  continuation?: boolean;
   details: {
     problem: string;               // REQUIRED
     ideaForSolution?: string;

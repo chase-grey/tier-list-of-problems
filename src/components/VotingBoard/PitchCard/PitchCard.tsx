@@ -1,6 +1,6 @@
 import React, { useState, useRef, memo } from 'react';
 import { Paper, Typography, Box, IconButton, Tooltip } from '@mui/material';
-import { InfoOutlined } from '@mui/icons-material';
+import { InfoOutlined, Autorenew } from '@mui/icons-material';
 import { Draggable } from '@hello-pangea/dnd';
 import type { DraggableProvided, DraggableStateSnapshot } from '@hello-pangea/dnd';
 import type { Pitch, Vote } from '../../../types/models';
@@ -97,24 +97,44 @@ const PitchCard = ({ pitch, vote, index, userRole }: PitchCardProps) => {
             >
               {pitch.title}
             </Typography>
-            <Tooltip title="View details">
-              <IconButton 
-                size="small" 
-                onClick={handleInfoButtonClick}
-                aria-label="View pitch details"
-                sx={{ 
-                  color: 'primary.main',
-                  p: 0.5,
-                  mt: -0.5,
-                  flexShrink: 0, // Prevent button from shrinking
-                  '&:hover': {
-                    backgroundColor: 'rgba(25, 118, 210, 0.04)'
-                  }
-                }}
-              >
-                <InfoOutlined fontSize="small" />
-              </IconButton>
-            </Tooltip>
+
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25, flexShrink: 0, mt: -0.5 }}>
+              {pitch.continuation && (
+                <Tooltip title="Continuation of existing development">
+                  <Box
+                    component="span"
+                    aria-label="Continuation of existing development"
+                    sx={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'text.secondary',
+                      p: 0.5
+                    }}
+                  >
+                    <Autorenew fontSize="small" />
+                  </Box>
+                </Tooltip>
+              )}
+
+              <Tooltip title="View details">
+                <IconButton 
+                  size="small" 
+                  onClick={handleInfoButtonClick}
+                  aria-label="View pitch details"
+                  sx={{ 
+                    color: 'primary.main',
+                    p: 0.5,
+                    flexShrink: 0, // Prevent button from shrinking
+                    '&:hover': {
+                      backgroundColor: 'rgba(25, 118, 210, 0.04)'
+                    }
+                  }}
+                >
+                  <InfoOutlined fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            </Box>
           </Box>
 
           {/* Details bubble, loaded lazily */}
