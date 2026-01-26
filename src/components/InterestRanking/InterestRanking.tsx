@@ -49,24 +49,13 @@ const InterestRanking: React.FC<InterestRankingProps> = ({
   // Reference to the scrollable container
   const containerRef = useRef<HTMLDivElement>(null);
   
-  // Debug logging on component mount
-  useEffect(() => {
-    console.log('[DEBUG] InterestRanking component mounted', {
-      pitchesProvided: Array.isArray(pitches) ? pitches.length : 'not an array',
-      votesProvided: votes ? Object.keys(votes).length : 'null votes',
-      userRole
-    });
-  }, []);
-  
   // Setup enhanced drop detection for the container
   useEffect(() => {
     // Initialize enhanced drop detection
-    console.log('[DEBUG] Initializing enhanced drop detection');
     initEnhancedDropDetection();
     
     // Return cleanup function
     return () => {
-      console.log('[DEBUG] Cleaning up enhanced drop detection');
       cleanupEnhancedDropDetection();
     };
   }, []);
@@ -75,13 +64,11 @@ const InterestRanking: React.FC<InterestRankingProps> = ({
   const pitchesForInterestStage = React.useMemo(() => {
     // Make sure we have a valid array of pitches
     if (!Array.isArray(pitches)) {
-      console.error('[DEBUG] pitches is not an array in InterestRanking');
       return [];
     }
     
     // Filter out any invalid pitches (those without an id)
     const validPitches = pitches.filter(p => p && (p.id !== undefined && p.id !== null));
-    console.log(`[DEBUG] Found ${validPitches.length}/${pitches.length} valid pitches`);
     
     // Sort the valid pitches
     return validPitches.sort((a, b) => {
@@ -102,8 +89,6 @@ const InterestRanking: React.FC<InterestRankingProps> = ({
   
   // For each interest level, get pitches that have been assigned to it
   const interestColumns = React.useMemo(() => {
-    console.log('[DEBUG] Creating interest columns');
-    
     const columns: Record<string, Pitch[]> = {};
     
     // Add unsorted column
@@ -117,19 +102,8 @@ const InterestRanking: React.FC<InterestRankingProps> = ({
     // Create arrays to collect pitches for each column before randomizing
     const unsortedPitches: Pitch[] = [];
     
-    console.log('[DEBUG] Column initialization complete', { 
-      columnKeys: Object.keys(columns),
-      pitchesForInterestStage: Array.isArray(pitchesForInterestStage) ? pitchesForInterestStage.length : 'not an array' 
-    });
-    
-    // Add pitches to their respective columns
-    console.log('[DEBUG] Starting to assign pitches to columns');
-    
-    let processedCount = 0;
-    let errorCount = 0;
-    
     // Process each pitch - now with better error handling to ensure all pitches are accounted for
-    pitchesForInterestStage.forEach((pitch, index) => {
+    pitchesForInterestStage.forEach((pitch) => {
       try {
         // Every pitch should have an ID at this point since we filtered in pitchesForInterestStage
         const pitchId = pitch.id;
@@ -139,14 +113,6 @@ const InterestRanking: React.FC<InterestRankingProps> = ({
         const interestLevel = vote?.interestLevel;
         const tier = vote?.tier;
         
-        // Log for debugging
-        console.log(`[DEBUG] Processing pitch ${index}: ${pitch.title?.substring(0, 20) || 'Unknown title'}...`, {
-          id: pitchId,
-          interestLevel,
-          tier,
-          hasVote: !!vote
-        });
-
         // Flag to track if pitch was placed in a column
         let pitchPlaced = false;
 
@@ -155,14 +121,12 @@ const InterestRanking: React.FC<InterestRankingProps> = ({
           if (interestLevel === null) {
             // Explicitly set to unsorted
             unsortedPitches.push(pitch);
-            console.log(`[DEBUG] Pitch ${pitchId} placed in unsorted (explicit unsorted)`);
             pitchPlaced = true;
           } else {
             // Add to the appropriate interest level column
             const columnKey = `interest-${interestLevel}`;
             if (columns[columnKey]) {
               columns[columnKey].push(pitch);
-              console.log(`[DEBUG] Pitch ${pitchId} placed in interest level ${interestLevel} (explicit)`);
               pitchPlaced = true;
             }
           }
@@ -173,24 +137,20 @@ const InterestRanking: React.FC<InterestRankingProps> = ({
           if (!tier) {
             // No tier means it goes in unsorted
             unsortedPitches.push(pitch);
-            console.log(`[DEBUG] Pitch ${pitchId} placed in unsorted (no tier)`);
             pitchPlaced = true;
           } else {
             // Map tier to interest level
             const defaultInterestLevel = mapTierToInterestLevel(tier);
-            console.log(`[DEBUG] Mapped tier ${tier} to interest level ${defaultInterestLevel} for pitch ${pitchId}`);
             
             if (defaultInterestLevel === null) {
               // Null interest level means unsorted
               unsortedPitches.push(pitch);
-              console.log(`[DEBUG] Pitch ${pitchId} placed in unsorted (null default interest)`);
               pitchPlaced = true;
             } else {
               // Add to the appropriate interest level column
               const columnKey = `interest-${defaultInterestLevel}`;
               if (columns[columnKey]) {
                 columns[columnKey].push(pitch);
-                console.log(`[DEBUG] Pitch ${pitchId} placed in interest level ${defaultInterestLevel} (default)`);
                 pitchPlaced = true;
               }
             }
@@ -200,31 +160,16 @@ const InterestRanking: React.FC<InterestRankingProps> = ({
         // Safety check - if pitch wasn't placed anywhere yet, put it in unsorted
         if (!pitchPlaced) {
           unsortedPitches.push(pitch);
-          console.log(`[DEBUG] Pitch ${pitchId} placed in unsorted as a fallback measure`);
         }
-        
-        processedCount++;
       } catch (error) {
         // If there's an error processing a pitch, put it in unsorted rather than skipping it
-        console.error(`[DEBUG] Error processing pitch at index ${index}:`, error);
-        errorCount++;
         
         // Even with error, make sure the pitch is included somewhere
         if (pitch && pitch.id) {
           unsortedPitches.push(pitch);
-          console.log(`[DEBUG] Pitch ${pitch.id} placed in unsorted due to processing error`);
         }
       }
     });
-    
-    console.log('[DEBUG] Finished assigning pitches to columns', {
-      processedCount,
-      errorCount,
-      unsortedCount: unsortedPitches.length
-    });
-    
-    // Sort interest level columns by timestamp for consistent ordering
-    console.log('[DEBUG] Sorting interest level columns by timestamp');
     
     try {
       for (let i = 1; i <= 4; i++) {
@@ -238,21 +183,15 @@ const InterestRanking: React.FC<InterestRankingProps> = ({
               const timestampB = votes && b && b.id ? (votes[b.id]?.timestamp || 0) : 0;
               return timestampA - timestampB;
             } catch (error) {
-              console.error(`[DEBUG] Error sorting column ${columnId}:`, error);
               return 0;
             }
           });
-          console.log(`[DEBUG] Sorted column ${columnId} with ${columns[columnId].length} pitches`);
-        } else {
-          console.log(`[DEBUG] Column ${columnId} has no pitches to sort`);
         }
       }
     } catch (error) {
-      console.error('[DEBUG] Error during column sorting:', error);
     }
     
     // Keep unsorted pitches in a stable order (randomization prevents precise insertion/reordering)
-    console.log('[DEBUG] Ordering unsorted pitches by timestamp');
 
     try {
       columns['interest-unsorted'] = Array.isArray(unsortedPitches)
@@ -264,51 +203,7 @@ const InterestRanking: React.FC<InterestRankingProps> = ({
           })
         : [];
     } catch (error) {
-      console.error('[DEBUG] Error ordering unsorted pitches:', error);
       columns['interest-unsorted'] = [];
-    }
-    
-    // Final column summary for debugging
-    const unsortedCount = columns['interest-unsorted']?.length || 0;
-    const level1Count = columns['interest-1']?.length || 0;
-    const level2Count = columns['interest-2']?.length || 0;
-    const level3Count = columns['interest-3']?.length || 0;
-    const level4Count = columns['interest-4']?.length || 0;
-    
-    const totalAssignedPitches = unsortedCount + level1Count + level2Count + level3Count + level4Count;
-    
-    console.log('[DEBUG] Final interest columns', {
-      'interest-unsorted': unsortedCount,
-      'interest-1': level1Count,
-      'interest-2': level2Count,
-      'interest-3': level3Count,
-      'interest-4': level4Count,
-      totalAssignedPitches,
-      originalPitchesCount: Array.isArray(pitches) ? pitches.length : 0,
-      validPitchesCount: Array.isArray(pitchesForInterestStage) ? pitchesForInterestStage.length : 0
-    });
-    
-    // Verify that all pitches are accounted for
-    if (totalAssignedPitches !== pitchesForInterestStage.length) {
-      console.error(`[DEBUG] MISMATCH: ${totalAssignedPitches} pitches in columns vs ${pitchesForInterestStage.length} in original array!`);
-      
-      // Find missing pitches
-      const assignedPitchIds = new Set([
-        ...(columns['interest-unsorted'] || []),
-        ...(columns['interest-1'] || []),
-        ...(columns['interest-2'] || []),
-        ...(columns['interest-3'] || []),
-        ...(columns['interest-4'] || [])
-      ].map(p => p.id));
-      
-      const missingPitches = pitchesForInterestStage.filter(p => !assignedPitchIds.has(p.id));
-      console.error('[DEBUG] Missing pitches:', missingPitches.map(p => ({ id: p.id, title: p.title })));
-      
-      // Add missing pitches to unsorted as a last resort
-      missingPitches.forEach(pitch => {
-        columns['interest-unsorted'].push(pitch);
-        console.log(`[DEBUG] Added missing pitch ${pitch.id} to unsorted column`);
-      });
     }
     
     return columns;
@@ -328,18 +223,14 @@ const InterestRanking: React.FC<InterestRankingProps> = ({
   };
   
   const handleDragEnd = (result: DropResult) => {
-    console.log('[DEBUG] Drag ended', result);
-    
     const { destination, draggableId, source } = result;
     
     // Drop outside valid area
     if (!destination) {
-      console.log('[DEBUG] Dropped outside valid area');
       return;
     }
     
     const destId = destination.droppableId;
-    console.log(`[DEBUG] Dropped in ${destId} (from ${source.droppableId})`);
 
     // No-op drop
     if (
@@ -385,22 +276,16 @@ const InterestRanking: React.FC<InterestRankingProps> = ({
 
       // If dropped in unsorted column
       if (destId === 'interest-unsorted') {
-        console.log(`[DEBUG] Setting interest level to null for pitch ${draggableId}`);
         // Use null to unset the interest level - the App component will handle it with the proper action
         onSetInterest(draggableId, destInterestLevel, newTimestamp);
       }
       // If dropped in an interest level column
       else if (destId.startsWith('interest-')) {
-        const interestLevel = parseInt(destId.replace('interest-', '')) as InterestLevel;
-        console.log(`[DEBUG] Setting interest level to ${interestLevel} for pitch ${draggableId}`);
-        
         // Update the interest level for this pitch
         onSetInterest(draggableId, destInterestLevel, newTimestamp);
       } else {
-        console.warn(`[DEBUG] Dropped in unknown destination: ${destId}`);
       }
     } catch (error) {
-      console.error('[DEBUG] Error handling drag end:', error);
     }
   };
   

@@ -33,34 +33,13 @@ const InterestColumn = ({
 }: InterestColumnProps) => {
   const columnRef = useRef<HTMLDivElement>(null);
 
-  // Debug logging on component mount
-  useEffect(() => {
-    console.log(`[DEBUG] InterestColumn '${columnId}' mounted`, {
-      pitchesProvided: Array.isArray(pitches) ? pitches.length : 'not an array',
-      validPitches: Array.isArray(pitches) ? pitches.filter(p => p && (p.id !== undefined && p.id !== null)).length : 0,
-      votesProvided: votes ? Object.keys(votes).length : 'null votes',
-      label,
-      userRole
-    });
-  }, []);
-
   // Register this column with the enhanced drop detection system
   useEffect(() => {
     if (columnRef.current) {
-      console.log(`[DEBUG] Registering droppable for column '${columnId}'`);
       registerDroppable(columnId, columnRef.current);
     } else {
-      console.warn(`[DEBUG] Could not register droppable for column '${columnId}' - no ref`);
     }
   }, [columnId]);
-
-  // Debug when pitches change
-  useEffect(() => {
-    console.log(`[DEBUG] Pitches changed for column '${columnId}'`, {
-      count: Array.isArray(pitches) ? pitches.length : 'not an array',
-      validCount: Array.isArray(pitches) ? pitches.filter(p => p && (p.id !== undefined && p.id !== null)).length : 0
-    });
-  }, [pitches]);
 
   return (
     <Box
@@ -157,10 +136,15 @@ const InterestColumn = ({
                 index={index}
               >
                 {(provided, snapshot) => (
+                  (() => {
+                    const { style, ...draggableProps } = provided.draggableProps;
+
+                    return (
                   <Paper
                     ref={provided.innerRef}
-                    {...provided.draggableProps}
+                    {...draggableProps}
                     {...provided.dragHandleProps}
+                    style={{ ...style, height: 'auto' }}
                     elevation={snapshot.isDragging ? 6 : 1}
                     sx={{
                       p: 1,
@@ -266,6 +250,8 @@ const InterestColumn = ({
                       </Box>
                     </Box>
                   </Paper>
+                    );
+                  })()
                 )}
               </Draggable>
             ))}
@@ -301,11 +287,13 @@ const InterestCardInfoButton = ({ pitch, vote, userRole }: { pitch: Pitch; vote?
           aria-label="View pitch details"
           sx={{
             color: 'primary.main',
-            p: 0.5,
-            mt: -0.5,
+            p: 0.25,
             flexShrink: 0, // Prevent button from shrinking
             '&:hover': {
               backgroundColor: 'rgba(25, 118, 210, 0.04)'
+            },
+            '& .MuiSvgIcon-root': {
+              fontSize: 18
             }
           }}
         >

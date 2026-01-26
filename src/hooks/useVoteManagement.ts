@@ -1,4 +1,4 @@
-import { useReducer } from 'react';
+import { useReducer, useRef } from 'react';
 import type { AppState, AppAction, Pitch, Vote, Tier, InterestLevel } from '../types/models';
 import { mapTierToInterestLevel } from '../utils/voteActions';
 
@@ -7,6 +7,16 @@ import { mapTierToInterestLevel } from '../utils/voteActions';
  * This centralizes the vote management logic that was previously scattered across components
  */
 export const useVoteManagement = (initialState: AppState) => {
+  // Ensures we don't generate duplicate timestamps when multiple actions happen in the same millisecond.
+  // Only used when the caller does not provide an explicit timestamp.
+  const lastGeneratedTimestampRef = useRef(0);
+
+  const generateTimestamp = () => {
+    const now = new Date().getTime();
+    lastGeneratedTimestampRef.current = Math.max(now, lastGeneratedTimestampRef.current + 1);
+    return lastGeneratedTimestampRef.current;
+  };
+
   // Reducer for state management
   const voteReducer = (state: AppState, action: AppAction): AppState => {
     switch (action.type) {
@@ -28,26 +38,24 @@ export const useVoteManagement = (initialState: AppState) => {
               ...state.votes[action.id] || { pitchId: action.id },
               tier: action.tier,
               // Always use provided timestamp or current time to ensure consistent ordering
-              timestamp: action.timestamp || new Date().getTime(),
+              timestamp: action.timestamp ?? generateTimestamp(),
             } as Vote,
           },
         };
         
       case 'UNSET_TIER':
         // Set tier to null explicitly (don't remove the property)
-        {
-          return {
-            ...state,
-            votes: {
-              ...state.votes,
-              [action.id]: {
-                ...state.votes[action.id] || { pitchId: action.id },
-                tier: null,  // Set the tier value
-                timestamp: action.timestamp || new Date().getTime(),
-              } as Vote,
-            },
-          };
-        }
+        return {
+          ...state,
+          votes: {
+            ...state.votes,
+            [action.id]: {
+              ...state.votes[action.id] || { pitchId: action.id },
+              tier: null,  // Set the tier value
+              timestamp: action.timestamp ?? generateTimestamp(),
+            } as Vote,
+          },
+        };
         
       case 'SET_INTEREST':
         return {
@@ -58,7 +66,7 @@ export const useVoteManagement = (initialState: AppState) => {
               ...state.votes[action.id] || { pitchId: action.id },
               interestLevel: action.interestLevel,
               // Always use provided timestamp or current time to ensure consistent ordering
-              timestamp: action.timestamp || new Date().getTime(),
+              timestamp: action.timestamp ?? generateTimestamp(),
             } as Vote
           }
         };
@@ -72,7 +80,7 @@ export const useVoteManagement = (initialState: AppState) => {
             [action.id]: {
               ...state.votes[action.id] || { pitchId: action.id },
               interestLevel: null,
-              timestamp: action.timestamp || new Date().getTime(),
+              timestamp: action.timestamp ?? generateTimestamp(),
             } as Vote
           }
         };
@@ -80,10 +88,24 @@ export const useVoteManagement = (initialState: AppState) => {
       case 'RESET_FROM_PITCHES': {
         // Sync votes with current pitch IDs
         const now = new Date().getTime();
+        const usedTimestamps = new Set<number>();
+        let maxTimestamp = now;
+
         const syncedVotes = Object.fromEntries(
-          action.pitchIds.map((id, index) => {
+          action.pitchIds.map((id) => {
             const existing = state.votes[id];
-            const timestamp = existing?.timestamp ?? (now + index);
+            let timestamp = existing?.timestamp;
+
+            if (timestamp === undefined || timestamp === null) {
+              timestamp = maxTimestamp + 1;
+            }
+
+            while (usedTimestamps.has(timestamp)) {
+              timestamp += 1;
+            }
+
+            usedTimestamps.add(timestamp);
+            if (timestamp > maxTimestamp) maxTimestamp = timestamp;
 
             return [
               id,
