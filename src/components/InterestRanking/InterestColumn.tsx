@@ -1,7 +1,7 @@
 import React, { useRef, useEffect } from 'react';
 import { Box, Typography, Paper, IconButton, Tooltip } from '@mui/material';
 import InfoOutlined from '@mui/icons-material/InfoOutlined';
-import ArrowForward from '@mui/icons-material/ArrowForward';
+import Autorenew from '@mui/icons-material/Autorenew';
 import South from '@mui/icons-material/South';
 import InterestDetailsBubble from './InterestDetailsBubble';
 import { Droppable, Draggable } from '@hello-pangea/dnd';
@@ -171,7 +171,7 @@ const InterestColumn = ({
                         cursor: 'grabbing',
                       },
                       position: 'relative',
-                      minHeight: '96px',
+                      minHeight: '84px',
                       display: 'flex',
                       flexDirection: 'column',
                       width: '100%',
@@ -239,7 +239,7 @@ const InterestColumn = ({
                                   p: 0.5
                                 }}
                               >
-                                <ArrowForward fontSize="small" />
+                                <Autorenew fontSize="small" />
                               </Box>
                             </Tooltip>
                           )}
@@ -259,7 +259,7 @@ const InterestColumn = ({
                                   p: 0.5
                                 }}
                               >
-                                <ArrowForward fontSize="small" />
+                                <Autorenew fontSize="small" />
                               </Box>
                             </Tooltip>
                           )}

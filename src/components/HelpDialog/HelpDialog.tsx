@@ -24,6 +24,7 @@ interface HelpDialogProps {
 const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose, userRole, showInterestStep }) => {
   // Check if user is a customer
   const isCustomer = userRole === 'customer';
+  const sharePointUrl = 'https://epic1.sharepoint.com/:f:/s/SmartTools-Docs/IgCMGRgsBqd0SZqSL-gZ9sQGAZjgncTeb_kmoGM6_OODz_4?e=wVa9u4';
 
   return (
     <Dialog
@@ -48,7 +49,7 @@ const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose, userRole, showIn
           Drag each problem card into one of the four tier columns based on how important you think it is to solve in this next version.
           The tiers range from "Highest Priority" (Tier 1) to "Not a Priority" (Tier 4).
         </Typography>
-        <Typography variant="body1" paragraph sx={{ fontWeight: 'medium', color: 'primary.main' }}>
+        <Typography variant="body1" paragraph sx={{ fontWeight: 'medium', color: 'text.primary' }}>
           You need to rank at least 50% of the problems to submit your feedback. However, ranking more helps our team make more informed decisions about what to work on next.
         </Typography>
         <Typography variant="body1" paragraph sx={{ fontStyle: 'italic', color: 'text.secondary' }}>
@@ -72,7 +73,7 @@ const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose, userRole, showIn
             <Typography variant="body1" gutterBottom>
               Drag each problem card into one of four interest level columns, ranging from "Very Interested" to "Not Interested".
             </Typography>
-            <Typography variant="body1" paragraph sx={{ fontWeight: 'medium', color: 'primary.main' }}>
+            <Typography variant="body1" paragraph sx={{ fontWeight: 'medium', color: 'text.primary' }}>
               You need to set your interest levels for at least 50% of the problems to submit your feedback. The more data you provide, the better we can match folks to their interests.
             </Typography>
             
@@ -101,11 +102,11 @@ const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose, userRole, showIn
             <Typography 
               variant="body2" 
               component="a" 
-              href="https://epic1.sharepoint.com/:f:/s/SmartTools-Docs/Ejf7LBmWxQlLtges9A_BXDIBCzgQXNaHzM6VrjbC8C5cfw?e=LS8vvb"
+              href={sharePointUrl}
               target="_blank"
               rel="noopener noreferrer"
               sx={{ 
-                color: 'primary.main',
+                color: (theme) => theme.palette.mode === 'dark' ? '#90caf9' : theme.palette.primary.main,
                 wordBreak: 'break-all',
                 textDecoration: 'none',
                 '&:hover': {
@@ -113,13 +114,13 @@ const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose, userRole, showIn
                 }
               }}
             >
-              https://epic1.sharepoint.com/:f:/s/SmartTools-Docs/Ejf7LBmWxQlLtges9A_BXDIBCzgQXNaHzM6VrjbC8C5cfw?e=LS8vvb
+              {sharePointUrl}
             </Typography>
           </Box>
         )}
         
-        <Box sx={{ mt: 2, p: 2, bgcolor: 'rgba(33, 150, 243, 0.08)', borderRadius: 1 }}>
-          <Typography variant="body2" color="primary">
+        <Box sx={{ mt: 2, p: 2, bgcolor: 'rgba(0, 0, 0, 0.07)', borderRadius: 1 }}>
+          <Typography variant="body2" sx={{ color: 'text.primary' }}>
             You can access these instructions at any time by clicking the help icon in the top bar.
           </Typography>
         </Box>

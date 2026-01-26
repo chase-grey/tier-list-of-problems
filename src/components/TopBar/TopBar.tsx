@@ -169,9 +169,15 @@ export const TopBar = ({
                 sx={{
                   mr: 2,
                   // Use purple for interest stage button, blue for priority stage button
-                  bgcolor: stage === 'priority' ? '#9c27b0' : '#1976d2',
+                  bgcolor: (theme) =>
+                    stage === 'priority'
+                      ? (theme.palette.mode === 'light' ? '#ce93d8' : '#9c27b0')
+                      : (theme.palette.mode === 'light' ? '#64b5f6' : '#1976d2'),
                   '&:hover': {
-                    bgcolor: stage === 'priority' ? '#7b1fa2' : '#1565c0'
+                    bgcolor: (theme) =>
+                      stage === 'priority'
+                        ? (theme.palette.mode === 'light' ? '#ba68c8' : '#7b1fa2')
+                        : (theme.palette.mode === 'light' ? '#42a5f5' : '#1565c0')
                   }
                 }}
               >

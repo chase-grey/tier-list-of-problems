@@ -415,7 +415,7 @@ const InterestRanking: React.FC<InterestRankingProps> = ({
               display: 'flex', 
               flexWrap: { xs: 'wrap', lg: 'nowrap' }, // Wrap on smaller screens, no wrap on large screens
               justifyContent: 'space-between',
-              pb: 2, // Reduced bottom padding
+              pb: 0.5, // Reduced bottom padding
               height: { xs: 'auto', lg: 'calc(100vh - 72px)' }, // Increased vertical space on large screens
               maxWidth: '100%', // Ensure it doesn't exceed viewport width
               overflowX: { xs: 'hidden', lg: 'auto' }, // Only allow horizontal scroll on large screens if needed

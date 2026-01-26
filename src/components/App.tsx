@@ -492,7 +492,7 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
           onToggleTheme={onToggleTheme}
         />
         
-        <Box component="main" sx={{ flexGrow: 1, overflow: 'hidden', p: 1 }}>
+        <Box component="main" sx={{ flexGrow: 1, overflow: 'hidden', p: 0 }}>
           {state.stage === 'priority' ? (
             <KanbanContainer
               pitches={pitches}

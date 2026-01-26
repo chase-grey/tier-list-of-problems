@@ -1,6 +1,6 @@
 import React, { useState, useRef, memo } from 'react';
 import { Paper, Typography, Box, IconButton, Tooltip } from '@mui/material';
-import { InfoOutlined, ArrowForward, South } from '@mui/icons-material';
+import { InfoOutlined, Autorenew, South } from '@mui/icons-material';
 import { Draggable } from '@hello-pangea/dnd';
 import type { DraggableProvided, DraggableStateSnapshot } from '@hello-pangea/dnd';
 import type { Pitch, Vote } from '../../../types/models';
@@ -79,7 +79,7 @@ const PitchCard = ({ pitch, vote, index, onSendToBottom, userRole }: PitchCardPr
               cursor: 'grabbing',
             },
             position: 'relative',
-            minHeight: '96px',
+            minHeight: '84px',
           }}
           role="button"
           tabIndex={0}
@@ -95,6 +95,7 @@ const PitchCard = ({ pitch, vote, index, onSendToBottom, userRole }: PitchCardPr
                 minWidth: 0,
                 flexGrow: 1,
                 whiteSpace: 'normal',
+                pr: 4,
                 // Ensure text wraps to avoid overflow
                 overflowWrap: 'break-word',
                 wordBreak: 'break-word',
@@ -105,7 +106,7 @@ const PitchCard = ({ pitch, vote, index, onSendToBottom, userRole }: PitchCardPr
             </Typography>
 
             {currentTier === null ? (
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25, flexShrink: 0, mt: -0.5, flexDirection: 'column' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25, flexShrink: 0, flexDirection: 'column', position: 'absolute', top: 4, right: 4 }}>
                 <Tooltip title="View details">
                   <IconButton 
                     size="small" 
@@ -160,7 +161,7 @@ const PitchCard = ({ pitch, vote, index, onSendToBottom, userRole }: PitchCardPr
                         p: 0.5
                       }}
                     >
-                      <ArrowForward fontSize="small" />
+                      <Autorenew fontSize="small" />
                     </Box>
                   </Tooltip>
                 )}
@@ -180,7 +181,7 @@ const PitchCard = ({ pitch, vote, index, onSendToBottom, userRole }: PitchCardPr
                         p: 0.5
                       }}
                     >
-                      <ArrowForward fontSize="small" />
+                      <Autorenew fontSize="small" />
                     </Box>
                   </Tooltip>
                 )}
