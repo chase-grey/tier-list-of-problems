@@ -66,7 +66,7 @@ const PitchCard = ({ pitch, vote, index, userRole }: PitchCardProps) => {
           sx={{
             p: 1,
             mb: 0.75,
-            transition: 'all 0.2s ease',
+            transition: snapshot.isDragging ? 'none' : 'background-color 0.2s ease, box-shadow 0.2s ease',
             cursor: 'grab',
             '&:hover': {
               backgroundColor: 'background.paper',
@@ -76,7 +76,7 @@ const PitchCard = ({ pitch, vote, index, userRole }: PitchCardProps) => {
               cursor: 'grabbing',
             },
             position: 'relative',
-            minHeight: '80px',
+            minHeight: '96px',
           }}
           role="button"
           tabIndex={0}
@@ -89,6 +89,9 @@ const PitchCard = ({ pitch, vote, index, userRole }: PitchCardProps) => {
               variant="subtitle2" 
               sx={{ 
                 mr: 1,
+                minWidth: 0,
+                flexGrow: 1,
+                whiteSpace: 'normal',
                 // Ensure text wraps to avoid overflow
                 overflowWrap: 'break-word',
                 wordBreak: 'break-word',

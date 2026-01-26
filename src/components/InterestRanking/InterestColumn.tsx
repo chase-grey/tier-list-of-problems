@@ -156,7 +156,7 @@ const InterestColumn = ({
                     sx={{
                       p: 1,
                       mb: 0.75,
-                      transition: 'all 0.2s ease',
+                      transition: snapshot.isDragging ? 'none' : 'background-color 0.2s ease, box-shadow 0.2s ease',
                       cursor: 'grab',
                       '&:hover': {
                         backgroundColor: 'background.paper',
@@ -166,7 +166,7 @@ const InterestColumn = ({
                         cursor: 'grabbing',
                       },
                       position: 'relative',
-                      minHeight: '80px',
+                      minHeight: '96px',
                       display: 'flex',
                       flexDirection: 'column',
                       width: '100%',
@@ -181,6 +181,7 @@ const InterestColumn = ({
                         variant="subtitle2"
                         sx={{
                           mr: 1,
+                          minWidth: 0,
                           // Ensure text wraps to avoid overflow
                           overflowWrap: 'break-word',
                           wordBreak: 'break-word',

@@ -78,11 +78,20 @@ export const useVoteManagement = (initialState: AppState) => {
       
       case 'RESET_FROM_PITCHES': {
         // Sync votes with current pitch IDs
+        const now = new Date().getTime();
         const syncedVotes = Object.fromEntries(
-          action.pitchIds.map(id => [
-            id, 
-            state.votes[id] ?? { pitchId: id, tier: undefined! }
-          ])
+          action.pitchIds.map((id, index) => {
+            const existing = state.votes[id];
+            const timestamp = existing?.timestamp ?? (now + index);
+
+            return [
+              id,
+              {
+                ...(existing ?? { pitchId: id, tier: undefined! }),
+                timestamp
+              }
+            ];
+          })
         );
         
         return {
