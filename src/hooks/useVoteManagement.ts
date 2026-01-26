@@ -1,5 +1,5 @@
 import { useReducer } from 'react';
-import type { AppState, AppAction, Pitch, Vote, Appetite, Tier, InterestLevel } from '../types/models';
+import type { AppState, AppAction, Pitch, Vote, Tier, InterestLevel } from '../types/models';
 
 /**
  * Custom hook for managing votes in the application
@@ -17,18 +17,6 @@ export const useVoteManagement = (initialState: AppState) => {
         
       case 'SET_STAGE':
         return { ...state, stage: action.stage };
-      
-      case 'SET_APPETITE':
-        return {
-          ...state,
-          votes: {
-            ...state.votes,
-            [action.id]: {
-              ...state.votes[action.id] || { pitchId: action.id },
-              appetite: action.appetite as Appetite,
-            } as Vote,
-          },
-        };
       
       case 'SET_TIER':
         return {
@@ -93,7 +81,7 @@ export const useVoteManagement = (initialState: AppState) => {
         const syncedVotes = Object.fromEntries(
           action.pitchIds.map(id => [
             id, 
-            state.votes[id] ?? { pitchId: id, appetite: undefined!, tier: undefined! }
+            state.votes[id] ?? { pitchId: id, tier: undefined! }
           ])
         );
         
@@ -145,10 +133,6 @@ export const useVoteManagement = (initialState: AppState) => {
     } else {
       dispatch({ type: 'SET_INTEREST', id, interestLevel, timestamp });
     }
-  };
-
-  const setAppetite = (id: string, appetite: Appetite | null) => {
-    dispatch({ type: 'SET_APPETITE', id, appetite });
   };
 
   const setStage = (stage: 'priority' | 'interest') => {
@@ -282,7 +266,6 @@ export const useVoteManagement = (initialState: AppState) => {
       console.error('getCompletionStats: pitches is not an array');
       return {
         total: 0,
-        appetiteCount: 0,
         rankCount: 0,
         interestCount: 0,
         minimumRequired: 0,
@@ -293,7 +276,6 @@ export const useVoteManagement = (initialState: AppState) => {
 
     const totalCount = pitches.length;
     const votes = state.votes || {};
-    const appetiteCount = Object.values(votes).filter(v => v && v.appetite).length;
     const rankCount = Object.values(votes).filter(v => v && v.tier).length;
     const interestCount = Object.values(votes).filter(v => v && v.interestLevel !== undefined).length;
     
@@ -301,11 +283,10 @@ export const useVoteManagement = (initialState: AppState) => {
     
     return {
       total: totalCount,
-      appetiteCount,
       rankCount,
       interestCount,
       minimumRequired,
-      isPriorityComplete: appetiteCount >= minimumRequired && rankCount >= minimumRequired,
+      isPriorityComplete: rankCount >= minimumRequired,
       isInterestComplete: interestCount >= minimumRequired
     };
   };
@@ -315,7 +296,6 @@ export const useVoteManagement = (initialState: AppState) => {
     dispatch,
     setTier,
     setInterest,
-    setAppetite,
     setStage,
     resetAllVotes,
     resetAll,

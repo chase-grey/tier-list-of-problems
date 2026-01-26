@@ -26,12 +26,6 @@ export const darkTheme = createTheme(themeOptions);
 
 // Define color tokens for appetites and tiers
 export const colorTokens = {
-  appetites: {
-    small: '#2ecc71',   // Green
-    medium: '#f39c12',  // Amber
-    large: '#e74c3c',   // Red
-    unset: '#7f8c8d',   // Gray
-  },
   tiers: {
     // Subtle progression from dark to light blue
     1: '#1e3a8a',      // Highest Priority (Navy blue)

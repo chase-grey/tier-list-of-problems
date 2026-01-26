@@ -2,7 +2,6 @@
  * Tests for the API service
  */
 import { fetchPitches, getCsrfToken, submitVotes, fetchResults, ApiError } from '../services/api';
-import type { Appetite } from '../types';
 import { describe, beforeEach, it, expect, jest } from '@jest/globals';
 
 // Mock the fetch function
@@ -84,7 +83,7 @@ describe('API Service', () => {
         nonce: 'test-token-123',
         voterName: 'Test User',
         votes: [
-          { pitch_id: 'pitch-1', appetite: 'S' as Appetite, tier: 2 }
+          { pitch_id: 'pitch-1', tier: 2 }
         ]
       };
       

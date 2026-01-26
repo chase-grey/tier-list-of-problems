@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Box, Alert, Select, MenuItem, FormControl, InputLabel } from '@mui/material';
 import { DragDropContext } from '@hello-pangea/dnd';
 import type { DropResult } from '@hello-pangea/dnd';
-import type { Pitch, Vote, Tier, Appetite } from '../../types/models';
+import type { Pitch, Vote, Tier } from '../../types/models';
 import BucketColumn from './BucketColumn';
 import ErrorBoundary from '../ErrorBoundary';
 import { isDragAndDropSupported } from '../../utils/dndDetection';
@@ -12,7 +12,6 @@ interface KanbanContainerProps {
   pitches: Pitch[];
   votes: Record<string, Vote>;
   onDragEnd: (result: DropResult) => void;
-  onAppetiteChange: (pitchId: string, appetite: Appetite | null) => void;
   userRole?: string | null;
 }
 
@@ -24,7 +23,6 @@ const KanbanContainer = ({
   pitches, 
   votes, 
   onDragEnd,
-  onAppetiteChange,
   userRole
 }: KanbanContainerProps) => {
   // Reference to the scrollable container
@@ -122,42 +120,6 @@ const KanbanContainer = ({
                 })}
               </Select>
             </FormControl>
-            
-            <Box sx={{ display: 'flex', gap: 1 }}>
-              {(['S', 'M', 'L'] as Appetite[]).map(appetite => (
-                <Box 
-                  key={appetite}
-                  component="button"
-                  onClick={() => {
-                    // Toggle appetite
-                    const currentAppetite = votes[pitch.id]?.appetite;
-                    const newAppetite = currentAppetite === appetite ? null : appetite;
-                    onAppetiteChange(pitch.id, newAppetite);
-                  }}
-                  sx={{
-                    width: 30,
-                    height: 30,
-                    borderRadius: '50%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    border: 'none',
-                    cursor: 'pointer',
-                    bgcolor: votes[pitch.id]?.appetite === appetite ? 
-                      appetite === 'S' ? '#2ecc71' : 
-                      appetite === 'M' ? '#f39c12' : 
-                      '#e74c3c' : 
-                      'rgba(255,255,255,0.1)',
-                    color: '#fff',
-                    '&:hover': {
-                      opacity: 0.9
-                    }
-                  }}
-                >
-                  {appetite}
-                </Box>
-              ))}
-            </Box>
           </Box>
         ))}
       </Box>
@@ -211,7 +173,6 @@ const KanbanContainer = ({
               tier={null}
               pitches={pitches}
               votes={votes}
-              onAppetiteChange={onAppetiteChange}
               columnCount={columnCount} // Always 9 columns
               userRole={userRole}
             />
@@ -223,7 +184,6 @@ const KanbanContainer = ({
                 tier={tier}
                 pitches={pitches}
                 votes={votes}
-                onAppetiteChange={onAppetiteChange}
                 columnCount={columnCount} // Always 9 columns
                 userRole={userRole}
               />

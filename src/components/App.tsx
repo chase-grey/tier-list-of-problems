@@ -17,7 +17,7 @@ import { useLocalStorage } from '../hooks/useLocalStorage';
 import { exportVotes } from '../utils/csv';
 import { isDevelopmentMode } from '../utils/testUtils';
 import type { DropResult } from '@hello-pangea/dnd';
-import type { AppState, Pitch, Appetite, Tier, InterestLevel } from '../types/models';
+import type { AppState, Pitch, Tier, InterestLevel } from '../types/models';
 import { isContributorRole } from '../types/models';
 import { useVoteManagement } from '../hooks/useVoteManagement';
 import { getPollingCycleId } from '../utils/config';
@@ -93,7 +93,6 @@ const AppContent: React.FC = () => {
     // dispatch is not used directly
     setTier,
     setInterest,
-    setAppetite,
     setStage,
     resetAll,
     syncPitches,
@@ -134,7 +133,6 @@ const AppContent: React.FC = () => {
   // Get completion stats using our utility function
   const stats = getCompletionStats(pitches);
   const { 
-    appetiteCount,
     rankCount,
     interestCount,
     // minimumRequired is not used directly
@@ -232,14 +230,6 @@ const AppContent: React.FC = () => {
       console.error('[DEBUG] Error handling interest change:', error);
     }
   };
-  
-  // Handle appetite change
-  const handleAppetiteChange = (pitchId: string, appetite: Appetite | null) => {
-    setAppetite(pitchId, appetite);
-    if (appetite) {
-      showSnackbar(`Appetite set to ${appetite === 'S' ? 'Small' : appetite === 'M' ? 'Medium' : 'Large'}`, 'info');
-    }
-  };
 
   // Handle availability setting
   const handleAvailabilitySet = (available: boolean) => {
@@ -275,7 +265,7 @@ const AppContent: React.FC = () => {
       if (!canAccessInterestStage) {
         showSnackbar('Only developers who have indicated availability can rank interest', 'error');
       } else {
-        showSnackbar('You must complete all appetites and priority rankings first', 'error');
+        showSnackbar('You must complete priority rankings first', 'error');
       }
       return;
     }
@@ -339,7 +329,7 @@ const AppContent: React.FC = () => {
       // Show feedback dialog before exporting
       setShowFeedback(true);
     } else {
-      showSnackbar('Complete at least 50% of appetites and rankings first', 'error');
+      showSnackbar('Complete at least 50% of rankings first', 'error');
     }
   };
   
@@ -376,11 +366,6 @@ const AppContent: React.FC = () => {
     
     // Apply each vote
     Object.entries(votes).forEach(([pitchId, vote]) => {
-      // Set appetite if present
-      if (vote.appetite) {
-        setAppetite(pitchId, vote.appetite);
-      }
-      
       // Set tier if present
       if (vote.tier) {
         setTier(pitchId, vote.tier);
@@ -414,7 +399,6 @@ const AppContent: React.FC = () => {
         <TopBar 
           voterName={state.voterName}
           totalPitchCount={TOTAL}
-          appetiteCount={appetiteCount}
           rankCount={rankCount}
           interestCount={interestCount}
           onFinish={handleFinish}
@@ -433,7 +417,6 @@ const AppContent: React.FC = () => {
               pitches={pitches}
               votes={state.votes}
               onDragEnd={handleDragEnd}
-              onAppetiteChange={handleAppetiteChange}
               userRole={state.voterRole}
             />
           ) : (

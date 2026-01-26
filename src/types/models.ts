@@ -16,7 +16,6 @@ export interface Pitch {
 }
 
 /* ─────────────–– RUNTIME ───────────── */
-export type Appetite = 'S' | 'M' | 'L';   // Small | Medium | Large
 export type Tier     = 1 | 2 | 3 | 4 | null;
 
 // Interest levels for the second stage
@@ -60,7 +59,6 @@ export function isNonContributorRole(role: string): boolean {
 
 export interface Vote {
   pitchId: string;
-  appetite?: Appetite;
   tier?: Tier;
   interestLevel?: InterestLevel;
   timestamp?: number; // Used for consistent ordering
@@ -83,7 +81,6 @@ export interface AppState {
 
 export type AppAction =
   | { type: 'SET_NAME'; name: string; role: string }
-  | { type: 'SET_APPETITE'; id: string; appetite: Appetite | null }
   | { type: 'SET_TIER'; id: string; tier: Tier; timestamp?: number }
   | { type: 'UNSET_TIER'; id: string; timestamp?: number }  // Remove tier assignment
   | { type: 'SET_INTEREST'; id: string; interestLevel: InterestLevel; timestamp?: number }

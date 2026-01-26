@@ -16,7 +16,7 @@ interface DevAutoPopulateProps {
 const DevAutoPopulate: React.FC<DevAutoPopulateProps> = ({ onPopulate, pitchIds }) => {
   const [open, setOpen] = React.useState(false);
   const [name, setName] = React.useState('Test User');
-  const [mode, setMode] = React.useState('complete');
+  const [mode, setMode] = React.useState('tiers-only');
   const [cycleOverride, setCycleOverride] = React.useState(() => {
     try {
       return localStorage.getItem(DEBUG_CYCLE_OVERRIDE_KEY) || '';
@@ -34,33 +34,17 @@ const DevAutoPopulate: React.FC<DevAutoPopulateProps> = ({ onPopulate, pitchIds 
     let complete = true;
     
     switch (mode) {
-      case 'complete':
-        // All pitches with both appetite and tier
-        votes = generateRandomVotes(pitchIds);
-        break;
-      case 'appetites-only':
-        // Only appetite values, no tiers
-        votes = generateRandomVotes(pitchIds);
-        Object.values(votes).forEach((vote: any) => {
-          delete vote.tier;
-        });
-        complete = false;
-        break;
       case 'tiers-only':
-        // Only tier values, no appetites
+        // All pitches with tiers
         votes = generateRandomVotes(pitchIds);
-        Object.values(votes).forEach((vote: any) => {
-          delete vote.appetite;
-        });
         complete = false;
         break;
       case 'partial':
-        // About 70% complete
+        // About 70% complete (tiers)
         votes = generateRandomVotes(pitchIds);
         Object.values(votes).forEach((vote: any, index) => {
           // Remove some values randomly
           if (index % 5 === 0) delete vote.tier;
-          if (index % 7 === 0) delete vote.appetite;
         });
         complete = false;
         break;
@@ -191,8 +175,6 @@ const DevAutoPopulate: React.FC<DevAutoPopulateProps> = ({ onPopulate, pitchIds 
                 onChange={(e) => setMode(e.target.value)}
                 label="Populate Mode"
               >
-                <MenuItem value="complete">Complete (Appetites + Tiers)</MenuItem>
-                <MenuItem value="appetites-only">Appetites Only</MenuItem>
                 <MenuItem value="tiers-only">Tiers Only</MenuItem>
                 <MenuItem value="partial">Partial (~70% Complete)</MenuItem>
               </Select>

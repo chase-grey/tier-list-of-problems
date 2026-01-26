@@ -88,9 +88,6 @@ const AdminResults: React.FC = () => {
           <TableHead>
             <TableRow>
               <TableCell>Problem Title</TableCell>
-              <TableCell align="center">Small (S)</TableCell>
-              <TableCell align="center">Medium (M)</TableCell>
-              <TableCell align="center">Large (L)</TableCell>
               <TableCell align="center">Mean Tier</TableCell>
             </TableRow>
           </TableHead>
@@ -103,15 +100,12 @@ const AdminResults: React.FC = () => {
                 <TableCell component="th" scope="row">
                   {pitches[row.pitch_id]?.title || 'Unknown Problem'}
                 </TableCell>
-                <TableCell align="center">{row.small}</TableCell>
-                <TableCell align="center">{row.medium}</TableCell>
-                <TableCell align="center">{row.large}</TableCell>
                 <TableCell align="center">{row.mean_tier.toFixed(2)}</TableCell>
               </TableRow>
             ))}
             {results.length === 0 && (
               <TableRow>
-                <TableCell colSpan={5} align="center">
+                <TableCell colSpan={2} align="center">
                   No results available yet.
                 </TableCell>
               </TableRow>

@@ -11,17 +11,16 @@ import type { Vote } from '../types/models';
  */
 export function generateVotesCSV(votes: Record<string, Vote>, voterName: string): string {
   // Create CSV header row
-  const headerRow = ['voter_name', 'pitch_id', 'appetite', 'tier', 'timestamp'].join(',');
+  const headerRow = ['voter_name', 'pitch_id', 'tier', 'timestamp'].join(',');
   
   // Convert each vote to a CSV row
   const voteRows = Object.values(votes)
-    .filter(vote => vote.appetite && vote.tier) // Only include complete votes
+    .filter(vote => vote.tier) // Only include complete votes
     .map(vote => {
-      // Format the row with voter name, pitch id, appetite, tier, timestamp
+      // Format the row with voter name, pitch id, tier, timestamp
       const row = [
         escapeCsvField(voterName),
         escapeCsvField(vote.pitchId),
-        escapeCsvField(vote.appetite),
         vote.tier,
         vote.timestamp || new Date().getTime()
       ];

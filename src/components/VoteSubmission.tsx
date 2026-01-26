@@ -33,8 +33,8 @@ const VoteSubmission: React.FC<VoteSubmissionProps> = ({
   // Convert votes to the required format for API submission
   const apiVotes = convertVotesToApiFormat(votes);
   
-  // Check if votes exist and are complete (have both appetite and tier)
-  const hasCompleteVotes = Object.values(votes).every(vote => vote.appetite && vote.tier);
+  // Check if votes exist and are complete (have tiers)
+  const hasCompleteVotes = Object.values(votes).every(vote => vote.tier);
   
   // Handle submission of votes to the backend
   const handleSubmit = async () => {

@@ -1,7 +1,7 @@
 /**
  * Utilities for testing and development purposes
  */
-import type { Vote, Appetite, Tier } from '../types/models';
+import type { Vote, Tier } from '../types/models';
 
 /**
  * Generate random votes for all pitches
@@ -9,14 +9,10 @@ import type { Vote, Appetite, Tier } from '../types/models';
  * @returns Object containing random votes for each pitch
  */
 export function generateRandomVotes(pitchIds: string[]): Record<string, Vote> {
-  const appetites: Appetite[] = ['S', 'M', 'L'];
-  const tiers: Tier[] = [1, 2, 3, 4, 5, 6, 7, 8] as Tier[];
+  const tiers: Tier[] = [1, 2, 3, 4] as Tier[];
   
   return pitchIds.reduce((votes, pitchId) => {
-    // Random appetite: S, M, or L
-    const appetite = appetites[Math.floor(Math.random() * appetites.length)];
-    
-    // Random tier from 1-8
+    // Random tier from 1-4
     const tier = tiers[Math.floor(Math.random() * tiers.length)];
     
     // Current timestamp for consistent ordering
@@ -24,7 +20,6 @@ export function generateRandomVotes(pitchIds: string[]): Record<string, Vote> {
     
     votes[pitchId] = {
       pitchId,
-      appetite,
       tier,
       timestamp
     };

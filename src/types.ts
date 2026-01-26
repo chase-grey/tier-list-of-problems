@@ -17,14 +17,6 @@ export interface Pitch {
 }
 
 /**
- * Appetite options for a pitch
- * S = Small (days/week)
- * M = Medium (weeks/month)
- * L = Large (months/quarter)
- */
-export type Appetite = 'S' | 'M' | 'L';
-
-/**
  * Tier ranking (1-8)
  * 1 = highest priority
  * 8 = lowest priority
@@ -36,7 +28,6 @@ export type Tier = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
  */
 export interface Vote {
   pitchId: string;
-  appetite: Appetite;
   tier: Tier;
 }
 

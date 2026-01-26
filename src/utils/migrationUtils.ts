@@ -26,10 +26,9 @@ export async function migrateLocalStorageToApi(
   
   // Convert votes to API format
   const apiVotes = Object.entries(votes)
-    .filter(([_, vote]) => vote.appetite && vote.tier) // Filter out incomplete votes
+    .filter(([_, vote]) => vote.tier) // Filter out incomplete votes
     .map(([pitchId, vote]) => ({
       pitch_id: pitchId,
-      appetite: vote.appetite as 'S' | 'M' | 'L', // Type assertion since we filtered undefined
       tier: vote.tier as number // Type assertion since we filtered undefined
     }));
   

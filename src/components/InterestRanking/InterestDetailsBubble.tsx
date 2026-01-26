@@ -18,7 +18,7 @@ interface InterestDetailsBubbleProps {
 
 /**
  * Displays detailed information about a pitch in the interest ranking stage
- * Including the priority tier and appetite that the user had set
+ * Including the priority tier that the user had set
  */
 const InterestDetailsBubble = ({ pitch, vote, anchorEl, onClose, userRole }: InterestDetailsBubbleProps) => {
   // Check if user is a customer
@@ -43,30 +43,6 @@ const InterestDetailsBubble = ({ pitch, vote, anchorEl, onClose, userRole }: Int
     }
   };
   
-  // Get appetite label
-  const getAppetiteLabel = (appetite?: string) => {
-    if (!appetite) return 'Not Set';
-    
-    switch (appetite) {
-      case 'S': return 'Small';
-      case 'M': return 'Medium';
-      case 'L': return 'Large';
-      default: return appetite;
-    }
-  };
-  
-  // Get appetite color
-  const getAppetiteColor = (appetite?: string) => {
-    if (!appetite) return 'default';
-    
-    switch (appetite) {
-      case 'S': return 'success';
-      case 'M': return 'warning';
-      case 'L': return 'error';
-      default: return 'default';
-    }
-  };
-
   // Renders a detail section if the content exists
   const renderDetailSection = (label: string, content?: string | boolean) => {
     if (content === undefined || content === '' || content === null) return null;
@@ -137,7 +113,7 @@ const InterestDetailsBubble = ({ pitch, vote, anchorEl, onClose, userRole }: Int
         
         <Divider />
         
-        {/* Add priority tier and appetite information at the top */}
+        {/* Add priority tier information at the top */}
         <Box sx={{ mt: 2, mb: 1 }}>
           <Typography variant="subtitle2" color="text.secondary">
             Priority Ranking
@@ -147,13 +123,6 @@ const InterestDetailsBubble = ({ pitch, vote, anchorEl, onClose, userRole }: Int
             <Chip 
               label={`Tier ${vote?.tier || 'N/A'}: ${getPriorityLabel(vote?.tier)}`}
               color="primary"
-              size="small"
-              variant="outlined"
-            />
-            
-            <Chip 
-              label={`Appetite: ${getAppetiteLabel(vote?.appetite)}`}
-              color={getAppetiteColor(vote?.appetite)}
               size="small"
               variant="outlined"
             />

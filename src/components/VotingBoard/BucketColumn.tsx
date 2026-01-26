@@ -4,7 +4,7 @@ import { Paper, Typography, Box, Stack } from '@mui/material';
 import { Droppable } from '@hello-pangea/dnd';
 import type { DroppableProvided, DroppableStateSnapshot } from '@hello-pangea/dnd';
 import { colorTokens } from '../../theme';
-import type { Pitch, Vote, Appetite } from '../../types/models';
+import type { Pitch, Vote } from '../../types/models';
 import PitchCard from './PitchCard/PitchCard';
 import { registerDroppable } from '../../utils/enhancedDropDetection';
 
@@ -12,7 +12,6 @@ interface BucketColumnProps {
   tier: number | null; // null for "Unsorted" column
   pitches: Pitch[];
   votes: Record<string, Vote>;
-  onAppetiteChange: (pitchId: string, appetite: Appetite | null) => void;
   columnCount?: number; // Total number of visible columns (9 with unsorted, 8 without)
   userRole?: string | null;
 }
@@ -20,7 +19,7 @@ interface BucketColumnProps {
 /**
  * Represents a tier bucket column in the voting board
  */
-const BucketColumn = ({ tier, pitches, votes, onAppetiteChange, columnCount = 9, userRole }: BucketColumnProps) => {
+const BucketColumn = ({ tier, pitches, votes, columnCount = 9, userRole }: BucketColumnProps) => {
   const columnRef = useRef<HTMLDivElement>(null);
   const columnId = tier === null ? 'unsorted' : `tier-${tier}`;
   
@@ -158,7 +157,6 @@ const BucketColumn = ({ tier, pitches, votes, onAppetiteChange, columnCount = 9,
                   pitch={pitch}
                   vote={votes[pitch.id]}
                   index={index}
-                  onAppetiteChange={onAppetiteChange}
                   userRole={userRole}
                 />
               ))}

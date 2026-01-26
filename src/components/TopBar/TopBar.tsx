@@ -10,7 +10,6 @@ import {
 import { 
   GetApp as DownloadIcon,
   HelpOutline as HelpIcon,
-  RestaurantMenu as AppetiteIcon,
   FormatListNumbered as RankedIcon,
   RestartAlt as ResetIcon,
   NavigateNext as NextIcon,
@@ -22,7 +21,6 @@ import {
 interface TopBarProps {
   voterName: string | null;
   totalPitchCount: number;
-  appetiteCount: number;
   rankCount: number;
   interestCount: number;
   onFinish: () => void;
@@ -41,7 +39,6 @@ interface TopBarProps {
 export const TopBar = ({ 
   voterName, 
   totalPitchCount, 
-  appetiteCount, 
   rankCount, 
   interestCount,
   onFinish, 
@@ -96,21 +93,6 @@ export const TopBar = ({
                 <Box 
                   component="span" 
                   sx={{ 
-                    color: appetiteCount >= Math.ceil(totalPitchCount / 2) ? '#4caf50' : 'inherit',
-                    fontWeight: appetiteCount >= Math.ceil(totalPitchCount / 2) ? 'bold' : 'normal',
-                    transition: 'all 0.2s ease',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 0.5
-                  }}
-                >
-                  <AppetiteIcon sx={{ fontSize: '1.4rem' }} />
-                  <span>Appetites {appetiteCount}/{totalPitchCount}</span>
-                </Box>
-                <Box component="span">•</Box>
-                <Box 
-                  component="span" 
-                  sx={{ 
                     color: rankCount >= Math.ceil(totalPitchCount / 2) ? '#4caf50' : 'inherit',
                     fontWeight: rankCount >= Math.ceil(totalPitchCount / 2) ? 'bold' : 'normal',
                     transition: 'all 0.2s ease',
@@ -146,8 +128,8 @@ export const TopBar = ({
           <Tooltip title={
             stage === 'priority' && !canAccessInterestStage ? 
               "Only developers who have indicated availability can rank interest" : 
-              stage === 'priority' && !priorityStageComplete ? 
-              "You must complete all appetites and priority rankings first" : 
+            stage === 'priority' && !priorityStageComplete ? 
+              "You must complete priority rankings first" : 
               ""
           } arrow placement="bottom">
             <span> {/* Wrapper needed for disabled button tooltips */}

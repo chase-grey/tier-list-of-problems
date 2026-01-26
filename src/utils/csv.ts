@@ -29,7 +29,6 @@ export const exportVotes = (voterName: string, voterRole: string, votes: Record<
       exportDate: new Date().toISOString(),
       totalVotes: Object.keys(votes).length,
       pitchId: '',  // Keeping these columns to maintain CSV structure
-      appetite: '',
       tier: '',
       interestLevel: '',
     }
@@ -45,7 +44,6 @@ export const exportVotes = (voterName: string, voterRole: string, votes: Record<
     exportDate: '',
     totalVotes: '',
     pitchId: v.pitchId,
-    appetite: v.appetite || '',
     tier: v.tier || '',
     interestLevel: v.interestLevel || '',
   }));

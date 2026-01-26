@@ -57,38 +57,10 @@ const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose, userRole, showIn
         
         <Divider sx={{ my: 3 }} />
         
-        <Typography variant="h6" gutterBottom>
-          Step 2: Set an Appetite for Problems
-        </Typography>
-        <Typography variant="body1" paragraph>
-          For each problem, select an appetite by clicking on one of the S/M/L buttons on the card:
-        </Typography>
-        <Typography variant="body1" paragraph sx={{ fontWeight: 'medium', color: 'primary.main' }}>
-          You need to set appetites for at least 50% of the problems to submit your feedback. The more data you provide, the better we can scope our solutions appropriately.
-        </Typography>
-        
-        <Box sx={{ pl: 2, mb: 2 }}>
-          <Typography variant="body1" gutterBottom>
-            <strong>Small (S):</strong> If this problem is only worth addressing in a couple of weeks of development or less.
-          </Typography>
-          <Typography variant="body1" gutterBottom>
-            <strong>Medium (M):</strong> If it would be worth spending around half a quarter on this problem.
-          </Typography>
-          <Typography variant="body1" gutterBottom>
-            <strong>Large (L):</strong> If it would be a good use of time for a developer to spend their entire next quarter working on this problem.
-          </Typography>
-        </Box>
-        
-        <Typography variant="body1" paragraph>
-          <strong>Appetite means:</strong> If this problem does get prioritized and we are going to spend time addressing it, how much time is it worth spending on it?
-        </Typography>
-        
-        <Divider sx={{ my: 3 }} />
-        
         {showInterestStep && (
           <>
             <Typography variant="h6" gutterBottom>
-              Step 3: Rank Your Interest Level
+              Step 2: Rank Your Interest Level
             </Typography>
             <Typography variant="body1" paragraph>
               <strong>Note: This step only applies to developers who indicated they are available to help next quarter.</strong>
@@ -109,7 +81,7 @@ const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose, userRole, showIn
         )}
         
         <Typography variant="h6" gutterBottom>
-          {showInterestStep ? 'Step 4: Export Your Results' : 'Step 3: Export Your Results'}
+          {showInterestStep ? 'Step 3: Export Your Results' : 'Step 2: Export Your Results'}
         </Typography>
         <Typography variant="body1" paragraph>
           Once you've completed all the required steps, the Export button will become active.

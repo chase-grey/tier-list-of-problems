@@ -75,9 +75,6 @@ export type TokenResponse = {
  */
 export interface ResultItem {
   pitch_id: string;
-  small: number;
-  medium: number;
-  large: number;
   mean_tier: number;
 }
 
@@ -90,7 +87,6 @@ export interface SubmitVotesPayload {
   voterRole?: string;
   votes: Array<{
     pitch_id: string;
-    appetite: 'S' | 'M' | 'L';
     tier: number;
   }>;
 }
@@ -323,12 +319,11 @@ export async function fetchResults(): Promise<ResultItem[]> {
 /**
  * Convert frontend votes to backend format
  */
-export function convertVotesToApiFormat(votes: Record<string, Vote>): Array<{pitch_id: string; appetite: 'S' | 'M' | 'L'; tier: number}> {
+export function convertVotesToApiFormat(votes: Record<string, Vote>): Array<{pitch_id: string; tier: number}> {
   return Object.entries(votes)
-    .filter(([_, vote]) => vote.appetite && vote.tier) // Filter out any entries with undefined values
+    .filter(([_, vote]) => vote.tier) // Filter out any entries with undefined values
     .map(([pitchId, vote]) => ({
       pitch_id: pitchId,
-      appetite: vote.appetite as 'S' | 'M' | 'L', // Type assertion since we filtered undefined
       tier: vote.tier as number // Type assertion since we filtered undefined
     }));
 }

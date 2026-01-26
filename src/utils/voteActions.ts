@@ -1,4 +1,4 @@
-import type { Appetite, InterestLevel, Tier } from '../types/models';
+import type { InterestLevel, Tier } from '../types/models';
 
 /**
  * Helper functions for vote-related actions
@@ -35,14 +35,3 @@ export const getInterestLevelLabel = (interestLevel: InterestLevel): string => {
   return interestLabels[levelIndex];
 };
 
-/**
- * Converts an appetite value to a human-readable label
- */
-export const getAppetiteLabel = (appetite: Appetite): string => {
-  switch (appetite) {
-    case 'S': return 'Small';
-    case 'M': return 'Medium';
-    case 'L': return 'Large';
-    default: return '';
-  }
-};
