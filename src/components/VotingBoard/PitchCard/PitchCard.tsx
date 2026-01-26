@@ -1,6 +1,6 @@
 import React, { useState, useRef, memo } from 'react';
 import { Paper, Typography, Box, IconButton, Tooltip } from '@mui/material';
-import { InfoOutlined, Autorenew } from '@mui/icons-material';
+import { InfoOutlined, ArrowForward } from '@mui/icons-material';
 import { Draggable } from '@hello-pangea/dnd';
 import type { DraggableProvided, DraggableStateSnapshot } from '@hello-pangea/dnd';
 import type { Pitch, Vote } from '../../../types/models';
@@ -112,7 +112,7 @@ const PitchCard = ({ pitch, vote, index, userRole }: PitchCardProps) => {
                       p: 0.5
                     }}
                   >
-                    <Autorenew fontSize="small" />
+                    <ArrowForward fontSize="small" />
                   </Box>
                 </Tooltip>
               )}

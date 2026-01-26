@@ -1,7 +1,7 @@
 import React, { useRef, useEffect } from 'react';
 import { Box, Typography, Paper, IconButton, Tooltip } from '@mui/material';
 import InfoOutlined from '@mui/icons-material/InfoOutlined';
-import Autorenew from '@mui/icons-material/Autorenew';
+import ArrowForward from '@mui/icons-material/ArrowForward';
 import InterestDetailsBubble from './InterestDetailsBubble';
 import { Droppable, Draggable } from '@hello-pangea/dnd';
 import type { DroppableProvided, DroppableStateSnapshot } from '@hello-pangea/dnd';
@@ -207,7 +207,7 @@ const InterestColumn = ({
                                 p: 0.5
                               }}
                             >
-                              <Autorenew fontSize="small" />
+                              <ArrowForward fontSize="small" />
                             </Box>
                           </Tooltip>
                         )}
