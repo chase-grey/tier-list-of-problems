@@ -72,19 +72,25 @@ const DevAutoPopulate: React.FC<DevAutoPopulateProps> = ({ onPopulate, pitchIds 
   };
 
   const incrementQuarter = (cycleId: string): string | null => {
-    const match = /^([0-9]{4})Q([1-4])$/.exec(cycleId);
+    const normalized = cycleId.trim().replace('’', "'");
+    const match = /^(Aug|Nov|Feb|May)\s*'([0-9]{2})$/.exec(normalized);
     if (!match) return null;
 
-    const year = Number(match[1]);
-    const quarter = Number(match[2]);
+    const month = match[1];
+    const year2 = Number(match[2]);
+    if (!Number.isFinite(year2)) return null;
 
-    if (!Number.isFinite(year) || !Number.isFinite(quarter)) return null;
+    const months = ['Feb', 'May', 'Aug', 'Nov'] as const;
+    const index = months.indexOf(month as (typeof months)[number]);
+    if (index === -1) return null;
 
-    if (quarter < 4) {
-      return `${year}Q${quarter + 1}`;
-    }
+    const nextIndex = (index + 1) % months.length;
+    const nextMonth = months[nextIndex];
 
-    return `${year + 1}Q1`;
+    const bumpYear = month === 'Nov' && nextMonth === 'Feb';
+    const nextYear2 = bumpYear ? (year2 + 1) % 100 : year2;
+
+    return `${nextMonth} '${String(nextYear2).padStart(2, '0')}`;
   };
 
   const getBaseCycleId = (): string => {
@@ -156,8 +162,8 @@ const DevAutoPopulate: React.FC<DevAutoPopulateProps> = ({ onPopulate, pitchIds 
               onChange={(e) => setCycleOverride(e.target.value)}
               fullWidth
               margin="normal"
-              placeholder={import.meta.env.VITE_POLLING_CYCLE_ID || '2026Q1'}
-              helperText="Leave blank to use VITE_POLLING_CYCLE_ID. Example: 2026Q1. Changing this will reload the page."
+              placeholder={import.meta.env.VITE_POLLING_CYCLE_ID || "Aug '26"}
+              helperText="Leave blank to use VITE_POLLING_CYCLE_ID. Example: Aug '26. Changing this will reload the page."
             />
 
             <Box sx={{ display: 'flex', gap: 1, mt: 1, mb: 2 }}>

@@ -24,7 +24,7 @@ import { getPollingCycleId } from '../utils/config';
 import { buildPollingKey, cleanupPollingStorageOnCycleChange, getEffectivePollingCycleId } from '../utils/pollingStorage';
 
 // Import pitch data
-import pitchesData from '../assets/pitches.json';
+import pitchesData from '../assets/pitches-aug-26.json';
 
 // Initial state
 const initialState: AppState = {
