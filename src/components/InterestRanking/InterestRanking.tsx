@@ -405,8 +405,8 @@ const InterestRanking: React.FC<InterestRankingProps> = ({
   };
   
   return (
-    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <Container disableGutters maxWidth={false} sx={{ height: '100%', display: 'flex', flexDirection: 'column', pt: 0.5, px: 0.5 }}>
+    <Box sx={{ flexGrow: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+      <Container disableGutters maxWidth={false} sx={{ flexGrow: 1, minHeight: 0, display: 'flex', flexDirection: 'column', pt: 0.5, px: 0.5 }}>
         
         <DragDropContext onDragEnd={handleDragEnd}>
           <Box 
@@ -416,7 +416,8 @@ const InterestRanking: React.FC<InterestRankingProps> = ({
               flexWrap: { xs: 'wrap', lg: 'nowrap' }, // Wrap on smaller screens, no wrap on large screens
               justifyContent: 'space-between',
               pb: 0.5, // Reduced bottom padding
-              height: { xs: 'auto', lg: 'calc(100vh - 72px)' }, // Increased vertical space on large screens
+              flexGrow: 1,
+              minHeight: 0,
               maxWidth: '100%', // Ensure it doesn't exceed viewport width
               overflowX: { xs: 'hidden', lg: 'auto' }, // Only allow horizontal scroll on large screens if needed
               overflowY: { xs: 'auto', lg: 'hidden' }, // Allow vertical scroll on small screens
@@ -426,11 +427,17 @@ const InterestRanking: React.FC<InterestRankingProps> = ({
                 width: '4px',
               },
               '&::-webkit-scrollbar-thumb': {
-                backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                backgroundColor: (theme) =>
+                  theme.palette.mode === 'dark'
+                    ? 'rgba(255, 255, 255, 0.2)'
+                    : 'rgba(0, 0, 0, 0.2)',
                 borderRadius: '10px',
               },
               '&::-webkit-scrollbar-track': {
-                backgroundColor: 'rgba(0, 0, 0, 0.1)',
+                backgroundColor: (theme) =>
+                  theme.palette.mode === 'dark'
+                    ? 'rgba(0, 0, 0, 0.1)'
+                    : 'rgba(0, 0, 0, 0.06)',
               },
             }}
           >

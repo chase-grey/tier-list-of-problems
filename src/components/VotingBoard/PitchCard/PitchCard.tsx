@@ -105,106 +105,77 @@ const PitchCard = ({ pitch, vote, index, onSendToBottom, userRole }: PitchCardPr
               {pitch.title}
             </Typography>
 
-            {currentTier === null ? (
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25, flexShrink: 0, flexDirection: 'column', position: 'absolute', top: 4, right: 4 }}>
-                <Tooltip title="View details">
-                  <IconButton 
-                    size="small" 
-                    onClick={handleInfoButtonClick}
-                    aria-label="View pitch details"
-                    sx={{ 
-                      color: 'primary.main',
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 0.25,
+                flexShrink: 0,
+                flexDirection: 'column',
+                position: 'absolute',
+                top: 4,
+                right: 4
+              }}
+            >
+              <Tooltip title="View details">
+                <IconButton
+                  size="small"
+                  onClick={handleInfoButtonClick}
+                  aria-label="View pitch details"
+                  sx={{
+                    color: 'primary.main',
+                    p: 0.5,
+                    flexShrink: 0, // Prevent button from shrinking
+                    '&:hover': {
+                      backgroundColor: 'rgba(25, 118, 210, 0.04)'
+                    }
+                  }}
+                >
+                  <InfoOutlined fontSize="small" />
+                </IconButton>
+              </Tooltip>
+
+              {pitch.continuation && (
+                <Tooltip title="Continuation of existing development">
+                  <Box
+                    component="span"
+                    aria-label="Continuation of existing development"
+                    sx={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'text.secondary',
+                      p: 0.5
+                    }}
+                  >
+                    <Autorenew fontSize="small" />
+                  </Box>
+                </Tooltip>
+              )}
+
+              {currentTier === null && onSendToBottom && (
+                <Tooltip title="Send to bottom">
+                  <IconButton
+                    size="small"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onSendToBottom(pitch.id);
+                    }}
+                    aria-label="Send to bottom"
+                    sx={{
+                      color: 'text.secondary',
                       p: 0.5,
-                      flexShrink: 0, // Prevent button from shrinking
+                      flexShrink: 0,
                       '&:hover': {
-                        backgroundColor: 'rgba(25, 118, 210, 0.04)'
+                        backgroundColor: 'rgba(255, 255, 255, 0.04)'
                       }
                     }}
                   >
-                    <InfoOutlined fontSize="small" />
+                    <South fontSize="small" />
                   </IconButton>
                 </Tooltip>
-
-                {onSendToBottom && (
-                  <Tooltip title="Send to bottom">
-                    <IconButton
-                      size="small"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        onSendToBottom(pitch.id);
-                      }}
-                      aria-label="Send to bottom"
-                      sx={{
-                        color: 'text.secondary',
-                        p: 0.5,
-                        flexShrink: 0,
-                        '&:hover': {
-                          backgroundColor: 'rgba(255, 255, 255, 0.04)'
-                        }
-                      }}
-                    >
-                      <South fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
-                )}
-
-                {pitch.continuation && (
-                  <Tooltip title="Continuation of existing development">
-                    <Box
-                      component="span"
-                      aria-label="Continuation of existing development"
-                      sx={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: 'text.secondary',
-                        p: 0.5
-                      }}
-                    >
-                      <Autorenew fontSize="small" />
-                    </Box>
-                  </Tooltip>
-                )}
-              </Box>
-            ) : (
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25, flexShrink: 0, mt: -0.5 }}>
-                {pitch.continuation && (
-                  <Tooltip title="Continuation of existing development">
-                    <Box
-                      component="span"
-                      aria-label="Continuation of existing development"
-                      sx={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: 'text.secondary',
-                        p: 0.5
-                      }}
-                    >
-                      <Autorenew fontSize="small" />
-                    </Box>
-                  </Tooltip>
-                )}
-
-                <Tooltip title="View details">
-                  <IconButton 
-                    size="small" 
-                    onClick={handleInfoButtonClick}
-                    aria-label="View pitch details"
-                    sx={{ 
-                      color: 'primary.main',
-                      p: 0.5,
-                      flexShrink: 0, // Prevent button from shrinking
-                      '&:hover': {
-                        backgroundColor: 'rgba(25, 118, 210, 0.04)'
-                      }
-                    }}
-                  >
-                    <InfoOutlined fontSize="small" />
-                  </IconButton>
-                </Tooltip>
-              </Box>
-            )}
+              )}
+            </Box>
           </Box>
 
           {/* Details bubble, loaded lazily */}

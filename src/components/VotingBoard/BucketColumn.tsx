@@ -126,7 +126,10 @@ const BucketColumn = ({ tier, pitches, votes, columnCount = 9, onSendToBottom, u
               overflowY: 'auto',
               transition: 'background-color 0.2s ease',
               border: filteredPitches.length === 0 
-                ? '2px dashed rgba(255,255,255,0.2)' 
+                ? (theme) =>
+                    theme.palette.mode === 'dark'
+                      ? '2px dashed rgba(255,255,255,0.2)'
+                      : '2px dashed rgba(0,0,0,0.2)'
                 : 'none',
               display: 'flex',
               flexDirection: 'column'

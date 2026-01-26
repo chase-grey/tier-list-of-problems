@@ -77,7 +77,7 @@ const InterestColumn = ({
           p: 0.75,
           mb: 1,
           backgroundColor: color,
-          color: 'white',
+          color: (theme) => theme.palette.getContrastText(color),
           textAlign: 'center',
           fontWeight: 'bold'
         }}
@@ -105,7 +105,10 @@ const InterestColumn = ({
               overflowY: 'auto',
               transition: 'background-color 0.2s ease',
               border: pitches.length === 0
-                ? '2px dashed rgba(255,255,255,0.2)'
+                ? (theme) =>
+                    theme.palette.mode === 'dark'
+                      ? '2px dashed rgba(255,255,255,0.2)'
+                      : '2px dashed rgba(0,0,0,0.2)'
                 : 'none',
               display: 'flex',
               flexDirection: 'column',
@@ -113,7 +116,10 @@ const InterestColumn = ({
                 width: '8px',
               },
               '&::-webkit-scrollbar-thumb': {
-                backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                backgroundColor: (theme) =>
+                  theme.palette.mode === 'dark'
+                    ? 'rgba(255, 255, 255, 0.2)'
+                    : 'rgba(0, 0, 0, 0.2)',
                 borderRadius: '10px',
               },
               '&::-webkit-scrollbar-track': {
@@ -172,9 +178,6 @@ const InterestColumn = ({
                       },
                       position: 'relative',
                       minHeight: '84px',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      width: '100%',
                       opacity: snapshot.isDragging ? 0.8 : 1
                     }}
                     role="button"
@@ -189,6 +192,7 @@ const InterestColumn = ({
                           minWidth: 0,
                           flexGrow: 1,
                           whiteSpace: 'normal',
+                          pr: 4,
                           // Ensure text wraps to avoid overflow
                           overflowWrap: 'break-word',
                           wordBreak: 'break-word',
@@ -198,76 +202,62 @@ const InterestColumn = ({
                         {pitch.title}
                       </Typography>
 
-                      {columnId === 'interest-unsorted' ? (
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25, flexShrink: 0, mt: -0.5, flexDirection: 'column' }}>
-                          {/* Info button reference passed from parent */}
-                          <InterestCardInfoButton pitch={pitch} vote={votes && pitch && pitch.id ? votes[pitch.id] : undefined} userRole={userRole} />
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 0.25,
+                          flexShrink: 0,
+                          flexDirection: 'column',
+                          position: 'absolute',
+                          top: 4,
+                          right: 4
+                        }}
+                      >
+                        {/* Info button reference passed from parent */}
+                        <InterestCardInfoButton pitch={pitch} vote={votes && pitch && pitch.id ? votes[pitch.id] : undefined} userRole={userRole} />
 
-                          {onSendToBottomUnsorted && (
-                            <Tooltip title="Send to bottom">
-                              <IconButton
-                                size="small"
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  onSendToBottomUnsorted(pitch.id);
-                                }}
-                                aria-label="Send to bottom"
-                                sx={{
-                                  color: 'text.secondary',
-                                  p: 0.5,
-                                  flexShrink: 0,
-                                  '&:hover': {
-                                    backgroundColor: 'rgba(255, 255, 255, 0.04)'
-                                  }
-                                }}
-                              >
-                                <South fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                          )}
+                        {pitch.continuation && (
+                          <Tooltip title="Continuation of existing development">
+                            <Box
+                              component="span"
+                              aria-label="Continuation of existing development"
+                              sx={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                color: 'text.secondary',
+                                p: 0.5
+                              }}
+                            >
+                              <Autorenew fontSize="small" />
+                            </Box>
+                          </Tooltip>
+                        )}
 
-                          {pitch.continuation && (
-                            <Tooltip title="Continuation of existing development">
-                              <Box
-                                component="span"
-                                aria-label="Continuation of existing development"
-                                sx={{
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  color: 'text.secondary',
-                                  p: 0.5
-                                }}
-                              >
-                                <Autorenew fontSize="small" />
-                              </Box>
-                            </Tooltip>
-                          )}
-                        </Box>
-                      ) : (
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25, flexShrink: 0, mt: -0.5 }}>
-                          {pitch.continuation && (
-                            <Tooltip title="Continuation of existing development">
-                              <Box
-                                component="span"
-                                aria-label="Continuation of existing development"
-                                sx={{
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  color: 'text.secondary',
-                                  p: 0.5
-                                }}
-                              >
-                                <Autorenew fontSize="small" />
-                              </Box>
-                            </Tooltip>
-                          )}
-
-                          {/* Info button reference passed from parent */}
-                          <InterestCardInfoButton pitch={pitch} vote={votes && pitch && pitch.id ? votes[pitch.id] : undefined} userRole={userRole} />
-                        </Box>
-                      )}
+                        {columnId === 'interest-unsorted' && onSendToBottomUnsorted && (
+                          <Tooltip title="Send to bottom">
+                            <IconButton
+                              size="small"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                onSendToBottomUnsorted(pitch.id);
+                              }}
+                              aria-label="Send to bottom"
+                              sx={{
+                                color: 'text.secondary',
+                                p: 0.5,
+                                flexShrink: 0,
+                                '&:hover': {
+                                  backgroundColor: 'rgba(255, 255, 255, 0.04)'
+                                }
+                              }}
+                            >
+                              <South fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        )}
+                      </Box>
                     </Box>
                   </Paper>
                 )}

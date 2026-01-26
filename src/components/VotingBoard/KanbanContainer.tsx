@@ -151,7 +151,8 @@ const KanbanContainer = ({
               justifyContent: 'space-between',
               p: 0.5,
               pb: 0.5, // Reduced bottom padding
-              height: { xs: 'auto', lg: 'calc(100vh - 72px)' }, // More vertical space on large screens
+              flexGrow: 1,
+              minHeight: 0,
               maxWidth: '100%', // Ensure it doesn't exceed viewport width
               overflowX: { xs: 'hidden', lg: 'auto' }, // Only allow horizontal scroll on large screens if needed
               overflowY: { xs: 'auto', lg: 'hidden' }, // Allow vertical scroll on small screens
@@ -161,11 +162,17 @@ const KanbanContainer = ({
                 width: '4px',
               },
               '&::-webkit-scrollbar-thumb': {
-                backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                backgroundColor: (theme) =>
+                  theme.palette.mode === 'dark'
+                    ? 'rgba(255, 255, 255, 0.2)'
+                    : 'rgba(0, 0, 0, 0.2)',
                 borderRadius: '10px',
               },
               '&::-webkit-scrollbar-track': {
-                backgroundColor: 'rgba(0, 0, 0, 0.1)',
+                backgroundColor: (theme) =>
+                  theme.palette.mode === 'dark'
+                    ? 'rgba(0, 0, 0, 0.1)'
+                    : 'rgba(0, 0, 0, 0.06)',
               },
             }}
             aria-label={`Kanban board with ${TOTAL} pitches to categorize`}
