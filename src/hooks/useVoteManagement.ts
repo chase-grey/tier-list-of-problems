@@ -22,6 +22,12 @@ export const useVoteManagement = (initialState: AppState) => {
     switch (action.type) {
       case 'SET_NAME':
         return { ...state, voterName: action.name, voterRole: action.role };
+      
+      case 'UPDATE_NAME':
+        return { ...state, voterName: action.name };
+      
+      case 'UPDATE_ROLE':
+        return { ...state, voterRole: action.role };
         
       case 'SET_AVAILABILITY':
         return { ...state, available: action.available };
@@ -187,6 +193,14 @@ export const useVoteManagement = (initialState: AppState) => {
     dispatch({ type: 'SET_NAME', name, role });
   };
 
+  const updateName = (name: string) => {
+    dispatch({ type: 'UPDATE_NAME', name });
+  };
+
+  const updateRole = (role: string) => {
+    dispatch({ type: 'UPDATE_ROLE', role });
+  };
+
   const setAvailability = (available: boolean) => {
     dispatch({ type: 'SET_AVAILABILITY', available });
   };
@@ -324,6 +338,8 @@ export const useVoteManagement = (initialState: AppState) => {
     resetAll,
     syncPitches,
     setNameAndRole,
+    updateName,
+    updateRole,
     setAvailability,
     setDefaultInterestLevels,
     getCompletionStats,

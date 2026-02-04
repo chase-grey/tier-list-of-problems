@@ -83,6 +83,8 @@ export interface AppState {
 
 export type AppAction =
   | { type: 'SET_NAME'; name: string; role: string }
+  | { type: 'UPDATE_NAME'; name: string }  // Update name only
+  | { type: 'UPDATE_ROLE'; role: string }  // Update role only
   | { type: 'SET_TIER'; id: string; tier: Tier; timestamp?: number }
   | { type: 'UNSET_TIER'; id: string; timestamp?: number }  // Remove tier assignment
   | { type: 'SET_INTEREST'; id: string; interestLevel: InterestLevel; timestamp?: number }

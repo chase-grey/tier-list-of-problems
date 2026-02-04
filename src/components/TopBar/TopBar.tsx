@@ -11,17 +11,17 @@ import {
   GetApp as DownloadIcon,
   HelpOutline as HelpIcon,
   FormatListNumbered as RankedIcon,
-  RestartAlt as ResetIcon,
   NavigateNext as NextIcon,
   NavigateBefore as PrevIcon,
   ThumbUp as InterestIcon,
-  DarkMode as DarkModeIcon,
-  LightMode as LightModeIcon
 } from '@mui/icons-material';
+import { SettingsMenu } from '../SettingsMenu/SettingsMenu';
 
 
 interface TopBarProps {
   voterName: string | null;
+  voterRole: string | null;
+  available: boolean | null;
   totalPitchCount: number;
   rankCount: number;
   interestCount: number;
@@ -33,15 +33,20 @@ interface TopBarProps {
   onNextStage: () => void;
   canAccessInterestStage: boolean;
   priorityStageComplete: boolean;
-  themeMode?: 'dark' | 'light';
-  onToggleTheme?: () => void;
+  themeMode: 'dark' | 'light';
+  onToggleTheme: () => void;
+  onUpdateName: (name: string) => void;
+  onUpdateRole: (role: string) => void;
+  onUpdateAvailability: (available: boolean) => void;
 }
 
 /**
  * Application header with progress stats and export functionality
  */
 export const TopBar = ({ 
-  voterName, 
+  voterName,
+  voterRole,
+  available,
   totalPitchCount, 
   rankCount, 
   interestCount,
@@ -54,7 +59,10 @@ export const TopBar = ({
   canAccessInterestStage,
   priorityStageComplete,
   themeMode,
-  onToggleTheme
+  onToggleTheme,
+  onUpdateName,
+  onUpdateRole,
+  onUpdateAvailability,
 }: TopBarProps) => {
   return (
     <AppBar
@@ -68,23 +76,6 @@ export const TopBar = ({
     >
       <Toolbar sx={{ minHeight: '48px !important', py: 0 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', flexGrow: 1 }}>
-          <Button
-            variant="outlined"
-            color="error"
-            startIcon={<ResetIcon />}
-            onClick={onResetClick}
-            aria-label="Reset all votes"
-            sx={{
-              mr: 2,
-              height: 32, // Smaller reset button
-              '&:hover': {
-                bgcolor: 'rgba(244, 67, 54, 0.08)'
-              }
-            }}
-          >
-            Reset
-          </Button>
-          
           <Typography variant="subtitle1" component="div">
             Problem Polling: {voterName}
           </Typography>
@@ -100,18 +91,17 @@ export const TopBar = ({
             </IconButton>
           </Tooltip>
 
-          {onToggleTheme && (
-            <Tooltip title={themeMode === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}>
-              <IconButton
-                color="inherit"
-                onClick={onToggleTheme}
-                sx={{ ml: 1 }}
-                aria-label={themeMode === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
-              >
-                {themeMode === 'light' ? <DarkModeIcon /> : <LightModeIcon />}
-              </IconButton>
-            </Tooltip>
-          )}
+          <SettingsMenu
+            themeMode={themeMode}
+            onToggleTheme={onToggleTheme}
+            voterName={voterName}
+            voterRole={voterRole}
+            available={available}
+            onUpdateName={onUpdateName}
+            onUpdateRole={onUpdateRole}
+            onUpdateAvailability={onUpdateAvailability}
+            onResetClick={onResetClick}
+          />
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', mr: 2 }}>
           <Typography variant="body2" sx={{ display: 'flex', gap: 1 }}>

@@ -98,6 +98,8 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
     resetAll,
     syncPitches,
     setNameAndRole,
+    updateName,
+    updateRole,
     setAvailability,
     setDefaultInterestLevels,
     getCompletionStats
@@ -184,6 +186,54 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
     if (!isContributorRole(role)) {
       // Set availability to false for non-contributors
       setAvailability(false);
+    }
+  };
+
+  // Handle name update from settings
+  const handleUpdateName = (name: string) => {
+    updateName(name);
+    showSnackbar(`Name updated to ${name}`, 'success');
+  };
+
+  // Handle role update from settings
+  const handleUpdateRole = (role: string) => {
+    const wasContributor = state.voterRole && isContributorRole(state.voterRole);
+    const isNowContributor = isContributorRole(role);
+    
+    updateRole(role);
+    
+    // If switching from contributor to non-contributor, set availability to false
+    // and switch back to priority stage if on interest stage
+    if (wasContributor && !isNowContributor) {
+      setAvailability(false);
+      if (state.stage === 'interest') {
+        setStage('priority');
+      }
+      showSnackbar(`Role updated to ${role}. Interest ranking is no longer available.`, 'info');
+    } 
+    // If switching to contributor role, they need to indicate availability
+    // We'll show the availability dialog by not setting availability (it stays null from reset)
+    else if (!wasContributor && isNowContributor) {
+      // Don't set availability - the dialog will show automatically since available is null
+      // and they are now a contributor role
+      showSnackbar(`Role updated to ${role}. Please indicate your availability.`, 'info');
+    } else {
+      showSnackbar(`Role updated to ${role}`, 'success');
+    }
+  };
+
+  // Handle availability update from settings
+  const handleUpdateAvailability = (available: boolean) => {
+    const wasAvailable = state.available === true;
+    
+    setAvailability(available);
+    
+    // If switching from available to not available, switch back to priority stage
+    if (wasAvailable && !available && state.stage === 'interest') {
+      setStage('priority');
+      showSnackbar('Availability updated. Switched back to priority ranking.', 'info');
+    } else {
+      showSnackbar(`Availability ${available ? 'confirmed' : 'updated - priority ranking only'}`, 'success');
     }
   };
   
@@ -469,6 +519,8 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
       <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
         <TopBar 
           voterName={state.voterName}
+          voterRole={state.voterRole}
+          available={state.available}
           totalPitchCount={TOTAL}
           rankCount={rankCount}
           interestCount={interestCount}
@@ -482,6 +534,9 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
           priorityStageComplete={priorityStageComplete}
           themeMode={themeMode}
           onToggleTheme={onToggleTheme}
+          onUpdateName={handleUpdateName}
+          onUpdateRole={handleUpdateRole}
+          onUpdateAvailability={handleUpdateAvailability}
         />
         
         <Box component="main" sx={{ flexGrow: 1, overflow: 'hidden', p: 0, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
