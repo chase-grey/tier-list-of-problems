@@ -88,7 +88,7 @@ export const NameGate = ({ onNameSubmit, open }: NameGateProps) => {
                 onChange={(e) => setRole(e.target.value)}
                 aria-label="Select your role"
               >
-                <MenuItem value="developer">Developer</MenuItem>
+                <MenuItem value="dev">Dev</MenuItem>
                 <MenuItem value="TS">TS</MenuItem>
                 <MenuItem value="QM">QM</MenuItem>
                 <MenuItem value="UXD">UXD</MenuItem>

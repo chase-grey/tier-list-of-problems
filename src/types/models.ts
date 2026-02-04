@@ -24,7 +24,7 @@ export type InterestLevel = 1 | 2 | 3 | 4 | null;
 
 // Roles that can participate in interest ranking if available
 export const CONTRIBUTOR_ROLES = [
-  'developer',
+  'dev',
 ];
 
 // Roles that should NOT be asked about availability and can't do interest ranking

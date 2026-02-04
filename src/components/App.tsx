@@ -481,8 +481,8 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
   const handleAutoPopulate = (name: string, votes: Record<string, any>, complete?: boolean) => {
     // Set the name if not already set
     if (!state.voterName) {
-      // Default to 'developer' role for auto-populate
-      setNameAndRole(name, 'developer');
+      // Default to 'dev' role for auto-populate
+      setNameAndRole(name, 'dev');
     }
     
     // Apply each vote

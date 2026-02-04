@@ -103,7 +103,7 @@ export const SettingsMenu: React.FC<SettingsMenuProps> = ({
   // Role edit handlers
   const handleEditRoleOpen = () => {
     // Check if current role is a standard role or custom
-    const standardRoles = ['developer', 'TS', 'QM', 'UXD', 'dev TL', 'QM TL', 'TLTL', 'customer', 'other'];
+    const standardRoles = ['dev', 'TS', 'QM', 'UXD', 'dev TL', 'QM TL', 'TLTL', 'customer', 'other'];
     if (voterRole && standardRoles.includes(voterRole)) {
       setTempRole(voterRole);
       setTempOtherRole('');
@@ -278,7 +278,7 @@ export const SettingsMenu: React.FC<SettingsMenuProps> = ({
               label="Your Role"
               onChange={(e) => setTempRole(e.target.value)}
             >
-              <MenuItem value="developer">Developer</MenuItem>
+              <MenuItem value="dev">Dev</MenuItem>
               <MenuItem value="TS">TS</MenuItem>
               <MenuItem value="QM">QM</MenuItem>
               <MenuItem value="UXD">UXD</MenuItem>
@@ -302,15 +302,15 @@ export const SettingsMenu: React.FC<SettingsMenuProps> = ({
             />
           )}
 
-          {/* Show info about availability when switching to/from developer */}
-          {tempRole === 'developer' && !isDeveloper && (
+          {/* Show info about availability when switching to/from dev */}
+          {tempRole === 'dev' && !isDeveloper && (
             <Typography variant="body2" color="info.main" sx={{ mt: 2 }}>
-              As a developer, you'll be asked about your availability for next quarter.
+              As a dev, you'll be asked about your availability for next quarter.
             </Typography>
           )}
-          {tempRole !== 'developer' && isDeveloper && (
+          {tempRole !== 'dev' && isDeveloper && (
             <Typography variant="body2" color="warning.main" sx={{ mt: 2 }}>
-              Changing from developer will remove access to the interest ranking section.
+              Changing from dev will remove access to the interest ranking section.
             </Typography>
           )}
         </DialogContent>
