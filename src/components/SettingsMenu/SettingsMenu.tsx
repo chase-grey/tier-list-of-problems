@@ -175,15 +175,9 @@ export const SettingsMenu: React.FC<SettingsMenuProps> = ({
         {/* Theme Toggle */}
         <MenuItem onClick={handleThemeToggle}>
           <ListItemIcon>
-            {themeMode === 'dark' ? <DarkModeIcon /> : <LightModeIcon />}
+            {themeMode === 'dark' ? <LightModeIcon /> : <DarkModeIcon />}
           </ListItemIcon>
-          <ListItemText primary={themeMode === 'dark' ? 'Dark Mode' : 'Light Mode'} />
-          <Switch
-            edge="end"
-            checked={themeMode === 'dark'}
-            onChange={handleThemeToggle}
-            onClick={(e) => e.stopPropagation()}
-          />
+          <ListItemText primary={themeMode === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'} />
         </MenuItem>
 
         <Divider />
