@@ -678,6 +678,7 @@
   {
     "id": "7882759",
     "title": "ST / Text Actions / Add in user to user sharing",
+    "continuation": true,
     "details": {
       "problem": "Creators of custom Text Actions currently cannot easily share them with specific users or groups.",
       "ideaForSolution": "Allow sharing custom Text Actions to single users or groups, add search for existing shared actions, and create security for editing/sharing.",
