@@ -64,8 +64,8 @@ const DetailsBubble = ({ pitch, anchorEl, onClose, userRole }: DetailsBubbleProp
       <Paper
         sx={{
           p: 2,
-          maxWidth: 320,
-          maxHeight: '60vh',
+          maxWidth: { xs: 320, md: 450, lg: 550 },
+          maxHeight: '70vh',
           overflowY: 'auto',
         }}
       >

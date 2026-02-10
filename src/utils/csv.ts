@@ -1,5 +1,6 @@
 import { unparse } from 'papaparse';
 import type { Vote } from '../types/models';
+import { getPollingStage, getPollingCycleId } from './config';
 
 /**
  * Interface for feedback data
@@ -28,7 +29,7 @@ export const exportVotes = (voterName: string, voterRole: string, votes: Record<
       feedbackComments: feedback?.comments || '',
       exportDate: new Date().toISOString(),
       totalVotes: Object.keys(votes).length,
-      pitchId: '',  // Keeping these columns to maintain CSV structure
+      pitchId: '',
       tier: '',
       interestLevel: '',
     }
@@ -53,7 +54,13 @@ export const exportVotes = (voterName: string, voterRole: string, votes: Record<
   
   const csv = unparse(rows);
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  const name = `${voterName.replace(/\s+/g, '_')}.csv`;
+  
+  // Build filename with quarter and stage info
+  // Format: FirstName_LastName_Aug26_Stage1.csv
+  const cycleId = getPollingCycleId();
+  const stage = getPollingStage();
+  const quarterPart = cycleId.replace(/\s+/g, '').replace("'", ''); // Clean up any spaces/apostrophes
+  const name = `${voterName.replace(/\s+/g, '_')}_${quarterPart}_Stage${stage}.csv`;
   
   const link = document.createElement('a');
   link.href = URL.createObjectURL(blob);

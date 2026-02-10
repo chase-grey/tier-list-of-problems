@@ -10,7 +10,8 @@
       "epicFit": "\"Solving existing pain points, such as ideas frequently reported during immersion, submitted through ideas.epic.com, or from other forms of feedback.\" Notice that this QAN already has 7 SLGs attached.",
       "maintenance": "Unsure. On the initial release, we'll need to do some extensive testing to verify that the lexicon is decent. But after that, we'll be able to mostly leave it alone, making only small tweaks as customers report spurious or missing words.",
       "internCandidate": false
-    }
+    },
+    "stage2": false
   },
   {
     "id": "7963351",
@@ -21,7 +22,8 @@
       "whyNow": "Saves build time for EpicCommand link. Work is being done in this area right now, but it is fairly bare bones without this proposed development. We are actively recommending organizations transition from EpicAct links to EpicCommand links. The smoother and more intuitive the EpicCommand link experience becomes, the easier it will be for organizations to adopt it and fully move away from EpicAct links. By improving usability and reducing errors now, we remove barriers to adoption and accelerate the retirement of outdated functionality.",
       "success": "Average users can build an EpicCommand link without any confusion.",
       "internCandidate": false
-    }
+    },
+    "stage2": false
   },
   {
     "id": "709400",
@@ -34,7 +36,8 @@
       "smartToolsFit": "It will improve effectiveness because users already have the signature SmartPhrases but it will increase trust and feelings of security if they know that their personal information can't be taken by others.",
       "epicFit": "This fits ST priorities because it would solve long standing existing pain points.",
       "success": "SmartPhrases can be made private."
-    }
+    },
+    "stage2": false
   },
   {
     "id": "911275",
@@ -44,7 +47,8 @@
       "ideaForSolution": "Because of the risk/change in behavior having tables automatically resize has been (we attempted this with the web migration) I think we should do a limited/opt-in for resize. This might be something that's enabled for table SmartLinks outside of page mode, or some other subset that would be a usability win, but be limited in scope such that we are not causing downstream effects in customer build.",
       "success": "Providers will find that tables are in view and have a seamless experience viewing tables. If we have metrics on table resizing, or horizontal scrolling, a decrease in those.",
       "internCandidate": false
-    }
+    },
+    "stage2": false
   },
   {
     "id": "1123619",
@@ -56,7 +60,8 @@
       "whyNow": "It's still being requested regularly.",
       "smartToolsFit": "Make it easy to do the right thing.",
       "epicFit": "This fits ST priorities because it would solve long standing existing pain points."
-    }
+    },
+    "stage2": false
   },
   {
     "id": "2005922",
@@ -69,7 +74,8 @@
       "epicFit": "This fits ST priorities because it would solve long standing existing pain points.",
       "success": "Parts of a template can be restricted from being deleted when added to a STB.",
       "internCandidate": false
-    }
+    },
+    "stage2": false
   },
   {
     "id": "2064134",
@@ -82,7 +88,8 @@
       "epicFit": "Solving existing pain points, such as ideas frequently reported during immersion, submitted through ideas.epic.com, or from other forms of feedback.",
       "maintenance": "No real change.",
       "internCandidate": false
-    }
+    },
+    "stage2": false
   },
   {
     "id": "2164272",
@@ -97,7 +104,9 @@
       "success": "Probably not something we'd need to measure.",
       "maintenance": "None!",
       "internCandidate": false
-    }
+    },
+    "stage2": true,
+    "developer": "Jonathan"
   },
   {
     "id": "3752427",
@@ -111,7 +120,8 @@
       "epicFit": "Innovate with system intelligence to reduce clinician burnout and improve user efficiency; Software must work.",
       "maintenance": "None",
       "internCandidate": false
-    }
+    },
+    "stage2": false
   },
   {
     "id": "6246577",
@@ -125,7 +135,8 @@
       "epicFit": "Software must work.",
       "success": "Apotti will re-enable Spell Check and keep it enabled.",
       "internCandidate": false
-    }
+    },
+    "stage2": false
   },
   {
     "id": "7439274",
@@ -140,7 +151,9 @@
       "success": "Customer satisfaction improvements per SLG feedback.",
       "maintenance": "No maintenance.",
       "internCandidate": false
-    }
+    },
+    "stage2": true,
+    "developer": "Peter P"
   },
   {
     "id": "7914897",
@@ -155,7 +168,8 @@
       "success": "Pasting/inserting webp images will work.",
       "maintenance": "Low.",
       "internCandidate": false
-    }
+    },
+    "stage2": false
   },
   {
     "id": "7931146",
@@ -170,7 +184,8 @@
       "success": "Analyst happiness.",
       "maintenance": "Lowered analyst time and maintenance.",
       "internCandidate": false
-    }
+    },
+    "stage2": false
   },
   {
     "id": "7974873",
@@ -185,7 +200,8 @@
       "success": "Ability to recreate jagged tables from sample documents.",
       "maintenance": "Some added testing for new behaviors.",
       "internCandidate": false
-    }
+    },
+    "stage2": false
   },
   {
     "id": "7974971",
@@ -200,7 +216,8 @@
       "success": "User perception that styling feels like Word.",
       "maintenance": "More overall testing, but grouping existing functionality reduces per-item cost.",
       "internCandidate": false
-    }
+    },
+    "stage2": false
   },
   {
     "id": "7975409",
@@ -215,7 +232,8 @@
       "success": "Support the majority of encountered vendor documents.",
       "maintenance": "Likely significant.",
       "internCandidate": false
-    }
+    },
+    "stage2": false
   },
   {
     "id": "7983256",
@@ -230,7 +248,8 @@
       "success": "RTL logic fully in TypeScript.",
       "maintenance": "Lower long-term maintenance costs.",
       "internCandidate": false
-    }
+    },
+    "stage2": false
   },
   {
     "id": "7987855",
@@ -243,7 +262,9 @@
       "epicFit": "Solving existing pain points.",
       "success": "Measure clicks and time users take to reach submenu items.",
       "internCandidate": true
-    }
+    },
+    "stage2": true,
+    "developer": "Peter L"
   },
   {
     "id": "7989552",
@@ -258,7 +279,8 @@
       "success": "Removal of ad-hoc RTF-to-HTML implementations.",
       "maintenance": "Requires testing and maintenance as a new developer-facing component.",
       "internCandidate": true
-    }
+    },
+    "stage2": false
   },
   {
     "id": "7993629",
@@ -273,7 +295,9 @@
       "success": "Time saved for builders; reduction in manual editing.",
       "maintenance": "Overall reduction; makes maintenance easier.",
       "internCandidate": true
-    }
+    },
+    "stage2": true,
+    "developer": "Jonathan"
   },
   {
     "id": "7993631",
@@ -285,7 +309,9 @@
       "whyNow": "Saves time and mental load for Epic and customers.",
       "maintenance": "Maintenance/TS time should go down.",
       "internCandidate": false
-    }
+    },
+    "stage2": true,
+    "developer": "David K"
   },
   {
     "id": "7993912",
@@ -296,7 +322,9 @@
       "characteristics": "Seamless integration with comparison UI; discoverable but not intrusive; facilitates efficient, accurate review.",
       "whyNow": "Users requested this in demos/usability; improves trustworthy AI usage.",
       "internCandidate": false
-    }
+    },
+    "stage2": true,
+    "developer": "Dan"
   },
   {
     "id": "8033379",
@@ -312,7 +340,8 @@
       "success": "Users can use tags while writing notes without switching workspaces.",
       "maintenance": "Low.",
       "internCandidate": false
-    }
+    },
+    "stage2": false
   },
   {
     "id": "8069463",
@@ -323,7 +352,8 @@
       "characteristics": "Custom prompts are easy to find and menu remains clean and simple.",
       "whyNow": "Sharing prompts is under development and will increase prompt volume.",
       "maintenance": "Low — builds on existing dev."
-    }
+    },
+    "stage2": false
   },
   {
     "id": "8069508",
@@ -337,7 +367,8 @@
       "success": "Known field types represented as separate classes while keeping generic support.",
       "maintenance": "Theoretically improves long-term maintenance/testing.",
       "internCandidate": true
-    }
+    },
+    "stage2": false
   },
   {
     "id": "8076785",
@@ -348,7 +379,8 @@
       "characteristics": "Seamless inline typing/selection experience, touch-optimized.",
       "whyNow": "More activities are available on mobile; inline editing would reduce 2+ clicks per field and improve mobile UX.",
       "internCandidate": false
-    }
+    },
+    "stage2": false
   },
   {
     "id": "8078994",
@@ -362,7 +394,8 @@
       "success": "Pair with feature tracking on citation hover reading time (PRJ 345350).",
       "maintenance": "Low.",
       "internCandidate": false
-    }
+    },
+    "stage2": false
   },
   {
     "id": "8105976",
@@ -373,7 +406,9 @@
       "characteristics": "\"Just in time\" prompt discovery; relevant suggestions based on text/workflow context.",
       "whyNow": "Sharing prompts will increase prompt count and increase menu bloat; avoid poor discoverability.",
       "internCandidate": false
-    }
+    },
+    "stage2": true,
+    "developer": "Ke"
   },
   {
     "id": "8109595",
@@ -385,7 +420,9 @@
       "characteristics": "Secure, respects user qualifications, integrated agent infrastructure, leverages existing translation designs.",
       "whyNow": "Translation is high-demand; supporting qualified users leverages recent agent/translation design work (Designs 721091, 727660, 730122).",
       "internCandidate": false
-    }
+    },
+    "stage2": false,
+    "developer": "David K"
   },
   {
     "id": "8116885",
@@ -400,7 +437,8 @@
       "success": "Reduced latency and smoother image interactions.",
       "maintenance": "Unit and integration tests for single/multi-page and large images.",
       "internCandidate": false
-    }
+    },
+    "stage2": false
   },
   {
     "id": "8189792",
@@ -412,7 +450,8 @@
       "whyNow": "Limited rollout in letters shows value; broader application may increase benefit.",
       "smartToolsFit": "Make SmartTools easier to discover and use.",
       "epicFit": "Continue progress on AI Text Assistant."
-    }
+    },
+    "stage2": false
   },
   {
     "id": "8205501",
@@ -427,7 +466,9 @@
       "success": "Conformance to UX guide across features.",
       "maintenance": "Low.",
       "internCandidate": false
-    }
+    },
+    "stage2": true,
+    "developer": "Peter P"
   },
   {
     "id": "8206481",
@@ -442,7 +483,8 @@
       "success": "Users utilize AITA in more STBs.",
       "maintenance": "Moderate.",
       "internCandidate": true
-    }
+    },
+    "stage2": false
   },
   {
     "id": "8212015",
@@ -455,7 +497,8 @@
       "epicFit": "Innovate with system intelligence to reduce clinician burnout; progress on AI Text Assistant.",
       "maintenance": "Low maintenance, high testing.",
       "internCandidate": true
-    }
+    },
+    "stage2": false
   },
   {
     "id": "8212121",
@@ -470,7 +513,8 @@
       "success": "Increased usage of custom prompts.",
       "maintenance": "More testing for broader prompt behaviors.",
       "internCandidate": false
-    }
+    },
+    "stage2": false
   },
   {
     "id": "8212127",
@@ -485,7 +529,8 @@
       "success": "Usage of navigation bar; reduced manual scrolling.",
       "maintenance": "Scalability testing for width/count of headings.",
       "internCandidate": false
-    }
+    },
+    "stage2": false
   },
   {
     "id": "8212129",
@@ -500,7 +545,8 @@
       "success": "Fewer templates without proper headings.",
       "maintenance": "Add a card and build-wizard testing.",
       "internCandidate": false
-    }
+    },
+    "stage2": false
   },
   {
     "id": "8212130",
@@ -516,7 +562,9 @@
       "success": "Number of users configuring quick buttons.",
       "maintenance": "More customization testing.",
       "internCandidate": false
-    }
+    },
+    "stage2": true,
+    "developer": "Dan"
   },
   {
     "id": "8212797",
@@ -531,7 +579,8 @@
       "success": "Feature tracking for uploads to Epic Earth.",
       "maintenance": "Storage considerations; testing via internal tools.",
       "internCandidate": false
-    }
+    },
+    "stage2": false
   },
   {
     "id": "8212836",
@@ -545,7 +594,8 @@
       "epicFit": "Solving existing pain points.",
       "success": "Qualitative feedback and reduced duplication.",
       "internCandidate": false
-    }
+    },
+    "stage2": false
   },
   {
     "id": "8212875",
@@ -560,7 +610,8 @@
       "success": "Microfeature tracking and qualitative feedback.",
       "maintenance": "Minimal.",
       "internCandidate": false
-    }
+    },
+    "stage2": false
   },
   {
     "id": "8212877",
@@ -575,7 +626,8 @@
       "success": "Usage metrics and reduced toolbar clutter score.",
       "maintenance": "Minimal.",
       "internCandidate": false
-    }
+    },
+    "stage2": false
   },
   {
     "id": "8212878",
@@ -590,7 +642,8 @@
       "success": "Measure discoveries/follow-up usage where descriptions were generated; qualitative analysis of description quality.",
       "maintenance": "AI costs for generation; quality checks.",
       "internCandidate": false
-    }
+    },
+    "stage2": false
   },
   {
     "id": "8215275",
@@ -603,7 +656,9 @@
       "epicFit": "AI initiative.",
       "maintenance": "Lower maintenance; easier find/edit flows.",
       "internCandidate": false
-    }
+    },
+    "stage2": true,
+    "developer": "Daoxing"
   },
   {
     "id": "8218715",
@@ -617,7 +672,8 @@
       "success": "Track promoted-result display vs usage and adoption.",
       "maintenance": "Minimal.",
       "internCandidate": false
-    }
+    },
+    "stage2": false
   },
   {
     "id": "7882759",
@@ -628,7 +684,9 @@
       "characteristics": "Searchable, share-to-user/group, security for edit/share, discoverable for recipients.",
       "whyNow": "After moving custom text actions to records, sharing is a high-priority enhancement.",
       "internCandidate": false
-    }
+    },
+    "stage2": false,
+    "developer": "Daoxing"
   },
   {
     "id": "7983072",
@@ -644,7 +702,9 @@
       "success": "Correct rendering for both historic and new header/footer storage methods.",
       "maintenance": "Some additional maintenance/testing to cover both storage models.",
       "internCandidate": false
-    }
+    },
+    "stage2": false,
+    "developer": "Tim"
   },
   {
     "id": "8051811",
@@ -659,7 +719,9 @@
       "success": "User feedback and fewer manual reconciliations.",
       "maintenance": "Some mapping logic and reconciliation UI testing.",
       "internCandidate": false
-    }
+    },
+    "stage2": true,
+    "developer": "Brandon"
   },
   {
     "id": "6855847",
@@ -671,7 +733,9 @@
       "characteristics": "SmartSection!",
       "maintenance": "Overall improvement.",
       "internCandidate": false
-    }
+    },
+    "stage2": false,
+    "developer": "David C"
   },
   {
     "id": "8219237",
@@ -683,9 +747,10 @@
       "whyNow": "This has been a known and longstanding issue so it is unclear if we need to solve this now. There are some customers in the Netherlands who routinely ask about this problem.\n\nI think there is a chance that this blows up at some point though and we need to move quickly on this. Right now, we could start an investigation into options and get ahead of any potential escalation.\n\nIf we do this well, this has a chance to differentiate Epic AI features from 3rd parties since we could be more intelligent and customized to how healthcare is practiced in a customer's local region. For users, it could build trust that the system understands how they practice healthcare. It's a great opportunity to localize AI tools and would help as AI adoption in international locales increases.",
       "maintenance": "Potentially high, this needs to be factored into design options.",
       "internCandidate": false
-    }
-  }
-  ,
+    },
+    "stage2": true,
+    "developer": "Adam"
+  },
   {
     "id": "7968764",
     "title": "ST / Feb '26 Pitch / The text assistant is not context aware",
@@ -696,7 +761,9 @@
       "whyNow": "This gives us a chance to stand on our hill of having a deeply integrated system. No other AI editing tool can integrate with the rest of the patient's chart in the way we can. This is a clear differentiator and potentially makes using the text assistant consistently more useful than going to ChatGPT, not just more convenient and safer.",
       "epicFit": "System intelligence improvements.",
       "success": "Consider feature tracking logging once for each context aware text action that is available and another for each time it gets used. Consider logging / reporting for the individual text action for more granular data."
-    }
+    },
+    "stage2": true,
+    "developer": "Adam"
   },
   {
     "id": "8051800",
@@ -711,7 +778,8 @@
       "success": "Increased adoption and widespread use of the AI Text Assistant. Track the amount and types of custom context added by users. This can also help inform future out-of-the-box text actions.",
       "maintenance": "No/low. Users would store their own context and/or opt into the behavior.",
       "internCandidate": false
-    }
+    },
+    "stage2": false
   },
   {
     "id": "7557419",
@@ -720,6 +788,8 @@
     "details": {
       "problem": "From talking to various customers, there can be logical contradictions in what gets documented in the patient's chart. As one example, a user copies forward a note that says \"all lab results normal\" but then adds in documentation for a new abnormal lab result. These types of contradictions have also been observed in ambient generated notes coming from DAX.",
       "ideaForSolution": "We develop a new prompt that can take in text and return any logical contradictions that exist in that text.\n\nThis can then be plugged into other AI workflows, such as native ambient. Native ambient devs have already expressed interest in building on this idea.\n\nWe could also consider releasing this as a prompt in the text assistant. Users could then highlight a note, right click, run this prompt, and see any contradictions in it displayed at the bottom.\n\nWe could look at integrating this type of contradiction check into the background, similar to ideas we're exploring for catching stigmatizing language in the background."
-    }
+    },
+    "stage2": false,
+    "developer": "Brandon"
   }
 ]

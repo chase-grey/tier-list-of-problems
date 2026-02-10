@@ -38,6 +38,7 @@ interface TopBarProps {
   onUpdateName: (name: string) => void;
   onUpdateRole: (role: string) => void;
   onUpdateAvailability: (available: boolean) => void;
+  appStage2Mode?: boolean; // True when app is in Stage 2 (interest ranking only, priority locked)
 }
 
 /**
@@ -63,6 +64,7 @@ export const TopBar = ({
   onUpdateName,
   onUpdateRole,
   onUpdateAvailability,
+  appStage2Mode = false,
 }: TopBarProps) => {
   return (
     <AppBar
@@ -141,10 +143,11 @@ export const TopBar = ({
           </Typography>
         </Box>
         {/* Only show the interest section button if the user has access to it */}
-        {(canAccessInterestStage || stage === 'interest') && (
+        {/* In Stage 2 mode, hide the button entirely since priority is locked */}
+        {!appStage2Mode && (canAccessInterestStage || stage === 'interest') && (
           <Tooltip title={
             stage === 'priority' && !canAccessInterestStage ? 
-              "Only developers who have indicated availability can rank interest" : 
+              "Only QM and dev TL roles who are available can rank interest" : 
             stage === 'priority' && !priorityStageComplete ? 
               "You must complete priority rankings first" : 
               ""

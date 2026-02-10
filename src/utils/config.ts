@@ -38,6 +38,33 @@ export const getPollingCycleId = (): string => {
 };
 
 /**
+ * Get the current polling stage (1 = priority ranking, 2 = interest ranking)
+ * Stage 1: All users rank priorities on all pitches
+ * Stage 2: Only QM and dev TL roles rank interest on pitches that passed Stage 1
+ */
+export const getPollingStage = (): 1 | 2 => {
+  if (import.meta.env.DEV && typeof window !== 'undefined') {
+    try {
+      const override = window.localStorage.getItem('polling.debugStage');
+      if (override === '1' || override === '2') return parseInt(override) as 1 | 2;
+    } catch {
+      // ignore
+    }
+  }
+
+  const stage = import.meta.env.VITE_POLLING_STAGE;
+  if (stage === '2') return 2;
+  return 1; // Default to stage 1
+};
+
+/**
+ * Check if the app is in Stage 2 mode (interest ranking only)
+ */
+export const isStage2 = (): boolean => {
+  return getPollingStage() === 2;
+};
+
+/**
  * Configuration object
  */
 const config = {

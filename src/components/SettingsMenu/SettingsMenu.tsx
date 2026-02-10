@@ -59,9 +59,11 @@ export const SettingsMenu: React.FC<SettingsMenuProps> = ({
   // Edit dialogs state
   const [editNameOpen, setEditNameOpen] = useState(false);
   const [editRoleOpen, setEditRoleOpen] = useState(false);
+  const [availabilityPromptOpen, setAvailabilityPromptOpen] = useState(false);
   const [tempName, setTempName] = useState('');
   const [tempRole, setTempRole] = useState('');
   const [tempOtherRole, setTempOtherRole] = useState('');
+  const [pendingRole, setPendingRole] = useState<string | null>(null);
 
   const handleClick = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -124,9 +126,45 @@ export const SettingsMenu: React.FC<SettingsMenuProps> = ({
   const handleEditRoleSave = () => {
     const finalRole = tempRole === 'other' ? tempOtherRole.trim() : tempRole;
     if (finalRole) {
+      const wasContributor = voterRole && isContributorRole(voterRole);
+      const isNowContributor = isContributorRole(finalRole);
+      
+      // If changing from non-contributor to contributor, prompt for availability
+      if (!wasContributor && isNowContributor) {
+        setPendingRole(finalRole);
+        handleEditRoleClose();
+        setAvailabilityPromptOpen(true);
+        return;
+      }
+      
+      // If changing from contributor to non-contributor, clear availability
+      if (wasContributor && !isNowContributor) {
+        onUpdateAvailability(false);
+      }
+      // Otherwise (contributor to contributor), keep existing availability
+      
       onUpdateRole(finalRole);
     }
     handleEditRoleClose();
+  };
+
+  // Availability prompt handlers (shown after role change to contributor)
+  const handleAvailabilityPromptYes = () => {
+    if (pendingRole) {
+      onUpdateRole(pendingRole);
+      onUpdateAvailability(true);
+    }
+    setAvailabilityPromptOpen(false);
+    setPendingRole(null);
+  };
+
+  const handleAvailabilityPromptNo = () => {
+    if (pendingRole) {
+      onUpdateRole(pendingRole);
+      onUpdateAvailability(false);
+    }
+    setAvailabilityPromptOpen(false);
+    setPendingRole(null);
   };
 
   const handleResetClick = () => {
@@ -302,15 +340,15 @@ export const SettingsMenu: React.FC<SettingsMenuProps> = ({
             />
           )}
 
-          {/* Show info about availability when switching to/from dev */}
-          {tempRole === 'dev' && !isDeveloper && (
+          {/* Show info about availability when switching to/from contributor role */}
+          {isContributorRole(tempRole === 'other' ? tempOtherRole : tempRole) && !isDeveloper && (
             <Typography variant="body2" color="info.main" sx={{ mt: 2 }}>
-              As a dev, you'll be asked about your availability for next quarter.
+              You'll be asked about your availability for next quarter.
             </Typography>
           )}
-          {tempRole !== 'dev' && isDeveloper && (
+          {!isContributorRole(tempRole === 'other' ? tempOtherRole : tempRole) && isDeveloper && (
             <Typography variant="body2" color="warning.main" sx={{ mt: 2 }}>
-              Changing from dev will remove access to the interest ranking section.
+              This role does not have access to interest ranking.
             </Typography>
           )}
         </DialogContent>
@@ -322,6 +360,25 @@ export const SettingsMenu: React.FC<SettingsMenuProps> = ({
             disabled={!tempRole || (tempRole === 'other' && !tempOtherRole.trim())}
           >
             Save
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Availability Prompt Dialog - shown when changing to a contributor role */}
+      <Dialog open={availabilityPromptOpen} onClose={handleAvailabilityPromptNo} maxWidth="xs" fullWidth>
+        <DialogTitle>Availability for Next Quarter</DialogTitle>
+        <DialogContent>
+          <Typography variant="body1">
+            Will you be available to work on projects next quarter?
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            This determines if you can rank your interest in pitches.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleAvailabilityPromptNo}>No</Button>
+          <Button onClick={handleAvailabilityPromptYes} variant="contained">
+            Yes
           </Button>
         </DialogActions>
       </Dialog>

@@ -3,6 +3,8 @@ export interface Pitch {
   id: string;              // UUID or slug
   title: string;           // terse name on card
   continuation?: boolean;
+  stage2?: boolean;        // Whether this pitch advanced to Stage 2
+  developer?: string;      // Developer assigned to this pitch (Stage 2)
   details: {
     problem: string;               // REQUIRED
     ideaForSolution?: string;
@@ -22,9 +24,21 @@ export type Tier     = 1 | 2 | 3 | 4 | null;
 // Interest levels for the second stage
 export type InterestLevel = 1 | 2 | 3 | 4 | null;
 
-// Roles that can participate in interest ranking if available
-export const CONTRIBUTOR_ROLES = [
+// Roles that can rank interest in Stage 1 (priority + interest on all pitches)
+export const STAGE1_INTEREST_ROLES = [
   'dev',
+];
+
+// Roles that can rank interest in Stage 2 (interest only on subset of pitches)
+export const STAGE2_INTEREST_ROLES = [
+  'QM',
+  'dev TL',
+];
+
+// Combined: all roles that can ever rank interest (used for availability prompts)
+export const CONTRIBUTOR_ROLES = [
+  ...STAGE1_INTEREST_ROLES,
+  ...STAGE2_INTEREST_ROLES,
 ];
 
 // Roles that should NOT be asked about availability and can't do interest ranking
@@ -32,8 +46,6 @@ export const NON_CONTRIBUTOR_ROLES = [
   'UXD',
   'TLTL',
   'TS',
-  'QM',
-  'dev TL',
   'QM TL',
   'customer',
   'other'
@@ -42,9 +54,22 @@ export const NON_CONTRIBUTOR_ROLES = [
 // Helper function for case-insensitive role checking to identify contributor roles
 export function isContributorRole(role: string): boolean {
   if (!role) return false;
-  // Convert to lowercase for case-insensitive comparison
   const roleLower = role.toLowerCase();
   return CONTRIBUTOR_ROLES.some(r => r.toLowerCase() === roleLower);
+}
+
+// Check if role can rank interest in Stage 1
+export function canRankInterestStage1(role: string): boolean {
+  if (!role) return false;
+  const roleLower = role.toLowerCase();
+  return STAGE1_INTEREST_ROLES.some(r => r.toLowerCase() === roleLower);
+}
+
+// Check if role can rank interest in Stage 2
+export function canRankInterestStage2(role: string): boolean {
+  if (!role) return false;
+  const roleLower = role.toLowerCase();
+  return STAGE2_INTEREST_ROLES.some(r => r.toLowerCase() === roleLower);
 }
 
 // Helper function for case-insensitive role checking to identify non-contributor roles

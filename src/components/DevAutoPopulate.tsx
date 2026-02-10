@@ -4,6 +4,7 @@ import { AutoFixHigh as AutoFillIcon } from '@mui/icons-material';
 import { generateRandomVotes } from '../utils/testUtils';
 
 const DEBUG_CYCLE_OVERRIDE_KEY = 'polling.debugCycleId';
+const DEBUG_STAGE_OVERRIDE_KEY = 'polling.debugStage';
 
 interface DevAutoPopulateProps {
   onPopulate: (name: string, votes: Record<string, any>, complete?: boolean) => void;
@@ -20,6 +21,13 @@ const DevAutoPopulate: React.FC<DevAutoPopulateProps> = ({ onPopulate, pitchIds 
   const [cycleOverride, setCycleOverride] = React.useState(() => {
     try {
       return localStorage.getItem(DEBUG_CYCLE_OVERRIDE_KEY) || '';
+    } catch {
+      return '';
+    }
+  });
+  const [stageOverride, setStageOverride] = React.useState(() => {
+    try {
+      return localStorage.getItem(DEBUG_STAGE_OVERRIDE_KEY) || '';
     } catch {
       return '';
     }
@@ -56,8 +64,9 @@ const DevAutoPopulate: React.FC<DevAutoPopulateProps> = ({ onPopulate, pitchIds 
   };
 
   const incrementQuarter = (cycleId: string): string | null => {
-    const normalized = cycleId.trim().replace('’', "'");
-    const match = /^(Aug|Nov|Feb|May)\s*'([0-9]{2})$/.exec(normalized);
+    // Format: Feb26, May26, Aug26, Nov26
+    const normalized = cycleId.trim();
+    const match = /^(Feb|May|Aug|Nov)([0-9]{2})$/.exec(normalized);
     if (!match) return null;
 
     const month = match[1];
@@ -74,7 +83,7 @@ const DevAutoPopulate: React.FC<DevAutoPopulateProps> = ({ onPopulate, pitchIds 
     const bumpYear = month === 'Nov' && nextMonth === 'Feb';
     const nextYear2 = bumpYear ? (year2 + 1) % 100 : year2;
 
-    return `${nextMonth} '${String(nextYear2).padStart(2, '0')}`;
+    return `${nextMonth}${String(nextYear2).padStart(2, '0')}`;
   };
 
   const getBaseCycleId = (): string => {
@@ -114,6 +123,39 @@ const DevAutoPopulate: React.FC<DevAutoPopulateProps> = ({ onPopulate, pitchIds 
     window.location.reload();
   };
 
+  const handleToggleStage = () => {
+    const currentStage = stageOverride || import.meta.env.VITE_POLLING_STAGE || '1';
+    const newStage = currentStage === '2' ? '1' : '2';
+
+    try {
+      localStorage.setItem(DEBUG_STAGE_OVERRIDE_KEY, newStage);
+      setStageOverride(newStage);
+    } catch {
+      return;
+    }
+
+    window.location.reload();
+  };
+
+  const handleClearStageOverride = () => {
+    try {
+      localStorage.removeItem(DEBUG_STAGE_OVERRIDE_KEY);
+      setStageOverride('');
+    } catch {
+      return;
+    }
+
+    window.location.reload();
+  };
+
+  const getCurrentStageDisplay = (): string => {
+    if (stageOverride) {
+      return `Stage ${stageOverride} (override)`;
+    }
+    const envStage = import.meta.env.VITE_POLLING_STAGE || '1';
+    return `Stage ${envStage} (env)`;
+  };
+
   return (
     <>
       <Tooltip title="Auto-Populate (Dev Only)">
@@ -146,8 +188,8 @@ const DevAutoPopulate: React.FC<DevAutoPopulateProps> = ({ onPopulate, pitchIds 
               onChange={(e) => setCycleOverride(e.target.value)}
               fullWidth
               margin="normal"
-              placeholder={import.meta.env.VITE_POLLING_CYCLE_ID || "Aug '26"}
-              helperText="Leave blank to use VITE_POLLING_CYCLE_ID. Example: Aug '26. Changing this will reload the page."
+              placeholder={import.meta.env.VITE_POLLING_CYCLE_ID || "Aug26"}
+              helperText="Leave blank to use VITE_POLLING_CYCLE_ID. Example: Aug26. Changing this will reload the page."
             />
 
             <Box sx={{ display: 'flex', gap: 1, mt: 1, mb: 2 }}>
@@ -157,6 +199,20 @@ const DevAutoPopulate: React.FC<DevAutoPopulateProps> = ({ onPopulate, pitchIds 
               <Button onClick={handleIncrementQuarter} variant="outlined">
                 Increment Quarter
               </Button>
+            </Box>
+
+            <Typography variant="body2" sx={{ mt: 2, mb: 1 }}>
+              Current: <strong>{getCurrentStageDisplay()}</strong>
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
+              <Button onClick={handleToggleStage} variant="outlined" color="secondary">
+                Toggle Stage (1 ↔ 2)
+              </Button>
+              {stageOverride && (
+                <Button onClick={handleClearStageOverride} variant="outlined" color="inherit">
+                  Clear Override
+                </Button>
+              )}
             </Box>
             
             <TextField

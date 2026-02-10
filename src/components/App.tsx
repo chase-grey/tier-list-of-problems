@@ -18,9 +18,9 @@ import { exportVotes } from '../utils/csv';
 import { isDevelopmentMode } from '../utils/testUtils';
 import type { DropResult } from '@hello-pangea/dnd';
 import type { AppState, Pitch, Tier, InterestLevel } from '../types/models';
-import { isContributorRole } from '../types/models';
+import { isContributorRole, canRankInterestStage1, canRankInterestStage2 } from '../types/models';
 import { useVoteManagement } from '../hooks/useVoteManagement';
-import { getPollingCycleId } from '../utils/config';
+import { getPollingCycleId, isStage2 } from '../utils/config';
 import { buildPollingKey, cleanupPollingStorageOnCycleChange, getEffectivePollingCycleId } from '../utils/pollingStorage';
 import { getInterestLevelLabel } from '../utils/voteActions';
 
@@ -48,8 +48,20 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
   const [showResetConfirmation, setShowResetConfirmation] = useState(false);
   // State to control feedback dialog
   const [showFeedback, setShowFeedback] = useState(false);
-  // Get pitches from JSON
-  const pitches = pitchesData as Pitch[];
+  
+  // Check if we're in Stage 2 mode (configured via environment variable)
+  const appStage2Mode = isStage2();
+  
+  // Get pitches from JSON - in Stage 2, filter to only pitches that passed Stage 1
+  const allPitches = pitchesData as (Pitch & { stage2?: boolean })[];
+  const pitches = useMemo(() => {
+    if (appStage2Mode) {
+      // Filter to only pitches with stage2=true
+      return allPitches.filter(p => p.stage2 === true);
+    }
+    return allPitches;
+  }, [appStage2Mode, allPitches]);
+  
   const TOTAL = pitches.length;
 
   const pollingCycleId = useMemo(() => getEffectivePollingCycleId(getPollingCycleId(), pitches), [pitches]);
@@ -79,11 +91,12 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
   })();
   
   // Always ensure we have a properly formed state object
+  // In Stage 2 mode, force users directly to interest stage (priority is locked)
   const completeState = {
     ...initialState,
     ...savedState,
-    // Always set initial state to priority stage when loading
-    stage: 'priority' as 'priority',
+    // In Stage 2 mode, always use 'interest' stage; in Stage 1, use 'priority'
+    stage: appStage2Mode ? 'interest' as const : 'priority' as const,
     // Ensure voterRole exists if voterName exists
     voterRole: savedState.voterRole || (savedState.voterName ? null : initialState.voterRole)
   };
@@ -159,16 +172,21 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
   } = stats;
   
   // Check if the user has a role that can access interest ranking
-  // Only QMs, devs, QM TLs, and dev TLs who are available for next quarter can see interest section
+  // Stage 1: devs can rank interest (after priority)
+  // Stage 2: QM and dev TL can rank interest on subset of pitches
   const canAccessInterestStage = state.voterRole !== null && 
-    isContributorRole(state.voterRole) && 
-    state.available === true;
+    state.available === true &&
+    (appStage2Mode 
+      ? canRankInterestStage2(state.voterRole)  // Stage 2: QM and dev TL only
+      : canRankInterestStage1(state.voterRole)  // Stage 1: devs only
+    );
   
   // Check if the user needs to rank interest (same logic as canAccessInterestStage, kept for backward compatibility)
   const needsInterestRanking = canAccessInterestStage;
   
   // Calculate completion status based on role and availability (now only requires 50%)
-  const priorityStageComplete = isPriorityComplete;
+  // In Stage 2 mode, priority stage is considered complete (locked from Stage 1)
+  const priorityStageComplete = appStage2Mode ? true : isPriorityComplete;
   
   // Check if export is enabled based on role and stage
   const isExportEnabled = priorityStageComplete && 
@@ -367,11 +385,18 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
       priorityStageComplete,
       available: state.available,
       votesCount: Object.keys(state.votes || {}).length,
-      pitchesCount: Array.isArray(pitches) ? pitches.length : 0
+      pitchesCount: Array.isArray(pitches) ? pitches.length : 0,
+      appStage2Mode
     });
 
     // Toggle between stages
     const newStage = state.stage === 'priority' ? 'interest' : 'priority';
+    
+    // In Stage 2 mode, prevent going back to priority stage (it's locked)
+    if (appStage2Mode && newStage === 'priority') {
+      showSnackbar('Priority ranking is locked. Stage 2 is for interest ranking only.', 'info');
+      return;
+    }
     
     // Only allow switching to interest stage if conditions are met
     if (newStage === 'interest' && (!canAccessInterestStage || !priorityStageComplete)) {
@@ -384,7 +409,10 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
       
       // Show appropriate error message
       if (!canAccessInterestStage) {
-        showSnackbar('Only developers who have indicated availability can rank interest', 'error');
+        const roleMsg = appStage2Mode 
+          ? 'Only QM and dev TL roles who are available can rank interest in Stage 2'
+          : 'Only devs who are available can rank interest';
+        showSnackbar(roleMsg, 'error');
       } else {
         showSnackbar('You must complete priority rankings first', 'error');
       }
@@ -537,10 +565,27 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
           onUpdateName={handleUpdateName}
           onUpdateRole={handleUpdateRole}
           onUpdateAvailability={handleUpdateAvailability}
+          appStage2Mode={appStage2Mode}
         />
         
         <Box component="main" sx={{ flexGrow: 1, overflow: 'hidden', p: 0, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-          {state.stage === 'priority' ? (
+          {/* Stage 2 mode: Show access denied message for non-eligible users */}
+          {appStage2Mode && !canAccessInterestStage ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', flexDirection: 'column', gap: 2, p: 4 }}>
+              <Typography variant="h5" color="text.secondary" textAlign="center">
+                Stage 2: Interest Ranking
+              </Typography>
+              <Typography variant="body1" color="text.secondary" textAlign="center" sx={{ maxWidth: 500 }}>
+                This stage is only available to QM and dev TL roles who have indicated they are available for next quarter.
+                {state.voterRole && !canRankInterestStage2(state.voterRole) && (
+                  <><br /><br />Your current role ({state.voterRole}) does not have access to this stage.</>
+                )}
+                {state.voterRole && canRankInterestStage2(state.voterRole) && state.available !== true && (
+                  <><br /><br />Please indicate that you are available for next quarter to access interest ranking.</>
+                )}
+              </Typography>
+            </Box>
+          ) : state.stage === 'priority' ? (
             <KanbanContainer
               pitches={pitches}
               votes={state.votes}

@@ -43,17 +43,11 @@ const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose, userRole, showIn
       <Divider />
       <DialogContent sx={{ pt: 3 }}>
         <Typography variant="h6" gutterBottom>
-          Step 1: Rank Problems by Priority
+          Stage 1: Priority Ranking
         </Typography>
         <Typography variant="body1" paragraph>
-          Drag each problem card into one of the four tier columns based on how important you think it is to solve in this next version.
-          The tiers range from "Highest Priority" (Tier 1) to "Not a Priority" (Tier 4).
-        </Typography>
-        <Typography variant="body1" paragraph sx={{ fontWeight: 'medium', color: 'text.primary' }}>
-          You need to rank at least 50% of the problems to submit your feedback. However, ranking more helps our team make more informed decisions about what to work on next.
-        </Typography>
-        <Typography variant="body1" paragraph sx={{ fontStyle: 'italic', color: 'text.secondary' }}>
-          Note: Even if a problem isn't prioritized for this version, it could always be pitched and prioritized in the next version instead.
+          Drag each pitch into a tier column (Tier 1 = Highest Priority, Tier 4 = Not a Priority).
+          Rank at least 50% to submit. Pitches not prioritized this version can still be re-pitched next time.
         </Typography>
         
         <Divider sx={{ my: 3 }} />
@@ -61,20 +55,17 @@ const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose, userRole, showIn
         {showInterestStep && (
           <>
             <Typography variant="h6" gutterBottom>
-              Step 2: Rank Your Interest Level
+              Interest Ranking
             </Typography>
             <Typography variant="body1" paragraph>
-              <strong>Note: This step only applies to developers who indicated they are available to help next quarter.</strong>
+              <strong>Stage 1:</strong> Devs who are available rank interest on all pitches after completing priority ranking.
             </Typography>
             <Typography variant="body1" paragraph>
-              After ranking priorities, you'll be asked to rank your interest level in working on each problem. This information helps team leads match people with projects they're excited about working on. You will need to:
+              <strong>Stage 2:</strong> QM and dev TL roles who are available rank interest on a subset of pitches that advanced.
             </Typography>
-            
-            <Typography variant="body1" gutterBottom>
-              Drag each problem card into one of four interest level columns, ranging from "Very Interested" to "Not Interested".
-            </Typography>
-            <Typography variant="body1" paragraph sx={{ fontWeight: 'medium', color: 'text.primary' }}>
-              You need to set your interest levels for at least 50% of the problems to submit your feedback. The more data you provide, the better we can match folks to their interests.
+            <Typography variant="body1" paragraph>
+              Drag each pitch into an interest column (Very Interested → Not Interested). 
+              This helps match people with projects they're excited about. Rank at least 50% to submit.
             </Typography>
             
             <Divider sx={{ my: 3 }} />
@@ -82,18 +73,17 @@ const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose, userRole, showIn
         )}
         
         <Typography variant="h6" gutterBottom>
-          {showInterestStep ? 'Step 3: Export Your Results' : 'Step 2: Export Your Results'}
+          Export Your Results
         </Typography>
         <Typography variant="body1" paragraph>
-          Once you've completed all the required steps, the Export button will become active.
-          Click it to download your rankings as a CSV file.
+          Once complete, click Export to download your rankings as CSV.
         </Typography>
 
         <Typography variant="body1" paragraph>
           {isCustomer ? (
-            <>After downloading, please email your results to Chase Grey (<strong>cgrey@epic.com</strong>).</>
+            <>Email your results to Chase Grey (<strong>cgrey@epic.com</strong>).</>
           ) : (
-            <>After downloading, please save your file to this SharePoint site using your full name as the filename:</>
+            <>Save your file to SharePoint using your full name as the filename:</>
           )}
         </Typography>
         
@@ -118,12 +108,6 @@ const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose, userRole, showIn
             </Typography>
           </Box>
         )}
-        
-        <Box sx={{ mt: 2, p: 2, bgcolor: 'rgba(0, 0, 0, 0.07)', borderRadius: 1 }}>
-          <Typography variant="body2" sx={{ color: 'text.primary' }}>
-            You can access these instructions at any time by clicking the help icon in the top bar.
-          </Typography>
-        </Box>
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose} variant="contained">Got It</Button>

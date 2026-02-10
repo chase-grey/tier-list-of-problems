@@ -83,8 +83,8 @@ const InterestDetailsBubble = ({ pitch, vote, anchorEl, onClose, userRole }: Int
       <Paper
         sx={{
           p: 2,
-          maxWidth: 320,
-          maxHeight: '60vh',
+          maxWidth: { xs: 320, md: 450, lg: 550 },
+          maxHeight: '70vh',
           overflowY: 'auto',
         }}
       >
@@ -112,6 +112,21 @@ const InterestDetailsBubble = ({ pitch, vote, anchorEl, onClose, userRole }: Int
         </Typography>
         
         <Divider />
+        
+        {/* Add developer info if available */}
+        {pitch.developer && (
+          <>
+            <Box sx={{ mt: 2, mb: 1 }}>
+              <Typography variant="subtitle2" color="text.secondary">
+                Developer
+              </Typography>
+              <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
+                {pitch.developer}
+              </Typography>
+            </Box>
+            <Divider />
+          </>
+        )}
         
         {/* Add priority tier information at the top */}
         <Box sx={{ mt: 2, mb: 1 }}>
