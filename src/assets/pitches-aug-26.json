@@ -685,7 +685,7 @@
       "whyNow": "After moving custom text actions to records, sharing is a high-priority enhancement.",
       "internCandidate": false
     },
-    "stage2": false,
+    "stage2": true,
     "developer": "Daoxing"
   },
   {
