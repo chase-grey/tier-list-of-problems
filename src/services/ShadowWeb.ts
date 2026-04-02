@@ -201,7 +201,7 @@ export async function initializeShadowWeb<T extends AppDefMap>(
  */
 function instantiateState(): ShadowWebState {
     const sandbox = document.createElement('iframe');
-    sandbox.src = "https://emc2summary/GetSummaryReport.ashx/track/XSHADOW/NR%20Shadow%20Web/sandbox";
+    sandbox.src = "https://emc2summary/GetSummaryReport.ashx/track/XSHADOW/CMG%20Problem%20Pitches/sandbox";
     sandbox.style.display = 'none';
 
     return {
