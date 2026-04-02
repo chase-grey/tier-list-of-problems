@@ -2,6 +2,7 @@
 export interface Pitch {
   id: string;              // UUID or slug
   title: string;           // terse name on card
+  category: string;        // strategic category for voting
   continuation?: boolean;
   stage2?: boolean;        // Whether this pitch advanced to Stage 2
   developer?: string;      // Developer assigned to this pitch (Stage 2)

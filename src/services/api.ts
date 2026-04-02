@@ -1,24 +1,16 @@
 /**
  * API Service for Problem-Polling App
- * Handles communication with the Google Apps Script backend
+ * Handles communication with the Shadow Web / Track Shadow backend
  */
 import type { Pitch, Vote } from '../types/models';
 import { getMockCsrfToken, submitMockVotes } from './mockApi';
+import { fetchPitchesByProject } from './pitchApiService';
+import { getPitchPrjId } from '../utils/config';
 
 // Get the API URL from environment variables safely
 const API_BASE_URL = ((import.meta as any).env?.VITE_API_URL) || '';
 
-// Check if the API URL is properly configured
-if (!API_BASE_URL) {
-  console.error('API_BASE_URL is not configured. Please check your .env file.');
-}
-
-// Use mock API by default for development until the backend is fixed
-const USE_MOCK_API = true;
-
-// Log the API mode on startup
-console.log('Using MOCK API for local development (backend integration pending)');
-console.log('Configured API URL:', API_BASE_URL);
+const USE_MOCK_API = false;
 
 /**
  * Format the URL for Google Apps Script with the proper handling for JSONP
@@ -92,44 +84,14 @@ export interface SubmitVotesPayload {
 }
 
 /**
- * Fetches all available pitches from the backend
+ * Fetches all available pitches from the Track Shadow backend via Shadow Web
  */
 export async function fetchPitches(): Promise<Pitch[]> {
-  try {
-    const url = getApiUrl('pitches');
-    console.log('Fetching pitches from URL:', url);
-    const response = await fetch(url);
-    
-    if (!response.ok) {
-      const error = await response.json();
-      throw new ApiError(
-        error.error || 'Failed to fetch pitches',
-        response.status,
-        error.detail
-      );
-    }
-    
-    const data = await response.json();
-    
-    // Log the received data for debugging
-    console.log('Received pitches data:', data);
-    
-    // Map backend format to frontend format
-    return data.map((pitch: any) => ({
-      id: pitch.pitch_id,
-      title: pitch.title,
-      details: {
-        problem: pitch.problem,
-        idea: pitch.idea,
-        characteristics: pitch.characteristics,
-      }
-    }));
-  } catch (error) {
-    if (error instanceof ApiError) {
-      throw error;
-    }
-    throw new ApiError('Network error while fetching pitches', 0);
+  const prjId = getPitchPrjId();
+  if (!prjId) {
+    throw new ApiError('VITE_PITCH_PRJ_ID is not configured', 0);
   }
+  return fetchPitchesByProject(prjId);
 }
 
 /**

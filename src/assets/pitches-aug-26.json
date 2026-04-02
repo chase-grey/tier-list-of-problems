@@ -2,6 +2,7 @@
   {
     "id": "951785",
     "title": "ST / Spell Checker / Add Spanish Lexicon",
+    "category": "Create and Improve Tools and Framework",
     "details": {
       "problem": "As a Spanish translator, I type almost exclusively in Spanish. And Epic underlines every single word that I type as being misspelled. Thankfully, Epic finally supports choosing the spell check language per user (XDS 661862). But Epic doesn't provide a Spanish lexicon!",
       "ideaForSolution": "Please provide a Spanish lexicon.",
@@ -16,6 +17,7 @@
   {
     "id": "7963351",
     "title": "ST / EpicCommand Link / Provide A Better Way For User To Insert EpicCommand Link",
+    "category": "Create and Improve Tools and Framework",
     "details": {
       "problem": "As a user of EpicCommand links, I want to enter parameters in a clear and structured way, so that I don't have to remember or worry about delimiters, formatting rules, or accidentally entering invalid values.",
       "ideaForSolution": "As a user creating an EpicCommand link, I can select a parameter type (e.g., patient ID, record ID, etc.) and enter its value in a dedicated field with built-in validation, so that I can easily construct links without worrying about delimiters, formatting rules, or invalid inputs.",
@@ -28,6 +30,7 @@
   {
     "id": "709400",
     "title": "AC / ALLOW MARKING USER SMARTPHRASES AS PERSONAL/SENSITIVE TO HIDE FROM OTHER EDITORS",
+    "category": "Create and Improve Tools and Framework",
     "details": {
       "problem": "Users might create a SmartPhrase for a signature that doesn't make sense for other people to have access to or as a personal reference that isn't meant for others to use. If other people use their private SmartPhrases, this can make them feel like their privacy has been violated or annoyed that they can't control their personal smartphrases.",
       "ideaForSolution": "Allow end users the choice to hide their SmartPhrases that aren't appropriate for others to use, preventing other users from searching or sharing SmartPhrases without the user's permission. This will make end users feel like they have control over their SmartPhrases.",
@@ -42,6 +45,7 @@
   {
     "id": "911275",
     "title": "AC / SMARTTEXTBOX / FIXED-WIDTH TABLES: CAN THESE SUPPORT RESIZING?",
+    "category": "Create and Improve Tools and Framework",
     "details": {
       "problem": "While editing notes in the sidebar, tables can be too wide to fully display, causing users to need to horizontally scroll. Alternately, tables could be narrower than available space, causing extra vertical scrolling. This lack of table sizing can make text harder to review at a glance, and cause physicians to need to manually format tables to fit available space, or the page.",
       "ideaForSolution": "Because of the risk/change in behavior having tables automatically resize has been (we attempted this with the web migration) I think we should do a limited/opt-in for resize. This might be something that's enabled for table SmartLinks outside of page mode, or some other subset that would be a usability win, but be limited in scope such that we are not causing downstream effects in customer build.",
@@ -53,6 +57,7 @@
   {
     "id": "1123619",
     "title": "AC/SMARTTOOL ADMIN/ABILITY TO MAP OR LINK A SMARTPHRASE TO A SMARTDATA ELEMENT",
+    "category": "Create and Improve Tools and Framework",
     "details": {
       "problem": "Analysts add SDEs to SmartTexts and SmartLists so compliance officers can track metrics and reporting. Since SmartPhrases can't have SDEs, analysts are having to build workarounds with SmartTexts in SmartLinks, requiring extra time and awkward workflows.",
       "ideaForSolution": "Allow analysts to add SDEs to system SmartPhrases in the SmartPhrase editor so SmartPhrases will add SDEs when end users add those SmartPhrases to their notes.",
@@ -66,6 +71,7 @@
   {
     "id": "2005922",
     "title": "PREVENT PARTS OF A NOTE TEMPLATE FROM BEING DELETED",
+    "category": "Create and Improve Tools and Framework",
     "details": {
       "problem": "Organizational leads and compliance officers often have required SmartLists or documentation that they add for legal reasons. These sections must be filled out but end users can delete them from any note and sign without completing the documentation.",
       "ideaForSolution": "Add a SmartLink that could be used similarly to a sectioning SmartLink but nothing in that section can be deleted in the note. Alternatively, provide a warn-on-delete SmartLink that shows a confirmation/warning when deletion is attempted.",
@@ -80,6 +86,7 @@
   {
     "id": "2064134",
     "title": "EMC2: SMARTLISTS NOT REFRESHABLE",
+    "category": "Address Technical Debt",
     "details": {
       "problem": "SmartLists that contain SmartTexts (or nested SmartLinks that resolve to SmartTexts) often become non-reselectable/ non-refreshable once selected; this causes downstream SDE/HLV and reporting issues and forces users to delete and re-add content to change selections.",
       "ideaForSolution": "Provide a way for SmartList selections with embedded SmartTools to remain reselectable, perhaps via a builder-controlled setting or logic determining when a selection should remain refreshable.",
@@ -94,6 +101,7 @@
   {
     "id": "2164272",
     "title": "ST / Pitch / Only three asterisks should be a hardstop for unreoslved SmartTools, 4+ shouldn't block signing notes",
+    "category": "Address Technical Debt",
     "details": {
       "problem": "As an end user, I can be blocked from signing my note because content coming in over interfaces can have longer strings of asterisks (e.g., LabCorp) that get interpreted as wildcards when pulled into notes, preventing signing or creating confusion.",
       "ideaForSolution": "Make the system treat exactly three asterisks as a wildcard but ignore longer strings of asterisks, or otherwise avoid treating decorative long asterisk strings from interfaces as wildcards.",
@@ -111,6 +119,7 @@
   {
     "id": "3752427",
     "title": "SMARTTOOLS / SPELL CHECK / EXCLUDE PATIENT FIRST AND LAST NAME IN SPELL CHECK",
+    "category": "Create and Improve Tools and Framework",
     "details": {
       "problem": "As a physician, I get frustrated when my patient's name is flagged as misspelled by the spell checker. This adds extra clicks for me to ensure I'm creating professional documentation.",
       "ideaForSolution": "Have the spell checker ignore exact matches for the patient's first or last name (except auto-assigned unknown names), and ideally include other personal/care-team names.",
@@ -126,6 +135,7 @@
   {
     "id": "6246577",
     "title": "ST - SPELL CHECK - USE VOIKKO FOR FINNISH",
+    "category": "Create and Improve Tools and Framework",
     "details": {
       "problem": "I am a doctor in Finland. Spell checking is something I expect all programs to have, but our Epic system doesn't have usable Finnish spell checking, making notes look unprofessional.",
       "ideaForSolution": "Add Voikko to the set of spell check engines available and make it available as an option in the Lexicon Editor (or otherwise support a Finnish-capable spell engine).",
@@ -140,8 +150,9 @@
   },
   {
     "id": "7439274",
-    "continuation": true,
     "title": "Add \"Expand All\" Option for Hover Bubble SmartLinks",
+    "category": "Create and Improve Tools and Framework",
+    "continuation": true,
     "details": {
       "problem": "As a user reviewing other people's notes, I see hover bubble SmartLinks and must hover each to view details; when many items are collapsed, this is time-consuming. I want a quick way to expand all hover bubble SmartLinks in a note (like \"expand all\" for collapsible sections).",
       "ideaForSolution": "Make the existing section collapse/expand feature in reports apply to hover bubble SmartLinks, add an \"Expand All\" option, and ideally remember user preference per EUR node.",
@@ -158,6 +169,7 @@
   {
     "id": "7914897",
     "title": "ST / SmartTextBox / Support webp Image File Format",
+    "category": "Create and Improve Tools and Framework",
     "details": {
       "problem": "Epic does not support the webp image format; attempting to insert/paste webp images into SmartTextBox fails.",
       "ideaForSolution": "Let users insert webp files; convert them behind the scenes if necessary.",
@@ -174,6 +186,7 @@
   {
     "id": "7931146",
     "title": "ST / SmartTextBox / Allow setting the \\rtlch and \\ltrch RTF keywords",
+    "category": "Create and Improve Tools and Framework",
     "details": {
       "problem": "As a builder, I struggle to create SmartTexts in Arabic and other RTL languages because character-level directionality (\\rtlch and \\ltrch) is not exposed; mixing English words (addresses/phone numbers) causes punctuation and ordering issues.",
       "ideaForSolution": "Expose character-level RTL/LTR settings (e.g., toolbar button or paragraph properties) so analysts can explicitly set directionality and reduce copy/paste work.",
@@ -190,6 +203,7 @@
   {
     "id": "7974873",
     "title": "st / pitch / hsweb / smarttextbox - manual jagged table creation",
+    "category": "Create and Improve Tools and Framework",
     "details": {
       "problem": "Jagged tables (non-rectangular cell layouts) are often necessary to match third-party documents or governmental forms; currently creating them from scratch in the editor is difficult.",
       "ideaForSolution": "Add tools to create and edit jagged tables: selection-based resizing, linking borders, split/unmerge cells, and more intuitive mouse-based resizing similar to Word.",
@@ -206,6 +220,7 @@
   {
     "id": "7974971",
     "title": "st / pitch / hsweb / smarttextbox - stylesheets",
+    "category": "Create and Improve Tools and Framework",
     "details": {
       "problem": "Users need consistent document styling across templates; currently they must manually apply formatting which is time-consuming and error-prone.",
       "ideaForSolution": "Provide style sheet support in SmartTextBox controls (grouped styles like Word), including table styles and customer-customizable style definitions.",
@@ -222,6 +237,7 @@
   {
     "id": "7975409",
     "title": "st / pitch / hsweb / smarttextbox - improved shape support",
+    "category": "Create and Improve Tools and Framework",
     "details": {
       "problem": "Shapes (positioned shapes) are important for complex documents; Epic's editor has limited create/edit support so users copy/paste from Word and hope it survives.",
       "ideaForSolution": "Add click-and-drag shape movement, positioning dialog, advanced wrapping styles, editing shape inner content, and the ability to create shapes from scratch.",
@@ -238,6 +254,7 @@
   {
     "id": "7983256",
     "title": "st / pitch / hsweb / smarttextbox - RTL update and TS migration",
+    "category": "Address Technical Debt",
     "details": {
       "problem": "As a developer, TextLine.js needs conversion from raw JS to TypeScript so RTL-related updates can be implemented safely and maintainably.",
       "ideaForSolution": "Convert TextLine logic to TypeScript before implementing numerous functional changes to improve type safety and facilitate future RTL work.",
@@ -254,6 +271,7 @@
   {
     "id": "7987855",
     "title": "ST / Project Pitch / Improve context menu usability",
+    "category": "Create and Improve Tools and Framework",
     "details": {
       "problem": "As a physician, the SmartTextBox right-click context menu is overwhelming, covers editing areas, and options vary by location; users want a streamlined, personalized menu.",
       "ideaForSolution": "Implement a system that tracks user habits to tailor context menu options, or otherwise simplify to show the most relevant actions with fewer clicks.",
@@ -269,6 +287,7 @@
   {
     "id": "7989552",
     "title": "st / pitch / rtf/html - lightweight RTF component for views",
+    "category": "Create and Improve Tools and Framework",
     "details": {
       "problem": "Developers lack a lightweight, standard component to display RTF-backed content in views without reimplementing RTF-to-HTML logic; current approaches lead to duplicated boilerplate and inconsistent behavior.",
       "ideaForSolution": "Provide a lightweight RTF display component (between full ReportViewer and raw HTML) that can render RTF as HTML and optionally provide standard features (attribution, low vision).",
@@ -285,6 +304,7 @@
   {
     "id": "7993629",
     "title": "ST / SmartTool Editors / Use AI to swap out placeholders for SmartLinks (Tapestry imports, Personalization Station reconciliation)",
+    "category": "Support AI Charting",
     "details": {
       "problem": "As a SmartTool builder importing third-party templates, I must manually identify varied placeholders and replace them with SmartLinks — tedious and time-consuming.",
       "ideaForSolution": "Use AI to identify placeholders in RTF/text, replace them with placeholder markup suitable for SmartLinks (maintain RTF formatting), and suggest matching SmartLinks (with confidence scores) or prompt for manual review.",
@@ -302,6 +322,7 @@
   {
     "id": "7993631",
     "title": "ST / Infrastructure / CREATE MASTERFILE FOR SMARTTOOLS CONTEXTS",
+    "category": "Address Technical Debt",
     "details": {
       "problem": "SmartTool contexts are hard to manage: Epic-released SmartLinks may not be available in the desired contexts, builders copy records to maintain availability, and creating new contexts requires updating many SmartLinks.",
       "ideaForSolution": "Create a new INI/masterfile for SmartTools contexts with hierarchy, allow SmartLinks to inherit contexts, and make editors adapt to context (showing header/footer when editing letter context, etc.).",
@@ -316,6 +337,7 @@
   {
     "id": "7993912",
     "title": "ST / Generative AI / Better identify what changed",
+    "category": "Support AI Charting",
     "details": {
       "problem": "When AI text actions make minimal or moderate edits (spelling, grammar, summaries), it's hard for users to spot what changed in the generated text versus original, increasing the risk of accepting hallucinations or missing omissions.",
       "ideaForSolution": "Highlight key medical terms, numbers, names, dates, and the exact changed words; provide hover behavior that links original and generated words; or highlight only the changed text for minimal edits and provide an AI banner with Accept All / Reject All.",
@@ -328,8 +350,9 @@
   },
   {
     "id": "8033379",
-    "continuation": true,
     "title": "ST/ SmartPhrase/ Show user tags in the smarttool butler",
+    "category": "Create and Improve Tools and Framework",
+    "continuation": true,
     "details": {
       "problem": "A clinician has built many tags to organize SmartPhrases in the Manager but can't access or filter by those tags inside the SmartTool butler while editing notes, forcing context switches to the manager.",
       "ideaForSolution": "Allow the SmartTool butler to display and filter by user tags, and support adding tags to SmartPhrases/SmartLinks directly from the butler.",
@@ -346,6 +369,7 @@
   {
     "id": "8069463",
     "title": "ST / Generative AI / Text Actions / Add tagging to custom prompts",
+    "category": "Support AI Charting",
     "details": {
       "problem": "Once users can write and share custom text prompts, the number of prompts will grow and prompts will be harder to find in the menu.",
       "ideaForSolution": "Enable tagging for custom prompts (similar to SmartPhrases), submenus/headers in My Prompts, search-by-tag, and distinct UI for shared prompts.",
@@ -358,6 +382,7 @@
   {
     "id": "8069508",
     "title": "st / rtf/html - field logic should be refactored into derived classes",
+    "category": "Address Technical Debt",
     "details": {
       "problem": "Field.cs logic has grown complex and overloaded with Epic-specific features (citations, TextAction results), making development and testing harder.",
       "ideaForSolution": "Refactor field logic into a base class with derived classes (like CharacterGroup), moving Epic-specific field types to separate classes for cleaner code and easier maintenance.",
@@ -373,6 +398,7 @@
   {
     "id": "8076785",
     "title": "DoCo/SmartTools/Create an inline mobile plain text STB control",
+    "category": "Mobile Feature Parity",
     "details": {
       "problem": "On mobile, editing SmartTextBox fields currently launches a separate view; users want inline editing (SmartList selection and plain text entry) to avoid navigation and extra taps.",
       "ideaForSolution": "Create an inline mobile plain-text SmartTextBox control for mobile apps that supports inline SmartList selection and reduces jumps into/out of separate activities.",
@@ -385,6 +411,7 @@
   {
     "id": "8078994",
     "title": "ST / Gen AI / Citation Excerpt Infrastructure",
+    "category": "Support AI Charting",
     "details": {
       "problem": "When AI SmartLinks produce citations, the hover bubble excerpt may not give enough surrounding context; users must read the whole excerpt to understand the source context.",
       "ideaForSolution": "Show one line above/below the quote for context and highlight the exact quoted words/phrases with standardized color per UX guide; provide shared RTF markup or API for clients to use consistent citation styles.",
@@ -400,6 +427,7 @@
   {
     "id": "8105976",
     "title": "ST / May 26 Pitches / AI Text Assistant / Prompts will become harder to find in AITA menu once custom prompts and sharing are enabled",
+    "category": "Support AI Charting",
     "details": {
       "problem": "With custom prompt creation and sharing, users will have many prompts and the AI Text Assistant menu will become long and hard to navigate.",
       "ideaForSolution": "Investigate menu structures: semantic/just-in-time surfacing, semantic search, UI redesign (e.g., System Prompts vs My Prompts placement), context-aware suggestions, and other discoverability features.",
@@ -413,6 +441,7 @@
   {
     "id": "8109595",
     "title": "ST / Pitch / The text assistant cannot be used for translation by qualified users",
+    "category": "Support AI Charting",
     "continuation": true,
     "details": {
       "problem": "Bilingual clinicians cannot use the text assistant to operate on non-English text (e.g., Spanish) even if they are qualified translators.",
@@ -427,6 +456,7 @@
   {
     "id": "8116885",
     "title": "ST / Image / Improve performance for image conversion",
+    "category": "Address Technical Debt",
     "details": {
       "problem": "Images take time to convert/render due to server-side image conversion data methods; this causes latency and server load.",
       "ideaForSolution": "Perform image conversion client-side via WebAssembly or use blob APIs (e.g., fetch TIFF pages as PNG directly) to eliminate server data-method round-trips.",
@@ -443,6 +473,7 @@
   {
     "id": "8189792",
     "title": "ST / Aug 26 Pitch / Investigate Text Action Template Use Cases",
+    "category": "Support AI Charting",
     "details": {
       "problem": "Currently templated text actions are only allowed in letters; there may be other useful locations but use cases aren't well-defined.",
       "ideaForSolution": "Investigate where templated text actions could be useful, assess risk, and provide use case suggestions for broader placement.",
@@ -456,6 +487,7 @@
   {
     "id": "8205501",
     "title": "ST / Citation / Make AI citation UI follow the UX guide",
+    "category": "Support AI Charting",
     "continuation": true,
     "details": {
       "problem": "Different AI features show AI citations inconsistently across apps (e.g., hyperlink placement differs), causing user friction.",
@@ -473,6 +505,7 @@
   {
     "id": "8206481",
     "title": "ST / Aug 26 Pitch / Make the AITA available in more STBs",
+    "category": "Support AI Charting",
     "details": {
       "problem": "The AI Text Assistant is not available in some SmartTextBoxes (e.g., Custom Prompt editor STB/compact modes), preventing prompt engineering in those contexts.",
       "ideaForSolution": "Enable AITA in more STB contexts (respect toolbar/compact modes) to match other STB behavior.",
@@ -489,6 +522,7 @@
   {
     "id": "8212015",
     "title": "ST / Aug '26 Pitch / Help Me Prompt",
+    "category": "Support AI Charting",
     "details": {
       "problem": "Physicians don't have time to craft optimal prompts; they need help producing quality prompts quickly.",
       "ideaForSolution": "Create an agent that evaluates custom prompt quality and suggests improved/alternative prompts.",
@@ -503,6 +537,7 @@
   {
     "id": "8212121",
     "title": "ST / Generative AI / Make custom prompts smarter",
+    "category": "Support AI Charting",
     "details": {
       "problem": "Custom prompts only have simplistic input rules (generate at cursor or replace selection) which is limiting and sometimes counter to user intent.",
       "ideaForSolution": "Use AI to infer input/output behavior from prompt text (e.g., auto-select input, insert at top, display results in banner), provide richer saved-prompt metadata (name/description), and replace the confusing \"Requires Selected Text\" toggle with AI defaults.",
@@ -519,6 +554,7 @@
   {
     "id": "8212127",
     "title": "ST / Navigation / Support one-click navigation",
+    "category": "Create and Improve Tools and Framework",
     "details": {
       "problem": "Mouse users must click a small button then move in a menu to jump to sections; keyboard users get faster workflows — mouse users could benefit from one-click section navigation.",
       "ideaForSolution": "Add a navigation bar/top quick-buttons for common headings (e.g., A&P) enabling one-click jumps; recover scrollbar width and be scalable for many headings.",
@@ -535,6 +571,7 @@
   {
     "id": "8212129",
     "title": "ST / Editors / Make it easier to define headings",
+    "category": "Create and Improve Tools and Framework",
     "details": {
       "problem": "Defining headings requires opening Paragraph Properties per paragraph; headings are invisible without the dialog; no easy way to standardize heading styles across a document.",
       "ideaForSolution": "Provide a sidebar card to visualize/configure headings, apply heading levels/styles with minimal clicks, auto-detect heading candidates, and provide a Build Wizard to fix existing templates.",
@@ -551,6 +588,7 @@
   {
     "id": "8212130",
     "title": "ST / Toolbar / Allow configuring more features for one-click access",
+    "category": "Create and Improve Tools and Framework",
     "continuation": true,
     "details": {
       "problem": "Favorites/pinning still require extra clicks; one-click access requires app buttons or quick buttons which are limited to certain workflows and take UI space.",
@@ -569,6 +607,7 @@
   {
     "id": "8212797",
     "title": "ST / Personalization Station / Allow uploading and moving user spell check dictionaries",
+    "category": "Create and Improve Tools and Framework",
     "details": {
       "problem": "When users move institutions, rebuilding personal spell check dictionaries is time-consuming and they often won't, losing productivity.",
       "ideaForSolution": "Allow users to upload personal lexicons/dictionaries to cloud storage (Epic Earth) to securely transfer between organizations.",
@@ -585,6 +624,7 @@
   {
     "id": "8212836",
     "title": "ST / SmartLink Editor / Make it easy to compare and contrast similar SmartLinks",
+    "category": "Create and Improve Tools and Framework",
     "details": {
       "problem": "Analysts have difficulty knowing whether a similar SmartLink already exists; end users struggle to pick the right SmartLink when many look similar.",
       "ideaForSolution": "Provide tools to find similar SmartLinks (by code template/description), show side-by-side comparisons, and help organize variants.",
@@ -600,6 +640,7 @@
   {
     "id": "8212875",
     "title": "ST / Butler / Address quality of life issues in the SmartTool butler",
+    "category": "Create and Improve Tools and Framework",
     "details": {
       "problem": "Finding SmartLinks/SmartPhrases in the butler is hard (can't search body text, tags/filters missing), causing friction when improving templates.",
       "ideaForSolution": "Add technical notes, saved filters, better \"full text\" descriptions, categories/tags, grouping by code template, and ability to see other users’ SmartPhrases from the butler.",
@@ -616,6 +657,7 @@
   {
     "id": "8212877",
     "title": "ST / SmartTextBox / Consolidate SmartTool search buttons into one",
+    "category": "Create and Improve Tools and Framework",
     "details": {
       "problem": "Separating SmartPhrases, SmartTexts, and the butler into multiple buttons is confusing and clutters the toolbar.",
       "ideaForSolution": "Consolidate the butler, SmartText, and SmartList fields into a single searchable field to simplify discoverability and reduce toolbar clutter.",
@@ -632,6 +674,7 @@
   {
     "id": "8212878",
     "title": "ST / SmartLink Editor / Auto populate descriptions and categories",
+    "category": "Create and Improve Tools and Framework",
     "details": {
       "problem": "SmartLink descriptions are often missing or insufficient, making discovery hard.",
       "ideaForSolution": "Automatically generate useful descriptions and category metadata for new or sparse SmartLinks (AI-generated) to aid search and maintenance.",
@@ -648,6 +691,7 @@
   {
     "id": "8215275",
     "title": "ST / Custom Prompts / Create a Manager activity similar to the SmartPhrase Manager",
+    "category": "Support AI Charting",
     "details": {
       "problem": "Analysts maintain custom prompts in disparate ways and lack a centralized activity to view, filter, search, and manage organization-level prompts.",
       "ideaForSolution": "Build a Custom Prompt Manager activity similar to SmartPhrase Manager with filtering by level (DEP/system), deletion, and full-text search.",
@@ -663,6 +707,7 @@
   {
     "id": "8218715",
     "title": "ST / Butler / Promote results that are commonly used by similar users",
+    "category": "Create and Improve Tools and Framework",
     "details": {
       "problem": "Searching the butler is hard; many similar SmartTools make it difficult to find the best one.",
       "ideaForSolution": "Promote search results in the butler that are highly used by similar users (role/department), surfacing likely appropriate tools.",
@@ -678,6 +723,7 @@
   {
     "id": "7882759",
     "title": "ST / Text Actions / Add in user to user sharing",
+    "category": "Support AI Charting",
     "continuation": true,
     "details": {
       "problem": "Creators of custom Text Actions currently cannot easily share them with specific users or groups.",
@@ -692,6 +738,7 @@
   {
     "id": "7983072",
     "title": "st / pitch / hsweb / smarttextbox - inline header/footer support",
+    "category": "Create and Improve Tools and Framework",
     "continuation": true,
     "details": {
       "problem": "Managing header/footer content for complex templates (letters) is cumbersome because they're often stored separately; authors need to edit and view the whole document inline.",
@@ -710,6 +757,7 @@
   {
     "id": "8051811",
     "title": "ST/ Personalization Station/ Reconciling SmartLists by tracking the original SmartList data and mapping to existing records on the receiving side",
+    "category": "Create and Improve Tools and Framework",
     "details": {
       "problem": "When users move SmartPhrases/SmartLists via Personalization Station, the receiving system often can't map SmartLists and replaces them with placeholders, forcing manual reconciliation.",
       "ideaForSolution": "Include source SmartList metadata (text, selections, nested items) in the uploaded Turbocharger schema; on download, attempt automatic mapping to local SmartLists, suggest matches in a reconciliation UI, or create user SmartLists when appropriate.",
@@ -727,6 +775,7 @@
   {
     "id": "6855847",
     "title": "Create an easier way to have \"vanishing tips\" (aka help text)",
+    "category": "Create and Improve Tools and Framework",
     "continuation": true,
     "details": {
       "problem": "As a physician builder for my specialty, I want to provide hints, tips, or other types of information that show up in a note when it is being edited, but disappear when the note is signed to not clutter the note. I can use an optional SmartList, but there are a number of issues with this: The SmartLinks I want to pull in sometimes include colons in the text which prevents signing the note. My analysts tell me there are issues with my build when they try to move it to production using Data Courier when I use a colon in the text where Data Courier finds the wrong SmartList or doesn't update the optional SmartList's record ID correctly.",
@@ -741,6 +790,7 @@
   {
     "id": "8219237",
     "title": "ST / Pitch / AI Text Assistant can misunderstand abbreviations",
+    "category": "Support AI Charting",
     "details": {
       "problem": "Clinicians using the AI Text Assistant on documents that contain abbreviations may get surprising and incorrect results. Many abbreviations are locale specific, department specific, role specific, or ambiguous. Today, the text assistant has no additional context for understanding these abbreviations. For common abbreviations, this works well, but for non obvious abbreviations, the text assistant will not handle this well.",
       "ideaForSolution": "I have yet to find a clear and easy solution, but here's what we've explored so far:\n\nThe general idea of this flow is to create a large list of abbreviations + definitions. Then, when we string match on input text and find these abbreviations, we append to the bottom of the prompt the definition(s) of these abbreviation(s). From testing that LJ did, this works very well when one of the abbreviation definitions is correct, even if there are multiple options for what the abbreviation might mean. However, this approach is slightly worse than no context if we supply only incorrect definitions for these abbreviation. Creating a robust definition list is a critical pre-req for this to work.\n\nWe could do this with some combination of:\n1. Create a locale specific default list of abbreviations + definitions. Allow TS to customize these abbreviations for their organization. Likely allow department and maybe even role specific default list changes as well.\n2. Build off of user dictionaries to allow user customization for abbreviations they use in their practice regularly. Note that this would require changes to user dictionaries since today, we allow people to mark something as not a misspelling but don't require them to define it.\n\nPotentially, we could build this user dictionary up over time and maybe find an intelligent way to ask what an abbreviation means, such as when a user goes to reject a text assistant response that involved an abbreviation.",
@@ -755,6 +805,7 @@
   {
     "id": "7968764",
     "title": "ST / Feb '26 Pitch / The text assistant is not context aware",
+    "category": "Support AI Charting",
     "continuation": true,
     "details": {
       "problem": "When a clinician uses the AI text assistant, it will give responses that clearly do not pay attention to the surrounding context. This means responses are less useful than they could be and it makes the tool less useful and usable. An example is in In Basket, where the model doesn't understand most information about the patient or what the last patient message was, making it difficult for it to suggest useful responses to the patient.",
@@ -769,6 +820,7 @@
   {
     "id": "8051800",
     "title": "ST / Text Assistant / Let Users Supply Custom Context",
+    "category": "Support AI Charting",
     "details": {
       "problem": "As a clinician, I want the ability to add my own context to the AI Text Assistant, such as replacing \"hello\" with \"aloha\", making it sound more like me by supplying a writing sample, or letting it reference 3rd party clinical documentation that I use for patient care. This will help reduce my cognitive burden and focus more on patient care.",
       "ideaForSolution": "Now, the AI Text Assistant has an even better understanding of my tone and makes the note sound more like me.",
@@ -785,6 +837,7 @@
   {
     "id": "7557419",
     "title": "ST / Generative AI / Text Actions / Check for logical contradictions",
+    "category": "Support AI Charting",
     "continuation": true,
     "details": {
       "problem": "From talking to various customers, there can be logical contradictions in what gets documented in the patient's chart. As one example, a user copies forward a note that says \"all lab results normal\" but then adds in documentation for a new abnormal lab result. These types of contradictions have also been observed in ambient generated notes coming from DAX.",

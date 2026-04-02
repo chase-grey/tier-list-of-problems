@@ -65,6 +65,13 @@ export const isStage2 = (): boolean => {
 };
 
 /**
+ * Get the PRJ ID for the current quarter's pitch project
+ */
+export const getPitchPrjId = (): string => {
+  return import.meta.env.VITE_PITCH_PRJ_ID || '';
+};
+
+/**
  * Configuration object
  */
 const config = {

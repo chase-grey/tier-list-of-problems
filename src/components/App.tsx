@@ -1,5 +1,5 @@
 import React, { useEffect, memo, useState, useMemo } from 'react';
-import { ThemeProvider, CssBaseline, Box, Typography } from '@mui/material';
+import { ThemeProvider, CssBaseline, Box, Typography, Tabs, Tab, CircularProgress } from '@mui/material';
 import { darkTheme, lightTheme } from '../theme';
 import { NameGate } from './NameGate/NameGate';
 import { TopBar } from './TopBar/TopBar';
@@ -23,9 +23,14 @@ import { useVoteManagement } from '../hooks/useVoteManagement';
 import { getPollingCycleId, isStage2 } from '../utils/config';
 import { buildPollingKey, cleanupPollingStorageOnCycleChange, getEffectivePollingCycleId } from '../utils/pollingStorage';
 import { getInterestLevelLabel } from '../utils/voteActions';
+import { fetchPitches } from '../services/api';
 
-// Import pitch data
-import pitchesData from '../assets/pitches-aug-26.json';
+const CATEGORIES = [
+  'Support AI Charting',
+  'Create and Improve Tools and Framework',
+  'Mobile Feature Parity',
+  'Address Technical Debt',
+] as const;
 
 // Initial state
 const initialState: AppState = {
@@ -40,6 +45,19 @@ const initialState: AppState = {
  * Main App component
  */
 const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => void }> = ({ themeMode, onToggleTheme }) => {
+  // State for selected priority category tab
+  const [selectedCategory, setSelectedCategory] = useState<string>(CATEGORIES[0]);
+
+  // Async pitch loading state
+  const [loadedPitches, setLoadedPitches] = useState<(Pitch & { stage2?: boolean })[] | null>(null);
+  const [pitchLoadError, setPitchLoadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchPitches()
+      .then(data => setLoadedPitches(data as (Pitch & { stage2?: boolean })[]))
+      .catch(err => setPitchLoadError(err?.message || 'Failed to load pitches'));
+  }, []);
+
   // State to control help dialog
   const [showHelp, setShowHelp] = useState(true); // Show help dialog by default
   // State to track if initial help dialog was shown
@@ -52,8 +70,8 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
   // Check if we're in Stage 2 mode (configured via environment variable)
   const appStage2Mode = isStage2();
   
-  // Get pitches from JSON - in Stage 2, filter to only pitches that passed Stage 1
-  const allPitches = pitchesData as (Pitch & { stage2?: boolean })[];
+  // Pitches from the backend - in Stage 2, filter to only pitches that passed Stage 1
+  const allPitches = loadedPitches ?? [];
   const pitches = useMemo(() => {
     if (appStage2Mode) {
       // Filter to only pitches with stage2=true
@@ -489,7 +507,7 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
     
     if (state.voterName && state.voterRole) { // Add null checks for both name and role
       // Export votes with feedback data
-      exportVotes(state.voterName, state.voterRole, state.votes, feedbackData);
+      exportVotes(state.voterName, state.voterRole, state.votes, pitches, feedbackData);
       showSnackbar('Thank you for your feedback! Your data has been exported.', 'success');
     }
   };
@@ -500,7 +518,7 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
     
     if (state.voterName && state.voterRole) { // Add null checks for both name and role
       // Export votes without feedback
-      exportVotes(state.voterName, state.voterRole, state.votes);
+      exportVotes(state.voterName, state.voterRole, state.votes, pitches);
       showSnackbar('Your data has been exported successfully!', 'success');
     }
   };
@@ -532,9 +550,27 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
     isContributorRole(state.voterRole) && 
     state.available === null;
 
+  if (pitchLoadError) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', flexDirection: 'column', gap: 2 }}>
+        <Typography variant="h6" color="error">Failed to load pitches</Typography>
+        <Typography variant="body2" color="text.secondary">{pitchLoadError}</Typography>
+      </Box>
+    );
+  }
+
+  if (loadedPitches === null) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', flexDirection: 'column', gap: 2 }}>
+        <CircularProgress />
+        <Typography variant="body2" color="text.secondary">Loading pitches...</Typography>
+      </Box>
+    );
+  }
+
   return (
     <>
-      <NameGate 
+      <NameGate
         onNameSubmit={handleNameSubmit}
         open={!state.voterName && initialHelpShown}
       />
@@ -586,13 +622,39 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
               </Typography>
             </Box>
           ) : state.stage === 'priority' ? (
-            <KanbanContainer
-              pitches={pitches}
-              votes={state.votes}
-              onDragEnd={handleDragEnd}
-              onSendToBottomUnsorted={handleSendToBottomPriorityUnsorted}
-              userRole={state.voterRole}
-            />
+            <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+              <Tabs
+                value={selectedCategory}
+                onChange={(_, v: string) => {
+                  if (v === '__interest__') {
+                    handleStageChange();
+                  } else {
+                    setSelectedCategory(v);
+                  }
+                }}
+                variant="scrollable"
+                scrollButtons="auto"
+                sx={{ borderBottom: 1, borderColor: 'divider', flexShrink: 0 }}
+              >
+                {CATEGORIES.map(cat => (
+                  <Tab key={cat} value={cat} label={cat} />
+                ))}
+                {canAccessInterestStage && (
+                  <Tab
+                    value="__interest__"
+                    label="Interest"
+                    disabled={!priorityStageComplete}
+                  />
+                )}
+              </Tabs>
+              <KanbanContainer
+                pitches={pitches.filter(p => p.category === selectedCategory)}
+                votes={state.votes}
+                onDragEnd={handleDragEnd}
+                onSendToBottomUnsorted={handleSendToBottomPriorityUnsorted}
+                userRole={state.voterRole}
+              />
+            </Box>
           ) : (
             // Only render interest ranking if the user has access and priority stage is complete
             canAccessInterestStage && priorityStageComplete ? (

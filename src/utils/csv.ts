@@ -1,5 +1,5 @@
 import { unparse } from 'papaparse';
-import type { Vote } from '../types/models';
+import type { Pitch, Vote } from '../types/models';
 import { getPollingStage, getPollingCycleId } from './config';
 
 /**
@@ -18,7 +18,9 @@ export interface FeedbackData {
  * @param votes Object containing all votes keyed by pitchId
  * @param feedback Optional feedback data to include in the export
  */
-export const exportVotes = (voterName: string, voterRole: string, votes: Record<string, Vote>, feedback?: FeedbackData) => {
+export const exportVotes = (voterName: string, voterRole: string, votes: Record<string, Vote>, pitches?: Pitch[], feedback?: FeedbackData) => {
+  const categoryByPitchId = new Map((pitches || []).map(p => [p.id, p.category]));
+
   // First, create a summary row with metadata
   const metadataRows = [
     {
@@ -32,11 +34,12 @@ export const exportVotes = (voterName: string, voterRole: string, votes: Record<
       pitchId: '',
       tier: '',
       interestLevel: '',
+      category: '',
     }
   ];
-  
+
   // Then create vote rows
-  const voteRows = Object.values(votes).map(v => ({
+  const voteRows = Object.entries(votes).map(([pitchId, v]) => ({
     voterName,
     voterRole,
     type: 'vote',
@@ -44,9 +47,10 @@ export const exportVotes = (voterName: string, voterRole: string, votes: Record<
     feedbackComments: '',
     exportDate: '',
     totalVotes: '',
-    pitchId: v.pitchId,
+    pitchId,
     tier: v.tier || '',
     interestLevel: v.interestLevel || '',
+    category: categoryByPitchId.get(pitchId) || '',
   }));
   
   // Combine rows
