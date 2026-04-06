@@ -70,7 +70,13 @@ function DevPitchInfo({ pitch }: { pitch: AllocationPitch }) {
       </Tooltip>
       {anchor && (
         <Suspense fallback={null}>
-          <DetailsBubble pitch={pitch} anchorEl={anchor} onClose={() => setAnchor(null)} />
+          <DetailsBubble
+            pitch={pitch}
+            anchorEl={anchor}
+            onClose={() => setAnchor(null)}
+            anchorOrigin={{ vertical: 'center', horizontal: 'right' }}
+            transformOrigin={{ vertical: 'center', horizontal: 'left' }}
+          />
         </Suspense>
       )}
     </>
@@ -89,7 +95,7 @@ export default function Step1View({
   const [collapseMap, setCollapseMap] = useState<Record<string, Partial<Record<'bucket' | 'planned' | 'nextUp' | 'notNow', boolean>>>>({});
   const isOpen = (cat: string, section: 'bucket' | 'planned' | 'nextUp' | 'notNow') => !(collapseMap[cat]?.[section] ?? false);
   const toggle = (cat: string, section: 'bucket' | 'planned' | 'nextUp' | 'notNow') =>
-    setCollapseMap(prev => ({ ...prev, [cat]: { ...prev[cat], [section]: !isOpen(cat, section) } }));
+    setCollapseMap(prev => ({ ...prev, [cat]: { ...prev[cat], [section]: !(prev[cat]?.[section] ?? false) } }));
 
   const pitchMap = useMemo(() => new Map(pitches.map(p => [p.id, p])), [pitches]);
 
@@ -261,7 +267,7 @@ export default function Step1View({
                 <Table size="small">
                   <TableHead>
                     <TableRow sx={{ '& th': { py: 0.5, fontSize: '0.72rem', color: 'text.secondary' } }}>
-                      <TableCell>Pitch</TableCell>
+                      <TableCell width={160}>Pitch</TableCell>
                       {/* ITEM 7: tooltips on score column headers */}
                       <TableCell align="center" width={60}>
                         <Tooltip title="Team priority score (avg tier; lower = higher priority)" placement="top">
@@ -274,7 +280,7 @@ export default function Step1View({
                         </Tooltip>
                       </TableCell>
                       <TableCell width={180}>Dev</TableCell>
-                      <TableCell width={130} />
+                      <TableCell width={170} />
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -299,11 +305,11 @@ export default function Step1View({
                         <Collapse in={isOpen(cat, 'planned')}>
                           <Table size="small" sx={{ tableLayout: 'fixed', width: '100%' }}>
                             <colgroup>
-                              <col />
+                              <col style={{ width: 160 }} />
                               <col style={{ width: 60 }} />
                               <col style={{ width: 60 }} />
                               <col style={{ width: 180 }} />
-                              <col style={{ width: 130 }} />
+                              <col style={{ width: 170 }} />
                             </colgroup>
                             <TableBody>
                               {selectedInCat.map(a => (
@@ -342,11 +348,11 @@ export default function Step1View({
                         <Collapse in={isOpen(cat, 'nextUp')}>
                           <Table size="small" sx={{ tableLayout: 'fixed', width: '100%' }}>
                             <colgroup>
-                              <col />
+                              <col style={{ width: 160 }} />
                               <col style={{ width: 60 }} />
                               <col style={{ width: 60 }} />
                               <col style={{ width: 180 }} />
-                              <col style={{ width: 130 }} />
+                              <col style={{ width: 170 }} />
                             </colgroup>
                             <TableBody>
                               {nextUpInCat.map(a => (
@@ -385,11 +391,11 @@ export default function Step1View({
                         <Collapse in={isOpen(cat, 'notNow')}>
                           <Table size="small" sx={{ tableLayout: 'fixed', width: '100%' }}>
                             <colgroup>
-                              <col />
+                              <col style={{ width: 160 }} />
                               <col style={{ width: 60 }} />
                               <col style={{ width: 60 }} />
                               <col style={{ width: 180 }} />
-                              <col style={{ width: 130 }} />
+                              <col style={{ width: 170 }} />
                             </colgroup>
                             <TableBody>
                               {cutInCat.map(a => (
@@ -647,7 +653,7 @@ export default function Step1View({
                     </Tooltip>
                     {/* ITEM 3: info button in dev assignment list */}
                     <DevPitchInfo pitch={p} />
-                    <InterestChip level={p.devInterest[dev] ?? null} size="small" />
+                    <InterestChip level={p.devInterest[dev] ?? null} noData={!(dev in p.devInterest)} size="small" />
                   </Box>
                 );
               })}
@@ -701,7 +707,13 @@ function PitchRow({ assignment, pitch, devNames, onDevChange, onStatusChange, hi
         </Box>
         {detailsAnchor && (
           <Suspense fallback={null}>
-            <DetailsBubble pitch={pitch} anchorEl={detailsAnchor} onClose={() => setDetailsAnchor(null)} />
+            <DetailsBubble
+              pitch={pitch}
+              anchorEl={detailsAnchor}
+              onClose={() => setDetailsAnchor(null)}
+              anchorOrigin={{ vertical: 'center', horizontal: 'right' }}
+              transformOrigin={{ vertical: 'center', horizontal: 'left' }}
+            />
           </Suspense>
         )}
       </TableCell>
@@ -727,7 +739,10 @@ function PitchRow({ assignment, pitch, devNames, onDevChange, onStatusChange, hi
           renderValue={val => val
             ? <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                 <span>{(val as string).split(' ')[0]}</span>
-                <InterestChip level={pitch.devInterest[val as string] ?? null} />
+                <InterestChip
+                  level={pitch.devInterest[val as string] ?? null}
+                  noData={!((val as string) in pitch.devInterest)}
+                />
               </Box>
             : <Typography variant="caption" color="text.disabled">Assign dev…</Typography>
           }
@@ -737,7 +752,7 @@ function PitchRow({ assignment, pitch, devNames, onDevChange, onStatusChange, hi
             <MenuItem key={dev} value={dev}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
                 <Typography variant="body2" sx={{ flex: 1 }}>{dev}</Typography>
-                <InterestChip level={pitch.devInterest[dev] ?? null} />
+                <InterestChip level={pitch.devInterest[dev] ?? null} noData={!(dev in pitch.devInterest)} />
               </Box>
             </MenuItem>
           ))}

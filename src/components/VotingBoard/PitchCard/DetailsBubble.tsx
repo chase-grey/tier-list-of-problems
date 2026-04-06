@@ -8,17 +8,21 @@ import {
 } from '@mui/material';
 import type { Pitch } from '../../../types/models';
 
+type PopoverOrigin = { vertical: 'top' | 'center' | 'bottom'; horizontal: 'left' | 'center' | 'right' };
+
 interface DetailsBubbleProps {
   pitch: Pitch;
   anchorEl: HTMLElement | null;
   onClose: () => void;
   userRole?: string | null;
+  anchorOrigin?: PopoverOrigin;
+  transformOrigin?: PopoverOrigin;
 }
 
 /**
  * Displays detailed information about a pitch in a popover
  */
-const DetailsBubble = ({ pitch, anchorEl, onClose, userRole }: DetailsBubbleProps) => {
+const DetailsBubble = ({ pitch, anchorEl, onClose, userRole, anchorOrigin, transformOrigin }: DetailsBubbleProps) => {
   // Check if user is a customer
   const isCustomer = userRole === 'customer';
   const open = Boolean(anchorEl);
@@ -27,7 +31,7 @@ const DetailsBubble = ({ pitch, anchorEl, onClose, userRole }: DetailsBubbleProp
   // Renders a detail section if the content exists
   const renderDetailSection = (label: string, content?: string | boolean) => {
     if (content === undefined || content === '' || content === null) return null;
-    
+
     return (
       <>
         <Box sx={{ mb: 1, mt: 2 }}>
@@ -49,17 +53,9 @@ const DetailsBubble = ({ pitch, anchorEl, onClose, userRole }: DetailsBubbleProp
       open={open}
       anchorEl={anchorEl}
       onClose={onClose}
-      anchorOrigin={{
-        vertical: 'bottom',
-        horizontal: 'center',
-      }}
-      transformOrigin={{
-        vertical: 'top',
-        horizontal: 'center',
-      }}
-      sx={{
-        mt: 1, // 8px margin top
-      }}
+      anchorOrigin={anchorOrigin ?? { vertical: 'bottom', horizontal: 'center' }}
+      transformOrigin={transformOrigin ?? { vertical: 'top', horizontal: 'center' }}
+      sx={{ mt: 1 }}
     >
       <Paper
         sx={{

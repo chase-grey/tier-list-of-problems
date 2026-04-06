@@ -204,6 +204,8 @@ function Step2Row({ pitch, assignment, devTLInterests, qmInterests, onAssign }: 
               pitch={pitch}
               anchorEl={detailsAnchor}
               onClose={() => setDetailsAnchor(null)}
+              anchorOrigin={{ vertical: 'center', horizontal: 'right' }}
+              transformOrigin={{ vertical: 'center', horizontal: 'left' }}
             />
           </Suspense>
         )}

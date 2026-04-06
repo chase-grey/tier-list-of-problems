@@ -4,6 +4,8 @@ import type { InterestLevel } from '../../types/allocationTypes';
 interface InterestChipProps {
   level: InterestLevel;
   size?: 'small' | 'medium';
+  /** True when the person submitted no data at all (key absent from map). False/absent = they submitted data but skipped this pitch (null value). */
+  noData?: boolean;
 }
 
 const INTEREST_CONFIG: Record<number, { label: string; color: string; bg: string }> = {
@@ -13,9 +15,14 @@ const INTEREST_CONFIG: Record<number, { label: string; color: string; bg: string
   4: { label: 'Low',     color: '#546e7a', bg: '#e3f2fd' }, // barely-blue — lowest interest
 };
 
-export default function InterestChip({ level, size = 'small' }: InterestChipProps) {
+export default function InterestChip({ level, size = 'small', noData = false }: InterestChipProps) {
   if (level === null) {
-    return <Chip label="—" size={size} sx={{ fontSize: '0.7rem', bgcolor: 'action.hover', color: 'text.disabled' }} />;
+    // noData = person never submitted anything; null level = submitted but skipped this pitch
+    return <Chip
+      label={noData ? '✕' : '—'}
+      size={size}
+      sx={{ fontSize: '0.7rem', bgcolor: 'action.hover', color: 'text.disabled', minWidth: noData ? 28 : undefined }}
+    />;
   }
   const cfg = INTEREST_CONFIG[level];
   return (
