@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Button, Fab, Tooltip, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Typography, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
+import { Box, Button, Fab, Tooltip, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Typography, FormControl, InputLabel, Select, MenuItem, ToggleButtonGroup, ToggleButton } from '@mui/material';
 import { AutoFixHigh as AutoFillIcon } from '@mui/icons-material';
 import { generateRandomVotes } from '../utils/testUtils';
 
@@ -123,17 +123,21 @@ const DevAutoPopulate: React.FC<DevAutoPopulateProps> = ({ onPopulate, pitchIds 
     window.location.reload();
   };
 
-  const handleToggleStage = () => {
-    const currentStage = stageOverride || import.meta.env.VITE_POLLING_STAGE || '1';
-    const newStage = currentStage === '2' ? '1' : '2';
+  const STAGES = ['1', 'tl-1', '2', 'tl-2'] as const;
+  const STAGE_LABELS: Record<string, string> = {
+    '1':    'Stage 1\nPriority Voting',
+    'tl-1': 'TL Alloc 1\nDev Matching',
+    '2':    'Stage 2\nInterest Voting',
+    'tl-2': 'TL Alloc 2\nTL + QM',
+  };
 
+  const handleSetStage = (newStage: string) => {
     try {
       localStorage.setItem(DEBUG_STAGE_OVERRIDE_KEY, newStage);
       setStageOverride(newStage);
     } catch {
       return;
     }
-
     window.location.reload();
   };
 
@@ -144,16 +148,14 @@ const DevAutoPopulate: React.FC<DevAutoPopulateProps> = ({ onPopulate, pitchIds 
     } catch {
       return;
     }
-
     window.location.reload();
   };
 
+  const activeStage = stageOverride || (import.meta.env.VITE_POLLING_STAGE as string) || '1';
+
   const getCurrentStageDisplay = (): string => {
-    if (stageOverride) {
-      return `Stage ${stageOverride} (override)`;
-    }
-    const envStage = import.meta.env.VITE_POLLING_STAGE || '1';
-    return `Stage ${envStage} (env)`;
+    const label = STAGE_LABELS[activeStage]?.replace('\n', ' — ') ?? activeStage;
+    return stageOverride ? `${label} (override)` : `${label} (env)`;
   };
 
   return (
@@ -204,16 +206,26 @@ const DevAutoPopulate: React.FC<DevAutoPopulateProps> = ({ onPopulate, pitchIds 
             <Typography variant="body2" sx={{ mt: 2, mb: 1 }}>
               Current: <strong>{getCurrentStageDisplay()}</strong>
             </Typography>
-            <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
-              <Button onClick={handleToggleStage} variant="outlined" color="secondary">
-                Toggle Stage (1 ↔ 2)
-              </Button>
-              {stageOverride && (
-                <Button onClick={handleClearStageOverride} variant="outlined" color="inherit">
-                  Clear Override
+            <ToggleButtonGroup
+              value={activeStage}
+              exclusive
+              onChange={(_, v) => v && handleSetStage(v)}
+              size="small"
+              sx={{ mb: 1, flexWrap: 'wrap' }}
+            >
+              {STAGES.map(s => (
+                <ToggleButton key={s} value={s} sx={{ fontSize: '0.65rem', lineHeight: 1.2, px: 1, py: 0.75, whiteSpace: 'pre-line', textAlign: 'center' }}>
+                  {STAGE_LABELS[s]}
+                </ToggleButton>
+              ))}
+            </ToggleButtonGroup>
+            {stageOverride && (
+              <Box sx={{ mb: 2 }}>
+                <Button onClick={handleClearStageOverride} variant="outlined" color="inherit" size="small">
+                  Clear Stage Override
                 </Button>
-              )}
-            </Box>
+              </Box>
+            )}
             
             <TextField
               label="Test Name"
