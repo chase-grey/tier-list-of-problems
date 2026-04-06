@@ -48,8 +48,6 @@ const initialState: AppState = {
 const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => void }> = ({ themeMode, onToggleTheme }) => {
   // State for selected priority category tab
   const [selectedCategory, setSelectedCategory] = useState<string>(CATEGORIES[0]);
-  // TL-only allocation view toggle (manual, used outside TL stages)
-  const [isTLAllocationView, setIsTLAllocationView] = useState(false);
   const isTLStage = isTLAllocationStage();
 
   // Async pitch loading state
@@ -607,8 +605,6 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
           onUpdateRole={handleUpdateRole}
           onUpdateAvailability={handleUpdateAvailability}
           appStage2Mode={appStage2Mode}
-          isTLAllocationView={isTLStage ? state.voterRole === 'dev TL' : isTLAllocationView}
-          onToggleTLAllocation={!isTLStage && state.voterRole === 'dev TL' ? () => setIsTLAllocationView(p => !p) : undefined}
         />
         
         <Box component="main" sx={{ flexGrow: 1, overflow: 'hidden', p: 0, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
@@ -626,8 +622,6 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
                 Check back soon for updates on the selected projects for next quarter.
               </Typography>
             </Box>
-          ) : isTLAllocationView && state.voterRole === 'dev TL' ? (
-            <TLAllocationView />
           ) : appStage2Mode && !canAccessInterestStage ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', flexDirection: 'column', gap: 2, p: 4 }}>
               <Typography variant="h5" color="text.secondary" textAlign="center">

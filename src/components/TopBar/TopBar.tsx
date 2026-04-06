@@ -14,7 +14,6 @@ import {
   NavigateNext as NextIcon,
   NavigateBefore as PrevIcon,
   ThumbUp as InterestIcon,
-  AccountTree as AllocationIcon,
 } from '@mui/icons-material';
 import { SettingsMenu } from '../SettingsMenu/SettingsMenu';
 
@@ -40,8 +39,6 @@ interface TopBarProps {
   onUpdateRole: (role: string) => void;
   onUpdateAvailability: (available: boolean) => void;
   appStage2Mode?: boolean; // True when app is in Stage 2 (interest ranking only, priority locked)
-  isTLAllocationView?: boolean;
-  onToggleTLAllocation?: () => void;
 }
 
 /**
@@ -68,8 +65,6 @@ export const TopBar = ({
   onUpdateRole,
   onUpdateAvailability,
   appStage2Mode = false,
-  isTLAllocationView = false,
-  onToggleTLAllocation,
 }: TopBarProps) => {
   return (
     <AppBar
@@ -97,20 +92,6 @@ export const TopBar = ({
               <HelpIcon />
             </IconButton>
           </Tooltip>
-
-          {voterRole === 'dev TL' && onToggleTLAllocation && (
-            <Tooltip title={isTLAllocationView ? 'Back to voting' : 'TL Allocation'}>
-              <Button
-                size="small"
-                variant={isTLAllocationView ? 'contained' : 'outlined'}
-                startIcon={<AllocationIcon />}
-                onClick={onToggleTLAllocation}
-                sx={{ ml: 1 }}
-              >
-                {isTLAllocationView ? 'Voting' : 'TL Allocation'}
-              </Button>
-            </Tooltip>
-          )}
 
           <SettingsMenu
             themeMode={themeMode}
