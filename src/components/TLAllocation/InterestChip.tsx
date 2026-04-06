@@ -7,10 +7,10 @@ interface InterestChipProps {
 }
 
 const INTEREST_CONFIG: Record<number, { label: string; color: string; bg: string }> = {
-  1: { label: 'Highest', color: '#1b5e20', bg: '#c8e6c9' }, // green  — best
-  2: { label: 'High',    color: '#33691e', bg: '#dcedc8' }, // light green
-  3: { label: 'Medium',  color: '#e65100', bg: '#ffe0b2' }, // amber/orange
-  4: { label: 'Low',     color: '#b71c1c', bg: '#ffcdd2' }, // red    — worst
+  1: { label: 'Highest', color: '#fff',    bg: '#1565c0' }, // deep blue — highest interest
+  2: { label: 'High',    color: '#fff',    bg: '#42a5f5' }, // lighter blue
+  3: { label: 'Medium',  color: '#37474f', bg: '#90caf9' }, // pale blue
+  4: { label: 'Low',     color: '#546e7a', bg: '#e3f2fd' }, // barely-blue — lowest interest
 };
 
 export default function InterestChip({ level, size = 'small' }: InterestChipProps) {

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { Box, Snackbar, Alert } from '@mui/material';
 import type { AssignmentStatus, PlanAssignment, StaffingAssignment } from '../../types/allocationTypes';
 import {
@@ -8,12 +8,11 @@ import Step1View from './Step1View';
 import Step2View from './Step2View';
 
 interface TLAllocationViewProps {
-  onStepChange?: (step: 0 | 1) => void;
+  activeStep: 0 | 1;
+  onFinalize?: () => void;
 }
 
-export default function TLAllocationView({ onStepChange }: TLAllocationViewProps) {
-  const [activeStep, setActiveStep] = useState<0 | 1>(0);
-
+export default function TLAllocationView({ activeStep, onFinalize }: TLAllocationViewProps) {
   // ── Step 1 state ──────────────────────────────────────────────────────────
   const [activePlanId, setActivePlanId] = useState<'A' | 'B' | 'C'>('C');
   // Start from the plan's generated assignments; edits diverge from here
@@ -39,9 +38,9 @@ export default function TLAllocationView({ onStepChange }: TLAllocationViewProps
     mutateCurrentAssignments(prev =>
       prev.map(a => {
         if (a.pitchId !== pitchId) return a;
-        // Auto-promote to selected when dev assigned from next-up; auto-demote when unassigned from selected
+        // Auto-promote to selected when dev assigned from next-up or cut; auto-demote when unassigned from selected
         const newStatus: AssignmentStatus =
-          dev !== null && a.status === 'next-up' ? 'selected' :
+          dev !== null && (a.status === 'next-up' || a.status === 'cut') ? 'selected' :
           dev === null && a.status === 'selected' ? 'next-up' :
           a.status;
         return { ...a, assignedDev: dev, status: newStatus };
@@ -72,14 +71,16 @@ export default function TLAllocationView({ onStepChange }: TLAllocationViewProps
 
   const [step2Assignments, setStep2Assignments] = useState<StaffingAssignment[]>([]);
 
-  // Sync step 2 assignments when selected pitches change (proceeding to step 2)
-  const handleProceedToStep2 = () => {
-    setStep2Assignments(
-      selectedPitches.map(p => ({ pitchId: p.id, devTL: null, qm: null }))
-    );
-    setActiveStep(1);
-    onStepChange?.(1);
-  };
+  // Auto-init step 2 assignments when activeStep transitions 0→1
+  const prevStepRef = useRef<0 | 1>(0);
+  const selectedPitchesRef = useRef(selectedPitches);
+  selectedPitchesRef.current = selectedPitches;
+  useEffect(() => {
+    if (activeStep === 1 && prevStepRef.current === 0) {
+      setStep2Assignments(selectedPitchesRef.current.map(p => ({ pitchId: p.id, devTL: null, qm: null })));
+    }
+    prevStepRef.current = activeStep;
+  }, [activeStep]);
 
   const handleStep2Assign = (pitchId: string, field: 'devTL' | 'qm', value: string | null) => {
     setStep2Assignments(prev => {
@@ -93,6 +94,7 @@ export default function TLAllocationView({ onStepChange }: TLAllocationViewProps
 
   const handleFinalize = () => {
     setSnackbar({ open: true, message: 'Plan finalized! (EMC2 record creation and email sending require backend integration.)' });
+    onFinalize?.();
   };
 
   return (
@@ -108,7 +110,6 @@ export default function TLAllocationView({ onStepChange }: TLAllocationViewProps
             onPlanChange={setActivePlanId}
             onDevChange={handleDevChange}
             onStatusChange={handleStatusChange}
-            onProceed={handleProceedToStep2}
           />
         ) : (
           <Step2View

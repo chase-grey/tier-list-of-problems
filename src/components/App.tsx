@@ -1,5 +1,5 @@
 import React, { useEffect, memo, useState, useMemo } from 'react';
-import { ThemeProvider, CssBaseline, Box, Typography, Tabs, Tab, CircularProgress } from '@mui/material';
+import { ThemeProvider, CssBaseline, Box, Typography, Tabs, Tab, CircularProgress, Snackbar, Alert } from '@mui/material';
 import { darkTheme, lightTheme } from '../theme';
 import { NameGate } from './NameGate/NameGate';
 import { TopBar } from './TopBar/TopBar';
@@ -50,6 +50,15 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
   const [selectedCategory, setSelectedCategory] = useState<string>(CATEGORIES[0]);
   const isTLStage = isTLAllocationStage();
   const [allocationStep, setAllocationStep] = useState<0 | 1>(0);
+  const [allocationFinalizedSnackbar, setAllocationFinalizedSnackbar] = useState(false);
+
+  const handleAllocationFinish = () => {
+    if (allocationStep === 0) {
+      setAllocationStep(1);
+    } else {
+      setAllocationFinalizedSnackbar(true);
+    }
+  };
 
   // Async pitch loading state
   const [loadedPitches, setLoadedPitches] = useState<(Pitch & { stage2?: boolean })[] | null>(null);
@@ -578,6 +587,16 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
         onNameSubmit={handleNameSubmit}
         open={!state.voterName && initialHelpShown}
       />
+
+      <Snackbar
+        open={allocationFinalizedSnackbar}
+        autoHideDuration={6000}
+        onClose={() => setAllocationFinalizedSnackbar(false)}
+      >
+        <Alert severity="info" onClose={() => setAllocationFinalizedSnackbar(false)}>
+          Plan finalized! EMC2 record creation and email sending require backend integration.
+        </Alert>
+      </Snackbar>
       
       <AvailabilityDialog 
         open={showAvailabilityDialog}
@@ -608,12 +627,17 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
           appStage2Mode={appStage2Mode}
           allocationMode={isTLStage}
           allocationStep={allocationStep}
+          onAllocationFinish={isTLStage ? handleAllocationFinish : undefined}
+          allocationFinishLabel={allocationStep === 0 ? 'Proceed to Step 2' : 'Finalize Plan'}
         />
         
         <Box component="main" sx={{ flexGrow: 1, overflow: 'hidden', p: 0, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
           {/* TL Allocation stage: dev TLs see the allocation view; everyone else waits */}
           {isTLStage && state.voterRole === 'dev TL' ? (
-            <TLAllocationView onStepChange={setAllocationStep} />
+            <TLAllocationView
+              activeStep={allocationStep}
+              onFinalize={() => setAllocationFinalizedSnackbar(true)}
+            />
           ) : isTLStage ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', flexDirection: 'column', gap: 2, p: 4 }}>
               <Typography variant="h5" color="text.secondary" textAlign="center">

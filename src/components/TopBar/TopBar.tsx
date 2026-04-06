@@ -41,6 +41,8 @@ interface TopBarProps {
   appStage2Mode?: boolean; // True when app is in Stage 2 (interest ranking only, priority locked)
   allocationMode?: boolean; // True when in a TL allocation stage
   allocationStep?: 0 | 1;  // Which allocation step is active
+  onAllocationFinish?: () => void; // Called when the allocation Finish button is clicked
+  allocationFinishLabel?: string;  // Label for the allocation Finish button
 }
 
 /**
@@ -69,6 +71,8 @@ export const TopBar = ({
   appStage2Mode = false,
   allocationMode = false,
   allocationStep = 0,
+  onAllocationFinish,
+  allocationFinishLabel = 'Finish Step',
 }: TopBarProps) => {
   const allocationStepLabel = allocationStep === 0
     ? 'Step 1: Assign Devs'
@@ -109,6 +113,17 @@ export const TopBar = ({
             onResetClick={onResetClick}
           />
         </Box>
+
+        {/* Allocation mode: Finish/Proceed button */}
+        {allocationMode && onAllocationFinish && (
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={onAllocationFinish}
+          >
+            {allocationFinishLabel}
+          </Button>
+        )}
 
         {/* Voting-only: rank / interest progress and navigation */}
         {!allocationMode && (

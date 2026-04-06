@@ -2,7 +2,7 @@ import { lazy, Suspense, useRef, useMemo, useState } from 'react';
 import {
   Box, Typography, Paper, Table, TableBody, TableCell, TableHead, TableRow,
   ToggleButton, ToggleButtonGroup, Select, MenuItem, Divider, Tooltip,
-  LinearProgress, Chip, Collapse, Button, IconButton,
+  LinearProgress, Chip, Collapse, IconButton,
 } from '@mui/material';
 import {
   ExpandMore as ExpandIcon,
@@ -27,7 +27,6 @@ interface Step1ViewProps {
   onPlanChange: (id: 'A' | 'B' | 'C') => void;
   onDevChange: (pitchId: string, dev: string | null) => void;
   onStatusChange: (pitchId: string, newStatus: AssignmentStatus) => void;
-  onProceed: () => void;
 }
 
 const CATEGORY_SHORT: Record<string, string> = {
@@ -37,11 +36,13 @@ const CATEGORY_SHORT: Record<string, string> = {
   'Address Technical Debt': 'Technical Debt',
 };
 
-/** Color for a priority score (tier avg). Lower = better = green. */
-function scoreColor(score: number): string {
-  if (score <= 1.8) return '#4caf50';
-  if (score <= 2.8) return '#ff9800';
-  return '#f44336';
+/** Ombre color for priority score. t=0 (score=1, best) → deep blue; t=1 (score=4, worst) → muted slate */
+function priorityColor(score: number): string {
+  const t = Math.max(0, Math.min(1, (score - 1) / 3));
+  const r = Math.round(0x15 + t * (0x78 - 0x15));
+  const g = Math.round(0x65 + t * (0x90 - 0x65));
+  const b = Math.round(0xc0 + t * (0x9c - 0xc0));
+  return `rgb(${r},${g},${b})`;
 }
 
 /** Width % for a "quality bar" — higher bar = better priority (inverts tier scale). */
@@ -56,29 +57,58 @@ function interestLabel(avg: number): string {
   return 'Low';
 }
 
+// ─── DevPitchInfo: inline info button for dev assignment list ─────────────────
+
+function DevPitchInfo({ pitch }: { pitch: AllocationPitch }) {
+  const [anchor, setAnchor] = useState<HTMLButtonElement | null>(null);
+  return (
+    <>
+      <Tooltip title="View pitch details">
+        <IconButton size="small" sx={{ p: 0.2, flexShrink: 0 }} onClick={e => setAnchor(e.currentTarget)}>
+          <InfoIcon sx={{ fontSize: '0.75rem', color: 'text.disabled' }} />
+        </IconButton>
+      </Tooltip>
+      {anchor && (
+        <Suspense fallback={null}>
+          <DetailsBubble pitch={pitch} anchorEl={anchor} onClose={() => setAnchor(null)} />
+        </Suspense>
+      )}
+    </>
+  );
+}
+
 export default function Step1View({
   pitches, plans, activePlanId, currentAssignments, config,
-  onPlanChange, onDevChange, onStatusChange, onProceed,
+  onPlanChange, onDevChange, onStatusChange,
 }: Step1ViewProps) {
-  const [showCut, setShowCut] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(320);
-  const dragRef = useRef<{ startX: number; startWidth: number } | null>(null);
+  const sidebarRef = useRef<HTMLDivElement>(null);
+  const dragRef = useRef<{ startX: number; startWidth: number; liveWidth: number } | null>(null);
+
+  // Collapse state: per-category per-section
+  const [collapseMap, setCollapseMap] = useState<Record<string, Partial<Record<'bucket' | 'planned' | 'nextUp' | 'notNow', boolean>>>>({});
+  const isOpen = (cat: string, section: 'bucket' | 'planned' | 'nextUp' | 'notNow') => !(collapseMap[cat]?.[section] ?? false);
+  const toggle = (cat: string, section: 'bucket' | 'planned' | 'nextUp' | 'notNow') =>
+    setCollapseMap(prev => ({ ...prev, [cat]: { ...prev[cat], [section]: !isOpen(cat, section) } }));
 
   const pitchMap = useMemo(() => new Map(pitches.map(p => [p.id, p])), [pitches]);
 
   const categories = Object.keys(config.bandwidth);
 
-  // ── Draggable sidebar ─────────────────────────────────────────────────────
+  // ── Draggable sidebar (DOM-direct, no re-render on every mousemove) ──────────
   const handleDragStart = (e: React.MouseEvent) => {
     e.preventDefault();
-    dragRef.current = { startX: e.clientX, startWidth: sidebarWidth };
+    dragRef.current = { startX: e.clientX, startWidth: sidebarWidth, liveWidth: sidebarWidth };
 
     const onMove = (ev: MouseEvent) => {
-      if (!dragRef.current) return;
-      const delta = dragRef.current.startX - ev.clientX; // drag left = wider sidebar
-      setSidebarWidth(Math.max(220, Math.min(640, dragRef.current.startWidth + delta)));
+      if (!dragRef.current || !sidebarRef.current) return;
+      const delta = dragRef.current.startX - ev.clientX;
+      const w = Math.max(220, Math.min(640, dragRef.current.startWidth + delta));
+      sidebarRef.current.style.width = `${w}px`; // direct DOM, no React re-render
+      dragRef.current.liveWidth = w;
     };
     const onUp = () => {
+      if (dragRef.current) setSidebarWidth(dragRef.current.liveWidth);
       dragRef.current = null;
       window.removeEventListener('mousemove', onMove);
       window.removeEventListener('mouseup', onUp);
@@ -200,94 +230,187 @@ export default function Step1View({
             a => a.status === 'cut' && pitchMap.get(a.pitchId)?.category === cat
           );
 
+          // ITEM 5: project count vs target
+          const totalSlots = config.devNames.length;
+          const targetCount = (config.bandwidth[cat] / 100) * totalSlots;
+          const actualPct = stats.total > 0 ? Math.round((selectedInCat.length / stats.total) * 100) : 0;
+
           return (
             <Paper key={cat} variant="outlined" sx={{ mb: 2, overflow: 'hidden' }}>
-              <Box sx={{ px: 2, py: 1, bgcolor: 'action.hover', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <Typography variant="subtitle2" fontWeight={700}>
-                  {CATEGORY_SHORT[cat] ?? cat}
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {selectedInCat.length} selected · target {config.bandwidth[cat]}%
-                </Typography>
+              {/* ITEM 6: clickable bucket header */}
+              <Box
+                sx={{ px: 2, py: 1, bgcolor: 'action.hover', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', userSelect: 'none' }}
+                onClick={() => toggle(cat, 'bucket')}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  {isOpen(cat, 'bucket') ? <CollapseIcon fontSize="small" /> : <ExpandIcon fontSize="small" />}
+                  <Typography variant="subtitle2" fontWeight={700}>
+                    {CATEGORY_SHORT[cat] ?? cat}
+                  </Typography>
+                </Box>
+                {/* ITEM 5 + 7: count display with tooltip */}
+                <Tooltip title="Actual % of planned projects / Target bandwidth %" placement="top">
+                  <Typography variant="caption" color="text.secondary">
+                    {selectedInCat.length} / {targetCount.toFixed(1)} projects · {actualPct}% / {config.bandwidth[cat]}%
+                  </Typography>
+                </Tooltip>
               </Box>
 
-              <Table size="small">
-                <TableHead>
-                  <TableRow sx={{ '& th': { py: 0.5, fontSize: '0.72rem', color: 'text.secondary' } }}>
-                    <TableCell>Pitch</TableCell>
-                    <TableCell align="center" width={60}>Team</TableCell>
-                    <TableCell align="center" width={60}>TL</TableCell>
-                    <TableCell width={180}>Dev</TableCell>
-                    <TableCell width={110} />
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {selectedInCat.map(a => (
-                    <PitchRow
-                      key={a.pitchId}
-                      assignment={a}
-                      pitch={pitchMap.get(a.pitchId)!}
-                      devNames={config.devNames}
-                      onDevChange={onDevChange}
-                      onStatusChange={onStatusChange}
-                      highlight="selected"
-                    />
-                  ))}
-
-                  {nextUpInCat.length > 0 && (
-                    <TableRow>
-                      <TableCell colSpan={5} sx={{ py: 0.25, bgcolor: 'action.hover' }}>
-                        <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic' }}>
-                          ── planned for up next ──
-                        </Typography>
+              {/* ITEM 6: collapsible bucket content */}
+              <Collapse in={isOpen(cat, 'bucket')}>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow sx={{ '& th': { py: 0.5, fontSize: '0.72rem', color: 'text.secondary' } }}>
+                      <TableCell>Pitch</TableCell>
+                      {/* ITEM 7: tooltips on score column headers */}
+                      <TableCell align="center" width={60}>
+                        <Tooltip title="Team priority score (avg tier; lower = higher priority)" placement="top">
+                          <span>Team</span>
+                        </Tooltip>
+                      </TableCell>
+                      <TableCell align="center" width={60}>
+                        <Tooltip title="TL priority score (avg tier; lower = higher priority)" placement="top">
+                          <span>TL</span>
+                        </Tooltip>
+                      </TableCell>
+                      <TableCell width={180}>Dev</TableCell>
+                      <TableCell width={130} />
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {/* ITEM 2: "Planned" section header (clickable) */}
+                    {selectedInCat.length > 0 && (
+                      <TableRow
+                        sx={{ cursor: 'pointer', '&:hover': { bgcolor: 'action.hover' } }}
+                        onClick={() => toggle(cat, 'planned')}
+                      >
+                        <TableCell colSpan={5} sx={{ py: 0.25, bgcolor: 'action.hover' }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                            {isOpen(cat, 'planned') ? <CollapseIcon sx={{ fontSize: '0.8rem' }} /> : <ExpandIcon sx={{ fontSize: '0.8rem' }} />}
+                            <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                              ── Planned ──
+                            </Typography>
+                          </Box>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                    <TableRow sx={{ p: 0, m: 0 }}>
+                      <TableCell colSpan={5} sx={{ p: 0, border: 0 }}>
+                        <Collapse in={isOpen(cat, 'planned')}>
+                          <Table size="small" sx={{ tableLayout: 'fixed', width: '100%' }}>
+                            <colgroup>
+                              <col />
+                              <col style={{ width: 60 }} />
+                              <col style={{ width: 60 }} />
+                              <col style={{ width: 180 }} />
+                              <col style={{ width: 130 }} />
+                            </colgroup>
+                            <TableBody>
+                              {selectedInCat.map(a => (
+                                <PitchRow
+                                  key={a.pitchId}
+                                  assignment={a}
+                                  pitch={pitchMap.get(a.pitchId)!}
+                                  devNames={config.devNames}
+                                  onDevChange={onDevChange}
+                                  onStatusChange={onStatusChange}
+                                  highlight="selected"
+                                />
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </Collapse>
                       </TableCell>
                     </TableRow>
-                  )}
 
-                  {nextUpInCat.map(a => (
-                    <PitchRow
-                      key={a.pitchId}
-                      assignment={a}
-                      pitch={pitchMap.get(a.pitchId)!}
-                      devNames={config.devNames}
-                      onDevChange={onDevChange}
-                      onStatusChange={onStatusChange}
-                      highlight="next-up"
-                    />
-                  ))}
-                </TableBody>
-              </Table>
+                    {/* ITEM 2: "Up Next" section header (clickable) */}
+                    <TableRow
+                      sx={{ cursor: 'pointer', '&:hover': { bgcolor: 'action.hover' } }}
+                      onClick={() => toggle(cat, 'nextUp')}
+                    >
+                      <TableCell colSpan={5} sx={{ py: 0.25, bgcolor: 'action.hover' }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                          {isOpen(cat, 'nextUp') ? <CollapseIcon sx={{ fontSize: '0.8rem' }} /> : <ExpandIcon sx={{ fontSize: '0.8rem' }} />}
+                          <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                            ── Up Next ──
+                          </Typography>
+                        </Box>
+                      </TableCell>
+                    </TableRow>
+                    <TableRow sx={{ p: 0, m: 0 }}>
+                      <TableCell colSpan={5} sx={{ p: 0, border: 0 }}>
+                        <Collapse in={isOpen(cat, 'nextUp')}>
+                          <Table size="small" sx={{ tableLayout: 'fixed', width: '100%' }}>
+                            <colgroup>
+                              <col />
+                              <col style={{ width: 60 }} />
+                              <col style={{ width: 60 }} />
+                              <col style={{ width: 180 }} />
+                              <col style={{ width: 130 }} />
+                            </colgroup>
+                            <TableBody>
+                              {nextUpInCat.map(a => (
+                                <PitchRow
+                                  key={a.pitchId}
+                                  assignment={a}
+                                  pitch={pitchMap.get(a.pitchId)!}
+                                  devNames={config.devNames}
+                                  onDevChange={onDevChange}
+                                  onStatusChange={onStatusChange}
+                                  highlight="next-up"
+                                />
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </Collapse>
+                      </TableCell>
+                    </TableRow>
 
-              {cutInCat.length > 0 && (
-                <>
-                  <Box
-                    sx={{ px: 2, py: 0.5, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 0.5 }}
-                    onClick={() => setShowCut(p => !p)}
-                  >
-                    {showCut ? <CollapseIcon fontSize="small" /> : <ExpandIcon fontSize="small" />}
-                    <Typography variant="caption" color="text.disabled">
-                      {cutInCat.length} cut pitches
-                    </Typography>
-                  </Box>
-                  <Collapse in={showCut}>
-                    <Table size="small">
-                      <TableBody>
-                        {cutInCat.map(a => (
-                          <PitchRow
-                            key={a.pitchId}
-                            assignment={a}
-                            pitch={pitchMap.get(a.pitchId)!}
-                            devNames={config.devNames}
-                            onDevChange={onDevChange}
-                            onStatusChange={onStatusChange}
-                            highlight="cut"
-                          />
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </Collapse>
-                </>
-              )}
+                    {/* ITEM 2: "Not Now" section header (always visible, clickable) */}
+                    <TableRow
+                      sx={{ cursor: 'pointer', '&:hover': { bgcolor: 'action.hover' } }}
+                      onClick={() => toggle(cat, 'notNow')}
+                    >
+                      <TableCell colSpan={5} sx={{ py: 0.25, bgcolor: 'action.hover' }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                          {isOpen(cat, 'notNow') ? <CollapseIcon sx={{ fontSize: '0.8rem' }} /> : <ExpandIcon sx={{ fontSize: '0.8rem' }} />}
+                          <Typography variant="caption" color="text.disabled" sx={{ fontStyle: 'italic' }}>
+                            ── Not Now ──
+                          </Typography>
+                        </Box>
+                      </TableCell>
+                    </TableRow>
+                    <TableRow sx={{ p: 0, m: 0 }}>
+                      <TableCell colSpan={5} sx={{ p: 0, border: 0 }}>
+                        <Collapse in={isOpen(cat, 'notNow')}>
+                          <Table size="small" sx={{ tableLayout: 'fixed', width: '100%' }}>
+                            <colgroup>
+                              <col />
+                              <col style={{ width: 60 }} />
+                              <col style={{ width: 60 }} />
+                              <col style={{ width: 180 }} />
+                              <col style={{ width: 130 }} />
+                            </colgroup>
+                            <TableBody>
+                              {cutInCat.map(a => (
+                                <PitchRow
+                                  key={a.pitchId}
+                                  assignment={a}
+                                  pitch={pitchMap.get(a.pitchId)!}
+                                  devNames={config.devNames}
+                                  onDevChange={onDevChange}
+                                  onStatusChange={onStatusChange}
+                                  highlight="cut"
+                                />
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </Collapse>
+                      </TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </Collapse>
             </Paper>
           );
         })}
@@ -305,7 +428,10 @@ export default function Step1View({
       />
 
       {/* ── Right: stats + dev assignments panel ── */}
-      <Box sx={{ width: sidebarWidth, flexShrink: 0, overflow: 'auto', p: 2, borderLeft: 0, borderColor: 'divider' }}>
+      <Box
+        ref={sidebarRef}
+        sx={{ width: sidebarWidth, flexShrink: 0, overflow: 'auto', p: 2, borderLeft: 0, borderColor: 'divider' }}
+      >
 
         {/* ── Section: Selected Project Priority ── */}
         <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5, textTransform: 'uppercase', letterSpacing: 0.5 }}>
@@ -315,7 +441,7 @@ export default function Step1View({
           <Box sx={{ mb: 1.5 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.25 }}>
               <Typography variant="caption">Team avg</Typography>
-              <Typography variant="caption" fontWeight={700} sx={{ color: scoreColor(stats.avgTeamPriority) }}>
+              <Typography variant="caption" fontWeight={700} sx={{ color: priorityColor(stats.avgTeamPriority) }}>
                 {stats.avgTeamPriority.toFixed(2)}
               </Typography>
             </Box>
@@ -323,13 +449,13 @@ export default function Step1View({
               variant="determinate"
               value={priorityBarPct(stats.avgTeamPriority)}
               sx={{ height: 6, borderRadius: 1, bgcolor: 'action.hover', mb: 0.75,
-                '& .MuiLinearProgress-bar': { bgcolor: scoreColor(stats.avgTeamPriority) } }}
+                '& .MuiLinearProgress-bar': { bgcolor: priorityColor(stats.avgTeamPriority) } }}
             />
             {stats.avgTLPriority !== null && (
               <>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.25 }}>
                   <Typography variant="caption">TL avg</Typography>
-                  <Typography variant="caption" fontWeight={700} sx={{ color: scoreColor(stats.avgTLPriority) }}>
+                  <Typography variant="caption" fontWeight={700} sx={{ color: priorityColor(stats.avgTLPriority) }}>
                     {stats.avgTLPriority.toFixed(2)}
                   </Typography>
                 </Box>
@@ -337,7 +463,7 @@ export default function Step1View({
                   variant="determinate"
                   value={priorityBarPct(stats.avgTLPriority)}
                   sx={{ height: 6, borderRadius: 1, bgcolor: 'action.hover',
-                    '& .MuiLinearProgress-bar': { bgcolor: scoreColor(stats.avgTLPriority) } }}
+                    '& .MuiLinearProgress-bar': { bgcolor: priorityColor(stats.avgTLPriority) } }}
                 />
                 {Math.abs(stats.avgTeamPriority - stats.avgTLPriority) > 0.4 && (
                   <Typography variant="caption" color="warning.main" sx={{ display: 'block', mt: 0.5 }}>
@@ -416,16 +542,19 @@ export default function Step1View({
                 {stats.allContinuations.length - stats.continuationsDropped.length}/{stats.allContinuations.length} continuations planned
               </Typography>
             </Box>
+            {/* ITEM 8: CSS truncation instead of .substring() */}
             {stats.continuationsDropped.map(p => (
-              <Tooltip key={p.id} title={p.title}>
-                <Typography
-                  variant="caption"
-                  color="warning.main"
-                  sx={{ display: 'block', ml: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-                >
-                  ✕ {p.title.replace(/^[^/]+\/\s*/, '').substring(0, 30)}
-                </Typography>
-              </Tooltip>
+              <Box key={p.id} sx={{ overflow: 'hidden', width: '100%' }}>
+                <Tooltip title={p.title}>
+                  <Typography
+                    variant="caption"
+                    color="warning.main"
+                    sx={{ display: 'block', ml: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}
+                  >
+                    ✕ {p.title.replace(/^[^/]+\/\s*/, '')}
+                  </Typography>
+                </Tooltip>
+              </Box>
             ))}
           </Box>
         )}
@@ -440,7 +569,7 @@ export default function Step1View({
           <Box sx={{ mb: 1.5 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.25 }}>
               <Typography variant="caption">Avg assigned interest</Typography>
-              <Typography variant="caption" fontWeight={700} sx={{ color: scoreColor(stats.avgAssignedInterest) }}>
+              <Typography variant="caption" fontWeight={700} sx={{ color: priorityColor(stats.avgAssignedInterest) }}>
                 {stats.avgAssignedInterest.toFixed(2)} · {interestLabel(stats.avgAssignedInterest)}
               </Typography>
             </Box>
@@ -448,7 +577,7 @@ export default function Step1View({
               variant="determinate"
               value={priorityBarPct(stats.avgAssignedInterest)}
               sx={{ height: 6, borderRadius: 1, bgcolor: 'action.hover', mb: 0.5,
-                '& .MuiLinearProgress-bar': { bgcolor: scoreColor(stats.avgAssignedInterest) } }}
+                '& .MuiLinearProgress-bar': { bgcolor: priorityColor(stats.avgAssignedInterest) } }}
             />
             <Typography variant="caption" color="text.secondary">
               {stats.highInterestCount}/{stats.assignedCount} assignments are tier 1–2
@@ -469,7 +598,13 @@ export default function Step1View({
         {config.devNames.map(dev => {
           const pitchIds = stats.devProjects[dev] ?? [];
           const dataStatus = devDataStatus[dev];
-          const warn = pitchIds.length === 0 || pitchIds.length >= 3 || dataStatus !== 'full';
+          const workloadWarn = pitchIds.length === 0 || pitchIds.length >= 3;
+          const devNameColor = workloadWarn ? 'warning.main' : 'text.primary';
+          const workloadTooltip = pitchIds.length === 0
+            ? '0 projects assigned'
+            : pitchIds.length >= 3
+              ? '3+ projects — high workload'
+              : '';
           return (
             <Box key={dev} sx={{ mb: 1 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
@@ -483,9 +618,12 @@ export default function Step1View({
                     <DotIcon sx={{ fontSize: 10, color: 'warning.main' }} />
                   </Tooltip>
                 )}
-                <Typography variant="caption" fontWeight={600} sx={{ color: warn ? 'warning.main' : 'text.primary' }}>
-                  {dev.split(' ')[0]}
-                </Typography>
+                {/* ITEM 7: tooltip on dev name when there's a workload warning */}
+                <Tooltip title={workloadTooltip} placement="top" disableHoverListener={!workloadWarn}>
+                  <Typography variant="caption" fontWeight={600} sx={{ color: devNameColor }}>
+                    {dev.split(' ')[0]}
+                  </Typography>
+                </Tooltip>
                 {pitchIds.length === 0 && (
                   <Typography variant="caption" color="text.disabled" sx={{ ml: 0.5 }}>
                     unassigned
@@ -495,7 +633,6 @@ export default function Step1View({
               {pitchIds.map(pid => {
                 const p = pitchMap.get(pid);
                 if (!p) return null;
-                const maxChars = Math.max(20, Math.floor((sidebarWidth - 100) / 7));
                 const shortTitle = p.title.replace(/^[^/]+\/\s*/, '');
                 return (
                   <Box key={pid} sx={{ display: 'flex', alignItems: 'center', gap: 0.5, ml: 1.5, mt: 0.25 }}>
@@ -505,9 +642,11 @@ export default function Step1View({
                         color="text.secondary"
                         sx={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
                       >
-                        {shortTitle.substring(0, maxChars)}
+                        {shortTitle}
                       </Typography>
                     </Tooltip>
+                    {/* ITEM 3: info button in dev assignment list */}
+                    <DevPitchInfo pitch={p} />
                     <InterestChip level={p.devInterest[dev] ?? null} size="small" />
                   </Box>
                 );
@@ -515,12 +654,6 @@ export default function Step1View({
             </Box>
           );
         })}
-
-        <Box sx={{ mt: 2 }}>
-          <Button variant="contained" fullWidth onClick={onProceed} disabled={stats.total === 0}>
-            Finalize &amp; Proceed to Step 2
-          </Button>
-        </Box>
       </Box>
     </Box>
   );
@@ -552,7 +685,7 @@ function PitchRow({ assignment, pitch, devNames, onDevChange, onStatusChange, hi
   const sortedDevs = [...devNames].sort((a, b) => (pitch.devInterest[a] ?? 5) - (pitch.devInterest[b] ?? 5));
 
   return (
-    <TableRow sx={{ bgcolor: bgColor, opacity: highlight === 'cut' ? 0.5 : 1 }}>
+    <TableRow sx={{ bgcolor: bgColor, opacity: highlight === 'cut' ? 0.55 : 1 }}>
       <TableCell sx={{ maxWidth: 200 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
           <Tooltip title={pitch.title} placement="top-start">
@@ -572,80 +705,73 @@ function PitchRow({ assignment, pitch, devNames, onDevChange, onStatusChange, hi
           </Suspense>
         )}
       </TableCell>
+      {/* ITEM 9: priorityColor for score cells */}
       <TableCell align="center">
-        <Typography variant="caption" sx={{ color: scoreColor(pitch.teamPriorityScore), fontWeight: 600 }}>
+        <Typography variant="caption" sx={{ color: priorityColor(pitch.teamPriorityScore), fontWeight: 600 }}>
           {pitch.teamPriorityScore.toFixed(1)}
         </Typography>
       </TableCell>
       <TableCell align="center">
-        <Typography variant="caption" sx={{ color: scoreColor(pitch.tlPriorityScore), fontWeight: 600 }}>
+        <Typography variant="caption" sx={{ color: priorityColor(pitch.tlPriorityScore), fontWeight: 600 }}>
           {pitch.tlPriorityScore.toFixed(1)}
         </Typography>
       </TableCell>
+      {/* ITEM 2: show dev dropdown for all statuses (cut pitches just have opacity) */}
       <TableCell>
-        {highlight !== 'cut' && (
-          <Select
-            size="small"
-            value={assignment.assignedDev ?? ''}
-            onChange={e => onDevChange(pitch.id, e.target.value || null)}
-            displayEmpty
-            sx={{ fontSize: '0.75rem', minWidth: 140 }}
-            renderValue={val => val
-              ? <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                  <span>{(val as string).split(' ')[0]}</span>
-                  <InterestChip level={pitch.devInterest[val as string] ?? null} />
-                </Box>
-              : <Typography variant="caption" color="text.disabled">Assign dev…</Typography>
-            }
-          >
-            <MenuItem value=""><em>Unassign</em></MenuItem>
-            {sortedDevs.map(dev => (
-              <MenuItem key={dev} value={dev}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
-                  <Typography variant="body2" sx={{ flex: 1 }}>{dev}</Typography>
-                  <InterestChip level={pitch.devInterest[dev] ?? null} />
-                </Box>
-              </MenuItem>
-            ))}
-          </Select>
-        )}
+        <Select
+          size="small"
+          value={assignment.assignedDev ?? ''}
+          onChange={e => onDevChange(pitch.id, e.target.value || null)}
+          displayEmpty
+          sx={{ fontSize: '0.75rem', minWidth: 140 }}
+          renderValue={val => val
+            ? <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                <span>{(val as string).split(' ')[0]}</span>
+                <InterestChip level={pitch.devInterest[val as string] ?? null} />
+              </Box>
+            : <Typography variant="caption" color="text.disabled">Assign dev…</Typography>
+          }
+        >
+          <MenuItem value=""><em>Unassign</em></MenuItem>
+          {sortedDevs.map(dev => (
+            <MenuItem key={dev} value={dev}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
+                <Typography variant="body2" sx={{ flex: 1 }}>{dev}</Typography>
+                <InterestChip level={pitch.devInterest[dev] ?? null} />
+              </Box>
+            </MenuItem>
+          ))}
+        </Select>
       </TableCell>
+      {/* ITEM 2: 3-chip row for all statuses (Plan / Up Next / Not Now) */}
       <TableCell>
-        {highlight !== 'cut' ? (
-          <Box sx={{ display: 'flex', gap: 0.5 }}>
-            <Tooltip title="Mark as selected (planned)">
-              <Chip label="In" size="small"
-                onClick={() => onStatusChange(pitch.id, 'selected')}
-                color={highlight === 'selected' ? 'success' : 'default'}
-                variant={highlight === 'selected' ? 'filled' : 'outlined'}
-                sx={{ cursor: 'pointer', fontSize: '0.65rem', minWidth: 32 }}
-              />
-            </Tooltip>
-            <Tooltip title="Mark as next up (backlog)">
-              <Chip label="Next" size="small"
-                onClick={() => onStatusChange(pitch.id, 'next-up')}
-                color={highlight === 'next-up' ? 'warning' : 'default'}
-                variant={highlight === 'next-up' ? 'filled' : 'outlined'}
-                sx={{ cursor: 'pointer', fontSize: '0.65rem', minWidth: 36 }}
-              />
-            </Tooltip>
-            <Tooltip title="Cut from this quarter">
-              <Chip label="Cut" size="small"
-                onClick={() => onStatusChange(pitch.id, 'cut')}
-                color="default" variant="outlined"
-                sx={{ cursor: 'pointer', fontSize: '0.65rem', minWidth: 32, color: 'text.disabled' }}
-              />
-            </Tooltip>
-          </Box>
-        ) : (
-          <Tooltip title="Restore to next up">
-            <Chip label="Restore" size="small"
-              onClick={() => onStatusChange(pitch.id, 'next-up')}
-              variant="outlined"
-              sx={{ cursor: 'pointer', fontSize: '0.65rem' }}
+        <Box sx={{ display: 'flex', gap: 0.5 }}>
+          {/* ITEM 7: descriptive tooltips on status chips */}
+          <Tooltip title="Include in this quarter's projects">
+            <Chip label="Plan" size="small"
+              onClick={() => onStatusChange(pitch.id, 'selected')}
+              color={highlight === 'selected' ? 'primary' : 'default'}
+              variant={highlight === 'selected' ? 'filled' : 'outlined'}
+              sx={{ cursor: 'pointer', fontSize: '0.65rem', minWidth: 36 }}
             />
           </Tooltip>
-        )}
+          <Tooltip title="Queue as a potential project — will create a record with blank staffing">
+            <Chip label="Up Next" size="small"
+              onClick={() => onStatusChange(pitch.id, 'next-up')}
+              color={highlight === 'next-up' ? 'info' : 'default'}
+              variant={highlight === 'next-up' ? 'filled' : 'outlined'}
+              sx={{ cursor: 'pointer', fontSize: '0.65rem', minWidth: 44 }}
+            />
+          </Tooltip>
+          <Tooltip title="Cut from this quarter">
+            <Chip label="Not Now" size="small"
+              onClick={() => onStatusChange(pitch.id, 'cut')}
+              color="default"
+              variant={highlight === 'cut' ? 'filled' : 'outlined'}
+              sx={{ cursor: 'pointer', fontSize: '0.65rem', minWidth: 52, color: highlight === 'cut' ? undefined : 'text.disabled' }}
+            />
+          </Tooltip>
+        </Box>
       </TableCell>
     </TableRow>
   );

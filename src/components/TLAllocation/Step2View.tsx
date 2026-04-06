@@ -1,7 +1,7 @@
 import { lazy, Suspense, useMemo, useState } from 'react';
 import {
   Box, Typography, Paper, Table, TableBody, TableCell, TableHead, TableRow,
-  Select, MenuItem, Divider, Tooltip, Button, Chip, IconButton,
+  Select, MenuItem, Divider, Tooltip, Chip, IconButton,
 } from '@mui/material';
 import { Warning as WarnIcon, CheckCircle as OkIcon, InfoOutlined as InfoIcon } from '@mui/icons-material';
 import type {
@@ -17,11 +17,11 @@ interface Step2ViewProps {
   phase2Interests: Phase2Interest[];
   config: AllocationConfig;
   onAssign: (pitchId: string, field: 'devTL' | 'qm', value: string | null) => void;
-  onFinalize: () => void;
+  onFinalize?: () => void;
 }
 
 export default function Step2View({
-  selectedPitches, assignments, phase2Interests, config, onAssign, onFinalize,
+  selectedPitches, assignments, phase2Interests, config, onAssign,
 }: Step2ViewProps) {
   const assignMap = useMemo(
     () => new Map(assignments.map(a => [a.pitchId, a])),
@@ -161,16 +161,6 @@ export default function Step2View({
           </Box>
         ))}
 
-        <Button variant="contained" color="success" fullWidth onClick={onFinalize}
-          disabled={assignments.some(a => !a.devTL || !a.qm)}
-        >
-          Finalize &amp; Create Records
-        </Button>
-        {assignments.some(a => !a.devTL || !a.qm) && (
-          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5, textAlign: 'center' }}>
-            All projects must have a dev TL and QM
-          </Typography>
-        )}
       </Box>
     </Box>
   );
