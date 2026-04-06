@@ -84,14 +84,28 @@ export interface SubmitVotesPayload {
 }
 
 /**
- * Fetches all available pitches from the Track Shadow backend via Shadow Web
+ * Fetches all available pitches from the Track Shadow backend via Shadow Web.
+ * In dev mode, falls back to the static pitches JSON if Shadow Web is unavailable.
  */
 export async function fetchPitches(): Promise<Pitch[]> {
   const prjId = getPitchPrjId();
-  if (!prjId) {
+
+  if (prjId) {
+    try {
+      return await fetchPitchesByProject(prjId);
+    } catch (err) {
+      if (!(import.meta as any).env?.DEV) throw err;
+      console.warn('[dev] Shadow Web unavailable, falling back to static pitches-aug-26.json', err);
+    }
+  }
+
+  if (!(import.meta as any).env?.DEV) {
     throw new ApiError('VITE_PITCH_PRJ_ID is not configured', 0);
   }
-  return fetchPitchesByProject(prjId);
+
+  // Dev fallback: load the static JSON bundled with the app
+  const { default: staticPitches } = await import('../assets/pitches-aug-26.json');
+  return staticPitches as unknown as Pitch[];
 }
 
 /**

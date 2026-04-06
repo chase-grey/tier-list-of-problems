@@ -20,10 +20,11 @@ import type { DropResult } from '@hello-pangea/dnd';
 import type { AppState, Pitch, Tier, InterestLevel } from '../types/models';
 import { isContributorRole, canRankInterestStage1, canRankInterestStage2 } from '../types/models';
 import { useVoteManagement } from '../hooks/useVoteManagement';
-import { getPollingCycleId, isStage2 } from '../utils/config';
+import { getPollingCycleId, isStage2, isTLAllocationStage, getPollingStage } from '../utils/config';
 import { buildPollingKey, cleanupPollingStorageOnCycleChange, getEffectivePollingCycleId } from '../utils/pollingStorage';
 import { getInterestLevelLabel } from '../utils/voteActions';
 import { fetchPitches } from '../services/api';
+import TLAllocationView from './TLAllocation/TLAllocationView';
 
 const CATEGORIES = [
   'Support AI Charting',
@@ -47,6 +48,9 @@ const initialState: AppState = {
 const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => void }> = ({ themeMode, onToggleTheme }) => {
   // State for selected priority category tab
   const [selectedCategory, setSelectedCategory] = useState<string>(CATEGORIES[0]);
+  // TL-only allocation view toggle (manual, used outside TL stages)
+  const [isTLAllocationView, setIsTLAllocationView] = useState(false);
+  const isTLStage = isTLAllocationStage();
 
   // Async pitch loading state
   const [loadedPitches, setLoadedPitches] = useState<(Pitch & { stage2?: boolean })[] | null>(null);
@@ -71,7 +75,8 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
   const appStage2Mode = isStage2();
   
   // Pitches from the backend - in Stage 2, filter to only pitches that passed Stage 1
-  const allPitches = loadedPitches ?? [];
+  // useMemo ensures stable reference when loadedPitches is null (prevents render loop)
+  const allPitches = useMemo(() => loadedPitches ?? [], [loadedPitches]);
   const pitches = useMemo(() => {
     if (appStage2Mode) {
       // Filter to only pitches with stage2=true
@@ -581,7 +586,7 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
       />
       
       <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
-        <TopBar 
+        <TopBar
           voterName={state.voterName}
           voterRole={state.voterRole}
           available={state.available}
@@ -602,11 +607,28 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
           onUpdateRole={handleUpdateRole}
           onUpdateAvailability={handleUpdateAvailability}
           appStage2Mode={appStage2Mode}
+          isTLAllocationView={isTLStage ? state.voterRole === 'dev TL' : isTLAllocationView}
+          onToggleTLAllocation={!isTLStage && state.voterRole === 'dev TL' ? () => setIsTLAllocationView(p => !p) : undefined}
         />
         
         <Box component="main" sx={{ flexGrow: 1, overflow: 'hidden', p: 0, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-          {/* Stage 2 mode: Show access denied message for non-eligible users */}
-          {appStage2Mode && !canAccessInterestStage ? (
+          {/* TL Allocation stage: dev TLs see the allocation view; everyone else waits */}
+          {isTLStage && state.voterRole === 'dev TL' ? (
+            <TLAllocationView />
+          ) : isTLStage ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', flexDirection: 'column', gap: 2, p: 4 }}>
+              <Typography variant="h5" color="text.secondary" textAlign="center">
+                TL Allocation in Progress
+              </Typography>
+              <Typography variant="body1" color="text.secondary" textAlign="center" sx={{ maxWidth: 500 }}>
+                The dev TLs are currently working through the{' '}
+                {getPollingStage() === 'tl-1' ? 'first' : 'second'} round of allocation.
+                Check back soon for updates on the selected projects for next quarter.
+              </Typography>
+            </Box>
+          ) : isTLAllocationView && state.voterRole === 'dev TL' ? (
+            <TLAllocationView />
+          ) : appStage2Mode && !canAccessInterestStage ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', flexDirection: 'column', gap: 2, p: 4 }}>
               <Typography variant="h5" color="text.secondary" textAlign="center">
                 Stage 2: Interest Ranking
@@ -673,7 +695,7 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
               </Box>
             )
           )}
-                  
+
           {/* Help dialog */}
           <HelpDialog 
             open={showHelp} 
