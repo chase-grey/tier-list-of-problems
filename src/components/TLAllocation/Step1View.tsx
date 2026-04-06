@@ -509,38 +509,23 @@ export default function Step1View({
         </Typography>
         {stats.avgTeamPriority !== null ? (
           <Box sx={{ mb: 1.5 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.25 }}>
-              <Typography variant="caption">Team avg</Typography>
-              <Typography variant="caption" fontWeight={700} sx={{ color: priorityColor(stats.avgTeamPriority) }}>
-                {stats.avgTeamPriority.toFixed(2)}
+            <Typography variant="caption" sx={{ display: 'block' }}>
+              <Box component="span" sx={{ color: priorityColor(stats.avgTeamPriority), fontWeight: 700 }}>
+                Team: {stats.avgTeamPriority.toFixed(1)} ({interestLabel(stats.avgTeamPriority)})
+              </Box>
+              {stats.avgTLPriority !== null && (
+                <>
+                  <Box component="span" sx={{ color: 'text.disabled', mx: 0.5 }}>·</Box>
+                  <Box component="span" sx={{ color: priorityColor(stats.avgTLPriority), fontWeight: 700 }}>
+                    TL: {stats.avgTLPriority.toFixed(1)} ({interestLabel(stats.avgTLPriority)})
+                  </Box>
+                </>
+              )}
+            </Typography>
+            {stats.avgTLPriority !== null && Math.abs(stats.avgTeamPriority - stats.avgTLPriority) > 0.4 && (
+              <Typography variant="caption" color="warning.main" sx={{ display: 'block', mt: 0.25 }}>
+                TL and team disagree by {Math.abs(stats.avgTeamPriority - stats.avgTLPriority).toFixed(1)} tiers
               </Typography>
-            </Box>
-            <LinearProgress
-              variant="determinate"
-              value={priorityBarPct(stats.avgTeamPriority)}
-              sx={{ height: 6, borderRadius: 1, bgcolor: 'action.hover', mb: 0.75,
-                '& .MuiLinearProgress-bar': { bgcolor: priorityColor(stats.avgTeamPriority) } }}
-            />
-            {stats.avgTLPriority !== null && (
-              <>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.25 }}>
-                  <Typography variant="caption">TL avg</Typography>
-                  <Typography variant="caption" fontWeight={700} sx={{ color: priorityColor(stats.avgTLPriority) }}>
-                    {stats.avgTLPriority.toFixed(2)}
-                  </Typography>
-                </Box>
-                <LinearProgress
-                  variant="determinate"
-                  value={priorityBarPct(stats.avgTLPriority)}
-                  sx={{ height: 6, borderRadius: 1, bgcolor: 'action.hover',
-                    '& .MuiLinearProgress-bar': { bgcolor: priorityColor(stats.avgTLPriority) } }}
-                />
-                {Math.abs(stats.avgTeamPriority - stats.avgTLPriority) > 0.4 && (
-                  <Typography variant="caption" color="warning.main" sx={{ display: 'block', mt: 0.5 }}>
-                    TL and team disagree by {Math.abs(stats.avgTeamPriority - stats.avgTLPriority).toFixed(2)} tiers
-                  </Typography>
-                )}
-              </>
             )}
           </Box>
         ) : (

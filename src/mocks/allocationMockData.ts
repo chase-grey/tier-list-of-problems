@@ -159,28 +159,23 @@ export const MOCK_PITCHES: AllocationPitch[] = (pitchData as unknown as Pitch[])
 type PlanVariant = 'A' | 'B' | 'C';
 
 const PLAN_META: Record<PlanVariant, { label: string; description: string }> = {
-  A: { label: 'Plan A — Interest-Weighted', description: 'Prioritizes matching devs to projects they are most excited about' },
-  B: { label: 'Plan B — Priority-Focused', description: 'Selects and assigns based on team and TL priority rankings' },
-  C: { label: 'Plan C — Balanced', description: 'Balances priority alignment with dev interest and even workload distribution' },
+  A: { label: 'Plan A — Balanced', description: 'Weights team and TL priority votes equally' },
+  B: { label: 'Plan B — TL-Leaning', description: 'Emphasizes TL priority votes slightly; favors TL judgment at the margin' },
+  C: { label: 'Plan C — Team-Leaning', description: 'Emphasizes broader team priority votes slightly; favors collective judgment at the margin' },
 };
 
-const VARIANT_WEIGHTS: Record<PlanVariant, { priority: number; interest: number }> = {
-  A: { priority: 0.25, interest: 0.75 },
-  B: { priority: 0.75, interest: 0.25 },
-  C: { priority: 0.50, interest: 0.50 },
+/** team/tl weights for pitch selection scoring — slight variation produces near-optimal plans with different edge-case selections. */
+const VARIANT_WEIGHTS: Record<PlanVariant, { team: number; tl: number }> = {
+  A: { team: 0.50, tl: 0.50 },
+  B: { team: 0.35, tl: 0.65 },
+  C: { team: 0.65, tl: 0.35 },
 };
 
-function bestDevInterestScore(pitch: AllocationPitch): number {
-  const tiers = Object.values(pitch.devInterest).filter((t): t is 1 | 2 | 3 | 4 => t !== null);
-  if (tiers.length === 0) return 0;
-  // tier 1 → 1.0 (best), tier 4 → 0.25 (worst)
-  return (5 - Math.min(...tiers)) / 4;
-}
-
-function pitchScore(pitch: AllocationPitch, weights: { priority: number; interest: number }): number {
-  // Priority: lower tier = higher priority → invert so higher score = better
-  const priorityScore = (5 - pitch.teamPriorityScore) / 4; // 1.0 best, 0.25 worst
-  return weights.priority * priorityScore + weights.interest * bestDevInterestScore(pitch);
+/** Higher score = higher priority. Combines team and TL votes by weight. Lower vote tier (1=best) inverted to higher score. */
+function pitchPriorityScore(pitch: AllocationPitch, weights: { team: number; tl: number }): number {
+  const teamScore = (5 - pitch.teamPriorityScore) / 4;
+  const tlScore = (5 - pitch.tlPriorityScore) / 4;
+  return weights.team * teamScore + weights.tl * tlScore;
 }
 
 function generatePlan(variant: PlanVariant): AllocationPlan {
@@ -188,8 +183,8 @@ function generatePlan(variant: PlanVariant): AllocationPlan {
   const weights = VARIANT_WEIGHTS[variant];
   const categories = Object.keys(bandwidth);
 
-  // How many slots per category (total = devNames.length = 14)
-  const totalSlots = devNames.length;
+  // 2 projects per dev
+  const totalSlots = devNames.length * 2;
   const totalPct = categories.reduce((s, c) => s + bandwidth[c], 0);
   const rawSlots = categories.map(c => ({ cat: c, slots: (bandwidth[c] / totalPct) * totalSlots }));
 
@@ -203,23 +198,23 @@ function generatePlan(variant: PlanVariant): AllocationPlan {
     .slice(0, remaining)
     .forEach(({ cat }) => slotMap[cat]++);
 
-  // Select top pitches per category
+  // Select top pitches per category by priority score
   const selected: AllocationPitch[] = [];
   categories.forEach(cat => {
     const catPitches = MOCK_PITCHES
       .filter(p => p.category === cat)
-      .sort((a, b) => pitchScore(b, weights) - pitchScore(a, weights));
+      .sort((a, b) => pitchPriorityScore(b, weights) - pitchPriorityScore(a, weights));
     const slots = Math.min(slotMap[cat], catPitches.length);
     selected.push(...catPitches.slice(0, slots));
   });
 
-  // Assign devs greedily: highest-interest dev with fewest current assignments
+  // Assign devs greedily: best interest tier first, fewest assignments as tie-break
   const devCount: Record<string, number> = {};
   devNames.forEach(d => { devCount[d] = 0; });
-  const MAX_PER_DEV = 3;
+  const MAX_PER_DEV = 2;
 
-  // Process pitches in score order so most contested ones get first pick
-  const sortedSelected = [...selected].sort((a, b) => pitchScore(b, weights) - pitchScore(a, weights));
+  // Process highest-priority pitches first so contested projects get their best-match dev
+  const sortedSelected = [...selected].sort((a, b) => pitchPriorityScore(b, weights) - pitchPriorityScore(a, weights));
   const assignments: PlanAssignment[] = sortedSelected.map(pitch => {
     const candidateDev = devNames
       .filter(d => devCount[d] < MAX_PER_DEV)
@@ -227,8 +222,7 @@ function generatePlan(variant: PlanVariant): AllocationPlan {
         const tA = pitch.devInterest[a] ?? 5;
         const tB = pitch.devInterest[b] ?? 5;
         if (tA !== tB) return tA - tB;
-        // Plan C tie-break: prefer devs with fewer assignments
-        return variant === 'C' ? devCount[a] - devCount[b] : 0;
+        return devCount[a] - devCount[b]; // tie-break: fewer assignments first
       })[0] ?? null;
 
     if (candidateDev) devCount[candidateDev]++;
@@ -239,7 +233,7 @@ function generatePlan(variant: PlanVariant): AllocationPlan {
   const selectedIds = new Set(selected.map(p => p.id));
   const notSelected = MOCK_PITCHES
     .filter(p => !selectedIds.has(p.id))
-    .sort((a, b) => pitchScore(b, weights) - pitchScore(a, weights));
+    .sort((a, b) => pitchPriorityScore(b, weights) - pitchPriorityScore(a, weights));
 
   notSelected.slice(0, nextUpCount).forEach(p =>
     assignments.push({ pitchId: p.id, assignedDev: null, status: 'next-up' })
