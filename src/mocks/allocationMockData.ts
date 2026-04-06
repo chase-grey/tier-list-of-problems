@@ -100,17 +100,56 @@ function devInterestForPitch(pitchId: string, category: string): Record<string, 
   return result;
 }
 
+// ─── Priority vote generation ──────────────────────────────────────────────────
+
+const ALL_VOTERS = [...MOCK_CONFIG.devNames, ...MOCK_CONFIG.devTLNames, ...MOCK_CONFIG.qmNames];
+
+function priorityVotesForPitch(pitchId: string, category: string): {
+  teamVotes: Record<string, 1 | 2 | 3 | 4>;
+  tlVotes: Record<string, 1 | 2 | 3 | 4>;
+  teamPriorityScore: number;
+  tlPriorityScore: number;
+} {
+  // AI Charting pitches skew toward higher priority (lower tier number)
+  const boost = category === 'Support AI Charting' ? 0.28 : 0;
+  const teamVotes: Record<string, 1 | 2 | 3 | 4> = {};
+
+  for (const voter of ALL_VOTERS) {
+    const r = hashScore(`${pitchId}-${voter}-priority`, 0, 1);
+    const shifted = Math.max(0, r - boost);
+    let tier: 1 | 2 | 3 | 4;
+    if (shifted < 0.22) tier = 1;
+    else if (shifted < 0.48) tier = 2;
+    else if (shifted < 0.76) tier = 3;
+    else tier = 4;
+    teamVotes[voter] = tier;
+  }
+
+  const tlVotes = Object.fromEntries(
+    MOCK_CONFIG.devTLNames.map(tl => [tl, teamVotes[tl]])
+  ) as Record<string, 1 | 2 | 3 | 4>;
+
+  const allTiers = Object.values(teamVotes);
+  const teamPriorityScore = allTiers.reduce((s, t) => s + t, 0) / allTiers.length;
+  const tlTiers = Object.values(tlVotes);
+  const tlPriorityScore = tlTiers.length > 0
+    ? tlTiers.reduce((s, t) => s + t, 0) / tlTiers.length
+    : teamPriorityScore;
+
+  return { teamVotes, tlVotes, teamPriorityScore, tlPriorityScore };
+}
+
 // ─── Pitches ──────────────────────────────────────────────────────────────────
 
 export const MOCK_PITCHES: AllocationPitch[] = (pitchData as unknown as Pitch[])
   .map(p => {
-    // AI Charting pitches get a slight priority boost (team focus this quarter)
-    const boost = p.category === 'Support AI Charting' ? 0.3 : 0;
-    // teamPriorityScore: average tier (1 = best, 4 = worst); add small boost for AI Charting
+    const { teamVotes, tlVotes, teamPriorityScore, tlPriorityScore } = priorityVotesForPitch(p.id, p.category);
     return {
       ...p,
-      teamPriorityScore: Math.max(1, Math.min(4, hashScore(p.id + 'team', 1.5, 4.0) - boost)),
-      tlPriorityScore:   Math.max(1, Math.min(4, hashScore(p.id + 'tl',   1.8, 4.0) - boost * 0.7)),
+      teamVotes,
+      tlVotes,
+      teamPriorityScore,
+      tlPriorityScore,
       devInterest: devInterestForPitch(p.id, p.category),
     };
   });

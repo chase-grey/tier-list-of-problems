@@ -19,6 +19,10 @@ export interface AllocationPitch extends Pitch {
    * Key missing entirely = dev submitted no interest votes at all.
    */
   devInterest: Record<string, InterestLevel>;
+  /** Per-voter priority tiers across all voters (devs + TLs + QMs). 1 = highest priority, 4 = lowest. */
+  teamVotes: Record<string, 1 | 2 | 3 | 4>;
+  /** Per-TL priority tiers (subset of teamVotes, dev TLs only). */
+  tlVotes: Record<string, 1 | 2 | 3 | 4>;
 }
 
 export type AssignmentStatus = 'selected' | 'next-up' | 'cut';

@@ -1,4 +1,4 @@
-import { Chip } from '@mui/material';
+import { Chip, Tooltip } from '@mui/material';
 import type { InterestLevel } from '../../types/allocationTypes';
 
 interface InterestChipProps {
@@ -18,11 +18,16 @@ const INTEREST_CONFIG: Record<number, { label: string; color: string; bg: string
 export default function InterestChip({ level, size = 'small', noData = false }: InterestChipProps) {
   if (level === null) {
     // noData = person never submitted anything; null level = submitted but skipped this pitch
-    return <Chip
-      label={noData ? '✕' : '—'}
-      size={size}
-      sx={{ fontSize: '0.7rem', bgcolor: 'action.hover', color: 'text.disabled', minWidth: noData ? 28 : undefined }}
-    />;
+    const title = noData ? 'No interest data submitted for any project' : 'Skipped ranking this project';
+    return (
+      <Tooltip title={title} placement="top">
+        <Chip
+          label={noData ? '✕' : '—'}
+          size={size}
+          sx={{ fontSize: '0.7rem', bgcolor: 'action.hover', color: 'text.disabled', minWidth: noData ? 28 : undefined }}
+        />
+      </Tooltip>
+    );
   }
   const cfg = INTEREST_CONFIG[level];
   return (
