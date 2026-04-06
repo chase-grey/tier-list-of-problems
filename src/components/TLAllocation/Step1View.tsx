@@ -363,25 +363,34 @@ export default function Step1View({
           const actual = stats.catActualPct[cat] ?? 0;
           const target = config.bandwidth[cat];
           const diff = actual - target;
+          const barColor = Math.abs(diff) <= 5 ? 'success.main' : 'warning.main';
           return (
             <Box key={cat} sx={{ mb: 0.875 }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                 <Typography variant="caption">{CATEGORY_SHORT[cat] ?? cat}</Typography>
-                <Typography
-                  variant="caption"
-                  sx={{ color: Math.abs(diff) <= 5 ? 'success.main' : 'warning.main', fontWeight: 600 }}
-                >
+                <Typography variant="caption" sx={{ color: barColor, fontWeight: 600 }}>
                   {actual}% / {target}%
                 </Typography>
               </Box>
-              <LinearProgress
-                variant="determinate"
-                value={Math.min(actual, 100)}
-                sx={{
-                  height: 5, borderRadius: 1, bgcolor: 'action.hover',
-                  '& .MuiLinearProgress-bar': { bgcolor: Math.abs(diff) <= 5 ? 'success.main' : 'warning.main' },
-                }}
-              />
+              <Box sx={{ position: 'relative' }}>
+                <LinearProgress
+                  variant="determinate"
+                  value={Math.min(actual, 100)}
+                  sx={{
+                    height: 7, borderRadius: 1, bgcolor: 'action.hover',
+                    '& .MuiLinearProgress-bar': { bgcolor: barColor },
+                  }}
+                />
+                {/* Target marker */}
+                <Tooltip title={`Target: ${target}%`} placement="top">
+                  <Box sx={{
+                    position: 'absolute', top: -2, bottom: -2,
+                    left: `${target}%`,
+                    width: 2, bgcolor: 'text.primary', opacity: 0.45,
+                    borderRadius: 1, pointerEvents: 'none',
+                  }} />
+                </Tooltip>
+              </Box>
             </Box>
           );
         })}

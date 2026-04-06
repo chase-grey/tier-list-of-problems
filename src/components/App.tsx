@@ -49,6 +49,7 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
   // State for selected priority category tab
   const [selectedCategory, setSelectedCategory] = useState<string>(CATEGORIES[0]);
   const isTLStage = isTLAllocationStage();
+  const [allocationStep, setAllocationStep] = useState<0 | 1>(0);
 
   // Async pitch loading state
   const [loadedPitches, setLoadedPitches] = useState<(Pitch & { stage2?: boolean })[] | null>(null);
@@ -605,12 +606,14 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
           onUpdateRole={handleUpdateRole}
           onUpdateAvailability={handleUpdateAvailability}
           appStage2Mode={appStage2Mode}
+          allocationMode={isTLStage}
+          allocationStep={allocationStep}
         />
         
         <Box component="main" sx={{ flexGrow: 1, overflow: 'hidden', p: 0, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
           {/* TL Allocation stage: dev TLs see the allocation view; everyone else waits */}
           {isTLStage && state.voterRole === 'dev TL' ? (
-            <TLAllocationView />
+            <TLAllocationView onStepChange={setAllocationStep} />
           ) : isTLStage ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', flexDirection: 'column', gap: 2, p: 4 }}>
               <Typography variant="h5" color="text.secondary" textAlign="center">

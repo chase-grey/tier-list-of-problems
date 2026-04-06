@@ -39,6 +39,8 @@ interface TopBarProps {
   onUpdateRole: (role: string) => void;
   onUpdateAvailability: (available: boolean) => void;
   appStage2Mode?: boolean; // True when app is in Stage 2 (interest ranking only, priority locked)
+  allocationMode?: boolean; // True when in a TL allocation stage
+  allocationStep?: 0 | 1;  // Which allocation step is active
 }
 
 /**
@@ -65,7 +67,12 @@ export const TopBar = ({
   onUpdateRole,
   onUpdateAvailability,
   appStage2Mode = false,
+  allocationMode = false,
+  allocationStep = 0,
 }: TopBarProps) => {
+  const allocationStepLabel = allocationStep === 0
+    ? 'Step 1: Assign Devs'
+    : 'Step 2: Assign TLs + QMs';
   return (
     <AppBar
       position="sticky"
@@ -79,16 +86,13 @@ export const TopBar = ({
       <Toolbar sx={{ minHeight: '48px !important', py: 0 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', flexGrow: 1 }}>
           <Typography variant="subtitle1" component="div">
-            Problem Polling: {voterName}
+            {allocationMode
+              ? `TL Allocation — ${allocationStepLabel}`
+              : `Problem Polling: ${voterName}`}
           </Typography>
-          
+
           <Tooltip title="View Instructions">
-            <IconButton 
-              color="inherit" 
-              onClick={onHelpClick}
-              sx={{ ml: 2 }}
-              aria-label="Help"
-            >
+            <IconButton color="inherit" onClick={onHelpClick} sx={{ ml: 2 }} aria-label="Help">
               <HelpIcon />
             </IconButton>
           </Tooltip>
@@ -105,98 +109,86 @@ export const TopBar = ({
             onResetClick={onResetClick}
           />
         </Box>
-        <Box sx={{ display: 'flex', alignItems: 'center', mr: 2 }}>
-          <Typography variant="body2" sx={{ display: 'flex', gap: 1 }}>
-            {stage === 'priority' ? (
-              <>
-                <Box 
-                  component="span" 
-                  sx={{ 
+
+        {/* Voting-only: rank / interest progress and navigation */}
+        {!allocationMode && (
+          <>
+            <Box sx={{ display: 'flex', alignItems: 'center', mr: 2 }}>
+              <Typography variant="body2" sx={{ display: 'flex', gap: 1 }}>
+                {stage === 'priority' ? (
+                  <Box component="span" sx={{
                     color: rankCount >= Math.ceil(totalPitchCount / 2) ? '#4caf50' : 'inherit',
                     fontWeight: rankCount >= Math.ceil(totalPitchCount / 2) ? 'bold' : 'normal',
-                    transition: 'all 0.2s ease',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 0.5
-                  }}
-                >
-                  <RankedIcon sx={{ fontSize: '1.4rem' }} />
-                  <span>Ranked {rankCount}/{totalPitchCount}</span>
-                </Box>
-              </>
-            ) : (
-              <Box 
-                component="span" 
-                sx={{ 
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 0.5,
-                  color: interestCount >= Math.ceil(totalPitchCount / 2) ? '#4caf50' : 'inherit',
-                  fontWeight: interestCount >= Math.ceil(totalPitchCount / 2) ? 'bold' : 'normal',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                <InterestIcon sx={{ fontSize: '1.4rem' }} />
-                <span>Interests {interestCount}/{totalPitchCount}</span>
-              </Box>
+                    transition: 'all 0.2s ease', display: 'flex', alignItems: 'center', gap: 0.5
+                  }}>
+                    <RankedIcon sx={{ fontSize: '1.4rem' }} />
+                    <span>Ranked {rankCount}/{totalPitchCount}</span>
+                  </Box>
+                ) : (
+                  <Box component="span" sx={{
+                    display: 'flex', alignItems: 'center', gap: 0.5,
+                    color: interestCount >= Math.ceil(totalPitchCount / 2) ? '#4caf50' : 'inherit',
+                    fontWeight: interestCount >= Math.ceil(totalPitchCount / 2) ? 'bold' : 'normal',
+                    transition: 'all 0.2s ease'
+                  }}>
+                    <InterestIcon sx={{ fontSize: '1.4rem' }} />
+                    <span>Interests {interestCount}/{totalPitchCount}</span>
+                  </Box>
+                )}
+              </Typography>
+            </Box>
+
+            {!appStage2Mode && (canAccessInterestStage || stage === 'interest') && (
+              <Tooltip title={
+                stage === 'priority' && !canAccessInterestStage ?
+                  'Only QM and dev TL roles who are available can rank interest' :
+                stage === 'priority' && !priorityStageComplete ?
+                  'You must complete priority rankings first' : ''
+              } arrow placement="bottom">
+                <span>
+                  <Button
+                    variant="contained"
+                    color={stage === 'priority' ? 'secondary' : 'primary'}
+                    startIcon={stage === 'priority' ? <NextIcon /> : <PrevIcon />}
+                    onClick={onNextStage}
+                    disabled={stage === 'priority' && (!canAccessInterestStage || !priorityStageComplete)}
+                    sx={{
+                      mr: 2,
+                      bgcolor: (theme) =>
+                        stage === 'priority'
+                          ? (theme.palette.mode === 'light' ? '#ce93d8' : '#9c27b0')
+                          : (theme.palette.mode === 'light' ? '#64b5f6' : '#1976d2'),
+                      '&:hover': {
+                        bgcolor: (theme) =>
+                          stage === 'priority'
+                            ? (theme.palette.mode === 'light' ? '#ba68c8' : '#7b1fa2')
+                            : (theme.palette.mode === 'light' ? '#42a5f5' : '#1565c0')
+                      }
+                    }}
+                  >
+                    {stage === 'priority' ? 'Next: Rank Interest' : 'Previous: Rank Priority'}
+                  </Button>
+                </span>
+              </Tooltip>
             )}
-          </Typography>
-        </Box>
-        {/* Only show the interest section button if the user has access to it */}
-        {/* In Stage 2 mode, hide the button entirely since priority is locked */}
-        {!appStage2Mode && (canAccessInterestStage || stage === 'interest') && (
-          <Tooltip title={
-            stage === 'priority' && !canAccessInterestStage ? 
-              "Only QM and dev TL roles who are available can rank interest" : 
-            stage === 'priority' && !priorityStageComplete ? 
-              "You must complete priority rankings first" : 
-              ""
-          } arrow placement="bottom">
-            <span> {/* Wrapper needed for disabled button tooltips */}
-              <Button
-                variant="contained"
-                color={stage === 'priority' ? 'secondary' : 'primary'}
-                startIcon={stage === 'priority' ? <NextIcon /> : <PrevIcon />}
-                onClick={onNextStage}
-                disabled={stage === 'priority' && (!canAccessInterestStage || !priorityStageComplete)}
-                sx={{
-                  mr: 2,
-                  // Use purple for interest stage button, blue for priority stage button
-                  bgcolor: (theme) =>
-                    stage === 'priority'
-                      ? (theme.palette.mode === 'light' ? '#ce93d8' : '#9c27b0')
-                      : (theme.palette.mode === 'light' ? '#64b5f6' : '#1976d2'),
-                  '&:hover': {
-                    bgcolor: (theme) =>
-                      stage === 'priority'
-                        ? (theme.palette.mode === 'light' ? '#ba68c8' : '#7b1fa2')
-                        : (theme.palette.mode === 'light' ? '#42a5f5' : '#1565c0')
-                  }
-                }}
-              >
-                {stage === 'priority' ? 'Next: Rank Interest' : 'Previous: Rank Priority'}
-              </Button>
-            </span>
-          </Tooltip>
+
+            <Button
+              variant="contained"
+              color="secondary"
+              startIcon={<DownloadIcon />}
+              disabled={!isExportEnabled}
+              onClick={onFinish}
+              aria-label="Finish and export results"
+              sx={{
+                fontWeight: isExportEnabled ? 'bold' : 'normal',
+                transition: 'all 0.2s ease',
+                '&:not(:disabled)': { boxShadow: 3 }
+              }}
+            >
+              Finish
+            </Button>
+          </>
         )}
-        
-        <Button
-          variant="contained"
-          color="secondary"
-          startIcon={<DownloadIcon />}
-          disabled={!isExportEnabled}
-          onClick={onFinish}
-          aria-label="Finish and export results"
-          sx={{
-            fontWeight: isExportEnabled ? 'bold' : 'normal',
-            transition: 'all 0.2s ease',
-            '&:not(:disabled)': {
-              boxShadow: 3
-            }
-          }}
-        >
-          Finish
-        </Button>
       </Toolbar>
     </AppBar>
   );

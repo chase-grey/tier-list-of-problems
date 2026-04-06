@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Box, Typography, Stepper, Step, StepLabel, Paper, Snackbar, Alert } from '@mui/material';
+import { Box, Snackbar, Alert } from '@mui/material';
 import type { AssignmentStatus, PlanAssignment, StaffingAssignment } from '../../types/allocationTypes';
 import {
   MOCK_CONFIG, MOCK_PITCHES, MOCK_PLANS, MOCK_PHASE2_INTERESTS,
@@ -7,10 +7,12 @@ import {
 import Step1View from './Step1View';
 import Step2View from './Step2View';
 
-const STEPS = ['Step 1: Assign Devs', 'Step 2: Assign TLs + QMs'];
+interface TLAllocationViewProps {
+  onStepChange?: (step: 0 | 1) => void;
+}
 
-export default function TLAllocationView() {
-  const [activeStep, setActiveStep] = useState(0);
+export default function TLAllocationView({ onStepChange }: TLAllocationViewProps) {
+  const [activeStep, setActiveStep] = useState<0 | 1>(0);
 
   // ── Step 1 state ──────────────────────────────────────────────────────────
   const [activePlanId, setActivePlanId] = useState<'A' | 'B' | 'C'>('C');
@@ -76,6 +78,7 @@ export default function TLAllocationView() {
       selectedPitches.map(p => ({ pitchId: p.id, devTL: null, qm: null }))
     );
     setActiveStep(1);
+    onStepChange?.(1);
   };
 
   const handleStep2Assign = (pitchId: string, field: 'devTL' | 'qm', value: string | null) => {
@@ -94,21 +97,6 @@ export default function TLAllocationView() {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-      {/* Header */}
-      <Paper elevation={0} square sx={{ px: 3, py: 1.5, borderBottom: 1, borderColor: 'divider', flexShrink: 0 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          <Typography variant="h6" fontWeight={700}>TL Allocation</Typography>
-          <Stepper activeStep={activeStep} sx={{ flex: 1, maxWidth: 500 }}>
-            {STEPS.map(label => (
-              <Step key={label}>
-                <StepLabel>{label}</StepLabel>
-              </Step>
-            ))}
-          </Stepper>
-        </Box>
-      </Paper>
-
-      {/* Body */}
       <Box sx={{ flex: 1, overflow: 'hidden' }}>
         {activeStep === 0 ? (
           <Step1View
