@@ -35,16 +35,18 @@ interface InterestRankingProps {
   votes: Record<string, Vote>;
   onSetInterest: (id: string, interestLevel: InterestLevel, timestamp?: number) => void;
   userRole?: string | null;
+  focusedPitchId?: string | null;
 }
 
 /**
  * Second stage of voting - allows users to rank their interest level for each problem
  */
-const InterestRanking: React.FC<InterestRankingProps> = ({ 
+const InterestRanking: React.FC<InterestRankingProps> = ({
   pitches,
   votes,
   onSetInterest,
-  userRole
+  userRole,
+  focusedPitchId
 }) => {
   // Reference to the scrollable container
   const containerRef = useRef<HTMLDivElement>(null);
@@ -335,7 +337,7 @@ const InterestRanking: React.FC<InterestRankingProps> = ({
                 height: '100%'
               }}
               key="interest-unsorted">
-              <InterestColumn 
+              <InterestColumn
                 columnId="interest-unsorted"
                 label="Unsorted"
                 color="#616161" // Gray color for unsorted
@@ -343,6 +345,7 @@ const InterestRanking: React.FC<InterestRankingProps> = ({
                 votes={votes}
                 userRole={userRole}
                 onSendToBottomUnsorted={handleSendToBottomInterestUnsorted}
+                focusedPitchId={focusedPitchId}
               />
             </Box>
 
@@ -364,13 +367,14 @@ const InterestRanking: React.FC<InterestRankingProps> = ({
                     height: '100%'
                   }}
                   key={columnId}>
-                  <InterestColumn 
+                  <InterestColumn
                     columnId={columnId}
                     label={label}
                     color={color}
                     pitches={columnPitches}
                     votes={votes}
                     userRole={userRole}
+                    focusedPitchId={focusedPitchId}
                   />
                 </Box>
               );

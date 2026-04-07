@@ -14,18 +14,20 @@ interface KanbanContainerProps {
   onDragEnd: (result: DropResult) => void;
   onSendToBottomUnsorted?: (pitchId: string) => void;
   userRole?: string | null;
+  focusedPitchId?: string | null;
 }
 
 /**
  * Main drag-and-drop container for organizing pitches into tier buckets
  * with feature detection and fallback for incompatible browsers
  */
-const KanbanContainer = ({ 
-  pitches, 
-  votes, 
+const KanbanContainer = ({
+  pitches,
+  votes,
   onDragEnd,
   onSendToBottomUnsorted,
-  userRole
+  userRole,
+  focusedPitchId
 }: KanbanContainerProps) => {
   // Reference to the scrollable container
   const containerRef = useRef<HTMLDivElement>(null);
@@ -185,8 +187,9 @@ const KanbanContainer = ({
               columnCount={columnCount} // Always 9 columns
               onSendToBottom={onSendToBottomUnsorted}
               userRole={userRole}
+              focusedPitchId={focusedPitchId}
             />
-            
+
             {/* Tier columns 1-8 */}
             {tiers.map(tier => (
               <BucketColumn
@@ -196,6 +199,7 @@ const KanbanContainer = ({
                 votes={votes}
                 columnCount={columnCount} // Always 9 columns
                 userRole={userRole}
+                focusedPitchId={focusedPitchId}
               />
             ))}
           </Box>

@@ -20,6 +20,7 @@ import type { DropResult } from '@hello-pangea/dnd';
 import type { AppState, Pitch, Tier, InterestLevel } from '../types/models';
 import { isContributorRole, canRankInterestStage1, canRankInterestStage2 } from '../types/models';
 import { useVoteManagement } from '../hooks/useVoteManagement';
+import { useKeyboardNav } from '../hooks/useKeyboardNav';
 import { getPollingCycleId, isStage2, isTLAllocationStage, getPollingStage } from '../utils/config';
 import { buildPollingKey, cleanupPollingStorageOnCycleChange, getEffectivePollingCycleId } from '../utils/pollingStorage';
 import { getInterestLevelLabel } from '../utils/voteActions';
@@ -163,6 +164,20 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
     const newTimestamp = Math.max(now, maxTimestamp + 1);
     setTier(pitchId, null, newTimestamp);
   };
+
+  // Keyboard navigation for voting board
+  const { focusedPitchId } = useKeyboardNav({
+    pitches,
+    votes: state.votes,
+    stage: state.stage,
+    isActive: !isTLStage && !showHelp && !showResetConfirmation,
+    setTier: (id, tier) => setTier(id, tier),
+    clearTier: (id) => setTier(id, null),
+    setInterest: (id, level) => setInterest(id, level),
+    clearInterest: (id) => setInterest(id, null),
+    sendToBottom: handleSendToBottomPriorityUnsorted,
+    openHelp: () => setShowHelp(true),
+  });
 
   // Access snackbar
   const { showSnackbar } = useSnackbar();
@@ -696,6 +711,7 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
                 onDragEnd={handleDragEnd}
                 onSendToBottomUnsorted={handleSendToBottomPriorityUnsorted}
                 userRole={state.voterRole}
+                focusedPitchId={focusedPitchId}
               />
             </Box>
           ) : (
@@ -706,6 +722,7 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
                 votes={state.votes || {}}
                 onSetInterest={handleInterestChange}
                 userRole={state.voterRole}
+                focusedPitchId={focusedPitchId}
               />
             ) : (
               // If user somehow got to interest stage but shouldn't be there, show fallback UI

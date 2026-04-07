@@ -1,4 +1,4 @@
-import React, { useState, useRef, memo } from 'react';
+import React, { useState, useRef, useEffect, memo } from 'react';
 import { Paper, Typography, Box, IconButton, Tooltip } from '@mui/material';
 import { InfoOutlined, Autorenew, South } from '@mui/icons-material';
 import { Draggable } from '@hello-pangea/dnd';
@@ -17,18 +17,42 @@ interface PitchCardProps {
   index: number;
   onSendToBottom?: (pitchId: string) => void;
   userRole?: string | null;
+  focused?: boolean;
 }
 
 /**
  * Represents a single pitch card that can be dragged between tiers
  */
-const PitchCard = ({ pitch, vote, index, onSendToBottom, userRole }: PitchCardProps) => {
+const PitchCard = ({ pitch, vote, index, onSendToBottom, userRole, focused }: PitchCardProps) => {
   const [detailsAnchor, setDetailsAnchor] = useState<HTMLElement | null>(null);
   // Using HTMLElement type to match what Draggable provides
   const cardRef = useRef<HTMLElement>(null);
-  
+
   // Current tier
   const currentTier = vote?.tier || null;
+
+  // Scroll into view when focused via keyboard nav
+  useEffect(() => {
+    if (focused) {
+      cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }, [focused]);
+
+  // Listen for keyboard-triggered open/close details events
+  useEffect(() => {
+    const onOpen = (e: Event) => {
+      if ((e as CustomEvent).detail.pitchId === pitch.id) {
+        setDetailsAnchor(cardRef.current);
+      }
+    };
+    const onClose = () => setDetailsAnchor(null);
+    document.addEventListener('kbdOpenDetails', onOpen);
+    document.addEventListener('kbdCloseDetails', onClose);
+    return () => {
+      document.removeEventListener('kbdOpenDetails', onOpen);
+      document.removeEventListener('kbdCloseDetails', onClose);
+    };
+  }, [pitch.id]);
 
   // Toggle details bubble
   const handleInfoButtonClick = (event: React.MouseEvent) => {
@@ -80,6 +104,9 @@ const PitchCard = ({ pitch, vote, index, onSendToBottom, userRole }: PitchCardPr
             },
             position: 'relative',
             minHeight: '88px',
+            outline: focused ? '2px solid' : 'none',
+            outlineColor: focused ? 'primary.main' : 'transparent',
+            outlineOffset: '1px',
           }}
           role="button"
           tabIndex={0}
@@ -206,5 +233,6 @@ const PitchCard = ({ pitch, vote, index, onSendToBottom, userRole }: PitchCardPr
 // Use memo to avoid unnecessary re-renders
 export default memo(PitchCard, (prevProps: PitchCardProps, nextProps: PitchCardProps) => {
   return prevProps.vote?.tier === nextProps.vote?.tier &&
-         prevProps.index === nextProps.index;
+         prevProps.index === nextProps.index &&
+         prevProps.focused === nextProps.focused;
 });

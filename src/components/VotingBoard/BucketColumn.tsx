@@ -15,12 +15,13 @@ interface BucketColumnProps {
   columnCount?: number; // Total number of visible columns (9 with unsorted, 8 without)
   onSendToBottom?: (pitchId: string) => void;
   userRole?: string | null;
+  focusedPitchId?: string | null;
 }
 
 /**
  * Represents a tier bucket column in the voting board
  */
-const BucketColumn = ({ tier, pitches, votes, columnCount = 9, onSendToBottom, userRole }: BucketColumnProps) => {
+const BucketColumn = ({ tier, pitches, votes, columnCount = 9, onSendToBottom, userRole, focusedPitchId }: BucketColumnProps) => {
   const columnRef = useRef<HTMLDivElement>(null);
   const columnId = tier === null ? 'unsorted' : `tier-${tier}`;
   
@@ -157,6 +158,7 @@ const BucketColumn = ({ tier, pitches, votes, columnCount = 9, onSendToBottom, u
                   index={index}
                   onSendToBottom={isUnsorted ? onSendToBottom : undefined}
                   userRole={userRole}
+                  focused={focusedPitchId === pitch.id}
                 />
               ))}
               {provided.placeholder}

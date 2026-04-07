@@ -87,6 +87,35 @@ const HelpDialog: React.FC<HelpDialogProps> = ({
             )}
 
             <Divider sx={{ my: 2 }} />
+            <Typography variant="h6" gutterBottom>Keyboard shortcuts</Typography>
+            <Box sx={{ bgcolor: 'action.hover', borderRadius: 1, p: 1.5, mb: 2 }}>
+              <Box component="table" sx={{ borderCollapse: 'collapse', width: '100%' }}>
+                <Box component="tbody">
+                  {[
+                    ['1 / 2 / 3 / 4', 'Rank focused card at that tier'],
+                    ['0', 'Clear ranking (back to unsorted)'],
+                    ['n', 'Jump to next unranked card'],
+                    ['b', 'Skip — send card to bottom of unsorted'],
+                    ['j / ↓', 'Next card'],
+                    ['k / ↑', 'Previous card'],
+                    ['Enter', 'Open / close card details'],
+                    ['Esc', 'Deselect card'],
+                    ['?', 'Open this help dialog'],
+                  ].map(([key, desc]) => (
+                    <Box component="tr" key={key}>
+                      <Box component="td" sx={{ pr: 3, py: 0.25, fontFamily: 'monospace', whiteSpace: 'nowrap', verticalAlign: 'top', width: '1%' }}>
+                        <Typography variant="body2" component="span" sx={{ fontFamily: 'monospace', fontWeight: 'bold' }}>{key}</Typography>
+                      </Box>
+                      <Box component="td" sx={{ py: 0.25, verticalAlign: 'top' }}>
+                        <Typography variant="body2">{desc}</Typography>
+                      </Box>
+                    </Box>
+                  ))}
+                </Box>
+              </Box>
+            </Box>
+
+            <Divider sx={{ my: 2 }} />
             <Typography variant="h6" gutterBottom>Submitting</Typography>
             <Typography variant="body1" paragraph>
               Click <strong>Finish</strong> (top right) to export your rankings as a CSV. Save it to SharePoint:
@@ -194,6 +223,35 @@ const HelpDialog: React.FC<HelpDialogProps> = ({
               Rank at least <strong>50%</strong> of the pitches shown to enable export.
               Unranked pitches signal no strong preference.
             </Typography>
+
+            <Divider sx={{ my: 2 }} />
+            <Typography variant="h6" gutterBottom>Keyboard shortcuts</Typography>
+            <Box sx={{ bgcolor: 'action.hover', borderRadius: 1, p: 1.5, mb: 2 }}>
+              <Box component="table" sx={{ borderCollapse: 'collapse', width: '100%' }}>
+                <Box component="tbody">
+                  {[
+                    ['1 / 2 / 3 / 4', 'Rank focused card at that interest level'],
+                    ['0', 'Clear ranking (back to unsorted)'],
+                    ['n', 'Jump to next unranked card'],
+                    ['b', 'Skip — send card to bottom of unsorted'],
+                    ['j / ↓', 'Next card'],
+                    ['k / ↑', 'Previous card'],
+                    ['Enter', 'Open / close card details'],
+                    ['Esc', 'Deselect card'],
+                    ['?', 'Open this help dialog'],
+                  ].map(([key, desc]) => (
+                    <Box component="tr" key={key}>
+                      <Box component="td" sx={{ pr: 3, py: 0.25, fontFamily: 'monospace', whiteSpace: 'nowrap', verticalAlign: 'top', width: '1%' }}>
+                        <Typography variant="body2" component="span" sx={{ fontFamily: 'monospace', fontWeight: 'bold' }}>{key}</Typography>
+                      </Box>
+                      <Box component="td" sx={{ py: 0.25, verticalAlign: 'top' }}>
+                        <Typography variant="body2">{desc}</Typography>
+                      </Box>
+                    </Box>
+                  ))}
+                </Box>
+              </Box>
+            </Box>
 
             <Divider sx={{ my: 2 }} />
             <Typography variant="h6" gutterBottom>Submitting</Typography>
