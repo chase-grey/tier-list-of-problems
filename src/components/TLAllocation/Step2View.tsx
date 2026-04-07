@@ -1,7 +1,7 @@
 import { lazy, Suspense, useMemo, useRef, useState, useCallback } from 'react';
 import {
   Box, Typography, Paper, Table, TableBody, TableCell, TableHead, TableRow,
-  Select, MenuItem, Divider, Tooltip, Chip, IconButton, Popover, TextField,
+  Select, MenuItem, Divider, Tooltip, IconButton, Popover, TextField,
   Button, Checkbox, Collapse,
 } from '@mui/material';
 import {
@@ -239,16 +239,16 @@ export default function Step2View({
                   </colgroup>
                   <TableHead>
                     <TableRow sx={{ '& th': { py: 0.5, fontSize: '0.72rem', color: 'text.secondary' } }}>
-                      <TableCell>Project</TableCell>
-                      <TableCell width={72}>Message</TableCell>
-                      <TableCell width={48}>
+                      <TableCell>Pitch</TableCell>
+                      <TableCell width={72} align="center">Message</TableCell>
+                      <TableCell width={48} align="center">
                         <Tooltip title="Include UXD in project kickoff">
                           <span>UXD</span>
                         </Tooltip>
                       </TableCell>
-                      <TableCell width={72}>Dev</TableCell>
-                      <TableCell width={190}>Dev TL</TableCell>
-                      <TableCell width={190}>QM</TableCell>
+                      <TableCell width={72} align="center">Dev</TableCell>
+                      <TableCell width={190} align="center">Dev TL</TableCell>
+                      <TableCell width={190} align="center">QM</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -340,12 +340,6 @@ export default function Step2View({
                       {assignedPitchIds.length} projects
                     </Typography>
                   </Box>
-                  {dataStatus === 'none' && (
-                    <Chip label="No data" size="small" color="error" variant="outlined" sx={{ fontSize: '0.65rem', ml: 2, mb: 0.25 }} />
-                  )}
-                  {dataStatus === 'partial' && (
-                    <Chip label="Partial data" size="small" color="warning" variant="outlined" sx={{ fontSize: '0.65rem', ml: 2, mb: 0.25 }} />
-                  )}
                   {assignedPitchIds.map(pid => {
                     const p = pitchMap.get(pid);
                     if (!p) return null;

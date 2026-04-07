@@ -333,18 +333,18 @@ export default function Step1View({
                   <TableHead>
                     <TableRow sx={{ '& th': { py: 0.5, fontSize: '0.72rem', color: 'text.secondary' } }}>
                       <TableCell>Pitch</TableCell>
-                      <TableCell align="right" width={56}>
+                      <TableCell align="center" width={56}>
                         <Tooltip title="Team priority score — hover a score to see voter breakdown" placement="top">
                           <span>Team</span>
                         </Tooltip>
                       </TableCell>
-                      <TableCell align="right" width={56}>
+                      <TableCell align="center" width={56}>
                         <Tooltip title="TL priority score — hover a score to see voter breakdown" placement="top">
                           <span>TL</span>
                         </Tooltip>
                       </TableCell>
-                      <TableCell width={170}>Dev</TableCell>
-                      <TableCell width={185} align="right" />
+                      <TableCell align="center" width={170}>Dev</TableCell>
+                      <TableCell width={185} align="center" />
                     </TableRow>
                   </TableHead>
                   <TableBody>
