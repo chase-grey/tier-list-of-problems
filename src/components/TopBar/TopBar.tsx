@@ -74,9 +74,9 @@ export const TopBar = ({
   onAllocationFinish,
   allocationFinishLabel = 'Finish Step',
 }: TopBarProps) => {
-  const allocationStepLabel = allocationStep === 0
-    ? 'Step 1: Assign Devs'
-    : 'Step 2: Assign TLs + QMs';
+  const appTitle = allocationMode
+    ? (allocationStep === 0 ? 'Allocation 1: Plan' : 'Allocation 2: Team')
+    : (appStage2Mode || stage === 'interest') ? 'Stage 2: Preferences' : 'Stage 1: Voting';
   return (
     <AppBar
       position="sticky"
@@ -90,9 +90,7 @@ export const TopBar = ({
       <Toolbar sx={{ minHeight: '48px !important', py: 0 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', flexGrow: 1 }}>
           <Typography variant="subtitle1" component="div">
-            {allocationMode
-              ? `TL Allocation — ${allocationStepLabel}`
-              : `Problem Polling: ${voterName}`}
+            {appTitle}
           </Typography>
 
           <Tooltip title="View Instructions">

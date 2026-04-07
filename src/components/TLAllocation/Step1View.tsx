@@ -49,6 +49,13 @@ function priorityBarPct(score: number): number {
   return Math.round(((5 - score) / 4) * 100);
 }
 
+/** Semantic health color for avg priority score: green = high priority, yellow = medium, red = low. */
+function priorityHealthColor(score: number): string {
+  if (score <= 2.0) return '#4caf50';   // green — selecting high-priority work
+  if (score <= 2.75) return '#ff9800';  // amber — medium priority
+  return '#f44336';                      // red — selecting low-priority work
+}
+
 function interestLabel(avg: number): string {
   if (avg <= 1.5) return 'Very High';
   if (avg <= 2.5) return 'High';
@@ -58,8 +65,10 @@ function interestLabel(avg: number): string {
 
 // ─── VoteBreakdown: tooltip content showing per-voter priority tiers ──────────
 
-function VoteBreakdown({ votes, label }: { votes: Record<string, 1 | 2 | 3 | 4>; label: string }) {
-  const sorted = Object.entries(votes).sort(([, a], [, b]) => a - b);
+const TIER_LABEL: Record<1 | 2 | 3 | 4, string> = { 1: 'Highest', 2: 'High', 3: 'Medium', 4: 'Low' };
+
+function VoteBreakdown({ votes, label }: { votes: Record<string, 1 | 2 | 3 | 4 | null>; label: string }) {
+  const sorted = Object.entries(votes).sort(([, a], [, b]) => (a ?? 5) - (b ?? 5));
   return (
     <Box sx={{ p: 0.5 }}>
       <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5, fontWeight: 700 }}>
@@ -68,7 +77,9 @@ function VoteBreakdown({ votes, label }: { votes: Record<string, 1 | 2 | 3 | 4>;
       {sorted.map(([name, tier]) => (
         <Box key={name} sx={{ display: 'flex', justifyContent: 'space-between', gap: 1.5 }}>
           <Typography variant="caption">{name.split(' ')[0]}</Typography>
-          <Typography variant="caption" sx={{ color: priorityColor(tier), fontWeight: 700 }}>T{tier}</Typography>
+          <Typography variant="caption" sx={{ color: tier != null ? priorityColor(tier) : 'text.disabled', fontWeight: 700 }}>
+            {tier != null ? `${TIER_LABEL[tier]} (${tier})` : 'Unranked (–)'}
+          </Typography>
         </Box>
       ))}
     </Box>
@@ -158,7 +169,7 @@ export default function Step1View({
     const onMove = (ev: MouseEvent) => {
       if (!dragRef.current || !sidebarRef.current) return;
       const delta = dragRef.current.startX - ev.clientX;
-      const w = Math.max(220, Math.min(640, dragRef.current.startWidth + delta));
+      const w = Math.max(220, Math.min(960, dragRef.current.startWidth + delta));
       sidebarRef.current.style.width = `${w}px`; // direct DOM, no React re-render
       dragRef.current.liveWidth = w;
     };
@@ -504,19 +515,26 @@ export default function Step1View({
       >
 
         {/* ── Section: Selected Project Priority ── */}
-        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-          Selected Project Priority
-        </Typography>
+        <Tooltip
+          title="Average priority tier across all planned projects, based on team and TL votes. Lower is better — tier 1 means the project was ranked highest priority."
+          placement="bottom-start"
+          slotProps={{ tooltip: { sx: { bgcolor: 'background.paper', color: 'text.primary', boxShadow: 3, border: '1px solid', borderColor: 'divider', maxWidth: 260, fontSize: '0.72rem' } } }}
+        >
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, mb: 0.5, textTransform: 'uppercase', letterSpacing: 0.5, cursor: 'default' }}>
+            Selected Project Priority
+            <InfoIcon sx={{ fontSize: '0.85rem', opacity: 0.5 }} />
+          </Typography>
+        </Tooltip>
         {stats.avgTeamPriority !== null ? (
           <Box sx={{ mb: 1.5 }}>
             <Typography variant="caption" sx={{ display: 'block' }}>
-              <Box component="span" sx={{ color: priorityColor(stats.avgTeamPriority), fontWeight: 700 }}>
+              <Box component="span" sx={{ color: priorityHealthColor(stats.avgTeamPriority), fontWeight: 700 }}>
                 Team: {stats.avgTeamPriority.toFixed(1)} ({interestLabel(stats.avgTeamPriority)})
               </Box>
               {stats.avgTLPriority !== null && (
                 <>
                   <Box component="span" sx={{ color: 'text.disabled', mx: 0.5 }}>·</Box>
-                  <Box component="span" sx={{ color: priorityColor(stats.avgTLPriority), fontWeight: 700 }}>
+                  <Box component="span" sx={{ color: priorityHealthColor(stats.avgTLPriority), fontWeight: 700 }}>
                     TL: {stats.avgTLPriority.toFixed(1)} ({interestLabel(stats.avgTLPriority)})
                   </Box>
                 </>
@@ -684,17 +702,19 @@ export default function Step1View({
                 const shortTitle = p.title.replace(/^[^/]+\/\s*/, '');
                 return (
                   <Box key={pid} sx={{ display: 'flex', alignItems: 'center', gap: 0.5, ml: 1.5, mt: 0.25 }}>
-                    <Tooltip title={p.title}>
+                    <Tooltip title={`${p.title} — click to jump`} placement="top-start">
                       <Typography
                         variant="caption"
                         color="text.secondary"
-                        sx={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                        onClick={() => handleFocusPitch(pid)}
+                        sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'pointer',
+                              '&:hover': { textDecoration: 'underline' } }}
                       >
                         {shortTitle}
                       </Typography>
                     </Tooltip>
-                    {/* ITEM 3: info button in dev assignment list */}
                     <DevPitchInfo pitch={p} />
+                    <Box sx={{ flex: 1 }} />
                     <InterestChip level={p.devInterest[dev] ?? null} noData={!(dev in p.devInterest)} size="small" />
                   </Box>
                 );
@@ -733,8 +753,8 @@ function PitchRow({ assignment, pitch, devNames, onDevChange, onStatusChange, hi
       ref={onRef}
       sx={{
         opacity: highlight === 'cut' ? 0.55 : 1,
-        bgcolor: highlighted ? 'rgba(25, 118, 210, 0.12)' : undefined,
-        transition: 'background-color 0.6s ease',
+        bgcolor: highlighted ? 'rgba(255, 152, 0, 0.45)' : undefined,
+        transition: highlighted ? 'none' : 'background-color 1.2s ease',
       }}
     >
       <TableCell sx={{ maxWidth: 200 }}>
@@ -765,7 +785,7 @@ function PitchRow({ assignment, pitch, devNames, onDevChange, onStatusChange, hi
       <TableCell align="right">
         <Tooltip
           title={<VoteBreakdown votes={pitch.teamVotes} label="Team votes" />}
-          placement="right"
+          placement="left"
           slotProps={{ tooltip: { sx: { bgcolor: 'background.paper', color: 'text.primary', boxShadow: 3, border: '1px solid', borderColor: 'divider', p: 0 } } }}
         >
           <Typography variant="caption" sx={{ color: priorityColor(pitch.teamPriorityScore), fontWeight: 600, cursor: 'default' }}>
@@ -776,7 +796,7 @@ function PitchRow({ assignment, pitch, devNames, onDevChange, onStatusChange, hi
       <TableCell align="right">
         <Tooltip
           title={<VoteBreakdown votes={pitch.tlVotes} label="TL votes" />}
-          placement="right"
+          placement="left"
           slotProps={{ tooltip: { sx: { bgcolor: 'background.paper', color: 'text.primary', boxShadow: 3, border: '1px solid', borderColor: 'divider', p: 0 } } }}
         >
           <Typography variant="caption" sx={{ color: priorityColor(pitch.tlPriorityScore), fontWeight: 600, cursor: 'default' }}>
@@ -793,8 +813,10 @@ function PitchRow({ assignment, pitch, devNames, onDevChange, onStatusChange, hi
           displayEmpty
           sx={{ fontSize: '0.75rem', width: '100%' }}
           renderValue={val => val
-            ? <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                <span>{(val as string).split(' ')[0]}</span>
+            ? <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0 }}>
+                <Typography variant="caption" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {(val as string).split(' ')[0]}
+                </Typography>
                 <InterestChip
                   level={pitch.devInterest[val as string] ?? null}
                   noData={!((val as string) in pitch.devInterest)}
@@ -805,9 +827,9 @@ function PitchRow({ assignment, pitch, devNames, onDevChange, onStatusChange, hi
         >
           <MenuItem value=""><em>Unassign</em></MenuItem>
           {sortedDevs.map(dev => (
-            <MenuItem key={dev} value={dev}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
-                <Typography variant="body2" sx={{ flex: 1 }}>{dev}</Typography>
+            <MenuItem key={dev} value={dev} sx={{ px: 2, py: 0.75 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%', minWidth: 0 }}>
+                <Typography variant="body2" sx={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{dev}</Typography>
                 <InterestChip level={pitch.devInterest[dev] ?? null} noData={!(dev in pitch.devInterest)} />
               </Box>
             </MenuItem>
