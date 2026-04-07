@@ -8,14 +8,20 @@ interface UseKeyboardNavOptions {
   isActive: boolean;
   setTier: (id: string, tier: Tier) => void;
   clearTier: (id: string) => void;
+  clearTierToTop: (id: string) => void;
   setInterest: (id: string, level: InterestLevel) => void;
   clearInterest: (id: string) => void;
+  clearInterestToTop: (id: string) => void;
   sendToBottom: (id: string) => void;
   openHelp: () => void;
 }
 
 /**
  * Keyboard navigation for the voting board.
+ *
+ * j/k — sequential navigation through the ordered pitch list
+ * Arrow Up/Down — move within the same column (tier/interest level)
+ * Arrow Left/Right — move to adjacent column, same row position
  *
  * Returns focusedPitchId and setFocusedPitchId so the parent can
  * highlight the focused card and pass it down the tree.
@@ -27,8 +33,10 @@ export const useKeyboardNav = ({
   isActive,
   setTier,
   clearTier,
+  clearTierToTop,
   setInterest,
   clearInterest,
+  clearInterestToTop,
   sendToBottom,
   openHelp,
 }: UseKeyboardNavOptions): {
@@ -37,7 +45,7 @@ export const useKeyboardNav = ({
 } => {
   const [focusedPitchId, setFocusedPitchId] = useState<string | null>(null);
 
-  // Build an ordered list of pitches for navigation.
+  // Build an ordered list of pitches for sequential j/k navigation.
   // Priority mode: unsorted first (asc timestamp), then tier 1, 2, 3, 4 (each asc timestamp).
   // Interest mode: unranked first, then level 1, 2, 3, 4.
   const orderedList = useMemo((): Pitch[] => {
@@ -95,6 +103,9 @@ export const useKeyboardNav = ({
     [orderedList]
   );
 
+  // Column order: null (unsorted/unranked) = 0, then levels 1–4
+  const COLUMN_ORDER: (number | null)[] = [null, 1, 2, 3, 4];
+
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (!isActive) return;
@@ -111,10 +122,25 @@ export const useKeyboardNav = ({
         return;
       }
 
+      // ── Column helpers (closures so they use fresh votes/pitches) ──────────
+      const getCardColumn = (pitchId: string): number | null =>
+        stage === 'priority'
+          ? (votes[pitchId]?.tier ?? null)
+          : (votes[pitchId]?.interestLevel ?? null);
+
+      const getColumnPitches = (colValue: number | null): Pitch[] =>
+        pitches
+          .filter(p => getCardColumn(p.id) === colValue)
+          .sort((a, b) => {
+            const tA = votes[a.id]?.timestamp ?? 0;
+            const tB = votes[b.id]?.timestamp ?? 0;
+            return tA !== tB ? tA - tB : a.id.localeCompare(b.id);
+          });
+
       const key = event.key;
 
-      // Navigation keys
-      if (key === 'j' || key === 'ArrowDown') {
+      // ── Sequential navigation: j / k (linear through ordered list) ────────
+      if (key === 'j') {
         event.preventDefault();
         if (orderedList.length === 0) return;
         const idx = currentIndex(focusedPitchId);
@@ -123,12 +149,71 @@ export const useKeyboardNav = ({
         return;
       }
 
-      if (key === 'k' || key === 'ArrowUp') {
+      if (key === 'k') {
         event.preventDefault();
         if (orderedList.length === 0) return;
         const idx = currentIndex(focusedPitchId);
         const prev = idx === -1 ? 0 : (idx - 1 + orderedList.length) % orderedList.length;
         setFocusedPitchId(orderedList[prev].id);
+        return;
+      }
+
+      // ── Column navigation: Arrow keys ──────────────────────────────────────
+      if (key === 'ArrowDown') {
+        event.preventDefault();
+        if (orderedList.length === 0) return;
+        if (!focusedPitchId) { setFocusedPitchId(orderedList[0].id); return; }
+        const col = getCardColumn(focusedPitchId);
+        const colPitches = getColumnPitches(col);
+        const idx = colPitches.findIndex(p => p.id === focusedPitchId);
+        if (idx !== -1 && idx < colPitches.length - 1) {
+          setFocusedPitchId(colPitches[idx + 1].id);
+        }
+        return;
+      }
+
+      if (key === 'ArrowUp') {
+        event.preventDefault();
+        if (orderedList.length === 0) return;
+        if (!focusedPitchId) { setFocusedPitchId(orderedList[0].id); return; }
+        const col = getCardColumn(focusedPitchId);
+        const colPitches = getColumnPitches(col);
+        const idx = colPitches.findIndex(p => p.id === focusedPitchId);
+        if (idx > 0) {
+          setFocusedPitchId(colPitches[idx - 1].id);
+        }
+        return;
+      }
+
+      if (key === 'ArrowRight') {
+        event.preventDefault();
+        if (!focusedPitchId) { setFocusedPitchId(orderedList[0]?.id ?? null); return; }
+        const col = getCardColumn(focusedPitchId);
+        const colIdx = COLUMN_ORDER.indexOf(col);
+        if (colIdx < COLUMN_ORDER.length - 1) {
+          const nextCol = COLUMN_ORDER[colIdx + 1];
+          const myPos = getColumnPitches(col).findIndex(p => p.id === focusedPitchId);
+          const nextColPitches = getColumnPitches(nextCol);
+          if (nextColPitches.length > 0) {
+            setFocusedPitchId(nextColPitches[Math.min(myPos, nextColPitches.length - 1)].id);
+          }
+        }
+        return;
+      }
+
+      if (key === 'ArrowLeft') {
+        event.preventDefault();
+        if (!focusedPitchId) { setFocusedPitchId(orderedList[0]?.id ?? null); return; }
+        const col = getCardColumn(focusedPitchId);
+        const colIdx = COLUMN_ORDER.indexOf(col);
+        if (colIdx > 0) {
+          const prevCol = COLUMN_ORDER[colIdx - 1];
+          const myPos = getColumnPitches(col).findIndex(p => p.id === focusedPitchId);
+          const prevColPitches = getColumnPitches(prevCol);
+          if (prevColPitches.length > 0) {
+            setFocusedPitchId(prevColPitches[Math.min(myPos, prevColPitches.length - 1)].id);
+          }
+        }
         return;
       }
 
@@ -172,10 +257,9 @@ export const useKeyboardNav = ({
         return;
       }
 
-      // Ranking shortcuts 0–4
+      // Ranking shortcuts 1–4 (set tier/level) and 0 (clear to top of unsorted)
       if (key === '0' || key === '1' || key === '2' || key === '3' || key === '4') {
         event.preventDefault();
-        // If no card is focused, default to first card
         let targetId = focusedPitchId;
         if (!targetId && orderedList.length > 0) {
           targetId = orderedList[0].id;
@@ -186,18 +270,17 @@ export const useKeyboardNav = ({
         const level = parseInt(key) as 0 | 1 | 2 | 3 | 4;
         if (stage === 'priority') {
           if (level === 0) {
-            clearTier(targetId);
+            clearTierToTop(targetId);
           } else {
             setTier(targetId, level as Tier);
           }
         } else {
           if (level === 0) {
-            clearInterest(targetId);
+            clearInterestToTop(targetId);
           } else {
             setInterest(targetId, level as InterestLevel);
           }
         }
-        // Keep focus on the same card (do not auto-advance)
         return;
       }
     };
@@ -211,12 +294,16 @@ export const useKeyboardNav = ({
     focusedPitchId,
     orderedList,
     stage,
+    votes,
+    pitches,
     currentIndex,
     isUnranked,
     setTier,
     clearTier,
+    clearTierToTop,
     setInterest,
     clearInterest,
+    clearInterestToTop,
     sendToBottom,
     openHelp,
   ]);

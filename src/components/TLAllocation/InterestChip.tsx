@@ -34,7 +34,7 @@ export default function InterestChip({ level, size = 'small', noData = false }: 
     <Chip
       label={cfg.label}
       size={size}
-      sx={{ fontSize: '0.7rem', bgcolor: cfg.bg, color: cfg.color, fontWeight: 600 }}
+      sx={{ fontSize: '0.7rem', bgcolor: cfg.bg, color: cfg.color, fontWeight: 600, minWidth: 72 }}
     />
   );
 }

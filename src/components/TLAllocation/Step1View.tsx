@@ -15,6 +15,7 @@ import {
 import type { AllocationPlan, AllocationPitch, AssignmentStatus, PlanAssignment } from '../../types/allocationTypes';
 import type { AllocationConfig } from '../../types/allocationTypes';
 import InterestChip from './InterestChip';
+import InterestDot from './InterestDot';
 
 const DetailsBubble = lazy(() => import('../VotingBoard/PitchCard/DetailsBubble'));
 
@@ -722,7 +723,10 @@ export default function Step1View({
                       </Tooltip>
                     )}
                     <Box sx={{ flex: 1 }} />
-                    <InterestChip level={p.devInterest[dev] ?? null} noData={!(dev in p.devInterest)} size="small" />
+                    {sidebarWidth < 280
+                      ? <InterestDot level={p.devInterest[dev] ?? null} noData={!(dev in p.devInterest)} />
+                      : <InterestChip level={p.devInterest[dev] ?? null} noData={!(dev in p.devInterest)} size="small" />
+                    }
                   </Box>
                 );
               })}
@@ -829,10 +833,9 @@ function PitchRow({ assignment, pitch, devNames, onDevChange, onStatusChange, hi
                 <Typography variant="caption" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
                   {(val as string).split(' ')[0]}
                 </Typography>
-                <InterestChip
+                <InterestDot
                   level={pitch.devInterest[val as string] ?? null}
                   noData={!((val as string) in pitch.devInterest)}
-                  size="small"
                 />
               </Box>
             : <Typography variant="caption" color="text.disabled">Assign dev…</Typography>

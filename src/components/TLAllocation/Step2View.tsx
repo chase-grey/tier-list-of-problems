@@ -18,6 +18,7 @@ import type {
   AllocationPitch, Phase2Interest, StaffingAssignment, AllocationConfig,
 } from '../../types/allocationTypes';
 import InterestChip from './InterestChip';
+import InterestDot from './InterestDot';
 
 const DetailsBubble = lazy(() => import('../VotingBoard/PitchCard/DetailsBubble'));
 
@@ -371,7 +372,10 @@ export default function Step2View({
                           </Tooltip>
                         )}
                         <Box sx={{ flex: 1 }} />
-                        <InterestChip level={interestLevel} noData={noData} size="small" />
+                        {sidebarWidth < 280
+                          ? <InterestDot level={interestLevel} noData={noData} />
+                          : <InterestChip level={interestLevel} noData={noData} size="small" />
+                        }
                       </Box>
                     );
                   })}
@@ -574,7 +578,7 @@ function AssignmentDropdown({ value, options, pitchId, onChange }: AssignmentDro
             <Typography variant="caption" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
               {(val as string).split(' ')[0]}
             </Typography>
-            <InterestChip level={level} noData={noData} size="small" />
+            <InterestDot level={level} noData={noData} />
           </Box>
         );
       }}

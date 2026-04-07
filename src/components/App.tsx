@@ -163,6 +163,26 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
     setTier(pitchId, null, newTimestamp);
   };
 
+  const handleClearTierToTop = (pitchId: string) => {
+    const visibleUnsorted = pitches.filter(
+      p => p.category === selectedCategory && !state.votes[p.id]?.tier
+    );
+    const minTs = visibleUnsorted.reduce((min, p) => {
+      const ts = state.votes[p.id]?.timestamp ?? Infinity;
+      return ts < min ? ts : min;
+    }, Infinity);
+    setTier(pitchId, null, minTs === Infinity ? 1 : Math.max(1, minTs - 1));
+  };
+
+  const handleClearInterestToTop = (pitchId: string) => {
+    const unranked = pitches.filter(p => !state.votes[p.id]?.interestLevel);
+    const minTs = unranked.reduce((min, p) => {
+      const ts = state.votes[p.id]?.timestamp ?? Infinity;
+      return ts < min ? ts : min;
+    }, Infinity);
+    setInterest(pitchId, null, minTs === Infinity ? 1 : Math.max(1, minTs - 1));
+  };
+
   // Keyboard navigation for voting board
   const { focusedPitchId, setFocusedPitchId } = useKeyboardNav({
     pitches,
@@ -171,8 +191,10 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
     isActive: !isTLStage && !showHelp && !showResetConfirmation,
     setTier: (id, tier) => setTier(id, tier),
     clearTier: (id) => setTier(id, null),
+    clearTierToTop: handleClearTierToTop,
     setInterest: (id, level) => setInterest(id, level),
     clearInterest: (id) => setInterest(id, null),
+    clearInterestToTop: handleClearInterestToTop,
     sendToBottom: handleSendToBottomPriorityUnsorted,
     openHelp: () => setShowHelp(true),
   });
