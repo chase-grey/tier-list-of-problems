@@ -144,7 +144,7 @@ function priorityVotesForPitch(pitchId: string, category: string): {
 export const MOCK_PITCHES: AllocationPitch[] = (pitchData as unknown as Pitch[])
   .map(p => {
     const { teamVotes, tlVotes, teamPriorityScore, tlPriorityScore } = priorityVotesForPitch(p.id, p.category);
-    return {
+    const base: AllocationPitch = {
       ...p,
       teamVotes,
       tlVotes,
@@ -152,6 +152,15 @@ export const MOCK_PITCHES: AllocationPitch[] = (pitchData as unknown as Pitch[])
       tlPriorityScore,
       devInterest: devInterestForPitch(p.id, p.category),
     };
+    if (p.continuation) {
+      base.previousTL = MOCK_CONFIG.devTLNames[
+        Math.floor(hashScore(p.id + '-ptl', 0, MOCK_CONFIG.devTLNames.length))
+      ];
+      base.previousQM = MOCK_CONFIG.qmNames[
+        Math.floor(hashScore(p.id + '-pqm', 0, MOCK_CONFIG.qmNames.length))
+      ];
+    }
+    return base;
   });
 
 // ─── Plan generation ──────────────────────────────────────────────────────────

@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { Box, Snackbar, Alert } from '@mui/material';
-import type { AssignmentStatus, PlanAssignment, StaffingAssignment } from '../../types/allocationTypes';
+import type { AllocationPitch, AllocationConfig, AssignmentStatus, Phase2Interest, PlanAssignment, StaffingAssignment } from '../../types/allocationTypes';
 import {
   MOCK_CONFIG, MOCK_PITCHES, MOCK_PLANS, MOCK_PHASE2_INTERESTS,
 } from '../../mocks/allocationMockData';
@@ -10,6 +10,78 @@ import Step2View from './Step2View';
 interface TLAllocationViewProps {
   activeStep: 0 | 1;
   onFinalize?: () => void;
+}
+
+// ─── Auto-assign algorithm for Step 2 ────────────────────────────────────────
+
+function autoAssignStep2(
+  pitches: AllocationPitch[],
+  phase2Interests: Phase2Interest[],
+  config: AllocationConfig,
+): StaffingAssignment[] {
+  // Sort: continuations first
+  const sorted = [...pitches].sort((a, b) => {
+    if (a.continuation && !b.continuation) return -1;
+    if (!a.continuation && b.continuation) return 1;
+    return 0;
+  });
+
+  const devTLLoad: Record<string, number> = {};
+  const qmLoad: Record<string, number> = {};
+  config.devTLNames.forEach(n => { devTLLoad[n] = 0; });
+  config.qmNames.forEach(n => { qmLoad[n] = 0; });
+
+  const devTLInterests = phase2Interests.filter(pi => pi.role === 'dev TL');
+  const qmInterests = phase2Interests.filter(pi => pi.role === 'QM');
+
+  return sorted.map(pitch => {
+    let devTL: string | null = null;
+    let qm: string | null = null;
+
+    // Continuation: try to keep previousTL
+    if (pitch.continuation && pitch.previousTL && config.devTLNames.includes(pitch.previousTL)) {
+      devTL = pitch.previousTL;
+      devTLLoad[devTL]++;
+    }
+
+    // Continuation: try to keep previousQM
+    if (pitch.continuation && pitch.previousQM && config.qmNames.includes(pitch.previousQM)) {
+      qm = pitch.previousQM;
+      qmLoad[qm]++;
+    }
+
+    // Fill unassigned devTL by interest + load
+    if (!devTL) {
+      const best = [...devTLInterests]
+        .sort((a, b) => {
+          const tA = (a.interestByPitchId[pitch.id] ?? 5) as number;
+          const tB = (b.interestByPitchId[pitch.id] ?? 5) as number;
+          if (tA !== tB) return tA - tB;
+          return (devTLLoad[a.personName] ?? 0) - (devTLLoad[b.personName] ?? 0);
+        })[0];
+      if (best) {
+        devTL = best.personName;
+        devTLLoad[devTL] = (devTLLoad[devTL] ?? 0) + 1;
+      }
+    }
+
+    // Fill unassigned QM by interest + load
+    if (!qm) {
+      const best = [...qmInterests]
+        .sort((a, b) => {
+          const tA = (a.interestByPitchId[pitch.id] ?? 5) as number;
+          const tB = (b.interestByPitchId[pitch.id] ?? 5) as number;
+          if (tA !== tB) return tA - tB;
+          return (qmLoad[a.personName] ?? 0) - (qmLoad[b.personName] ?? 0);
+        })[0];
+      if (best) {
+        qm = best.personName;
+        qmLoad[qm] = (qmLoad[qm] ?? 0) + 1;
+      }
+    }
+
+    return { pitchId: pitch.id, devTL, qm };
+  });
 }
 
 export default function TLAllocationView({ activeStep, onFinalize }: TLAllocationViewProps) {
@@ -77,7 +149,9 @@ export default function TLAllocationView({ activeStep, onFinalize }: TLAllocatio
   selectedPitchesRef.current = selectedPitches;
   useEffect(() => {
     if (activeStep === 1 && prevStepRef.current === 0) {
-      setStep2Assignments(selectedPitchesRef.current.map(p => ({ pitchId: p.id, devTL: null, qm: null })));
+      setStep2Assignments(
+        autoAssignStep2(selectedPitchesRef.current, MOCK_PHASE2_INTERESTS, MOCK_CONFIG)
+      );
     }
     prevStepRef.current = activeStep;
   }, [activeStep]);
@@ -89,6 +163,12 @@ export default function TLAllocationView({ activeStep, onFinalize }: TLAllocatio
       return [...prev, { pitchId, devTL: null, qm: null, [field]: value }];
     });
   };
+
+  // Derive devByPitchId from step 1 assignments (for Step2View read-only dev column)
+  const devByPitchId = useMemo<Record<string, string | null>>(
+    () => Object.fromEntries(currentAssignments.map(a => [a.pitchId, a.assignedDev])),
+    [currentAssignments]
+  );
 
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string }>({ open: false, message: '' });
 
@@ -119,6 +199,7 @@ export default function TLAllocationView({ activeStep, onFinalize }: TLAllocatio
             config={MOCK_CONFIG}
             onAssign={handleStep2Assign}
             onFinalize={handleFinalize}
+            devByPitchId={devByPitchId}
           />
         )}
       </Box>

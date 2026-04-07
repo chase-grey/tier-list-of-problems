@@ -1,9 +1,16 @@
-import { lazy, Suspense, useMemo, useState } from 'react';
+import { lazy, Suspense, useMemo, useRef, useState, useCallback } from 'react';
 import {
   Box, Typography, Paper, Table, TableBody, TableCell, TableHead, TableRow,
-  Select, MenuItem, Divider, Tooltip, Chip, IconButton,
+  Select, MenuItem, Divider, Tooltip, Chip, IconButton, Popover, TextField,
+  Button, Checkbox,
 } from '@mui/material';
-import { Warning as WarnIcon, CheckCircle as OkIcon, InfoOutlined as InfoIcon } from '@mui/icons-material';
+import {
+  Warning as WarnIcon,
+  CheckCircle as OkIcon,
+  InfoOutlined as InfoIcon,
+  MailOutline as MailOutlineIcon,
+  Autorenew as AutorenewIcon,
+} from '@mui/icons-material';
 import type {
   AllocationPitch, Phase2Interest, StaffingAssignment, AllocationConfig,
 } from '../../types/allocationTypes';
@@ -16,16 +23,88 @@ interface Step2ViewProps {
   assignments: StaffingAssignment[];
   phase2Interests: Phase2Interest[];
   config: AllocationConfig;
+  devByPitchId: Record<string, string | null>;
   onAssign: (pitchId: string, field: 'devTL' | 'qm', value: string | null) => void;
   onFinalize?: () => void;
 }
 
+// ─── DevPitchInfo: inline info button for sidebar pitch lists ─────────────────
+
+function DevPitchInfo({ pitch }: { pitch: AllocationPitch }) {
+  const [anchor, setAnchor] = useState<HTMLButtonElement | null>(null);
+  return (
+    <>
+      <Tooltip title="View pitch details">
+        <IconButton size="small" sx={{ p: 0.2, flexShrink: 0 }} onClick={e => setAnchor(e.currentTarget)}>
+          <InfoIcon sx={{ fontSize: '0.75rem', color: 'text.disabled' }} />
+        </IconButton>
+      </Tooltip>
+      {anchor && (
+        <Suspense fallback={null}>
+          <DetailsBubble
+            pitch={pitch}
+            anchorEl={anchor}
+            onClose={() => setAnchor(null)}
+            anchorOrigin={{ vertical: 'center', horizontal: 'right' }}
+            transformOrigin={{ vertical: 'center', horizontal: 'left' }}
+          />
+        </Suspense>
+      )}
+    </>
+  );
+}
+
 export default function Step2View({
-  selectedPitches, assignments, phase2Interests, config, onAssign,
+  selectedPitches, assignments, phase2Interests, config, onAssign, devByPitchId,
 }: Step2ViewProps) {
+  // ── Sidebar resize (Item 5) ──────────────────────────────────────────────
+  const [sidebarWidth, setSidebarWidth] = useState(280);
+  const sidebarRef = useRef<HTMLDivElement>(null);
+  const dragRef = useRef<{ startX: number; startWidth: number; liveWidth: number } | null>(null);
+
+  const handleDragStart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    dragRef.current = { startX: e.clientX, startWidth: sidebarWidth, liveWidth: sidebarWidth };
+
+    const onMove = (ev: MouseEvent) => {
+      if (!dragRef.current || !sidebarRef.current) return;
+      const delta = dragRef.current.startX - ev.clientX;
+      const w = Math.max(220, Math.min(960, dragRef.current.startWidth + delta));
+      sidebarRef.current.style.width = `${w}px`;
+      dragRef.current.liveWidth = w;
+    };
+    const onUp = () => {
+      if (dragRef.current) setSidebarWidth(dragRef.current.liveWidth);
+      dragRef.current = null;
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  };
+
+  // ── Row navigation (click pitch in sidebar → scroll + flash) ────────────
+  const rowRefs = useRef<Map<string, HTMLTableRowElement>>(new Map());
+  const registerRow = useCallback((pitchId: string) => (el: HTMLTableRowElement | null) => {
+    if (el) rowRefs.current.set(pitchId, el);
+    else rowRefs.current.delete(pitchId);
+  }, []);
+  const [highlightPitchId, setHighlightPitchId] = useState<string | null>(null);
+
+  const handleFocusPitch = useCallback((pitchId: string) => {
+    rowRefs.current.get(pitchId)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setHighlightPitchId(pitchId);
+    setTimeout(() => setHighlightPitchId(null), 1500);
+  }, []);
+
   const assignMap = useMemo(
     () => new Map(assignments.map(a => [a.pitchId, a])),
     [assignments]
+  );
+
+  const pitchMap = useMemo(
+    () => new Map(selectedPitches.map(p => [p.id, p])),
+    [selectedPitches]
   );
 
   const devTLInterests = phase2Interests.filter(p => p.role === 'dev TL');
@@ -33,7 +112,7 @@ export default function Step2View({
 
   const totalPitches = selectedPitches.length;
 
-  // Per-person data completeness (key absent from interestByPitchId = no data for that pitch)
+  // Per-person data completeness
   const personDataStatus = useMemo(() => {
     return Object.fromEntries(
       phase2Interests.map(pi => {
@@ -45,44 +124,87 @@ export default function Step2View({
     ) as Record<string, 'full' | 'partial' | 'none'>;
   }, [phase2Interests, selectedPitches, totalPitches]);
 
-  // Per-person assignment summary: count of each interest tier assigned
-  const personSummary = useMemo(() => {
-    const summary: Record<string, Record<number, number>> = {};
-    [...config.devTLNames, ...config.qmNames].forEach(name => {
-      summary[name] = { 1: 0, 2: 0, 3: 0, 4: 0 };
+  const hasHighInterest = (name: string) => {
+    const pi = phase2Interests.find(p => p.personName === name);
+    if (!pi) return false;
+    return assignments.some(a => {
+      const isAssigned = a.devTL === name || a.qm === name;
+      if (!isAssigned) return false;
+      const tier = pi.interestByPitchId[a.pitchId];
+      return tier === 1 || tier === 2;
     });
+  };
 
-    assignments.forEach(a => {
-      if (a.devTL) {
-        const interest = phase2Interests.find(pi => pi.personName === a.devTL);
-        const tier = interest?.interestByPitchId[a.pitchId] ?? 4;
-        if (summary[a.devTL] && tier) summary[a.devTL][tier]++;
-      }
-      if (a.qm) {
-        const interest = phase2Interests.find(pi => pi.personName === a.qm);
-        const tier = interest?.interestByPitchId[a.pitchId] ?? 4;
-        if (summary[a.qm] && tier) summary[a.qm][tier]++;
-      }
-    });
-    return summary;
-  }, [assignments, phase2Interests, config]);
+  // ── UXD checkboxes (Item 9) ──────────────────────────────────────────────
+  const [includeUXD, setIncludeUXD] = useState<Record<string, boolean>>({});
 
-  const hasHighInterest = (name: string) => (personSummary[name]?.[1] ?? 0) + (personSummary[name]?.[2] ?? 0) > 0;
+  // ── Email messages + popover (Item 10) ──────────────────────────────────
+  const [emailMessages, setEmailMessages] = useState<Record<string, string>>({});
+  const [emailPopover, setEmailPopover] = useState<{ anchor: HTMLElement | null; pitchId: string | null }>({
+    anchor: null, pitchId: null,
+  });
+
+  const getDefaultEmailMessage = useCallback((pitchId: string) => {
+    const pitch = pitchMap.get(pitchId);
+    if (!pitch) return '';
+    const shortTitle = pitch.title.replace(/^[^/]+\/\s*/, '');
+    const a = assignMap.get(pitchId);
+    const qmFirstName = a?.qm ? a.qm.split(' ')[0] : 'QM';
+    return `Hi everyone, this is the team for ${shortTitle}! @${qmFirstName}, please setup a kickoff meeting for this pitch in the next week.`;
+  }, [pitchMap, assignMap]);
+
+  const openEmailPopover = useCallback((anchor: HTMLElement, pitchId: string) => {
+    setEmailPopover({ anchor, pitchId });
+  }, []);
+
+  // Popover pitch data
+  const popoverPitch = emailPopover.pitchId ? pitchMap.get(emailPopover.pitchId) : null;
+  const popoverAssignment = emailPopover.pitchId ? assignMap.get(emailPopover.pitchId) : null;
+  const popoverMessage = emailPopover.pitchId
+    ? (emailMessages[emailPopover.pitchId] ?? getDefaultEmailMessage(emailPopover.pitchId))
+    : '';
+
+  const getRecipientsList = (pitchId: string) => {
+    const a = assignMap.get(pitchId);
+    const parts: string[] = [];
+    if (a?.devTL) parts.push(a.devTL.split(' ')[0]);
+    const dev = devByPitchId[pitchId];
+    if (dev) parts.push(dev.split(' ')[0]);
+    if (a?.qm) parts.push(a.qm.split(' ')[0]);
+    parts.push(config.testingCaptain);
+    if (includeUXD[pitchId]) parts.push('UXD');
+    return `To: ${parts.join(', ')}`;
+  };
 
   return (
     <Box sx={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
       {/* ── Left: assignment table ── */}
-      <Box sx={{ flex: 3, overflow: 'auto', p: 2 }}>
+      <Box sx={{ flex: 1, overflow: 'auto', p: 2, minWidth: 0 }}>
         <Typography variant="subtitle2" fontWeight={700} gutterBottom>
           Assign Dev TL + QM to each project
         </Typography>
         <Paper variant="outlined">
-          <Table size="small" stickyHeader>
+          <Table size="small" stickyHeader sx={{ tableLayout: 'fixed' }}>
+            <colgroup>
+              <col />{/* pitch: flex */}
+              <col style={{ width: 72 }} />{/* dev read-only */}
+              <col style={{ width: 48 }} />{/* UXD */}
+              <col style={{ width: 52 }} />{/* Email */}
+              <col style={{ width: 190 }} />{/* DevTL */}
+              <col style={{ width: 190 }} />{/* QM */}
+            </colgroup>
             <TableHead>
               <TableRow sx={{ '& th': { fontSize: '0.72rem', color: 'text.secondary' } }}>
                 <TableCell>Project</TableCell>
-                <TableCell width={210}>Dev TL</TableCell>
-                <TableCell width={210}>QM</TableCell>
+                <TableCell width={72}>Dev</TableCell>
+                <TableCell width={48}>
+                  <Tooltip title="Include UXD in kickoff email">
+                    <span>UXD</span>
+                  </Tooltip>
+                </TableCell>
+                <TableCell width={52} />
+                <TableCell width={190}>Dev TL</TableCell>
+                <TableCell width={190}>QM</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -96,6 +218,12 @@ export default function Step2View({
                     devTLInterests={devTLInterests}
                     qmInterests={qmInterests}
                     onAssign={onAssign}
+                    onRef={registerRow(pitch.id)}
+                    highlighted={pitch.id === highlightPitchId}
+                    devName={devByPitchId[pitch.id] ?? null}
+                    includeUXD={includeUXD[pitch.id] ?? false}
+                    onToggleUXD={() => setIncludeUXD(prev => ({ ...prev, [pitch.id]: !(prev[pitch.id] ?? false) }))}
+                    onOpenEmail={openEmailPopover}
                   />
                 );
               })}
@@ -104,22 +232,38 @@ export default function Step2View({
         </Paper>
       </Box>
 
-      {/* ── Right: summary ── */}
-      <Box sx={{ width: 240, flexShrink: 0, overflow: 'auto', p: 2, borderLeft: 1, borderColor: 'divider' }}>
-        <Typography variant="subtitle2" fontWeight={700} gutterBottom>People</Typography>
+      {/* ── Drag handle (Item 5) ── */}
+      <Box
+        onMouseDown={handleDragStart}
+        sx={{
+          width: 6, flexShrink: 0, cursor: 'col-resize',
+          bgcolor: 'divider',
+          '&:hover': { bgcolor: 'primary.light' },
+          transition: 'background-color 0.15s',
+        }}
+      />
 
+      {/* ── Right: people sidebar (Item 6) ── */}
+      <Box
+        ref={sidebarRef}
+        sx={{ width: sidebarWidth, flexShrink: 0, overflow: 'auto', p: 2 }}
+      >
         {[
-          { label: 'Dev TLs', names: config.devTLNames },
-          { label: 'QMs', names: config.qmNames },
-        ].map(({ label, names }) => (
-          <Box key={label} sx={{ mb: 2 }}>
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+          { label: 'Dev TLs', names: config.devTLNames, interests: devTLInterests },
+          { label: 'QMs', names: config.qmNames, interests: qmInterests },
+        ].map(({ label, names, interests }, sectionIdx) => (
+          <Box key={label}>
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5, textTransform: 'uppercase', letterSpacing: 0.5 }}>
               {label}
             </Typography>
             {names.map(name => {
+              const assignedPitchIds = assignments
+                .filter(a => a.devTL === name || a.qm === name)
+                .map(a => a.pitchId);
               const hasHigh = hasHighInterest(name);
-              const assigned = assignments.filter(a => a.devTL === name || a.qm === name).length;
               const dataStatus = personDataStatus[name] ?? 'full';
+              const pi = interests.find(p => p.personName === name);
+
               return (
                 <Box key={name} sx={{ mb: 1 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
@@ -129,39 +273,86 @@ export default function Step2View({
                     }
                     <Typography variant="caption" fontWeight={600}>{name}</Typography>
                     <Typography variant="caption" color="text.secondary" sx={{ ml: 'auto' }}>
-                      {assigned} projects
+                      {assignedPitchIds.length} projects
                     </Typography>
                   </Box>
-                  <Box sx={{ display: 'flex', gap: 0.5, ml: 2, flexWrap: 'wrap' }}>
-                    {dataStatus === 'none' && (
-                      <Chip label="No data" size="small" color="error" variant="outlined" sx={{ fontSize: '0.65rem' }} />
-                    )}
-                    {dataStatus === 'partial' && (
-                      <Chip label="Partial data" size="small" color="warning" variant="outlined" sx={{ fontSize: '0.65rem' }} />
-                    )}
-                    {!hasHigh && dataStatus !== 'none' && (
-                      <Chip label="No high-interest" size="small" color="warning" variant="outlined" sx={{ fontSize: '0.65rem' }} />
-                    )}
-                    {[1, 2, 3, 4].map(tier => {
-                      const count = personSummary[name]?.[tier] ?? 0;
-                      if (count === 0) return null;
-                      return (
-                        <InterestChip
-                          key={tier}
-                          level={tier as 1 | 2 | 3 | 4}
-                          size="small"
-                        />
-                      );
-                    })}
-                  </Box>
+                  {dataStatus === 'none' && (
+                    <Chip label="No data" size="small" color="error" variant="outlined" sx={{ fontSize: '0.65rem', ml: 2, mb: 0.25 }} />
+                  )}
+                  {dataStatus === 'partial' && (
+                    <Chip label="Partial data" size="small" color="warning" variant="outlined" sx={{ fontSize: '0.65rem', ml: 2, mb: 0.25 }} />
+                  )}
+                  {assignedPitchIds.map(pid => {
+                    const p = pitchMap.get(pid);
+                    if (!p) return null;
+                    const shortTitle = p.title.replace(/^[^/]+\/\s*/, '');
+                    const interestLevel = pi?.interestByPitchId[pid] ?? null;
+                    const noData = pi ? !(pid in pi.interestByPitchId) : true;
+                    return (
+                      <Box key={pid} sx={{ display: 'flex', alignItems: 'center', gap: 0.5, ml: 1.5, mt: 0.25 }}>
+                        <Tooltip title={`${p.title} — click to jump`} placement="top-start">
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                            onClick={() => handleFocusPitch(pid)}
+                            sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'pointer',
+                                  '&:hover': { textDecoration: 'underline' } }}
+                          >
+                            {shortTitle}
+                          </Typography>
+                        </Tooltip>
+                        <DevPitchInfo pitch={p} />
+                        <Box sx={{ flex: 1 }} />
+                        <InterestChip level={interestLevel} noData={noData} size="small" />
+                      </Box>
+                    );
+                  })}
                 </Box>
               );
             })}
-            <Divider sx={{ mt: 1 }} />
+            {sectionIdx === 0 && <Divider sx={{ my: 1.25 }} />}
           </Box>
         ))}
-
       </Box>
+
+      {/* ── Shared email popover (Item 10) ── */}
+      <Popover
+        open={Boolean(emailPopover.anchor)}
+        anchorEl={emailPopover.anchor}
+        onClose={() => setEmailPopover({ anchor: null, pitchId: null })}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+      >
+        {emailPopover.pitchId && popoverPitch && (
+          <Box sx={{ p: 2, width: 340 }}>
+            <Typography variant="subtitle2" fontWeight={700} gutterBottom>
+              Kickoff Email
+            </Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+              {getRecipientsList(emailPopover.pitchId)}
+            </Typography>
+            <TextField
+              multiline
+              rows={4}
+              fullWidth
+              size="small"
+              value={popoverMessage}
+              onChange={e => {
+                const pid = emailPopover.pitchId!;
+                setEmailMessages(prev => ({ ...prev, [pid]: e.target.value }));
+              }}
+              sx={{ mb: 1.5 }}
+            />
+            <Button
+              size="small"
+              variant="contained"
+              onClick={() => setEmailPopover({ anchor: null, pitchId: null })}
+            >
+              Done
+            </Button>
+          </Box>
+        )}
+      </Popover>
     </Box>
   );
 }
@@ -174,17 +365,37 @@ interface Step2RowProps {
   devTLInterests: Phase2Interest[];
   qmInterests: Phase2Interest[];
   onAssign: (pitchId: string, field: 'devTL' | 'qm', value: string | null) => void;
+  onRef?: (el: HTMLTableRowElement | null) => void;
+  highlighted?: boolean;
+  devName: string | null;
+  includeUXD: boolean;
+  onToggleUXD: () => void;
+  onOpenEmail: (anchor: HTMLElement, pitchId: string) => void;
 }
 
-function Step2Row({ pitch, assignment, devTLInterests, qmInterests, onAssign }: Step2RowProps) {
+function Step2Row({
+  pitch, assignment, devTLInterests, qmInterests, onAssign, onRef, highlighted,
+  devName, includeUXD, onToggleUXD, onOpenEmail,
+}: Step2RowProps) {
   const [detailsAnchor, setDetailsAnchor] = useState<HTMLButtonElement | null>(null);
 
   return (
-    <TableRow>
+    <TableRow
+      ref={onRef}
+      sx={{
+        bgcolor: highlighted ? 'rgba(255, 152, 0, 0.45)' : undefined,
+        transition: highlighted ? 'none' : 'background-color 1.2s ease',
+      }}
+    >
       <TableCell>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
+          {pitch.continuation && (
+            <Tooltip title="Continuation project">
+              <AutorenewIcon sx={{ fontSize: '0.9rem', color: 'info.main', flexShrink: 0 }} />
+            </Tooltip>
+          )}
           <Tooltip title={pitch.title} placement="top-start">
-            <Typography variant="caption" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 220 }}>
+            <Typography variant="caption" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {pitch.title.replace(/^[^/]+\/\s*/, '')}
             </Typography>
           </Tooltip>
@@ -209,6 +420,33 @@ function Step2Row({ pitch, assignment, devTLInterests, qmInterests, onAssign }: 
             />
           </Suspense>
         )}
+      </TableCell>
+      {/* Dev read-only (Item 8) */}
+      <TableCell>
+        <Typography variant="caption" color="text.secondary">
+          {devName ? devName.split(' ')[0] : '—'}
+        </Typography>
+      </TableCell>
+      {/* UXD checkbox (Item 9) */}
+      <TableCell padding="checkbox">
+        <Checkbox
+          size="small"
+          checked={includeUXD}
+          onChange={onToggleUXD}
+          sx={{ p: 0.5 }}
+        />
+      </TableCell>
+      {/* Email icon (Item 10) */}
+      <TableCell>
+        <Tooltip title="Compose kickoff email">
+          <IconButton
+            size="small"
+            sx={{ p: 0.5 }}
+            onClick={e => onOpenEmail(e.currentTarget, pitch.id)}
+          >
+            <MailOutlineIcon sx={{ fontSize: '1rem' }} />
+          </IconButton>
+        </Tooltip>
       </TableCell>
       <TableCell>
         <AssignmentDropdown
@@ -252,7 +490,7 @@ function AssignmentDropdown({ value, options, pitchId, onChange }: AssignmentDro
       value={value ?? ''}
       onChange={e => onChange(e.target.value || null)}
       displayEmpty
-      sx={{ fontSize: '0.75rem', minWidth: 160 }}
+      sx={{ fontSize: '0.75rem', width: '100%' }}
       renderValue={val => val
         ? <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
             <span>{val as string}</span>

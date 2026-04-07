@@ -628,7 +628,7 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
           allocationMode={isTLStage}
           allocationStep={allocationStep}
           onAllocationFinish={isTLStage ? handleAllocationFinish : undefined}
-          allocationFinishLabel={allocationStep === 0 ? 'Proceed to Step 2' : 'Finalize Plan'}
+          allocationFinishLabel={allocationStep === 0 ? 'Finish Plan' : 'Finalize'}
         />
         
         <Box component="main" sx={{ flexGrow: 1, overflow: 'hidden', p: 0, display: 'flex', flexDirection: 'column', minHeight: 0 }}>

@@ -10,6 +10,7 @@ import {
   Warning as WarnIcon,
   CheckCircle as OkIcon,
   InfoOutlined as InfoIcon,
+  Autorenew as AutorenewIcon,
 } from '@mui/icons-material';
 import type { AllocationPlan, AllocationPitch, AssignmentStatus, PlanAssignment } from '../../types/allocationTypes';
 import type { AllocationConfig } from '../../types/allocationTypes';
@@ -49,13 +50,6 @@ function priorityBarPct(score: number): number {
   return Math.round(((5 - score) / 4) * 100);
 }
 
-/** Semantic health color for avg priority score: green = high priority, yellow = medium, red = low. */
-function priorityHealthColor(score: number): string {
-  if (score <= 2.0) return '#4caf50';   // green — selecting high-priority work
-  if (score <= 2.75) return '#ff9800';  // amber — medium priority
-  return '#f44336';                      // red — selecting low-priority work
-}
-
 function interestLabel(avg: number): string {
   if (avg <= 1.5) return 'Very High';
   if (avg <= 2.5) return 'High';
@@ -83,6 +77,37 @@ function VoteBreakdown({ votes, label }: { votes: Record<string, 1 | 2 | 3 | 4 |
         </Box>
       ))}
     </Box>
+  );
+}
+
+// ─── InterestDot: compact colored dot for closed select state ────────────────
+
+const INTEREST_DOT_CONFIG: Record<number, { color: string; label: string }> = {
+  1: { color: '#1565c0', label: 'Highest interest (1)' },
+  2: { color: '#42a5f5', label: 'High interest (2)' },
+  3: { color: '#90caf9', label: 'Medium interest (3)' },
+  4: { color: '#e3f2fd', label: 'Low interest (4)' },
+};
+
+function InterestDot({ level, noData = false }: { level: (1 | 2 | 3 | 4 | null); noData?: boolean }) {
+  const tooltipTitle = level === null
+    ? (noData ? "Didn't Vote" : 'Skipped')
+    : INTEREST_DOT_CONFIG[level].label;
+  const color = level === null ? '#bdbdbd' : INTEREST_DOT_CONFIG[level].color;
+  return (
+    <Tooltip title={tooltipTitle} placement="top">
+      <Box
+        component="span"
+        sx={{
+          display: 'inline-block',
+          width: 10,
+          height: 10,
+          borderRadius: '50%',
+          bgcolor: color,
+          flexShrink: 0,
+        }}
+      />
+    </Tooltip>
   );
 }
 
@@ -521,20 +546,20 @@ export default function Step1View({
           slotProps={{ tooltip: { sx: { bgcolor: 'background.paper', color: 'text.primary', boxShadow: 3, border: '1px solid', borderColor: 'divider', maxWidth: 260, fontSize: '0.72rem' } } }}
         >
           <Typography variant="caption" color="text.secondary" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, mb: 0.5, textTransform: 'uppercase', letterSpacing: 0.5, cursor: 'default' }}>
-            Selected Project Priority
+            Average Project Priority
             <InfoIcon sx={{ fontSize: '0.85rem', opacity: 0.5 }} />
           </Typography>
         </Tooltip>
         {stats.avgTeamPriority !== null ? (
           <Box sx={{ mb: 1.5 }}>
             <Typography variant="caption" sx={{ display: 'block' }}>
-              <Box component="span" sx={{ color: priorityHealthColor(stats.avgTeamPriority), fontWeight: 700 }}>
+              <Box component="span" sx={{ color: priorityColor(stats.avgTeamPriority), fontWeight: 700 }}>
                 Team: {stats.avgTeamPriority.toFixed(1)} ({interestLabel(stats.avgTeamPriority)})
               </Box>
               {stats.avgTLPriority !== null && (
                 <>
                   <Box component="span" sx={{ color: 'text.disabled', mx: 0.5 }}>·</Box>
-                  <Box component="span" sx={{ color: priorityHealthColor(stats.avgTLPriority), fontWeight: 700 }}>
+                  <Box component="span" sx={{ color: priorityColor(stats.avgTLPriority), fontWeight: 700 }}>
                     TL: {stats.avgTLPriority.toFixed(1)} ({interestLabel(stats.avgTLPriority)})
                   </Box>
                 </>
@@ -759,6 +784,11 @@ function PitchRow({ assignment, pitch, devNames, onDevChange, onStatusChange, hi
     >
       <TableCell sx={{ maxWidth: 200 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
+          {pitch.continuation && (
+            <Tooltip title="Continuation project">
+              <AutorenewIcon sx={{ fontSize: '0.9rem', color: 'info.main', flexShrink: 0 }} />
+            </Tooltip>
+          )}
           <Tooltip title={pitch.title} placement="top-start">
             <Typography variant="caption" color={textColor} sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {pitch.title.replace(/^[^/]+\/\s*/, '')}
@@ -814,10 +844,10 @@ function PitchRow({ assignment, pitch, devNames, onDevChange, onStatusChange, hi
           sx={{ fontSize: '0.75rem', width: '100%' }}
           renderValue={val => val
             ? <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0 }}>
-                <Typography variant="caption" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <Typography variant="caption" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
                   {(val as string).split(' ')[0]}
                 </Typography>
-                <InterestChip
+                <InterestDot
                   level={pitch.devInterest[val as string] ?? null}
                   noData={!((val as string) in pitch.devInterest)}
                 />
