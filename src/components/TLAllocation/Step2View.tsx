@@ -9,6 +9,7 @@ import {
   CheckCircle as OkIcon,
   InfoOutlined as InfoIcon,
   MailOutline as MailOutlineIcon,
+  Mail as MailIcon,
   Autorenew as AutorenewIcon,
 } from '@mui/icons-material';
 import type {
@@ -51,6 +52,37 @@ function DevPitchInfo({ pitch }: { pitch: AllocationPitch }) {
         </Suspense>
       )}
     </>
+  );
+}
+
+// ─── InterestDot: compact colored dot for closed select state ────────────────
+
+const INTEREST_DOT_CONFIG: Record<number, { color: string; label: string }> = {
+  1: { color: '#1565c0', label: 'Highest interest (1)' },
+  2: { color: '#42a5f5', label: 'High interest (2)' },
+  3: { color: '#90caf9', label: 'Medium interest (3)' },
+  4: { color: '#e3f2fd', label: 'Low interest (4)' },
+};
+
+function InterestDot({ level, noData = false }: { level: (1 | 2 | 3 | 4 | null); noData?: boolean }) {
+  const tooltipTitle = level === null
+    ? (noData ? "Didn't Vote" : 'Skipped')
+    : INTEREST_DOT_CONFIG[level].label;
+  const color = level === null ? '#bdbdbd' : INTEREST_DOT_CONFIG[level].color;
+  return (
+    <Tooltip title={tooltipTitle} placement="top">
+      <Box
+        component="span"
+        sx={{
+          display: 'inline-block',
+          width: 10,
+          height: 10,
+          borderRadius: '50%',
+          bgcolor: color,
+          flexShrink: 0,
+        }}
+      />
+    </Tooltip>
   );
 }
 
@@ -179,10 +211,13 @@ export default function Step2View({
   return (
     <Box sx={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
       {/* ── Left: assignment table ── */}
-      <Box sx={{ flex: 1, overflow: 'auto', p: 2, minWidth: 0 }}>
-        <Typography variant="subtitle2" fontWeight={700} gutterBottom>
-          Assign Dev TL + QM to each project
-        </Typography>
+      <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+        <Box sx={{ px: 2, pt: 2, pb: 1, flexShrink: 0 }}>
+          <Typography variant="subtitle2" fontWeight={700}>
+            Assign Dev TL + QM to each project
+          </Typography>
+        </Box>
+        <Box sx={{ flex: 1, overflow: 'auto', px: 2, pb: 2 }}>
         <Paper variant="outlined">
           <Table size="small" stickyHeader sx={{ tableLayout: 'fixed' }}>
             <colgroup>
@@ -198,11 +233,11 @@ export default function Step2View({
                 <TableCell>Project</TableCell>
                 <TableCell width={72}>Dev</TableCell>
                 <TableCell width={48}>
-                  <Tooltip title="Include UXD in kickoff email">
+                  <Tooltip title="Include UXD in project kickoff">
                     <span>UXD</span>
                   </Tooltip>
                 </TableCell>
-                <TableCell width={52} />
+                <TableCell width={52}>Message</TableCell>
                 <TableCell width={190}>Dev TL</TableCell>
                 <TableCell width={190}>QM</TableCell>
               </TableRow>
@@ -224,12 +259,14 @@ export default function Step2View({
                     includeUXD={includeUXD[pitch.id] ?? false}
                     onToggleUXD={() => setIncludeUXD(prev => ({ ...prev, [pitch.id]: !(prev[pitch.id] ?? false) }))}
                     onOpenEmail={openEmailPopover}
+                    emailCustomized={!!emailMessages[pitch.id]}
                   />
                 );
               })}
             </TableBody>
           </Table>
         </Paper>
+        </Box>
       </Box>
 
       {/* ── Drag handle (Item 5) ── */}
@@ -302,6 +339,11 @@ export default function Step2View({
                           </Typography>
                         </Tooltip>
                         <DevPitchInfo pitch={p} />
+                        {p.continuation && (
+                          <Tooltip title="Continuation project">
+                            <AutorenewIcon sx={{ fontSize: '0.75rem', color: 'text.disabled', flexShrink: 0 }} />
+                          </Tooltip>
+                        )}
                         <Box sx={{ flex: 1 }} />
                         <InterestChip level={interestLevel} noData={noData} size="small" />
                       </Box>
@@ -371,11 +413,12 @@ interface Step2RowProps {
   includeUXD: boolean;
   onToggleUXD: () => void;
   onOpenEmail: (anchor: HTMLElement, pitchId: string) => void;
+  emailCustomized?: boolean;
 }
 
 function Step2Row({
   pitch, assignment, devTLInterests, qmInterests, onAssign, onRef, highlighted,
-  devName, includeUXD, onToggleUXD, onOpenEmail,
+  devName, includeUXD, onToggleUXD, onOpenEmail, emailCustomized = false,
 }: Step2RowProps) {
   const [detailsAnchor, setDetailsAnchor] = useState<HTMLButtonElement | null>(null);
 
@@ -389,11 +432,6 @@ function Step2Row({
     >
       <TableCell>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
-          {pitch.continuation && (
-            <Tooltip title="Continuation project">
-              <AutorenewIcon sx={{ fontSize: '0.9rem', color: 'info.main', flexShrink: 0 }} />
-            </Tooltip>
-          )}
           <Tooltip title={pitch.title} placement="top-start">
             <Typography variant="caption" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {pitch.title.replace(/^[^/]+\/\s*/, '')}
@@ -408,6 +446,11 @@ function Step2Row({
               <InfoIcon sx={{ fontSize: '0.9rem', color: 'text.disabled' }} />
             </IconButton>
           </Tooltip>
+          {pitch.continuation && (
+            <Tooltip title="Continuation project">
+              <AutorenewIcon sx={{ fontSize: '0.9rem', color: 'text.disabled', flexShrink: 0 }} />
+            </Tooltip>
+          )}
         </Box>
         {detailsAnchor && (
           <Suspense fallback={null}>
@@ -438,13 +481,16 @@ function Step2Row({
       </TableCell>
       {/* Email icon (Item 10) */}
       <TableCell>
-        <Tooltip title="Compose kickoff email">
+        <Tooltip title={emailCustomized ? 'Message customized — click to edit' : 'Compose kickoff email'}>
           <IconButton
             size="small"
             sx={{ p: 0.5 }}
             onClick={e => onOpenEmail(e.currentTarget, pitch.id)}
           >
-            <MailOutlineIcon sx={{ fontSize: '1rem' }} />
+            {emailCustomized
+              ? <MailIcon sx={{ fontSize: '1rem', color: 'primary.main' }} />
+              : <MailOutlineIcon sx={{ fontSize: '1rem' }} />
+            }
           </IconButton>
         </Tooltip>
       </TableCell>
@@ -491,13 +537,20 @@ function AssignmentDropdown({ value, options, pitchId, onChange }: AssignmentDro
       onChange={e => onChange(e.target.value || null)}
       displayEmpty
       sx={{ fontSize: '0.75rem', width: '100%' }}
-      renderValue={val => val
-        ? <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-            <span>{val as string}</span>
-            <InterestChip level={options.find(o => o.personName === val)?.interestByPitchId[pitchId] ?? null} />
+      renderValue={val => {
+        if (!val) return <Typography variant="caption" color="text.disabled">Assign…</Typography>;
+        const selectedPerson = options.find(o => o.personName === (val as string));
+        const level = (selectedPerson?.interestByPitchId[pitchId] ?? null) as (1 | 2 | 3 | 4 | null);
+        const noData = selectedPerson ? !(pitchId in selectedPerson.interestByPitchId) : false;
+        return (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0 }}>
+            <Typography variant="caption" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+              {(val as string).split(' ')[0]}
+            </Typography>
+            <InterestDot level={level} noData={noData} />
           </Box>
-        : <Typography variant="caption" color="text.disabled">Assign…</Typography>
-      }
+        );
+      }}
     >
       <MenuItem value=""><em>Unassign</em></MenuItem>
       {sorted.map(person => (

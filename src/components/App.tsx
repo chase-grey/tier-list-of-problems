@@ -50,15 +50,13 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
   // State for selected priority category tab
   const [selectedCategory, setSelectedCategory] = useState<string>(CATEGORIES[0]);
   const isTLStage = isTLAllocationStage();
-  const [allocationStep, setAllocationStep] = useState<0 | 1>(0);
+  const pollingStage = getPollingStage();
+  // tl-1 = Allocation 1 only (step 0), tl-2 = Allocation 2 only (step 1)
+  const allocationStep: 0 | 1 = pollingStage === 'tl-2' ? 1 : 0;
   const [allocationFinalizedSnackbar, setAllocationFinalizedSnackbar] = useState(false);
 
   const handleAllocationFinish = () => {
-    if (allocationStep === 0) {
-      setAllocationStep(1);
-    } else {
-      setAllocationFinalizedSnackbar(true);
-    }
+    setAllocationFinalizedSnackbar(true);
   };
 
   // Async pitch loading state

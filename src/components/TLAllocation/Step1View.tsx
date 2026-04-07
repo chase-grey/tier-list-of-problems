@@ -739,6 +739,11 @@ export default function Step1View({
                       </Typography>
                     </Tooltip>
                     <DevPitchInfo pitch={p} />
+                    {p.continuation && (
+                      <Tooltip title="Continuation project">
+                        <AutorenewIcon sx={{ fontSize: '0.75rem', color: 'text.disabled', flexShrink: 0 }} />
+                      </Tooltip>
+                    )}
                     <Box sx={{ flex: 1 }} />
                     <InterestChip level={p.devInterest[dev] ?? null} noData={!(dev in p.devInterest)} size="small" />
                   </Box>
@@ -784,11 +789,6 @@ function PitchRow({ assignment, pitch, devNames, onDevChange, onStatusChange, hi
     >
       <TableCell sx={{ maxWidth: 200 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
-          {pitch.continuation && (
-            <Tooltip title="Continuation project">
-              <AutorenewIcon sx={{ fontSize: '0.9rem', color: 'info.main', flexShrink: 0 }} />
-            </Tooltip>
-          )}
           <Tooltip title={pitch.title} placement="top-start">
             <Typography variant="caption" color={textColor} sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {pitch.title.replace(/^[^/]+\/\s*/, '')}
@@ -799,6 +799,11 @@ function PitchRow({ assignment, pitch, devNames, onDevChange, onStatusChange, hi
               <InfoIcon sx={{ fontSize: '0.9rem', color: 'text.disabled' }} />
             </IconButton>
           </Tooltip>
+          {pitch.continuation && (
+            <Tooltip title="Continuation project">
+              <AutorenewIcon sx={{ fontSize: '0.9rem', color: 'text.disabled', flexShrink: 0 }} />
+            </Tooltip>
+          )}
         </Box>
         {detailsAnchor && (
           <Suspense fallback={null}>
