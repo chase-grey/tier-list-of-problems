@@ -80,37 +80,6 @@ function VoteBreakdown({ votes, label }: { votes: Record<string, 1 | 2 | 3 | 4 |
   );
 }
 
-// ─── InterestDot: compact colored dot for closed select state ────────────────
-
-const INTEREST_DOT_CONFIG: Record<number, { color: string; label: string }> = {
-  1: { color: '#1565c0', label: 'Highest interest (1)' },
-  2: { color: '#42a5f5', label: 'High interest (2)' },
-  3: { color: '#90caf9', label: 'Medium interest (3)' },
-  4: { color: '#e3f2fd', label: 'Low interest (4)' },
-};
-
-function InterestDot({ level, noData = false }: { level: (1 | 2 | 3 | 4 | null); noData?: boolean }) {
-  const tooltipTitle = level === null
-    ? (noData ? "Didn't Vote" : 'Skipped')
-    : INTEREST_DOT_CONFIG[level].label;
-  const color = level === null ? '#bdbdbd' : INTEREST_DOT_CONFIG[level].color;
-  return (
-    <Tooltip title={tooltipTitle} placement="top">
-      <Box
-        component="span"
-        sx={{
-          display: 'inline-block',
-          width: 10,
-          height: 10,
-          borderRadius: '50%',
-          bgcolor: color,
-          flexShrink: 0,
-        }}
-      />
-    </Tooltip>
-  );
-}
-
 // ─── DevPitchInfo: inline info button for dev assignment list ─────────────────
 
 function DevPitchInfo({ pitch }: { pitch: AllocationPitch }) {
@@ -141,7 +110,7 @@ export default function Step1View({
   pitches, plans, activePlanId, currentAssignments, config,
   onPlanChange, onDevChange, onStatusChange,
 }: Step1ViewProps) {
-  const [sidebarWidth, setSidebarWidth] = useState(320);
+  const [sidebarWidth, setSidebarWidth] = useState(() => Math.round(window.innerWidth / 3));
   const sidebarRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ startX: number; startWidth: number; liveWidth: number } | null>(null);
 
@@ -698,7 +667,15 @@ export default function Step1View({
           Developer Assignments
         </Typography>
         {config.devNames.map(dev => {
-          const pitchIds = stats.devProjects[dev] ?? [];
+          const pitchIds = [...(stats.devProjects[dev] ?? [])].sort((a, b) => {
+            const pA = pitchMap.get(a);
+            const pB = pitchMap.get(b);
+            if (!pA || !pB) return 0;
+            const catA = categories.indexOf(pA.category);
+            const catB = categories.indexOf(pB.category);
+            if (catA !== catB) return catA - catB;
+            return pA.teamPriorityScore - pB.teamPriorityScore;
+          });
           const dataStatus = devDataStatus[dev];
           const workloadWarn = pitchIds.length === 0 || pitchIds.length >= 3;
           const devNameColor = workloadWarn ? 'warning.main' : 'text.primary';
@@ -852,9 +829,10 @@ function PitchRow({ assignment, pitch, devNames, onDevChange, onStatusChange, hi
                 <Typography variant="caption" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
                   {(val as string).split(' ')[0]}
                 </Typography>
-                <InterestDot
+                <InterestChip
                   level={pitch.devInterest[val as string] ?? null}
                   noData={!((val as string) in pitch.devInterest)}
+                  size="small"
                 />
               </Box>
             : <Typography variant="caption" color="text.disabled">Assign dev…</Typography>

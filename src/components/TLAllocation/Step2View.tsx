@@ -57,42 +57,18 @@ function DevPitchInfo({ pitch }: { pitch: AllocationPitch }) {
   );
 }
 
-// ─── InterestDot: compact colored dot for closed select state ────────────────
-
-const INTEREST_DOT_CONFIG: Record<number, { color: string; label: string }> = {
-  1: { color: '#1565c0', label: 'Highest interest (1)' },
-  2: { color: '#42a5f5', label: 'High interest (2)' },
-  3: { color: '#90caf9', label: 'Medium interest (3)' },
-  4: { color: '#e3f2fd', label: 'Low interest (4)' },
+const CATEGORY_SHORT: Record<string, string> = {
+  'Support AI Charting': 'AI Charting',
+  'Create and Improve Tools and Framework': 'Tools & Framework',
+  'Mobile Feature Parity': 'Mobile Parity',
+  'Address Technical Debt': 'Technical Debt',
 };
-
-function InterestDot({ level, noData = false }: { level: (1 | 2 | 3 | 4 | null); noData?: boolean }) {
-  const tooltipTitle = level === null
-    ? (noData ? "Didn't Vote" : 'Skipped')
-    : INTEREST_DOT_CONFIG[level].label;
-  const color = level === null ? '#bdbdbd' : INTEREST_DOT_CONFIG[level].color;
-  return (
-    <Tooltip title={tooltipTitle} placement="top">
-      <Box
-        component="span"
-        sx={{
-          display: 'inline-block',
-          width: 10,
-          height: 10,
-          borderRadius: '50%',
-          bgcolor: color,
-          flexShrink: 0,
-        }}
-      />
-    </Tooltip>
-  );
-}
 
 export default function Step2View({
   selectedPitches, assignments, phase2Interests, config, onAssign, devByPitchId,
 }: Step2ViewProps) {
   // ── Sidebar resize (Item 5) ──────────────────────────────────────────────
-  const [sidebarWidth, setSidebarWidth] = useState(280);
+  const [sidebarWidth, setSidebarWidth] = useState(() => Math.round(window.innerWidth / 3));
   const sidebarRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ startX: number; startWidth: number; liveWidth: number } | null>(null);
 
@@ -140,6 +116,19 @@ export default function Step2View({
     () => new Map(selectedPitches.map(p => [p.id, p])),
     [selectedPitches]
   );
+
+  const categories = useMemo(() => Object.keys(config.bandwidth), [config.bandwidth]);
+
+  const pitchesByCategory = useMemo(() => {
+    const map: Record<string, AllocationPitch[]> = {};
+    selectedPitches.forEach(p => {
+      if (!map[p.category]) map[p.category] = [];
+      map[p.category].push(p);
+    });
+    return map;
+  }, [selectedPitches]);
+
+  const [categoryCollapsed, setCategoryCollapsed] = useState<Record<string, boolean>>({});
 
   const devTLInterests = phase2Interests.filter(p => p.role === 'dev TL');
   const qmInterests = phase2Interests.filter(p => p.role === 'QM');
@@ -217,63 +206,77 @@ export default function Step2View({
 
   return (
     <Box sx={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
-      {/* ── Left: assignment table ── */}
-      <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-        <Box sx={{ px: 2, pt: 2, pb: 1, flexShrink: 0 }}>
-          <Typography variant="subtitle2" fontWeight={700}>
-            Assign Dev TL + QM to each project
-          </Typography>
-        </Box>
-        <Box sx={{ flex: 1, overflow: 'auto', px: 2, pb: 2 }}>
-        <Paper variant="outlined">
-          <Table size="small" stickyHeader sx={{ tableLayout: 'fixed' }}>
-            <colgroup>
-              <col />{/* pitch: flex */}
-              <col style={{ width: 52 }} />{/* Email */}
-              <col style={{ width: 72 }} />{/* dev read-only */}
-              <col style={{ width: 48 }} />{/* UXD */}
-              <col style={{ width: 190 }} />{/* DevTL */}
-              <col style={{ width: 190 }} />{/* QM */}
-            </colgroup>
-            <TableHead>
-              <TableRow sx={{ '& th': { fontSize: '0.72rem', color: 'text.secondary' } }}>
-                <TableCell>Project</TableCell>
-                <TableCell width={52}>Message</TableCell>
-                <TableCell width={72}>Dev</TableCell>
-                <TableCell width={48}>
-                  <Tooltip title="Include UXD in project kickoff">
-                    <span>UXD</span>
-                  </Tooltip>
-                </TableCell>
-                <TableCell width={190}>Dev TL</TableCell>
-                <TableCell width={190}>QM</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {selectedPitches.map(pitch => {
-                const a = assignMap.get(pitch.id) ?? { pitchId: pitch.id, devTL: null, qm: null };
-                return (
-                  <Step2Row
-                    key={pitch.id}
-                    pitch={pitch}
-                    assignment={a}
-                    devTLInterests={devTLInterests}
-                    qmInterests={qmInterests}
-                    onAssign={onAssign}
-                    onRef={registerRow(pitch.id)}
-                    highlighted={pitch.id === highlightPitchId}
-                    devName={devByPitchId[pitch.id] ?? null}
-                    includeUXD={includeUXD[pitch.id] ?? false}
-                    onToggleUXD={() => setIncludeUXD(prev => ({ ...prev, [pitch.id]: !(prev[pitch.id] ?? false) }))}
-                    onOpenEmail={openEmailPopover}
-                    emailCustomized={!!emailMessages[pitch.id]}
-                  />
-                );
-              })}
-            </TableBody>
-          </Table>
-        </Paper>
-        </Box>
+      {/* ── Left: assignment table (category buckets) ── */}
+      <Box sx={{ flex: 1, overflow: 'auto', p: 2, minWidth: 0 }}>
+        {categories.map(cat => {
+          const catPitches = pitchesByCategory[cat] ?? [];
+          if (catPitches.length === 0) return null;
+          const collapsed = categoryCollapsed[cat] ?? false;
+          return (
+            <Paper key={cat} variant="outlined" sx={{ mb: 2, overflow: 'hidden' }}>
+              <Box
+                sx={{ px: 2, py: 1, bgcolor: 'action.hover', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', userSelect: 'none' }}
+                onClick={() => setCategoryCollapsed(prev => ({ ...prev, [cat]: !prev[cat] }))}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  {collapsed ? <ExpandIcon fontSize="small" /> : <CollapseIcon fontSize="small" />}
+                  <Typography variant="subtitle2" fontWeight={700}>
+                    {CATEGORY_SHORT[cat] ?? cat}
+                  </Typography>
+                </Box>
+                <Typography variant="caption" color="text.secondary">{catPitches.length} projects</Typography>
+              </Box>
+              <Collapse in={!collapsed}>
+                <Table size="small" sx={{ tableLayout: 'fixed' }}>
+                  <colgroup>
+                    <col />{/* pitch: flex */}
+                    <col style={{ width: 72 }} />{/* Email/Message */}
+                    <col style={{ width: 48 }} />{/* UXD */}
+                    <col style={{ width: 72 }} />{/* dev read-only */}
+                    <col style={{ width: 190 }} />{/* DevTL */}
+                    <col style={{ width: 190 }} />{/* QM */}
+                  </colgroup>
+                  <TableHead>
+                    <TableRow sx={{ '& th': { py: 0.5, fontSize: '0.72rem', color: 'text.secondary' } }}>
+                      <TableCell>Project</TableCell>
+                      <TableCell width={72}>Message</TableCell>
+                      <TableCell width={48}>
+                        <Tooltip title="Include UXD in project kickoff">
+                          <span>UXD</span>
+                        </Tooltip>
+                      </TableCell>
+                      <TableCell width={72}>Dev</TableCell>
+                      <TableCell width={190}>Dev TL</TableCell>
+                      <TableCell width={190}>QM</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {catPitches.map(pitch => {
+                      const a = assignMap.get(pitch.id) ?? { pitchId: pitch.id, devTL: null, qm: null };
+                      return (
+                        <Step2Row
+                          key={pitch.id}
+                          pitch={pitch}
+                          assignment={a}
+                          devTLInterests={devTLInterests}
+                          qmInterests={qmInterests}
+                          onAssign={onAssign}
+                          onRef={registerRow(pitch.id)}
+                          highlighted={pitch.id === highlightPitchId}
+                          devName={devByPitchId[pitch.id] ?? null}
+                          includeUXD={includeUXD[pitch.id] ?? false}
+                          onToggleUXD={() => setIncludeUXD(prev => ({ ...prev, [pitch.id]: !(prev[pitch.id] ?? false) }))}
+                          onOpenEmail={openEmailPopover}
+                          emailCustomized={!!emailMessages[pitch.id]}
+                        />
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </Collapse>
+            </Paper>
+          );
+        })}
       </Box>
 
       {/* ── Drag handle (Item 5) ── */}
@@ -310,7 +313,16 @@ export default function Step2View({
             {names.map(name => {
               const assignedPitchIds = assignments
                 .filter(a => a.devTL === name || a.qm === name)
-                .map(a => a.pitchId);
+                .map(a => a.pitchId)
+                .sort((a, b) => {
+                  const pA = pitchMap.get(a);
+                  const pB = pitchMap.get(b);
+                  if (!pA || !pB) return 0;
+                  const catA = categories.indexOf(pA.category);
+                  const catB = categories.indexOf(pB.category);
+                  if (catA !== catB) return catA - catB;
+                  return selectedPitches.indexOf(pA) - selectedPitches.indexOf(pB);
+                });
               const hasHigh = hasHighInterest(name);
               const dataStatus = personDataStatus[name] ?? 'full';
               const pi = interests.find(p => p.personName === name);
@@ -494,12 +506,6 @@ function Step2Row({
           </IconButton>
         </Tooltip>
       </TableCell>
-      {/* Dev read-only */}
-      <TableCell>
-        <Typography variant="caption" color="text.secondary">
-          {devName ? devName.split(' ')[0] : '—'}
-        </Typography>
-      </TableCell>
       {/* UXD checkbox */}
       <TableCell padding="checkbox">
         <Checkbox
@@ -508,6 +514,12 @@ function Step2Row({
           onChange={onToggleUXD}
           sx={{ p: 0.5 }}
         />
+      </TableCell>
+      {/* Dev read-only */}
+      <TableCell>
+        <Typography variant="caption" color="text.secondary">
+          {devName ? devName.split(' ')[0] : '—'}
+        </Typography>
       </TableCell>
       <TableCell>
         <AssignmentDropdown
@@ -562,7 +574,7 @@ function AssignmentDropdown({ value, options, pitchId, onChange }: AssignmentDro
             <Typography variant="caption" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
               {(val as string).split(' ')[0]}
             </Typography>
-            <InterestDot level={level} noData={noData} />
+            <InterestChip level={level} noData={noData} size="small" />
           </Box>
         );
       }}
