@@ -2,7 +2,7 @@ import { lazy, Suspense, useMemo, useRef, useState, useCallback } from 'react';
 import {
   Box, Typography, Paper, Table, TableBody, TableCell, TableHead, TableRow,
   Select, MenuItem, Divider, Tooltip, Chip, IconButton, Popover, TextField,
-  Button, Checkbox,
+  Button, Checkbox, Collapse,
 } from '@mui/material';
 import {
   Warning as WarnIcon,
@@ -11,6 +11,8 @@ import {
   MailOutline as MailOutlineIcon,
   Mail as MailIcon,
   Autorenew as AutorenewIcon,
+  ExpandMore as ExpandIcon,
+  ExpandLess as CollapseIcon,
 } from '@mui/icons-material';
 import type {
   AllocationPitch, Phase2Interest, StaffingAssignment, AllocationConfig,
@@ -167,6 +169,11 @@ export default function Step2View({
     });
   };
 
+  // ── Sidebar section collapse state ──────────────────────────────────────
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<Record<string, boolean>>({});
+  const toggleSidebarSection = (label: string) =>
+    setSidebarCollapsed(prev => ({ ...prev, [label]: !prev[label] }));
+
   // ── UXD checkboxes (Item 9) ──────────────────────────────────────────────
   const [includeUXD, setIncludeUXD] = useState<Record<string, boolean>>({});
 
@@ -222,22 +229,22 @@ export default function Step2View({
           <Table size="small" stickyHeader sx={{ tableLayout: 'fixed' }}>
             <colgroup>
               <col />{/* pitch: flex */}
+              <col style={{ width: 52 }} />{/* Email */}
               <col style={{ width: 72 }} />{/* dev read-only */}
               <col style={{ width: 48 }} />{/* UXD */}
-              <col style={{ width: 52 }} />{/* Email */}
               <col style={{ width: 190 }} />{/* DevTL */}
               <col style={{ width: 190 }} />{/* QM */}
             </colgroup>
             <TableHead>
               <TableRow sx={{ '& th': { fontSize: '0.72rem', color: 'text.secondary' } }}>
                 <TableCell>Project</TableCell>
+                <TableCell width={52}>Message</TableCell>
                 <TableCell width={72}>Dev</TableCell>
                 <TableCell width={48}>
                   <Tooltip title="Include UXD in project kickoff">
                     <span>UXD</span>
                   </Tooltip>
                 </TableCell>
-                <TableCell width={52}>Message</TableCell>
                 <TableCell width={190}>Dev TL</TableCell>
                 <TableCell width={190}>QM</TableCell>
               </TableRow>
@@ -290,9 +297,16 @@ export default function Step2View({
           { label: 'QMs', names: config.qmNames, interests: qmInterests },
         ].map(({ label, names, interests }, sectionIdx) => (
           <Box key={label}>
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-              {label}
-            </Typography>
+            <Box
+              sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5, cursor: 'pointer', userSelect: 'none' }}
+              onClick={() => toggleSidebarSection(label)}
+            >
+              {sidebarCollapsed[label] ? <ExpandIcon sx={{ fontSize: '0.9rem', color: 'text.secondary' }} /> : <CollapseIcon sx={{ fontSize: '0.9rem', color: 'text.secondary' }} />}
+              <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                {label}
+              </Typography>
+            </Box>
+            <Collapse in={!sidebarCollapsed[label]}>
             {names.map(name => {
               const assignedPitchIds = assignments
                 .filter(a => a.devTL === name || a.qm === name)
@@ -352,6 +366,7 @@ export default function Step2View({
                 </Box>
               );
             })}
+            </Collapse>
             {sectionIdx === 0 && <Divider sx={{ my: 1.25 }} />}
           </Box>
         ))}
@@ -426,7 +441,7 @@ function Step2Row({
     <TableRow
       ref={onRef}
       sx={{
-        bgcolor: highlighted ? 'rgba(255, 152, 0, 0.45)' : undefined,
+        bgcolor: highlighted ? 'rgba(25, 118, 210, 0.22)' : undefined,
         transition: highlighted ? 'none' : 'background-color 1.2s ease',
       }}
     >
@@ -464,22 +479,7 @@ function Step2Row({
           </Suspense>
         )}
       </TableCell>
-      {/* Dev read-only (Item 8) */}
-      <TableCell>
-        <Typography variant="caption" color="text.secondary">
-          {devName ? devName.split(' ')[0] : '—'}
-        </Typography>
-      </TableCell>
-      {/* UXD checkbox (Item 9) */}
-      <TableCell padding="checkbox">
-        <Checkbox
-          size="small"
-          checked={includeUXD}
-          onChange={onToggleUXD}
-          sx={{ p: 0.5 }}
-        />
-      </TableCell>
-      {/* Email icon (Item 10) */}
+      {/* Email icon */}
       <TableCell>
         <Tooltip title={emailCustomized ? 'Message customized — click to edit' : 'Compose kickoff email'}>
           <IconButton
@@ -493,6 +493,21 @@ function Step2Row({
             }
           </IconButton>
         </Tooltip>
+      </TableCell>
+      {/* Dev read-only */}
+      <TableCell>
+        <Typography variant="caption" color="text.secondary">
+          {devName ? devName.split(' ')[0] : '—'}
+        </Typography>
+      </TableCell>
+      {/* UXD checkbox */}
+      <TableCell padding="checkbox">
+        <Checkbox
+          size="small"
+          checked={includeUXD}
+          onChange={onToggleUXD}
+          sx={{ p: 0.5 }}
+        />
       </TableCell>
       <TableCell>
         <AssignmentDropdown

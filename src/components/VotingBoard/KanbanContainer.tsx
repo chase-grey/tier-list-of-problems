@@ -15,6 +15,7 @@ interface KanbanContainerProps {
   onSendToBottomUnsorted?: (pitchId: string) => void;
   userRole?: string | null;
   focusedPitchId?: string | null;
+  onFocusPitch?: (id: string) => void;
 }
 
 /**
@@ -27,7 +28,8 @@ const KanbanContainer = ({
   onDragEnd,
   onSendToBottomUnsorted,
   userRole,
-  focusedPitchId
+  focusedPitchId,
+  onFocusPitch,
 }: KanbanContainerProps) => {
   // Reference to the scrollable container
   const containerRef = useRef<HTMLDivElement>(null);
@@ -188,6 +190,7 @@ const KanbanContainer = ({
               onSendToBottom={onSendToBottomUnsorted}
               userRole={userRole}
               focusedPitchId={focusedPitchId}
+              onFocusPitch={onFocusPitch}
             />
 
             {/* Tier columns 1-8 */}
@@ -200,6 +203,7 @@ const KanbanContainer = ({
                 columnCount={columnCount} // Always 9 columns
                 userRole={userRole}
                 focusedPitchId={focusedPitchId}
+                onFocusPitch={onFocusPitch}
               />
             ))}
           </Box>

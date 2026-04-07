@@ -18,12 +18,13 @@ interface PitchCardProps {
   onSendToBottom?: (pitchId: string) => void;
   userRole?: string | null;
   focused?: boolean;
+  onSelect?: (id: string) => void;
 }
 
 /**
  * Represents a single pitch card that can be dragged between tiers
  */
-const PitchCard = ({ pitch, vote, index, onSendToBottom, userRole, focused }: PitchCardProps) => {
+const PitchCard = ({ pitch, vote, index, onSendToBottom, userRole, focused, onSelect }: PitchCardProps) => {
   const [detailsAnchor, setDetailsAnchor] = useState<HTMLElement | null>(null);
   // Using HTMLElement type to match what Draggable provides
   const cardRef = useRef<HTMLElement>(null);
@@ -88,6 +89,7 @@ const PitchCard = ({ pitch, vote, index, onSendToBottom, userRole, focused }: Pi
           {...provided.dragHandleProps}
           elevation={snapshot.isDragging ? 6 : 1}
           onKeyDown={handleKeyDown}
+          onClick={() => onSelect?.(pitch.id)}
           sx={{
             p: 0.75,
             mb: 0,
@@ -104,9 +106,10 @@ const PitchCard = ({ pitch, vote, index, onSendToBottom, userRole, focused }: Pi
             },
             position: 'relative',
             minHeight: '88px',
-            outline: focused ? '2px solid' : 'none',
+            outline: focused ? '3px solid' : 'none',
             outlineColor: focused ? 'primary.main' : 'transparent',
-            outlineOffset: '1px',
+            outlineOffset: '2px',
+            boxShadow: focused ? (theme) => `0 0 0 5px ${theme.palette.primary.main}33` : undefined,
           }}
           role="button"
           tabIndex={0}

@@ -273,10 +273,10 @@ const QM_AFFINITY: Record<string, string[]> = {
   'Sage Mitchell': ['Support AI Charting'], // Sage has no data (omitted below)
 };
 
-/** QMs who submitted no Phase 2 interest data at all. */
-const PHASE2_NO_DATA = new Set(['Sage Mitchell']);
+/** People who submitted no Phase 2 interest data at all. */
+const PHASE2_NO_DATA = new Set(['Sage Mitchell', 'Robin Singh']);
 /** People who only filled out ~50% of Phase 2 pitches. */
-const PHASE2_PARTIAL_DATA = new Set(['Logan Turner']);
+const PHASE2_PARTIAL_DATA = new Set(['Logan Turner', 'Jamie Taylor']);
 
 function phase2InterestForPerson(name: string, role: 'dev TL' | 'QM', selectedPitchIds: string[]): Phase2Interest {
   if (PHASE2_NO_DATA.has(name)) {

@@ -164,7 +164,7 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
   };
 
   // Keyboard navigation for voting board
-  const { focusedPitchId } = useKeyboardNav({
+  const { focusedPitchId, setFocusedPitchId } = useKeyboardNav({
     pitches,
     votes: state.votes,
     stage: state.stage,
@@ -706,6 +706,7 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
               <KanbanContainer
                 pitches={pitches.filter(p => p.category === selectedCategory)}
                 votes={state.votes}
+                onFocusPitch={setFocusedPitchId}
                 onDragEnd={handleDragEnd}
                 onSendToBottomUnsorted={handleSendToBottomPriorityUnsorted}
                 userRole={state.voterRole}

@@ -16,12 +16,13 @@ interface BucketColumnProps {
   onSendToBottom?: (pitchId: string) => void;
   userRole?: string | null;
   focusedPitchId?: string | null;
+  onFocusPitch?: (id: string) => void;
 }
 
 /**
  * Represents a tier bucket column in the voting board
  */
-const BucketColumn = ({ tier, pitches, votes, columnCount = 9, onSendToBottom, userRole, focusedPitchId }: BucketColumnProps) => {
+const BucketColumn = ({ tier, pitches, votes, columnCount = 9, onSendToBottom, userRole, focusedPitchId, onFocusPitch }: BucketColumnProps) => {
   const columnRef = useRef<HTMLDivElement>(null);
   const columnId = tier === null ? 'unsorted' : `tier-${tier}`;
   
@@ -159,6 +160,7 @@ const BucketColumn = ({ tier, pitches, votes, columnCount = 9, onSendToBottom, u
                   onSendToBottom={isUnsorted ? onSendToBottom : undefined}
                   userRole={userRole}
                   focused={focusedPitchId === pitch.id}
+                  onSelect={onFocusPitch}
                 />
               ))}
               {provided.placeholder}

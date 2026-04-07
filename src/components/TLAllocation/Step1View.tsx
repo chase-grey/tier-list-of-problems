@@ -783,7 +783,7 @@ function PitchRow({ assignment, pitch, devNames, onDevChange, onStatusChange, hi
       ref={onRef}
       sx={{
         opacity: highlight === 'cut' ? 0.55 : 1,
-        bgcolor: highlighted ? 'rgba(255, 152, 0, 0.45)' : undefined,
+        bgcolor: highlighted ? 'rgba(25, 118, 210, 0.22)' : undefined,
         transition: highlighted ? 'none' : 'background-color 1.2s ease',
       }}
     >
