@@ -36,6 +36,7 @@ interface InterestRankingProps {
   onSetInterest: (id: string, interestLevel: InterestLevel, timestamp?: number) => void;
   userRole?: string | null;
   focusedPitchId?: string | null;
+  onFocusPitch?: (id: string | null) => void;
 }
 
 /**
@@ -46,7 +47,8 @@ const InterestRanking: React.FC<InterestRankingProps> = ({
   votes,
   onSetInterest,
   userRole,
-  focusedPitchId
+  focusedPitchId,
+  onFocusPitch,
 }) => {
   // Reference to the scrollable container
   const containerRef = useRef<HTMLDivElement>(null);
@@ -346,6 +348,7 @@ const InterestRanking: React.FC<InterestRankingProps> = ({
                 userRole={userRole}
                 onSendToBottomUnsorted={handleSendToBottomInterestUnsorted}
                 focusedPitchId={focusedPitchId}
+                onFocusPitch={onFocusPitch}
               />
             </Box>
 
@@ -375,6 +378,7 @@ const InterestRanking: React.FC<InterestRankingProps> = ({
                     votes={votes}
                     userRole={userRole}
                     focusedPitchId={focusedPitchId}
+                    onFocusPitch={onFocusPitch}
                   />
                 </Box>
               );

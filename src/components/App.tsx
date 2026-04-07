@@ -764,14 +764,14 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
                     key={cat}
                     value={cat}
                     accessKey={CAT_KEYS[cat]}
-                    label={<><u>{cat[0]}</u>{cat.slice(1)}</>}
+                    label={<span style={{ whiteSpace: 'nowrap' }}><u>{cat[0]}</u>{cat.slice(1)}</span>}
                   />
                 ))}
                 {canAccessInterestStage && (
                   <Tab
                     value="__interest__"
                     accessKey="i"
-                    label={<><u>I</u>nterest</>}
+                    label={<span style={{ whiteSpace: 'nowrap' }}><u>I</u>nterest</span>}
                     disabled={!priorityStageComplete}
                   />
                 )}
@@ -795,6 +795,7 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
                 onSetInterest={handleInterestChange}
                 userRole={state.voterRole}
                 focusedPitchId={focusedPitchId}
+                onFocusPitch={setFocusedPitchId}
               />
             ) : (
               // If user somehow got to interest stage but shouldn't be there, show fallback UI

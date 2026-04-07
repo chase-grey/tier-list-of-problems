@@ -190,12 +190,13 @@ export const useKeyboardNav = ({
         if (!focusedPitchId) { setFocusedPitchId(orderedList[0]?.id ?? null); return; }
         const col = getCardColumn(focusedPitchId);
         const colIdx = COLUMN_ORDER.indexOf(col);
-        if (colIdx < COLUMN_ORDER.length - 1) {
-          const nextCol = COLUMN_ORDER[colIdx + 1];
-          const myPos = getColumnPitches(col).findIndex(p => p.id === focusedPitchId);
-          const nextColPitches = getColumnPitches(nextCol);
+        const myPos = getColumnPitches(col).findIndex(p => p.id === focusedPitchId);
+        // Scan right, skipping empty columns
+        for (let i = colIdx + 1; i < COLUMN_ORDER.length; i++) {
+          const nextColPitches = getColumnPitches(COLUMN_ORDER[i]);
           if (nextColPitches.length > 0) {
             setFocusedPitchId(nextColPitches[Math.min(myPos, nextColPitches.length - 1)].id);
+            break;
           }
         }
         return;
@@ -206,12 +207,13 @@ export const useKeyboardNav = ({
         if (!focusedPitchId) { setFocusedPitchId(orderedList[0]?.id ?? null); return; }
         const col = getCardColumn(focusedPitchId);
         const colIdx = COLUMN_ORDER.indexOf(col);
-        if (colIdx > 0) {
-          const prevCol = COLUMN_ORDER[colIdx - 1];
-          const myPos = getColumnPitches(col).findIndex(p => p.id === focusedPitchId);
-          const prevColPitches = getColumnPitches(prevCol);
+        const myPos = getColumnPitches(col).findIndex(p => p.id === focusedPitchId);
+        // Scan left, skipping empty columns
+        for (let i = colIdx - 1; i >= 0; i--) {
+          const prevColPitches = getColumnPitches(COLUMN_ORDER[i]);
           if (prevColPitches.length > 0) {
             setFocusedPitchId(prevColPitches[Math.min(myPos, prevColPitches.length - 1)].id);
+            break;
           }
         }
         return;

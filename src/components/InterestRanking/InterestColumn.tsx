@@ -18,6 +18,7 @@ interface InterestColumnProps {
   userRole?: string | null;
   onSendToBottomUnsorted?: (pitchId: string) => void;
   focusedPitchId?: string | null;
+  onFocusPitch?: (id: string | null) => void;
 }
 
 /**
@@ -31,7 +32,8 @@ const InterestColumn = ({
   votes,
   userRole,
   onSendToBottomUnsorted,
-  focusedPitchId
+  focusedPitchId,
+  onFocusPitch,
 }: InterestColumnProps) => {
   const columnRef = useRef<HTMLDivElement>(null);
 
@@ -147,6 +149,7 @@ const InterestColumn = ({
                           columnId={columnId}
                           onSendToBottomUnsorted={onSendToBottomUnsorted}
                           userRole={userRole}
+                          onFocusPitch={onFocusPitch}
                         />
                       );
                     }}
@@ -175,6 +178,7 @@ const InterestCardShell = ({
   columnId,
   onSendToBottomUnsorted,
   userRole,
+  onFocusPitch,
 }: {
   pitch: Pitch;
   vote?: Vote;
@@ -187,6 +191,7 @@ const InterestCardShell = ({
   columnId: string;
   onSendToBottomUnsorted?: (pitchId: string) => void;
   userRole?: string | null;
+  onFocusPitch?: (id: string | null) => void;
 }) => {
   const cardRef = useRef<HTMLElement | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
@@ -224,6 +229,7 @@ const InterestCardShell = ({
       {...dragHandleProps}
       style={{ ...style, height: 'auto', maxHeight: 'none' }}
       elevation={isDragging ? 6 : 1}
+      onClick={() => onFocusPitch?.(pitch.id)}
       sx={{
         p: 0.75,
         mb: 0,
