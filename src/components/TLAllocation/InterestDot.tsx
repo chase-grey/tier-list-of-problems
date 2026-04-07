@@ -14,24 +14,38 @@ interface InterestDotProps {
 }
 
 export default function InterestDot({ level, noData = false }: InterestDotProps) {
-  const title = level === null
-    ? (noData ? 'No interest data submitted' : 'Skipped this project')
-    : DOT_CONFIG[level].label;
-
   const cfg = level !== null ? DOT_CONFIG[level] : null;
 
+  if (!cfg) {
+    // null level: differentiate skipped (grey) vs no-data (amber) to match InterestChip
+    return (
+      <Tooltip title={noData ? 'No interest data submitted for any project' : 'Skipped ranking this project'} placement="top">
+        <Box
+          sx={{
+            width: 10,
+            height: 10,
+            borderRadius: '50%',
+            flexShrink: 0,
+            bgcolor: noData ? 'rgba(255, 152, 0, 0.25)' : 'transparent',
+            border: '1.5px dashed',
+            borderColor: noData ? 'warning.main' : 'text.disabled',
+            opacity: noData ? 1 : 0.55,
+          }}
+        />
+      </Tooltip>
+    );
+  }
+
   return (
-    <Tooltip title={title} placement="top">
+    <Tooltip title={DOT_CONFIG[level!].label} placement="top">
       <Box
         sx={{
           width: 10,
           height: 10,
           borderRadius: '50%',
           flexShrink: 0,
-          bgcolor: cfg ? cfg.bg : 'transparent',
-          border: !cfg ? '1.5px dashed' : cfg.border ? `1.5px solid ${cfg.border}` : 'none',
-          borderColor: !cfg ? 'text.disabled' : undefined,
-          opacity: !cfg ? 0.5 : 1,
+          bgcolor: cfg.bg,
+          border: cfg.border ? `1.5px solid ${cfg.border}` : 'none',
         }}
       />
     </Tooltip>

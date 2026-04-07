@@ -490,7 +490,7 @@ function Step2Row({
         )}
       </TableCell>
       {/* Email icon */}
-      <TableCell>
+      <TableCell align="center">
         <Tooltip title={emailCustomized ? 'Message customized — click to edit' : 'Compose kickoff email'}>
           <IconButton
             size="small"
@@ -505,7 +505,7 @@ function Step2Row({
         </Tooltip>
       </TableCell>
       {/* UXD checkbox */}
-      <TableCell padding="checkbox">
+      <TableCell align="center" sx={{ p: 0 }}>
         <Checkbox
           size="small"
           checked={includeUXD}
@@ -514,7 +514,7 @@ function Step2Row({
         />
       </TableCell>
       {/* Dev read-only */}
-      <TableCell>
+      <TableCell align="center">
         <Typography variant="caption" color="text.secondary">
           {devName ? devName.split(' ')[0] : '—'}
         </Typography>

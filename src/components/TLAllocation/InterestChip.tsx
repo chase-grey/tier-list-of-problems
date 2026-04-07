@@ -18,13 +18,23 @@ const INTEREST_CONFIG: Record<number, { label: string; color: string; bg: string
 export default function InterestChip({ level, size = 'small', noData = false }: InterestChipProps) {
   if (level === null) {
     // noData = person never submitted anything; null level = submitted but skipped this pitch
-    const title = noData ? 'No interest data submitted for any project' : 'Skipped ranking this project';
+    if (noData) {
+      return (
+        <Tooltip title="No interest data submitted for any project" placement="top">
+          <Chip
+            label="✕"
+            size={size}
+            sx={{ fontSize: '0.7rem', bgcolor: 'rgba(255, 152, 0, 0.18)', color: 'warning.main', minWidth: 28 }}
+          />
+        </Tooltip>
+      );
+    }
     return (
-      <Tooltip title={title} placement="top">
+      <Tooltip title="Skipped ranking this project" placement="top">
         <Chip
-          label={noData ? '✕' : '—'}
+          label="—"
           size={size}
-          sx={{ fontSize: '0.7rem', bgcolor: 'action.hover', color: 'text.disabled', minWidth: noData ? 28 : undefined }}
+          sx={{ fontSize: '0.7rem', bgcolor: 'action.hover', color: 'text.disabled' }}
         />
       </Tooltip>
     );
