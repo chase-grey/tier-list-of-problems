@@ -26,6 +26,8 @@ import { buildPollingKey, cleanupPollingStorageOnCycleChange, getEffectivePollin
 import { getInterestLevelLabel } from '../utils/voteActions';
 import { fetchPitches } from '../services/api';
 import TLAllocationView from './TLAllocation/TLAllocationView';
+import CategoryBandwidthBar from './VotingBoard/CategoryBandwidthBar';
+import type { CategoryBandwidthConfig } from './VotingBoard/CategoryBandwidthBar';
 
 const CATEGORIES = [
   'Support AI Charting',
@@ -40,6 +42,23 @@ const CAT_KEYS: Record<string, string> = {
   'Create and Improve Tools and Framework': 'c',
   'Mobile Feature Parity': 'm',
   'Address Technical Debt': 'a',
+};
+
+// Target time allocation per category for this quarter.
+// Shown in the voting section so voters can align their priorities.
+const CATEGORY_BANDWIDTH_CONFIG: CategoryBandwidthConfig = {
+  bandwidth: {
+    'Support AI Charting': 50,
+    'Create and Improve Tools and Framework': 30,
+    'Mobile Feature Parity': 10,
+    'Address Technical Debt': 10,
+  },
+  colors: {
+    'Support AI Charting': '#1565c0',
+    'Create and Improve Tools and Framework': '#2e7d32',
+    'Mobile Feature Parity': '#e65100',
+    'Address Technical Debt': '#6a1b9a',
+  },
 };
 
 // Initial state
@@ -776,6 +795,11 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
                   />
                 )}
               </Tabs>
+              <CategoryBandwidthBar
+                pitches={pitches}
+                votes={state.votes}
+                config={CATEGORY_BANDWIDTH_CONFIG}
+              />
               <KanbanContainer
                 pitches={pitches.filter(p => p.category === selectedCategory)}
                 votes={state.votes}
