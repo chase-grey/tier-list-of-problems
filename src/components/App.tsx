@@ -718,11 +718,14 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
           )}
 
           {/* Help dialog */}
-          <HelpDialog 
-            open={showHelp} 
+          <HelpDialog
+            open={showHelp}
             onClose={handleInitialHelpClose}
-            userRole={state.voterRole} 
+            userRole={state.voterRole}
             showInterestStep={canAccessInterestStage}
+            stage={state.stage}
+            allocationMode={isTLStage}
+            allocationStep={allocationStep}
           />
           
           {/* Reset confirmation dialog */}
