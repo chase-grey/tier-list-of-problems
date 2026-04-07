@@ -34,6 +34,14 @@ const CATEGORIES = [
   'Address Technical Debt',
 ] as const;
 
+// Access keys for category tabs (Alt+letter on Windows)
+const CAT_KEYS: Record<string, string> = {
+  'Support AI Charting': 's',
+  'Create and Improve Tools and Framework': 'c',
+  'Mobile Feature Parity': 'm',
+  'Address Technical Debt': 'a',
+};
+
 // Initial state
 const initialState: AppState = {
   voterName: null,
@@ -148,6 +156,14 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
     getCompletionStats
   } = useVoteManagement(completeState);
 
+  // Only pass pitches visible on screen to the keyboard nav hook.
+  // In priority stage the board only renders the selected category — passing all
+  // pitches caused arrow/n navigation to land on invisible cards from other categories.
+  const keyboardNavPitches = useMemo(
+    () => state.stage === 'priority' ? pitches.filter(p => p.category === selectedCategory) : pitches,
+    [state.stage, pitches, selectedCategory]
+  );
+
   const handleSendToBottomPriorityUnsorted = (pitchId: string) => {
     const unsortedPitchIds = pitches
       .filter(p => !state.votes[p.id]?.tier)
@@ -185,7 +201,7 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
 
   // Keyboard navigation for voting board
   const { focusedPitchId, setFocusedPitchId } = useKeyboardNav({
-    pitches,
+    pitches: keyboardNavPitches,
     votes: state.votes,
     stage: state.stage,
     isActive: !isTLStage && !showHelp && !showResetConfirmation,
@@ -198,6 +214,35 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
     sendToBottom: handleSendToBottomPriorityUnsorted,
     openHelp: () => setShowHelp(true),
   });
+
+  // Clear keyboard focus when the visible category changes so there's no phantom selection
+  useEffect(() => {
+    setFocusedPitchId(null);
+  }, [selectedCategory, setFocusedPitchId]);
+
+  // [ / ] — cycle category tabs (priority stage only, when keyboard nav is active)
+  useEffect(() => {
+    if (isTLStage || state.stage !== 'priority') return;
+    const handle = (e: KeyboardEvent) => {
+      if (showHelp || showResetConfirmation) return;
+      const tag = (e.target as HTMLElement).tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      if ((e.target as HTMLElement).getAttribute('contenteditable') === 'true') return;
+      if (e.key === ']') {
+        setSelectedCategory(prev => {
+          const idx = CATEGORIES.indexOf(prev as typeof CATEGORIES[number]);
+          return idx < CATEGORIES.length - 1 ? CATEGORIES[idx + 1] : prev;
+        });
+      } else if (e.key === '[') {
+        setSelectedCategory(prev => {
+          const idx = CATEGORIES.indexOf(prev as typeof CATEGORIES[number]);
+          return idx > 0 ? CATEGORIES[idx - 1] : prev;
+        });
+      }
+    };
+    document.addEventListener('keydown', handle);
+    return () => document.removeEventListener('keydown', handle);
+  }, [isTLStage, state.stage, showHelp, showResetConfirmation]);
 
   // Access snackbar
   const { showSnackbar } = useSnackbar();
@@ -715,12 +760,18 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
                 sx={{ borderBottom: 1, borderColor: 'divider', flexShrink: 0 }}
               >
                 {CATEGORIES.map(cat => (
-                  <Tab key={cat} value={cat} label={cat} />
+                  <Tab
+                    key={cat}
+                    value={cat}
+                    accessKey={CAT_KEYS[cat]}
+                    label={<><u>{cat[0]}</u>{cat.slice(1)}</>}
+                  />
                 ))}
                 {canAccessInterestStage && (
                   <Tab
                     value="__interest__"
-                    label="Interest"
+                    accessKey="i"
+                    label={<><u>I</u>nterest</>}
                     disabled={!priorityStageComplete}
                   />
                 )}

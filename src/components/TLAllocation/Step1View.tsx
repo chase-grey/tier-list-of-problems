@@ -268,8 +268,8 @@ export default function Step1View({
           >
             {plans.map(plan => (
               <Tooltip key={plan.id} title={plan.description} placement="bottom">
-                <ToggleButton value={plan.id} sx={{ px: 2 }}>
-                  {plan.id}
+                <ToggleButton value={plan.id} accessKey={plan.id.toLowerCase()} sx={{ px: 2 }}>
+                  <u>{plan.id}</u>
                 </ToggleButton>
               </Tooltip>
             ))}

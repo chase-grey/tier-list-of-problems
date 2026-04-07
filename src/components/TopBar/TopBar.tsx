@@ -117,9 +117,10 @@ export const TopBar = ({
           <Button
             variant="contained"
             color="primary"
+            accessKey="f"
             onClick={onAllocationFinish}
           >
-            {allocationFinishLabel}
+            <u>F</u>{allocationFinishLabel.slice(1)}
           </Button>
         )}
 
@@ -163,6 +164,7 @@ export const TopBar = ({
                     variant="contained"
                     color={stage === 'priority' ? 'secondary' : 'primary'}
                     startIcon={stage === 'priority' ? <NextIcon /> : <PrevIcon />}
+                    accessKey={stage === 'priority' ? 'n' : 'p'}
                     onClick={onNextStage}
                     disabled={stage === 'priority' && (!canAccessInterestStage || !priorityStageComplete)}
                     sx={{
@@ -179,7 +181,10 @@ export const TopBar = ({
                       }
                     }}
                   >
-                    {stage === 'priority' ? 'Next: Rank Interest' : 'Previous: Rank Priority'}
+                    {stage === 'priority'
+                      ? <><u>N</u>ext: Rank Interest</>
+                      : <><u>P</u>revious: Rank Priority</>
+                    }
                   </Button>
                 </span>
               </Tooltip>
@@ -190,6 +195,7 @@ export const TopBar = ({
               color="secondary"
               startIcon={<DownloadIcon />}
               disabled={!isExportEnabled}
+              accessKey="f"
               onClick={onFinish}
               aria-label="Finish and export results"
               sx={{
@@ -198,7 +204,7 @@ export const TopBar = ({
                 '&:not(:disabled)': { boxShadow: 3 }
               }}
             >
-              Finish
+              <u>F</u>inish
             </Button>
           </>
         )}

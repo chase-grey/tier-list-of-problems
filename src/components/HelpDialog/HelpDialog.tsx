@@ -93,14 +93,17 @@ const HelpDialog: React.FC<HelpDialogProps> = ({
                 <Box component="tbody">
                   {[
                     ['1 / 2 / 3 / 4', 'Rank focused card at that tier'],
-                    ['0', 'Clear ranking (back to unsorted)'],
+                    ['0', 'Clear ranking (move to top of unsorted)'],
                     ['n', 'Jump to next unranked card'],
                     ['b', 'Skip — send card to bottom of unsorted'],
-                    ['j / ↓', 'Next card'],
-                    ['k / ↑', 'Previous card'],
+                    ['j / k', 'Next / previous card (sequential)'],
+                    ['↑ / ↓', 'Move up / down within column'],
+                    ['← / →', 'Move to same position in adjacent column'],
+                    ['[ / ]', 'Previous / next category tab'],
                     ['Enter', 'Open / close card details'],
-                    ['Esc', 'Deselect card'],
+                    ['Esc', 'Deselect / close details'],
                     ['?', 'Open this help dialog'],
+                    ['Alt + letter', 'Click button with that underlined letter'],
                   ].map(([key, desc]) => (
                     <Box component="tr" key={key}>
                       <Box component="td" sx={{ pr: 3, py: 0.25, fontFamily: 'monospace', whiteSpace: 'nowrap', verticalAlign: 'top', width: '1%' }}>
@@ -231,14 +234,16 @@ const HelpDialog: React.FC<HelpDialogProps> = ({
                 <Box component="tbody">
                   {[
                     ['1 / 2 / 3 / 4', 'Rank focused card at that interest level'],
-                    ['0', 'Clear ranking (back to unsorted)'],
+                    ['0', 'Clear ranking (move to top of unsorted)'],
                     ['n', 'Jump to next unranked card'],
                     ['b', 'Skip — send card to bottom of unsorted'],
-                    ['j / ↓', 'Next card'],
-                    ['k / ↑', 'Previous card'],
+                    ['j / k', 'Next / previous card (sequential)'],
+                    ['↑ / ↓', 'Move up / down within column'],
+                    ['← / →', 'Move to same position in adjacent column'],
                     ['Enter', 'Open / close card details'],
-                    ['Esc', 'Deselect card'],
+                    ['Esc', 'Deselect / close details'],
                     ['?', 'Open this help dialog'],
+                    ['Alt + letter', 'Click button with that underlined letter'],
                   ].map(([key, desc]) => (
                     <Box component="tr" key={key}>
                       <Box component="td" sx={{ pr: 3, py: 0.25, fontFamily: 'monospace', whiteSpace: 'nowrap', verticalAlign: 'top', width: '1%' }}>
