@@ -123,6 +123,8 @@ export default function Step1View({
   }, []);
   const [highlightPitchId, setHighlightPitchId] = useState<string | null>(null);
 
+  const pitchMap = useMemo(() => new Map(pitches.map(p => [p.id, p])), [pitches]);
+
   const handleFocusPitch = useCallback((pitchId: string) => {
     const assignment = currentAssignments.find(a => a.pitchId === pitchId);
     const pitch = pitchMap.get(pitchId);
@@ -145,8 +147,6 @@ export default function Step1View({
       setTimeout(() => setHighlightPitchId(null), 1500);
     }, 320);
   }, [currentAssignments, pitchMap]);
-
-  const pitchMap = useMemo(() => new Map(pitches.map(p => [p.id, p])), [pitches]);
 
   const categories = Object.keys(config.bandwidth);
 
@@ -319,26 +319,26 @@ export default function Step1View({
                 <Table size="small" sx={{ tableLayout: 'fixed' }}>
                   <colgroup>
                     <col />{/* pitch: takes remaining space */}
-                    <col style={{ width: 60 }} />
-                    <col style={{ width: 60 }} />
-                    <col style={{ width: 180 }} />
+                    <col style={{ width: 56 }} />
+                    <col style={{ width: 56 }} />
                     <col style={{ width: 170 }} />
+                    <col style={{ width: 185 }} />
                   </colgroup>
                   <TableHead>
                     <TableRow sx={{ '& th': { py: 0.5, fontSize: '0.72rem', color: 'text.secondary' } }}>
                       <TableCell>Pitch</TableCell>
-                      <TableCell align="right" width={60}>
+                      <TableCell align="right" width={56}>
                         <Tooltip title="Team priority score — hover a score to see voter breakdown" placement="top">
                           <span>Team</span>
                         </Tooltip>
                       </TableCell>
-                      <TableCell align="right" width={60}>
+                      <TableCell align="right" width={56}>
                         <Tooltip title="TL priority score — hover a score to see voter breakdown" placement="top">
                           <span>TL</span>
                         </Tooltip>
                       </TableCell>
-                      <TableCell width={180}>Dev</TableCell>
-                      <TableCell width={170} align="right" />
+                      <TableCell width={170}>Dev</TableCell>
+                      <TableCell width={185} align="right" />
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -364,10 +364,10 @@ export default function Step1View({
                           <Table size="small" sx={{ tableLayout: 'fixed', width: '100%' }}>
                             <colgroup>
                               <col />{/* pitch: flex to match outer table */}
-                              <col style={{ width: 60 }} />
-                              <col style={{ width: 60 }} />
-                              <col style={{ width: 180 }} />
+                              <col style={{ width: 56 }} />
+                              <col style={{ width: 56 }} />
                               <col style={{ width: 170 }} />
+                              <col style={{ width: 185 }} />
                             </colgroup>
                             <TableBody>
                               {selectedInCat.map(a => (
@@ -409,10 +409,10 @@ export default function Step1View({
                           <Table size="small" sx={{ tableLayout: 'fixed', width: '100%' }}>
                             <colgroup>
                               <col />{/* pitch: flex to match outer table */}
-                              <col style={{ width: 60 }} />
-                              <col style={{ width: 60 }} />
-                              <col style={{ width: 180 }} />
+                              <col style={{ width: 56 }} />
+                              <col style={{ width: 56 }} />
                               <col style={{ width: 170 }} />
+                              <col style={{ width: 185 }} />
                             </colgroup>
                             <TableBody>
                               {nextUpInCat.map(a => (
@@ -454,10 +454,10 @@ export default function Step1View({
                           <Table size="small" sx={{ tableLayout: 'fixed', width: '100%' }}>
                             <colgroup>
                               <col />{/* pitch: flex to match outer table */}
-                              <col style={{ width: 60 }} />
-                              <col style={{ width: 60 }} />
-                              <col style={{ width: 180 }} />
+                              <col style={{ width: 56 }} />
+                              <col style={{ width: 56 }} />
                               <col style={{ width: 170 }} />
+                              <col style={{ width: 185 }} />
                             </colgroup>
                             <TableBody>
                               {cutInCat.map(a => (
@@ -763,14 +763,22 @@ function PitchRow({ assignment, pitch, devNames, onDevChange, onStatusChange, hi
         )}
       </TableCell>
       <TableCell align="right">
-        <Tooltip title={<VoteBreakdown votes={pitch.teamVotes} label="Team votes" />} placement="right" arrow>
+        <Tooltip
+          title={<VoteBreakdown votes={pitch.teamVotes} label="Team votes" />}
+          placement="right"
+          slotProps={{ tooltip: { sx: { bgcolor: 'background.paper', color: 'text.primary', boxShadow: 3, border: '1px solid', borderColor: 'divider', p: 0 } } }}
+        >
           <Typography variant="caption" sx={{ color: priorityColor(pitch.teamPriorityScore), fontWeight: 600, cursor: 'default' }}>
             {pitch.teamPriorityScore.toFixed(1)}
           </Typography>
         </Tooltip>
       </TableCell>
       <TableCell align="right">
-        <Tooltip title={<VoteBreakdown votes={pitch.tlVotes} label="TL votes" />} placement="right" arrow>
+        <Tooltip
+          title={<VoteBreakdown votes={pitch.tlVotes} label="TL votes" />}
+          placement="right"
+          slotProps={{ tooltip: { sx: { bgcolor: 'background.paper', color: 'text.primary', boxShadow: 3, border: '1px solid', borderColor: 'divider', p: 0 } } }}
+        >
           <Typography variant="caption" sx={{ color: priorityColor(pitch.tlPriorityScore), fontWeight: 600, cursor: 'default' }}>
             {pitch.tlPriorityScore.toFixed(1)}
           </Typography>
@@ -783,7 +791,7 @@ function PitchRow({ assignment, pitch, devNames, onDevChange, onStatusChange, hi
           value={assignment.assignedDev ?? ''}
           onChange={e => onDevChange(pitch.id, e.target.value || null)}
           displayEmpty
-          sx={{ fontSize: '0.75rem', minWidth: 140 }}
+          sx={{ fontSize: '0.75rem', width: '100%' }}
           renderValue={val => val
             ? <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                 <span>{(val as string).split(' ')[0]}</span>
@@ -806,7 +814,7 @@ function PitchRow({ assignment, pitch, devNames, onDevChange, onStatusChange, hi
           ))}
         </Select>
       </TableCell>
-      <TableCell>
+      <TableCell sx={{ px: 1 }}>
         <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-end' }}>
           {/* ITEM 7: descriptive tooltips on status chips */}
           <Tooltip title="Include in this quarter's projects">
