@@ -16,7 +16,7 @@ function doGet(e) {
   try {
     // Log the incoming request for debugging
     console.log('GET request received with params:', JSON.stringify(e.parameter));
-    
+
     switch (e.parameter.route) {
       case 'pitches':
         return getPitches();
@@ -24,6 +24,12 @@ function doGet(e) {
         return getResults();
       case 'token':
         return getCsrfToken();
+      case 'config':
+        return getConfig();
+      case 'allocation-data':
+        return getAllocationData();
+      case 'phase2-interests':
+        return getPhase2Interests();
       default:
         return notFound();
     }
@@ -40,12 +46,15 @@ function doPost(e) {
   try {
     // Log the incoming request for debugging
     console.log('POST request received with route:', e.parameter.route);
-    
+
+    const payload = JSON.parse(e.postData.contents);
+    console.log('Payload received:', JSON.stringify(payload));
+
     switch (e.parameter.route) {
       case 'vote':
-        const payload = JSON.parse(e.postData.contents);
-        console.log('Vote payload received:', JSON.stringify(payload));
         return recordVotes(payload);
+      case 'interest-vote':
+        return recordInterestVote(payload);
       default:
         return notFound();
     }
@@ -175,6 +184,146 @@ function recordVotes(body) {
   }
   
   return json200({ saved: newRows.length });
+}
+
+/**
+ * Return the TL allocation config stored in Script Properties as JSON.
+ * Set via: PropertiesService.getScriptProperties().setProperty('allocation_config', JSON.stringify({...}))
+ * @return {TextOutput} JSON AllocationConfig or { error: 'NOT_CONFIGURED' }
+ */
+function getConfig() {
+  const props = PropertiesService.getScriptProperties();
+  const configJson = props.getProperty('allocation_config');
+  if (!configJson) {
+    return json200({ error: 'NOT_CONFIGURED' });
+  }
+  return json200(JSON.parse(configJson));
+}
+
+/**
+ * Return per-pitch, per-voter priority tier data aggregated from the VOTES sheet.
+ * Dev TL voters are identified via devTLNames in the allocation_config Script Property.
+ *
+ * Response shape:
+ *   { [pitchId]: { teamVotes: {name: 1|2|3|4}, tlVotes: {name: 1|2|3|4},
+ *                  teamPriorityScore: number, tlPriorityScore: number } }
+ *
+ * @return {TextOutput} JSON vote data keyed by pitch ID
+ */
+function getAllocationData() {
+  // Load devTL names from config so we can split teamVotes / tlVotes
+  const props = PropertiesService.getScriptProperties();
+  const configJson = props.getProperty('allocation_config') || '{}';
+  const config = JSON.parse(configJson);
+  const devTLNames = new Set(config.devTLNames || []);
+
+  const sh = ss.getSheetByName('VOTES');
+  if (!sh || sh.getLastRow() <= 1) return json200({});
+
+  const rows = sh.getRange(2, 1, sh.getLastRow() - 1, 7).getValues();
+
+  // Group votes by pitch: { pitchId -> { voterName -> tier } }
+  const pitchVoteMap = {};
+  for (const row of rows) {
+    const voterName = row[1]; // column B
+    const pitchId   = row[3]; // column D
+    const tier       = row[5]; // column F
+    if (!voterName || !pitchId || tier === '' || tier === null) continue;
+    const numTier = Math.max(1, Math.min(4, Math.round(Number(tier))));
+    if (!pitchVoteMap[pitchId]) pitchVoteMap[pitchId] = {};
+    // Last write wins; checksum dedup at write-time means at most one row per voter-pitch
+    pitchVoteMap[pitchId][voterName] = numTier;
+  }
+
+  // Compute aggregates per pitch
+  const result = {};
+  for (const pitchId of Object.keys(pitchVoteMap)) {
+    const voterTiers = pitchVoteMap[pitchId];
+    const teamVotes = voterTiers;
+    const tlVotes = {};
+    for (const name of Object.keys(voterTiers)) {
+      if (devTLNames.has(name)) tlVotes[name] = voterTiers[name];
+    }
+    const allTiers = Object.values(teamVotes);
+    const tlTiers = Object.values(tlVotes);
+    const teamPriorityScore = allTiers.length > 0
+      ? allTiers.reduce((s, t) => s + t, 0) / allTiers.length
+      : 0;
+    const tlPriorityScore = tlTiers.length > 0
+      ? tlTiers.reduce((s, t) => s + t, 0) / tlTiers.length
+      : teamPriorityScore;
+    result[pitchId] = { teamVotes, tlVotes, teamPriorityScore, tlPriorityScore };
+  }
+
+  return json200(result);
+}
+
+/**
+ * Return Phase 2 interest votes (dev TL / QM interest in selected projects).
+ * Reads from the INTEREST_VOTES sheet; returns [] if the sheet doesn't exist yet.
+ *
+ * Response shape: Phase2Interest[]
+ *   [{ personName, role, interestByPitchId: { [pitchId]: 1|2|3|4|null } }]
+ *
+ * @return {TextOutput} JSON Phase2Interest array
+ */
+function getPhase2Interests() {
+  const sh = ss.getSheetByName('INTEREST_VOTES');
+  if (!sh || sh.getLastRow() <= 1) return json200([]);
+
+  const rows = sh.getRange(2, 1, sh.getLastRow() - 1, 6).getValues();
+  const byPerson = {};
+
+  for (const row of rows) {
+    const voterName = row[1]; // column B
+    const role      = row[3]; // column D
+    const pitchId   = row[4]; // column E
+    const level     = row[5]; // column F (1-4 or '' for null/skipped)
+    if (!voterName || !pitchId) continue;
+    if (!byPerson[voterName]) {
+      byPerson[voterName] = { personName: voterName, role, interestByPitchId: {} };
+    }
+    byPerson[voterName].interestByPitchId[pitchId] =
+      (level === '' || level === null || level === undefined) ? null : Number(level);
+  }
+
+  return json200(Object.values(byPerson));
+}
+
+/**
+ * Record Phase 2 interest votes for a dev TL or QM.
+ * Creates the INTEREST_VOTES sheet if it doesn't exist yet.
+ *
+ * Expected body: { voterName: string, role: 'dev TL'|'QM',
+ *                  interests: [{ pitch_id: string, level: 1|2|3|4|null }] }
+ *
+ * @param {Object} body - Parsed request body
+ * @return {TextOutput} JSON { saved: number }
+ */
+function recordInterestVote(body) {
+  const { voterName, role, interests } = body;
+  if (!voterName || !role || !Array.isArray(interests) || interests.length === 0) {
+    return badRequest('Invalid request format');
+  }
+  if (!['dev TL', 'QM'].includes(role)) {
+    return badRequest('role must be "dev TL" or "QM"');
+  }
+
+  let sh = ss.getSheetByName('INTEREST_VOTES');
+  if (!sh) {
+    sh = ss.insertSheet('INTEREST_VOTES');
+    sh.appendRow(['timestamp', 'voterName', 'email', 'role', 'pitch_id', 'interest_level']);
+  }
+
+  const email = Session.getActiveUser().getEmail() || '';
+  const now = new Date();
+  const rows = interests.map(i => [now, voterName, email, role, i.pitch_id, i.level ?? '']);
+
+  if (rows.length) {
+    sh.getRange(sh.getLastRow() + 1, 1, rows.length, 6).setValues(rows);
+  }
+
+  return json200({ saved: rows.length });
 }
 
 /**

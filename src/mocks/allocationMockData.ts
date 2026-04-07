@@ -10,9 +10,9 @@ import type {
   AllocationPitch,
   AllocationPlan,
   Phase2Interest,
-  PlanAssignment,
 } from '../types/allocationTypes';
 import pitchData from '../assets/pitches-aug-26.json';
+import { generatePlans } from '../utils/allocationEngine';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
@@ -165,96 +165,7 @@ export const MOCK_PITCHES: AllocationPitch[] = (pitchData as unknown as Pitch[])
 
 // ─── Plan generation ──────────────────────────────────────────────────────────
 
-type PlanVariant = 'A' | 'B' | 'C';
-
-const PLAN_META: Record<PlanVariant, { label: string; description: string }> = {
-  A: { label: 'Plan A — Balanced', description: 'Weights team and TL priority votes equally' },
-  B: { label: 'Plan B — TL-Leaning', description: 'Emphasizes TL priority votes slightly; favors TL judgment at the margin' },
-  C: { label: 'Plan C — Team-Leaning', description: 'Emphasizes broader team priority votes slightly; favors collective judgment at the margin' },
-};
-
-/** team/tl weights for pitch selection scoring — slight variation produces near-optimal plans with different edge-case selections. */
-const VARIANT_WEIGHTS: Record<PlanVariant, { team: number; tl: number }> = {
-  A: { team: 0.50, tl: 0.50 },
-  B: { team: 0.35, tl: 0.65 },
-  C: { team: 0.65, tl: 0.35 },
-};
-
-/** Higher score = higher priority. Combines team and TL votes by weight. Lower vote tier (1=best) inverted to higher score. */
-function pitchPriorityScore(pitch: AllocationPitch, weights: { team: number; tl: number }): number {
-  const teamScore = (5 - pitch.teamPriorityScore) / 4;
-  const tlScore = (5 - pitch.tlPriorityScore) / 4;
-  return weights.team * teamScore + weights.tl * tlScore;
-}
-
-function generatePlan(variant: PlanVariant): AllocationPlan {
-  const { devNames, bandwidth, nextUpCount } = MOCK_CONFIG;
-  const weights = VARIANT_WEIGHTS[variant];
-  const categories = Object.keys(bandwidth);
-
-  // 2 projects per dev
-  const totalSlots = devNames.length * 2;
-  const totalPct = categories.reduce((s, c) => s + bandwidth[c], 0);
-  const rawSlots = categories.map(c => ({ cat: c, slots: (bandwidth[c] / totalPct) * totalSlots }));
-
-  // Floor each, then distribute remaining slots to highest fractional remainders
-  const slotMap: Record<string, number> = {};
-  rawSlots.forEach(({ cat, slots }) => { slotMap[cat] = Math.floor(slots); });
-  let remaining = totalSlots - Object.values(slotMap).reduce((a, b) => a + b, 0);
-  rawSlots
-    .map(({ cat, slots }) => ({ cat, frac: slots - Math.floor(slots) }))
-    .sort((a, b) => b.frac - a.frac)
-    .slice(0, remaining)
-    .forEach(({ cat }) => slotMap[cat]++);
-
-  // Select top pitches per category by priority score
-  const selected: AllocationPitch[] = [];
-  categories.forEach(cat => {
-    const catPitches = MOCK_PITCHES
-      .filter(p => p.category === cat)
-      .sort((a, b) => pitchPriorityScore(b, weights) - pitchPriorityScore(a, weights));
-    const slots = Math.min(slotMap[cat], catPitches.length);
-    selected.push(...catPitches.slice(0, slots));
-  });
-
-  // Assign devs greedily: best interest tier first, fewest assignments as tie-break
-  const devCount: Record<string, number> = {};
-  devNames.forEach(d => { devCount[d] = 0; });
-  const MAX_PER_DEV = 2;
-
-  // Process highest-priority pitches first so contested projects get their best-match dev
-  const sortedSelected = [...selected].sort((a, b) => pitchPriorityScore(b, weights) - pitchPriorityScore(a, weights));
-  const assignments: PlanAssignment[] = sortedSelected.map(pitch => {
-    const candidateDev = devNames
-      .filter(d => devCount[d] < MAX_PER_DEV)
-      .sort((a, b) => {
-        const tA = pitch.devInterest[a] ?? 5;
-        const tB = pitch.devInterest[b] ?? 5;
-        if (tA !== tB) return tA - tB;
-        return devCount[a] - devCount[b]; // tie-break: fewer assignments first
-      })[0] ?? null;
-
-    if (candidateDev) devCount[candidateDev]++;
-    return { pitchId: pitch.id, assignedDev: candidateDev, status: 'selected' };
-  });
-
-  // Next-up: next N across all categories by score
-  const selectedIds = new Set(selected.map(p => p.id));
-  const notSelected = MOCK_PITCHES
-    .filter(p => !selectedIds.has(p.id))
-    .sort((a, b) => pitchPriorityScore(b, weights) - pitchPriorityScore(a, weights));
-
-  notSelected.slice(0, nextUpCount).forEach(p =>
-    assignments.push({ pitchId: p.id, assignedDev: null, status: 'next-up' })
-  );
-  notSelected.slice(nextUpCount).forEach(p =>
-    assignments.push({ pitchId: p.id, assignedDev: null, status: 'cut' })
-  );
-
-  return { id: variant, ...PLAN_META[variant], assignments };
-}
-
-export const MOCK_PLANS: AllocationPlan[] = ['A', 'B', 'C'].map(v => generatePlan(v as PlanVariant));
+export const MOCK_PLANS: AllocationPlan[] = generatePlans(MOCK_PITCHES, MOCK_CONFIG);
 
 // ─── Phase 2 interest ─────────────────────────────────────────────────────────
 

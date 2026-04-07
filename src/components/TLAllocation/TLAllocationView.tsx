@@ -1,9 +1,13 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
-import { Box, Snackbar, Alert } from '@mui/material';
-import type { AllocationPitch, AllocationConfig, AssignmentStatus, Phase2Interest, PlanAssignment, StaffingAssignment } from '../../types/allocationTypes';
+import { Box, Snackbar, Alert, CircularProgress, Typography } from '@mui/material';
+import type { AllocationPitch, AllocationConfig, AssignmentStatus, Phase2Interest, PlanAssignment, StaffingAssignment, AllocationPlan } from '../../types/allocationTypes';
+import type { Pitch } from '../../types/models';
 import {
   MOCK_CONFIG, MOCK_PITCHES, MOCK_PLANS, MOCK_PHASE2_INTERESTS,
 } from '../../mocks/allocationMockData';
+import { fetchAllocationConfig, fetchAllocationVoteData } from '../../services/allocationApi';
+import { generatePlans } from '../../utils/allocationEngine';
+import { fetchPitches } from '../../services/api';
 import Step1View from './Step1View';
 import Step2View from './Step2View';
 
@@ -84,24 +88,98 @@ function autoAssignStep2(
   });
 }
 
+// ─── Merge real pitches + vote data into AllocationPitch[] ───────────────────
+
+function enrichPitches(
+  basePitches: Pitch[],
+  voteData: Record<string, { teamVotes: Record<string, 1|2|3|4>; tlVotes: Record<string, 1|2|3|4>; teamPriorityScore: number; tlPriorityScore: number }>,
+): AllocationPitch[] {
+  return basePitches.map(p => {
+    const v = voteData[p.id];
+    return {
+      ...p,
+      teamVotes: v?.teamVotes ?? {},
+      tlVotes: v?.tlVotes ?? {},
+      teamPriorityScore: v?.teamPriorityScore ?? 0,
+      tlPriorityScore: v?.tlPriorityScore ?? 0,
+      devInterest: {},
+    };
+  });
+}
+
 export default function TLAllocationView({ activeStep, onFinalize }: TLAllocationViewProps) {
+  // ── Data loading ──────────────────────────────────────────────────────────
+  const [loading, setLoading] = useState(true);
+  const [usingMockData, setUsingMockData] = useState(false);
+
+  const [allocationPitches, setAllocationPitches] = useState<AllocationPitch[]>(MOCK_PITCHES);
+  const [allocationConfig, setAllocationConfig] = useState<AllocationConfig>(MOCK_CONFIG);
+  const [allocationPlans, setAllocationPlans] = useState<AllocationPlan[]>(MOCK_PLANS);
+  // Phase 2 interests: always fall back to mocks until a real submission workflow exists
+  const phase2Interests: Phase2Interest[] = MOCK_PHASE2_INTERESTS;
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadData() {
+      try {
+        const [pitches, voteData, config] = await Promise.all([
+          fetchPitches(),
+          fetchAllocationVoteData(),
+          fetchAllocationConfig(),
+        ]);
+
+        if (cancelled) return;
+
+        const effectiveConfig = config ?? MOCK_CONFIG;
+        const enriched = enrichPitches(pitches, voteData);
+        const hasRealVotes = Object.keys(voteData).length > 0;
+
+        if (!hasRealVotes) {
+          // No real vote data yet — fall back to mocks so the UI is still populated
+          setUsingMockData(true);
+        } else {
+          setAllocationPitches(enriched);
+          setAllocationConfig(effectiveConfig);
+          setAllocationPlans(generatePlans(enriched, effectiveConfig));
+          setUsingMockData(false);
+        }
+      } catch {
+        if (!cancelled) setUsingMockData(true);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    loadData();
+    return () => { cancelled = true; };
+  }, []);
+
   // ── Step 1 state ──────────────────────────────────────────────────────────
   const [activePlanId, setActivePlanId] = useState<'A' | 'B' | 'C'>('C');
-  // Start from the plan's generated assignments; edits diverge from here
   const [planOverrides, setPlanOverrides] = useState<Record<'A' | 'B' | 'C', PlanAssignment[] | null>>({
     A: null, B: null, C: null,
   });
 
+  // Reset overrides when plans change (e.g., real data loaded after mount)
+  const prevPlansRef = useRef(allocationPlans);
+  useEffect(() => {
+    if (prevPlansRef.current !== allocationPlans) {
+      setPlanOverrides({ A: null, B: null, C: null });
+      prevPlansRef.current = allocationPlans;
+    }
+  }, [allocationPlans]);
+
   const currentAssignments = useMemo<PlanAssignment[]>(() => {
     if (planOverrides[activePlanId]) return planOverrides[activePlanId]!;
-    return MOCK_PLANS.find(p => p.id === activePlanId)?.assignments ?? [];
-  }, [activePlanId, planOverrides]);
+    return allocationPlans.find(p => p.id === activePlanId)?.assignments ?? [];
+  }, [activePlanId, planOverrides, allocationPlans]);
 
   const mutateCurrentAssignments = (updater: (prev: PlanAssignment[]) => PlanAssignment[]) => {
     setPlanOverrides(prev => ({
       ...prev,
       [activePlanId]: updater(
-        prev[activePlanId] ?? MOCK_PLANS.find(p => p.id === activePlanId)?.assignments ?? []
+        prev[activePlanId] ?? allocationPlans.find(p => p.id === activePlanId)?.assignments ?? []
       ),
     }));
   };
@@ -110,7 +188,6 @@ export default function TLAllocationView({ activeStep, onFinalize }: TLAllocatio
     mutateCurrentAssignments(prev =>
       prev.map(a => {
         if (a.pitchId !== pitchId) return a;
-        // Auto-promote to selected when dev assigned from next-up or cut; auto-demote when unassigned from selected
         const newStatus: AssignmentStatus =
           dev !== null && (a.status === 'next-up' || a.status === 'cut') ? 'selected' :
           dev === null && a.status === 'selected' ? 'next-up' :
@@ -124,7 +201,6 @@ export default function TLAllocationView({ activeStep, onFinalize }: TLAllocatio
     mutateCurrentAssignments(prev =>
       prev.map(a => {
         if (a.pitchId !== pitchId) return a;
-        // Unassign dev when moving away from selected
         const assignedDev = newStatus === 'selected' ? a.assignedDev : null;
         return { ...a, status: newStatus, assignedDev };
       })
@@ -137,24 +213,23 @@ export default function TLAllocationView({ activeStep, onFinalize }: TLAllocatio
     [currentAssignments]
   );
   const selectedPitches = useMemo(
-    () => MOCK_PITCHES.filter(p => selectedPitchIds.has(p.id)),
-    [selectedPitchIds]
+    () => allocationPitches.filter(p => selectedPitchIds.has(p.id)),
+    [allocationPitches, selectedPitchIds]
   );
 
   const [step2Assignments, setStep2Assignments] = useState<StaffingAssignment[]>([]);
 
-  // Auto-init step 2 assignments when activeStep transitions 0→1
   const prevStepRef = useRef<0 | 1>(0);
   const selectedPitchesRef = useRef(selectedPitches);
   selectedPitchesRef.current = selectedPitches;
   useEffect(() => {
     if (activeStep === 1 && prevStepRef.current === 0) {
       setStep2Assignments(
-        autoAssignStep2(selectedPitchesRef.current, MOCK_PHASE2_INTERESTS, MOCK_CONFIG)
+        autoAssignStep2(selectedPitchesRef.current, phase2Interests, allocationConfig)
       );
     }
     prevStepRef.current = activeStep;
-  }, [activeStep]);
+  }, [activeStep, allocationConfig, phase2Interests]);
 
   const handleStep2Assign = (pitchId: string, field: 'devTL' | 'qm', value: string | null) => {
     setStep2Assignments(prev => {
@@ -164,7 +239,6 @@ export default function TLAllocationView({ activeStep, onFinalize }: TLAllocatio
     });
   };
 
-  // Derive devByPitchId from step 1 assignments (for Step2View read-only dev column)
   const devByPitchId = useMemo<Record<string, string | null>>(
     () => Object.fromEntries(currentAssignments.map(a => [a.pitchId, a.assignedDev])),
     [currentAssignments]
@@ -177,16 +251,25 @@ export default function TLAllocationView({ activeStep, onFinalize }: TLAllocatio
     onFinalize?.();
   };
 
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 2 }}>
+        <CircularProgress size={24} />
+        <Typography color="text.secondary">Loading allocation data…</Typography>
+      </Box>
+    );
+  }
+
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
       <Box sx={{ flex: 1, overflow: 'hidden' }}>
         {activeStep === 0 ? (
           <Step1View
-            pitches={MOCK_PITCHES}
-            plans={MOCK_PLANS}
+            pitches={allocationPitches}
+            plans={allocationPlans}
             activePlanId={activePlanId}
             currentAssignments={currentAssignments}
-            config={MOCK_CONFIG}
+            config={allocationConfig}
             onPlanChange={setActivePlanId}
             onDevChange={handleDevChange}
             onStatusChange={handleStatusChange}
@@ -195,14 +278,22 @@ export default function TLAllocationView({ activeStep, onFinalize }: TLAllocatio
           <Step2View
             selectedPitches={selectedPitches}
             assignments={step2Assignments}
-            phase2Interests={MOCK_PHASE2_INTERESTS}
-            config={MOCK_CONFIG}
+            phase2Interests={phase2Interests}
+            config={allocationConfig}
             onAssign={handleStep2Assign}
             onFinalize={handleFinalize}
             devByPitchId={devByPitchId}
           />
         )}
       </Box>
+
+      {usingMockData && (
+        <Box sx={{ px: 2, py: 0.5, bgcolor: 'warning.main', color: 'warning.contrastText' }}>
+          <Typography variant="caption">
+            Showing mock data — real vote data not available yet
+          </Typography>
+        </Box>
+      )}
 
       <Snackbar
         open={snackbar.open}
