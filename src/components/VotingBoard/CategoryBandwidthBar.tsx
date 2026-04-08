@@ -1,6 +1,13 @@
-import { useMemo } from 'react';
-import { Box, Typography, Tooltip } from '@mui/material';
-import type { Pitch, Vote } from '../../types/models';
+import { useState } from 'react';
+import {
+  Box,
+  Typography,
+  IconButton,
+  Popover,
+  Tooltip,
+  Divider,
+} from '@mui/material';
+import DonutSmallIcon from '@mui/icons-material/DonutSmall';
 
 export interface CategoryBandwidthConfig {
   bandwidth: Record<string, number>;
@@ -8,141 +15,91 @@ export interface CategoryBandwidthConfig {
 }
 
 interface CategoryBandwidthBarProps {
-  pitches: Pitch[];
-  votes: Record<string, Vote>;
   config: CategoryBandwidthConfig;
 }
 
+const SHORT_NAME: Record<string, string> = {
+  'Support AI Charting': 'AI Charting',
+  'Create and Improve Tools and Framework': 'Tools & Framework',
+  'Mobile Feature Parity': 'Mobile',
+  'Address Technical Debt': 'Tech Debt',
+};
+
 /**
- * Compact bar showing how the voter's current tier rankings distribute across
- * categories, compared to the target bandwidth allocation.
+ * A small icon button that opens a popover explaining the quarterly
+ * bandwidth allocation. Lives in the tab bar to the right of the category tabs.
  */
-export default function CategoryBandwidthBar({ pitches, votes, config }: CategoryBandwidthBarProps) {
+export default function CategoryBandwidthBar({ config }: CategoryBandwidthBarProps) {
   const { bandwidth, colors } = config;
   const categories = Object.keys(bandwidth);
-
-  const stats = useMemo(() => {
-    const ranked: Record<string, number> = {};
-    let total = 0;
-    for (const cat of categories) ranked[cat] = 0;
-    for (const pitch of pitches) {
-      if (votes[pitch.id]?.tier) {
-        ranked[pitch.category] = (ranked[pitch.category] ?? 0) + 1;
-        total++;
-      }
-    }
-    return { ranked, total };
-  }, [pitches, votes, categories]);
-
-  const { ranked, total } = stats;
-  const hasVotes = total > 0;
-
-  // Short display names for the legend
-  const shortName: Record<string, string> = {
-    'Support AI Charting': 'AI Charting',
-    'Create and Improve Tools and Framework': 'Tools & Framework',
-    'Mobile Feature Parity': 'Mobile',
-    'Address Technical Debt': 'Tech Debt',
-  };
+  const [anchor, setAnchor] = useState<HTMLButtonElement | null>(null);
 
   return (
-    <Box
-      sx={{
-        px: 1.5,
-        py: 0.75,
-        borderBottom: 1,
-        borderColor: 'divider',
-        bgcolor: 'background.default',
-        flexShrink: 0,
-      }}
-    >
-      {/* Stacked bar — actual distribution vs target */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-        <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: 'nowrap', minWidth: 72 }}>
-          {hasVotes ? 'Your votes' : 'Target alloc.'}
+    <>
+      <Tooltip title="View quarterly time allocation plan">
+        <IconButton
+          size="small"
+          onClick={e => setAnchor(e.currentTarget)}
+          sx={{ mx: 0.5, color: 'text.secondary', flexShrink: 0 }}
+          aria-label="View quarterly time allocation plan"
+        >
+          <DonutSmallIcon fontSize="small" />
+        </IconButton>
+      </Tooltip>
+
+      <Popover
+        open={Boolean(anchor)}
+        anchorEl={anchor}
+        onClose={() => setAnchor(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+        PaperProps={{ sx: { width: 320, p: 2 } }}
+      >
+        <Typography variant="subtitle2" gutterBottom>
+          Quarterly bandwidth plan
         </Typography>
 
-        {/* Actual distribution bar */}
-        <Box sx={{ flex: 1, height: 10, borderRadius: 1, overflow: 'hidden', display: 'flex', bgcolor: 'action.disabledBackground' }}>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+          This shows how the team plans to distribute effort across categories
+          this quarter. These targets may shift slightly as we finalize which
+          specific projects to take on — treat them as relative priority
+          guidance, not hard commitments.
+        </Typography>
+
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          Note: the percentages reflect planned time investment, not the number
+          of pitches submitted per category. A category with fewer pitches can
+          still receive more of the team's time.
+        </Typography>
+
+        <Divider sx={{ mb: 1.5 }} />
+
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
           {categories.map(cat => {
-            const pct = hasVotes
-              ? (ranked[cat] / total) * 100
-              : bandwidth[cat];
+            const pct = bandwidth[cat];
             return (
-              <Tooltip
-                key={cat}
-                title={
-                  hasVotes
-                    ? `${shortName[cat] ?? cat}: ${ranked[cat]} pitches (${Math.round(pct)}% of your ranked — target ${bandwidth[cat]}%)`
-                    : `${shortName[cat] ?? cat}: target ${bandwidth[cat]}%`
-                }
-              >
-                <Box
-                  sx={{
-                    width: `${pct}%`,
-                    bgcolor: colors[cat],
-                    transition: 'width 0.4s ease',
-                    flexShrink: 0,
-                  }}
-                />
-              </Tooltip>
+              <Box key={cat}>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.25 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                    <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: colors[cat], flexShrink: 0 }} />
+                    <Typography variant="body2">
+                      {SHORT_NAME[cat] ?? cat}
+                    </Typography>
+                  </Box>
+                  <Typography variant="body2" sx={{ fontWeight: 600, color: colors[cat] }}>
+                    {pct}%
+                  </Typography>
+                </Box>
+                <Box sx={{ height: 6, borderRadius: 1, bgcolor: 'action.disabledBackground', overflow: 'hidden' }}>
+                  <Box
+                    sx={{ width: `${pct}%`, height: '100%', bgcolor: colors[cat], borderRadius: 1 }}
+                  />
+                </Box>
+              </Box>
             );
           })}
         </Box>
-
-        {/* Target bar (always shown as reference) */}
-      </Box>
-
-      {hasVotes && (
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: 'nowrap', minWidth: 72 }}>
-            Target
-          </Typography>
-          <Box sx={{ flex: 1, height: 4, borderRadius: 1, overflow: 'hidden', display: 'flex', bgcolor: 'action.disabledBackground', opacity: 0.6 }}>
-            {categories.map(cat => (
-              <Box
-                key={cat}
-                sx={{ width: `${bandwidth[cat]}%`, bgcolor: colors[cat], opacity: 0.5 }}
-              />
-            ))}
-          </Box>
-        </Box>
-      )}
-
-      {/* Category legend */}
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5, mt: 0.5 }}>
-        {categories.map(cat => {
-          const actualPct = hasVotes ? Math.round((ranked[cat] / total) * 100) : null;
-          const targetPct = bandwidth[cat];
-          const diff = actualPct !== null ? actualPct - targetPct : null;
-          return (
-            <Box key={cat} sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-              <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: colors[cat], flexShrink: 0 }} />
-              <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1 }}>
-                {shortName[cat] ?? cat}
-                {actualPct !== null && (
-                  <span style={{ marginLeft: 3 }}>
-                    {actualPct}%
-                    {diff !== null && diff !== 0 && (
-                      <span style={{ color: diff > 0 ? '#ef6c00' : '#388e3c', marginLeft: 2 }}>
-                        ({diff > 0 ? '+' : ''}{diff}%)
-                      </span>
-                    )}
-                  </span>
-                )}
-                {actualPct === null && (
-                  <span style={{ marginLeft: 3 }}>{targetPct}%</span>
-                )}
-              </Typography>
-            </Box>
-          );
-        })}
-        {hasVotes && (
-          <Typography variant="caption" color="text.disabled" sx={{ ml: 'auto' }}>
-            {total} ranked
-          </Typography>
-        )}
-      </Box>
-    </Box>
+      </Popover>
+    </>
   );
 }

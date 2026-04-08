@@ -1,13 +1,37 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { Box, Typography, Paper, IconButton, Tooltip, Stack } from '@mui/material';
+import { Box, Typography, Paper, IconButton, Tooltip, Stack, Menu, MenuItem } from '@mui/material';
 import InfoOutlined from '@mui/icons-material/InfoOutlined';
 import Autorenew from '@mui/icons-material/Autorenew';
 import South from '@mui/icons-material/South';
 import InterestDetailsBubble from './InterestDetailsBubble';
 import { Droppable, Draggable } from '@hello-pangea/dnd';
 import type { DroppableProvided, DroppableStateSnapshot } from '@hello-pangea/dnd';
-import type { Pitch, Vote } from '../../types/models';
+import type { Pitch, Vote, InterestLevel } from '../../types/models';
 import { registerDroppable } from '../../utils/enhancedDropDetection';
+
+// Interest level options shown in the "Set all" menu on category group headers
+const SET_ALL_OPTIONS: { label: string; level: InterestLevel; color: string }[] = [
+  { label: 'Very Interested',     level: 1, color: '#4a148c' },
+  { label: 'Interested',          level: 2, color: '#7b1fa2' },
+  { label: 'Somewhat Interested', level: 3, color: '#ab47bc' },
+  { label: 'Not Interested',      level: 4, color: '#ce93d8' },
+];
+
+// Short display names for category group headers
+const CATEGORY_SHORT: Record<string, string> = {
+  'Support AI Charting': 'AI Charting',
+  'Create and Improve Tools and Framework': 'Tools & Framework',
+  'Mobile Feature Parity': 'Mobile',
+  'Address Technical Debt': 'Tech Debt',
+};
+
+// Dot colors for category group headers
+const CATEGORY_COLORS: Record<string, string> = {
+  'Support AI Charting': '#1565c0',
+  'Create and Improve Tools and Framework': '#2e7d32',
+  'Mobile Feature Parity': '#e65100',
+  'Address Technical Debt': '#6a1b9a',
+};
 
 interface InterestColumnProps {
   columnId: string;
@@ -17,6 +41,7 @@ interface InterestColumnProps {
   votes: Record<string, Vote>;
   userRole?: string | null;
   onSendToBottomUnsorted?: (pitchId: string) => void;
+  onSetAllCategory?: (category: string, level: InterestLevel) => void;
   focusedPitchId?: string | null;
   onFocusPitch?: (id: string | null) => void;
 }
@@ -32,10 +57,33 @@ const InterestColumn = ({
   votes,
   userRole,
   onSendToBottomUnsorted,
+  onSetAllCategory,
   focusedPitchId,
   onFocusPitch,
 }: InterestColumnProps) => {
   const columnRef = useRef<HTMLDivElement>(null);
+  const isUnsorted = columnId === 'interest-unsorted';
+
+  // Build a flat list of items for the unsorted column: category group headers interspersed with pitch items.
+  // Draggable indices are global (0, 1, 2...) regardless of headers.
+  const groupedItems = React.useMemo(() => {
+    if (!isUnsorted || !Array.isArray(pitches)) return null;
+    const categoryOrder = [...new Set(pitches.map(p => p.category))];
+    const items: Array<
+      | { type: 'header'; category: string; count: number }
+      | { type: 'pitch'; pitch: Pitch; globalIndex: number }
+    > = [];
+    let idx = 0;
+    for (const cat of categoryOrder) {
+      const catPitches = pitches.filter(p => p.category === cat);
+      if (catPitches.length === 0) continue;
+      items.push({ type: 'header', category: cat, count: catPitches.length });
+      for (const pitch of catPitches) {
+        items.push({ type: 'pitch', pitch, globalIndex: idx++ });
+      }
+    }
+    return items;
+  }, [isUnsorted, pitches]);
 
   // Register this column with the enhanced drop detection system
   useEffect(() => {
@@ -111,19 +159,53 @@ const InterestColumn = ({
             }}
           >
             {(!Array.isArray(pitches) || pitches.length === 0) && !snapshot.isDraggingOver && (
-              <Typography
-                sx={{
-                  textAlign: 'center',
-                  color: 'text.secondary',
-                  py: 2
-                }}
-              >
+              <Typography sx={{ textAlign: 'center', color: 'text.secondary', py: 2 }}>
                 Drop cards here
               </Typography>
             )}
 
             <Stack spacing={1}>
-              {Array.isArray(pitches) && pitches.map((pitch, index) => {
+              {/* Unsorted column: render category group headers between pitch cards */}
+              {isUnsorted && groupedItems
+                ? groupedItems.map(item => {
+                    if (item.type === 'header') {
+                      return (
+                        <CategoryGroupHeader
+                          key={`header-${item.category}`}
+                          category={item.category}
+                          count={item.count}
+                          onSetAll={onSetAllCategory}
+                        />
+                      );
+                    }
+                    const { pitch, globalIndex } = item;
+                    if (!pitch?.id) return null;
+                    const isFocused = focusedPitchId === pitch.id;
+                    return (
+                      <Draggable key={pitch.id} draggableId={pitch.id} index={globalIndex}>
+                        {(provided, snapshot) => {
+                          const { style, ...draggableProps } = provided.draggableProps;
+                          return (
+                            <InterestCardShell
+                              pitch={pitch}
+                              vote={votes[pitch.id]}
+                              innerRef={provided.innerRef}
+                              draggableProps={draggableProps}
+                              dragHandleProps={provided.dragHandleProps}
+                              style={style}
+                              isDragging={snapshot.isDragging}
+                              focused={isFocused}
+                              columnId={columnId}
+                              onSendToBottomUnsorted={onSendToBottomUnsorted}
+                              userRole={userRole}
+                              onFocusPitch={onFocusPitch}
+                            />
+                          );
+                        }}
+                      </Draggable>
+                    );
+                  })
+                : Array.isArray(pitches) && pitches.map((pitch, index) => {
                 if (!pitch?.id) return null;
                 const isFocused = focusedPitchId === pitch.id;
 
@@ -161,6 +243,94 @@ const InterestColumn = ({
           </Paper>
         )}
       </Droppable>
+    </Box>
+  );
+};
+
+// Category group header rendered inside the unsorted column
+const CategoryGroupHeader = ({
+  category,
+  count,
+  onSetAll,
+}: {
+  category: string;
+  count: number;
+  onSetAll?: (category: string, level: InterestLevel) => void;
+}) => {
+  const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null);
+
+  return (
+    <Box
+      sx={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 0.75,
+        px: 0.5,
+        pt: 0.5,
+        pb: 0.25,
+        borderTop: (theme) => `1px solid ${theme.palette.divider}`,
+        '&:first-of-type': { borderTop: 'none', pt: 0 },
+      }}
+    >
+      <Box
+        sx={{
+          width: 8,
+          height: 8,
+          borderRadius: '50%',
+          bgcolor: CATEGORY_COLORS[category] ?? 'text.disabled',
+          flexShrink: 0,
+        }}
+      />
+      <Typography
+        variant="caption"
+        sx={{ color: 'text.secondary', fontWeight: 600, flexGrow: 1, fontSize: '0.72rem' }}
+        title={category}
+      >
+        {CATEGORY_SHORT[category] ?? category}
+        <span style={{ fontWeight: 400, marginLeft: 4, opacity: 0.7 }}>({count})</span>
+      </Typography>
+
+      {onSetAll && (
+        <>
+          <Tooltip title="Apply one interest level to all pitches in this category">
+            <Typography
+              variant="caption"
+              component="span"
+              onClick={e => setMenuAnchor(e.currentTarget as HTMLElement)}
+              sx={{
+                color: 'primary.main',
+                cursor: 'pointer',
+                fontSize: '0.7rem',
+                '&:hover': { textDecoration: 'underline' },
+              }}
+            >
+              Set all
+            </Typography>
+          </Tooltip>
+          <Menu
+            anchorEl={menuAnchor}
+            open={Boolean(menuAnchor)}
+            onClose={() => setMenuAnchor(null)}
+            anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+            transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+          >
+            {SET_ALL_OPTIONS.map(opt => (
+              <MenuItem
+                key={opt.level}
+                dense
+                onClick={() => {
+                  onSetAll(category, opt.level);
+                  setMenuAnchor(null);
+                }}
+                sx={{ gap: 1 }}
+              >
+                <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: opt.color, flexShrink: 0 }} />
+                <Typography variant="body2">{opt.label}</Typography>
+              </MenuItem>
+            ))}
+          </Menu>
+        </>
+      )}
     </Box>
   );
 };

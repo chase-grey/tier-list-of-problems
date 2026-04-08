@@ -1,14 +1,8 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect } from 'react';
 import {
   Box,
   Container,
-  Typography,
-  Button,
-  Collapse,
-  IconButton,
 } from '@mui/material';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import { DragDropContext } from '@hello-pangea/dnd';
 import InterestColumn from './InterestColumn';
 import type { DropResult } from '@hello-pangea/dnd';
@@ -48,17 +42,6 @@ interface InterestRankingProps {
 /**
  * Second stage of voting - allows users to rank their interest level for each problem
  */
-// Quick-sort button labels (abbreviated to keep buttons compact)
-const QUICK_SORT_LABELS = ['V. Interested', 'Interested', 'Somewhat', 'Not Int.'];
-
-// Category-level color used for the quick-sort row headers
-const CATEGORY_COLORS: Record<string, string> = {
-  'Support AI Charting': '#1565c0',
-  'Create and Improve Tools and Framework': '#2e7d32',
-  'Mobile Feature Parity': '#e65100',
-  'Address Technical Debt': '#6a1b9a',
-};
-
 const InterestRanking: React.FC<InterestRankingProps> = ({
   pitches,
   votes,
@@ -69,7 +52,6 @@ const InterestRanking: React.FC<InterestRankingProps> = ({
 }) => {
   // Reference to the scrollable container
   const containerRef = useRef<HTMLDivElement>(null);
-  const [quickSortOpen, setQuickSortOpen] = useState(true);
   
   // Setup enhanced drop detection for the container
   useEffect(() => {
@@ -311,114 +293,19 @@ const InterestRanking: React.FC<InterestRankingProps> = ({
     }
   };
   
-  // All distinct categories that appear in the pitch list
-  const categories = React.useMemo(
-    () => [...new Set(pitches.map(p => p.category))].sort(),
-    [pitches],
-  );
-
-  // Batch-apply a single interest level to all pitches in a category
-  const handleQuickSort = (category: string, level: InterestLevel) => {
-    const categoryPitches = pitches.filter(p => p.category === category);
+  // Apply an interest level to all currently-unsorted pitches in a given category
+  const handleSetAllCategory = (category: string, level: InterestLevel) => {
+    const unsortedInCategory = (interestColumns['interest-unsorted'] || []).filter(
+      p => p.category === category
+    );
     const now = Date.now();
-    categoryPitches.forEach((pitch, i) => {
+    unsortedInCategory.forEach((pitch, i) => {
       onSetInterest(pitch.id, level, now + i);
     });
   };
 
   return (
     <Box sx={{ flexGrow: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-      {/* Quick Sort panel — batch-apply interest level to all pitches in a category */}
-      <Box sx={{ flexShrink: 0, borderBottom: 1, borderColor: 'divider', bgcolor: 'background.default' }}>
-        <Box
-          sx={{ display: 'flex', alignItems: 'center', px: 1.5, py: 0.5, cursor: 'pointer', userSelect: 'none' }}
-          onClick={() => setQuickSortOpen(o => !o)}
-        >
-          <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary', flexGrow: 1 }}>
-            Quick Sort by Category
-          </Typography>
-          <IconButton size="small" tabIndex={-1}>
-            {quickSortOpen ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
-          </IconButton>
-        </Box>
-
-        <Collapse in={quickSortOpen}>
-          <Box sx={{ px: 1.5, pb: 1 }}>
-            {/* Column header row */}
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
-              <Box sx={{ width: 160, flexShrink: 0 }} />
-              {QUICK_SORT_LABELS.map((label, i) => (
-                <Box key={i} sx={{ flex: 1, textAlign: 'center' }}>
-                  <Typography variant="caption" sx={{ color: INTEREST_LEVEL_COLORS[i], fontWeight: 600, fontSize: '0.7rem' }}>
-                    {label}
-                  </Typography>
-                </Box>
-              ))}
-              <Box sx={{ width: 64, flexShrink: 0, textAlign: 'center' }}>
-                <Typography variant="caption" sx={{ color: 'text.disabled', fontSize: '0.7rem' }}>
-                  Clear all
-                </Typography>
-              </Box>
-            </Box>
-
-            {/* One row per category */}
-            {categories.map(cat => (
-              <Box key={cat} sx={{ display: 'flex', alignItems: 'center', mb: 0.25 }}>
-                {/* Category label */}
-                <Box sx={{ width: 160, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 0.75, pr: 1 }}>
-                  <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: CATEGORY_COLORS[cat] ?? 'text.disabled', flexShrink: 0 }} />
-                  <Typography
-                    variant="caption"
-                    sx={{ color: 'text.secondary', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.72rem' }}
-                    title={cat}
-                  >
-                    {cat.length > 22 ? cat.slice(0, 20) + '…' : cat}
-                  </Typography>
-                </Box>
-
-                {/* Interest level buttons */}
-                {DISPLAY_TO_INTEREST_LEVEL.map((level, i) => (
-                  <Box key={level} sx={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
-                    <Button
-                      size="small"
-                      variant="outlined"
-                      onClick={() => handleQuickSort(cat, level as InterestLevel)}
-                      sx={{
-                        minWidth: 0,
-                        px: 1,
-                        py: 0.25,
-                        fontSize: '0.7rem',
-                        lineHeight: 1.4,
-                        borderColor: INTEREST_LEVEL_COLORS[i],
-                        color: INTEREST_LEVEL_COLORS[i],
-                        '&:hover': {
-                          bgcolor: `${INTEREST_LEVEL_COLORS[i]}22`,
-                          borderColor: INTEREST_LEVEL_COLORS[i],
-                        },
-                      }}
-                    >
-                      Apply
-                    </Button>
-                  </Box>
-                ))}
-
-                {/* Clear all for this category */}
-                <Box sx={{ width: 64, flexShrink: 0, display: 'flex', justifyContent: 'center' }}>
-                  <Button
-                    size="small"
-                    variant="text"
-                    onClick={() => handleQuickSort(cat, null)}
-                    sx={{ minWidth: 0, px: 1, py: 0.25, fontSize: '0.7rem', lineHeight: 1.4, color: 'text.disabled' }}
-                  >
-                    Clear
-                  </Button>
-                </Box>
-              </Box>
-            ))}
-          </Box>
-        </Collapse>
-      </Box>
-
       <Container disableGutters maxWidth={false} sx={{ flexGrow: 1, minHeight: 0, display: 'flex', flexDirection: 'column', pt: 0.5, px: 0.5 }}>
 
         <DragDropContext onDragEnd={handleDragEnd}>
@@ -466,11 +353,12 @@ const InterestRanking: React.FC<InterestRankingProps> = ({
               <InterestColumn
                 columnId="interest-unsorted"
                 label="Unsorted"
-                color="#616161" // Gray color for unsorted
+                color="#616161"
                 pitches={interestColumns['interest-unsorted'] || []}
                 votes={votes}
                 userRole={userRole}
                 onSendToBottomUnsorted={handleSendToBottomInterestUnsorted}
+                onSetAllCategory={handleSetAllCategory}
                 focusedPitchId={focusedPitchId}
                 onFocusPitch={onFocusPitch}
               />

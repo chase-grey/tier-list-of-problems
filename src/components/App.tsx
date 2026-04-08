@@ -765,41 +765,40 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
             </Box>
           ) : state.stage === 'priority' ? (
             <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
-              <Tabs
-                value={selectedCategory}
-                onChange={(_, v: string) => {
-                  if (v === '__interest__') {
-                    handleStageChange();
-                  } else {
-                    setSelectedCategory(v);
-                  }
-                }}
-                variant="scrollable"
-                scrollButtons="auto"
-                sx={{ borderBottom: 1, borderColor: 'divider', flexShrink: 0 }}
-              >
-                {CATEGORIES.map(cat => (
-                  <Tab
-                    key={cat}
-                    value={cat}
-                    accessKey={CAT_KEYS[cat]}
-                    label={<span style={{ whiteSpace: 'nowrap' }}><u>{cat[0]}</u>{cat.slice(1)}</span>}
-                  />
-                ))}
-                {canAccessInterestStage && (
-                  <Tab
-                    value="__interest__"
-                    accessKey="i"
-                    label={<span style={{ whiteSpace: 'nowrap' }}><u>I</u>nterest</span>}
-                    disabled={!priorityStageComplete}
-                  />
-                )}
-              </Tabs>
-              <CategoryBandwidthBar
-                pitches={pitches}
-                votes={state.votes}
-                config={CATEGORY_BANDWIDTH_CONFIG}
-              />
+              {/* Tab bar + bandwidth chip share one row */}
+              <Box sx={{ display: 'flex', alignItems: 'center', borderBottom: 1, borderColor: 'divider', flexShrink: 0 }}>
+                <Tabs
+                  value={selectedCategory}
+                  onChange={(_, v: string) => {
+                    if (v === '__interest__') {
+                      handleStageChange();
+                    } else {
+                      setSelectedCategory(v);
+                    }
+                  }}
+                  variant="scrollable"
+                  scrollButtons="auto"
+                  sx={{ flex: 1 }}
+                >
+                  {CATEGORIES.map(cat => (
+                    <Tab
+                      key={cat}
+                      value={cat}
+                      accessKey={CAT_KEYS[cat]}
+                      label={<span style={{ whiteSpace: 'nowrap' }}><u>{cat[0]}</u>{cat.slice(1)}</span>}
+                    />
+                  ))}
+                  {canAccessInterestStage && (
+                    <Tab
+                      value="__interest__"
+                      accessKey="i"
+                      label={<span style={{ whiteSpace: 'nowrap' }}><u>I</u>nterest</span>}
+                      disabled={!priorityStageComplete}
+                    />
+                  )}
+                </Tabs>
+                <CategoryBandwidthBar config={CATEGORY_BANDWIDTH_CONFIG} />
+              </Box>
               <KanbanContainer
                 pitches={pitches.filter(p => p.category === selectedCategory)}
                 votes={state.votes}
