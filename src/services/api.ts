@@ -79,7 +79,8 @@ export interface SubmitVotesPayload {
   voterRole?: string;
   votes: Array<{
     pitch_id: string;
-    tier: number;
+    tier?: number;
+    interestLevel?: number | null;
   }>;
 }
 
@@ -324,11 +325,16 @@ export async function fetchResults(): Promise<ResultItem[]> {
 /**
  * Convert frontend votes to backend format
  */
-export function convertVotesToApiFormat(votes: Record<string, Vote>): Array<{pitch_id: string; tier: number}> {
+export function convertVotesToApiFormat(votes: Record<string, Vote>): Array<{
+  pitch_id: string;
+  tier?: number;
+  interestLevel?: number | null;
+}> {
   return Object.entries(votes)
-    .filter(([_, vote]) => vote.tier) // Filter out any entries with undefined values
+    .filter(([_, vote]) => vote.tier || vote.interestLevel !== undefined)
     .map(([pitchId, vote]) => ({
       pitch_id: pitchId,
-      tier: vote.tier as number // Type assertion since we filtered undefined
+      ...(vote.tier ? { tier: vote.tier as number } : {}),
+      ...(vote.interestLevel !== undefined ? { interestLevel: vote.interestLevel } : {}),
     }));
 }

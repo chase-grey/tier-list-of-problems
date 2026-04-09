@@ -11,6 +11,7 @@ export type AllocationVoteData = {
   tlVotes: Record<string, 1 | 2 | 3 | 4>;
   teamPriorityScore: number;
   tlPriorityScore: number;
+  devInterest: Record<string, number | null>;
 };
 
 async function gasGet<T>(route: string): Promise<T> {
@@ -87,4 +88,48 @@ export async function submitPhase2InterestVote(payload: SubmitInterestVotePayloa
   }
   const data = await response.json();
   return data.saved ?? 0;
+}
+
+export async function sendKickoffEmail(payload: {
+  subject: string;
+  recipients: string[];
+  htmlBody: string;
+  senderName?: string;
+}): Promise<number> {
+  if (!API_BASE_URL) throw new Error('API URL not configured');
+  const response = await fetch(`${API_BASE_URL}?route=send-kickoff-email`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.error || `send-kickoff-email failed: ${response.status}`);
+  }
+  const data = await response.json();
+  return data.sent ?? 0;
+}
+
+export type EmcAssignment = {
+  pitchId: string;
+  pitchTitle: string;
+  assignedDev: string | null;
+  devTL: string | null;
+  qm: string | null;
+};
+
+export async function createEmcRecords(payload: {
+  assignments: EmcAssignment[];
+}): Promise<{ status: string; message: string; count: number }> {
+  if (!API_BASE_URL) throw new Error('API URL not configured');
+  const response = await fetch(`${API_BASE_URL}?route=create-emr-records`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.error || `create-emr-records failed: ${response.status}`);
+  }
+  return response.json();
 }
