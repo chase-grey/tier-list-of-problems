@@ -736,6 +736,8 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
             <TLAllocationView
               activeStep={allocationStep}
               onFinalize={() => setAllocationFinalizedSnackbar(true)}
+              voterName={state.voterName ?? ''}
+              voterRole={state.voterRole ?? ''}
             />
           ) : isTLStage ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', flexDirection: 'column', gap: 2, p: 4 }}>

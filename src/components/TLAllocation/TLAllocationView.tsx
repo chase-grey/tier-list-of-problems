@@ -5,15 +5,19 @@ import type { Pitch } from '../../types/models';
 import {
   MOCK_CONFIG, MOCK_PITCHES, MOCK_PLANS, MOCK_PHASE2_INTERESTS,
 } from '../../mocks/allocationMockData';
-import { fetchAllocationConfig, fetchAllocationVoteData } from '../../services/allocationApi';
+import { fetchAllocationConfig, fetchAllocationVoteData, sendKickoffEmail, createEmcRecords } from '../../services/allocationApi';
+import type { EmcAssignment } from '../../services/allocationApi';
 import { generatePlans } from '../../utils/allocationEngine';
 import { fetchPitches } from '../../services/api';
 import Step1View from './Step1View';
 import Step2View from './Step2View';
+import Phase2InterestForm from './Phase2InterestForm';
 
 interface TLAllocationViewProps {
   activeStep: 0 | 1;
   onFinalize?: () => void;
+  voterName: string;
+  voterRole: string;
 }
 
 // ─── Auto-assign algorithm for Step 2 ────────────────────────────────────────
@@ -102,12 +106,12 @@ function enrichPitches(
       tlVotes: v?.tlVotes ?? {},
       teamPriorityScore: v?.teamPriorityScore ?? 0,
       tlPriorityScore: v?.tlPriorityScore ?? 0,
-      devInterest: {},
+      devInterest: v?.devInterest ?? {},
     };
   });
 }
 
-export default function TLAllocationView({ activeStep, onFinalize }: TLAllocationViewProps) {
+export default function TLAllocationView({ activeStep, onFinalize, voterName, voterRole }: TLAllocationViewProps) {
   // ── Data loading ──────────────────────────────────────────────────────────
   const [loading, setLoading] = useState(true);
   const [usingMockData, setUsingMockData] = useState(false);
@@ -117,6 +121,9 @@ export default function TLAllocationView({ activeStep, onFinalize }: TLAllocatio
   const [allocationPlans, setAllocationPlans] = useState<AllocationPlan[]>(MOCK_PLANS);
   // Phase 2 interests: always fall back to mocks until a real submission workflow exists
   const phase2Interests: Phase2Interest[] = MOCK_PHASE2_INTERESTS;
+
+  // Phase 2 gate: track whether the interest form has been submitted
+  const [phase2Submitted, setPhase2Submitted] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -223,13 +230,13 @@ export default function TLAllocationView({ activeStep, onFinalize }: TLAllocatio
   const selectedPitchesRef = useRef(selectedPitches);
   selectedPitchesRef.current = selectedPitches;
   useEffect(() => {
-    if (activeStep === 1 && prevStepRef.current === 0) {
-      setStep2Assignments(
-        autoAssignStep2(selectedPitchesRef.current, phase2Interests, allocationConfig)
-      );
-    }
     prevStepRef.current = activeStep;
-  }, [activeStep, allocationConfig, phase2Interests]);
+  }, [activeStep]);
+
+  const handlePhase2Complete = () => {
+    setPhase2Submitted(true);
+    setStep2Assignments(autoAssignStep2(selectedPitchesRef.current, phase2Interests, allocationConfig));
+  };
 
   const handleStep2Assign = (pitchId: string, field: 'devTL' | 'qm', value: string | null) => {
     setStep2Assignments(prev => {
@@ -244,10 +251,50 @@ export default function TLAllocationView({ activeStep, onFinalize }: TLAllocatio
     [currentAssignments]
   );
 
-  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string }>({ open: false, message: '' });
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; failed?: boolean }>({ open: false, message: '' });
 
-  const handleFinalize = () => {
-    setSnackbar({ open: true, message: 'Plan finalized! (EMC2 record creation and email sending require backend integration.)' });
+  const handleFinalize = async () => {
+    // Build assignment list
+    const assignments: EmcAssignment[] = step2Assignments
+      .map(sa => {
+        const pitch = allocationPitches.find(p => p.id === sa.pitchId);
+        if (!pitch) return null;
+        return {
+          pitchId: sa.pitchId,
+          pitchTitle: pitch.title,
+          assignedDev: devByPitchId[sa.pitchId] ?? null,
+          devTL: sa.devTL,
+          qm: sa.qm,
+        };
+      })
+      .filter((a): a is EmcAssignment => a !== null);
+
+    // Build email body
+    const rows = assignments.map(a =>
+      `<tr><td>${a.pitchTitle}</td><td>${a.assignedDev ?? '—'}</td><td>${a.devTL ?? '—'}</td><td>${a.qm ?? '—'}</td></tr>`
+    ).join('');
+    const htmlBody = `
+      <h2>Quarterly Allocation — Selected Projects</h2>
+      <table border="1" cellpadding="6" cellspacing="0">
+        <thead><tr><th>Project</th><th>Dev</th><th>Dev TL</th><th>QM</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    `;
+
+    try {
+      await Promise.all([
+        sendKickoffEmail({
+          subject: 'Quarterly Allocation Finalized',
+          recipients: [allocationConfig.testingCaptain],
+          htmlBody,
+          senderName: 'TL Allocation Tool',
+        }),
+        createEmcRecords({ assignments }),
+      ]);
+      setSnackbar({ open: true, message: `Plan finalized! Email sent and ${assignments.length} EMC2 records queued.`, failed: false });
+    } catch (err) {
+      setSnackbar({ open: true, message: `Plan finalized, but some actions failed: ${err instanceof Error ? err.message : String(err)}`, failed: true });
+    }
     onFinalize?.();
   };
 
@@ -275,15 +322,24 @@ export default function TLAllocationView({ activeStep, onFinalize }: TLAllocatio
             onStatusChange={handleStatusChange}
           />
         ) : (
-          <Step2View
-            selectedPitches={selectedPitches}
-            assignments={step2Assignments}
-            phase2Interests={phase2Interests}
-            config={allocationConfig}
-            onAssign={handleStep2Assign}
-            onFinalize={handleFinalize}
-            devByPitchId={devByPitchId}
-          />
+          activeStep === 1 && !phase2Submitted && (voterRole === 'dev TL' || voterRole === 'QM') ? (
+            <Phase2InterestForm
+              pitches={selectedPitches}
+              voterName={voterName}
+              voterRole={voterRole as 'dev TL' | 'QM'}
+              onComplete={handlePhase2Complete}
+            />
+          ) : (
+            <Step2View
+              selectedPitches={selectedPitches}
+              assignments={step2Assignments}
+              phase2Interests={phase2Interests}
+              config={allocationConfig}
+              onAssign={handleStep2Assign}
+              onFinalize={handleFinalize}
+              devByPitchId={devByPitchId}
+            />
+          )
         )}
       </Box>
 
@@ -300,7 +356,7 @@ export default function TLAllocationView({ activeStep, onFinalize }: TLAllocatio
         autoHideDuration={6000}
         onClose={() => setSnackbar(p => ({ ...p, open: false }))}
       >
-        <Alert severity="info" onClose={() => setSnackbar(p => ({ ...p, open: false }))}>
+        <Alert severity={snackbar.failed ? 'warning' : 'info'} onClose={() => setSnackbar(p => ({ ...p, open: false }))}>
           {snackbar.message}
         </Alert>
       </Snackbar>
