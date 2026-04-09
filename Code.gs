@@ -55,6 +55,10 @@ function doPost(e) {
         return recordVotes(payload);
       case 'interest-vote':
         return recordInterestVote(payload);
+      case 'send-kickoff-email':
+        return sendKickoffEmail(JSON.parse(e.postData.contents));
+      case 'create-emr-records':
+        return createEmcRecords(JSON.parse(e.postData.contents));
       default:
         return notFound();
     }
@@ -138,51 +142,52 @@ function validateNonce(nonce) {
  */
 function recordVotes(body) {
   validateNonce(body.nonce);
-  
+
   const {voterName, votes} = body;
   if (!voterName || !votes || !Array.isArray(votes) || votes.length === 0) {
     return badRequest("Invalid request format");
   }
-  
-  // Validate votes
+
+  // Validate votes (appetite is optional/legacy; tier is still required)
   for (const vote of votes) {
-    if (!vote.pitch_id || !['S', 'M', 'L'].includes(vote.appetite) || 
+    if (!vote.pitch_id ||
         typeof vote.tier !== 'number' || vote.tier < 1 || vote.tier > 8) {
       return badRequest("Invalid vote format");
     }
   }
-  
+
   const email = Session.getActiveUser().getEmail() || '';
   const sh = ss.getSheetByName('VOTES');
   const now = new Date();
   const secret = PropertiesService.getScriptProperties().getProperty('pepper') || 'default-secret';
-  
+
   const rows = votes.map(v => [
     now,
     voterName,
     email,
     v.pitch_id,
-    v.appetite,
+    v.appetite != null ? v.appetite : '',
     v.tier,
     Utilities.computeDigest(
       Utilities.DigestAlgorithm.SHA_256,
       voterName + v.pitch_id + secret,
       Utilities.Charset.UTF_8
-    ).map(byte => ('0' + (byte & 0xFF).toString(16)).slice(-2)).join('')
+    ).map(byte => ('0' + (byte & 0xFF).toString(16)).slice(-2)).join(''),
+    (v.interestLevel != null) ? v.interestLevel : ''
   ]);
-  
-  // Remove duplicates before append
+
+  // Remove duplicates before append (still based on column G checksum)
   let checksumRange = [];
   if (sh.getLastRow() > 1) {
     checksumRange = sh.getRange('G2:G' + sh.getLastRow()).getValues().flat();
   }
-  
+
   const newRows = rows.filter(r => !checksumRange.includes(r[6]));
-  
+
   if (newRows.length) {
-    sh.getRange(sh.getLastRow() + 1, 1, newRows.length, 7).setValues(newRows);
+    sh.getRange(sh.getLastRow() + 1, 1, newRows.length, 8).setValues(newRows);
   }
-  
+
   return json200({ saved: newRows.length });
 }
 
@@ -220,19 +225,26 @@ function getAllocationData() {
   const sh = ss.getSheetByName('VOTES');
   if (!sh || sh.getLastRow() <= 1) return json200({});
 
-  const rows = sh.getRange(2, 1, sh.getLastRow() - 1, 7).getValues();
+  const rows = sh.getRange(2, 1, sh.getLastRow() - 1, 8).getValues();
 
   // Group votes by pitch: { pitchId -> { voterName -> tier } }
+  // Also collect interest levels: { pitchId -> { voterName -> 1|2|3|4 } }
   const pitchVoteMap = {};
+  const pitchInterestMap = {};
   for (const row of rows) {
-    const voterName = row[1]; // column B
-    const pitchId   = row[3]; // column D
-    const tier       = row[5]; // column F
+    const voterName    = row[1]; // column B
+    const pitchId      = row[3]; // column D
+    const tier         = row[5]; // column F
+    const interestLevel = row[7]; // column H
     if (!voterName || !pitchId || tier === '' || tier === null) continue;
     const numTier = Math.max(1, Math.min(4, Math.round(Number(tier))));
     if (!pitchVoteMap[pitchId]) pitchVoteMap[pitchId] = {};
     // Last write wins; checksum dedup at write-time means at most one row per voter-pitch
     pitchVoteMap[pitchId][voterName] = numTier;
+    if (interestLevel !== '' && interestLevel !== null && interestLevel !== undefined) {
+      if (!pitchInterestMap[pitchId]) pitchInterestMap[pitchId] = {};
+      pitchInterestMap[pitchId][voterName] = Number(interestLevel);
+    }
   }
 
   // Compute aggregates per pitch
@@ -252,7 +264,8 @@ function getAllocationData() {
     const tlPriorityScore = tlTiers.length > 0
       ? tlTiers.reduce((s, t) => s + t, 0) / tlTiers.length
       : teamPriorityScore;
-    result[pitchId] = { teamVotes, tlVotes, teamPriorityScore, tlPriorityScore };
+    const devInterest = pitchInterestMap[pitchId] || {};
+    result[pitchId] = { teamVotes, tlVotes, teamPriorityScore, tlPriorityScore, devInterest };
   }
 
   return json200(result);
@@ -324,6 +337,55 @@ function recordInterestVote(body) {
   }
 
   return json200({ saved: rows.length });
+}
+
+/**
+ * Send kickoff emails to a list of recipients.
+ *
+ * Expected body: { subject: string, recipients: string[], htmlBody: string, senderName?: string }
+ *
+ * @param {Object} body - Parsed request body
+ * @return {TextOutput} JSON { sent: number }
+ */
+function sendKickoffEmail(body) {
+  const { subject, recipients, htmlBody, senderName } = body;
+  if (!subject || !recipients || !Array.isArray(recipients) || recipients.length === 0 || !htmlBody) {
+    return badRequest('Missing required fields: subject, recipients, htmlBody');
+  }
+  try {
+    recipients.forEach(email => {
+      MailApp.sendEmail({
+        to: email,
+        subject: subject,
+        htmlBody: htmlBody,
+        name: senderName || 'TL Allocation Tool'
+      });
+    });
+    return json200({ sent: recipients.length });
+  } catch (err) {
+    return serverError(err);
+  }
+}
+
+/**
+ * Stub for creating EMC2 project kickoff records.
+ * Replace with real Epic EMC2 API calls once integration credentials are available.
+ *
+ * Expected body: { assignments: Object[] }
+ *
+ * @param {Object} body - Parsed request body
+ * @return {TextOutput} JSON stub response
+ */
+function createEmcRecords(body) {
+  // TODO: Replace with Epic EMC2 API calls when integration credentials are available.
+  // Each assignment represents one project kickoff record to create.
+  const assignments = body.assignments || [];
+  console.log('EMC2 records to create (' + assignments.length + '):', JSON.stringify(assignments));
+  return json200({
+    status: 'stub',
+    message: 'EMC2 record creation is not yet implemented. See console log for intended records.',
+    count: assignments.length
+  });
 }
 
 /**
