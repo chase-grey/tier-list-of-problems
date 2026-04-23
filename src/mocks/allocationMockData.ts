@@ -32,6 +32,12 @@ export const MOCK_CONFIG: AllocationConfig = {
   ],
   devTLNames: ['Chase Grey', 'Jamie Taylor', 'Robin Singh'],
   qmNames: ['Harper Evans', 'Finley Nguyen', 'Kendall Park', 'Logan Turner', 'Reese Anderson', 'Sage Mitchell'],
+  tlEmails: {
+    'Chase Grey': 'cgrey@epic.com',
+    'Jamie Taylor': 'jtaylor@epic.com',
+    'Robin Singh': 'rsingh@epic.com',
+  },
+  quarterLabel: 'Q3 2026',
 };
 
 // ─── Score generation ─────────────────────────────────────────────────────────
