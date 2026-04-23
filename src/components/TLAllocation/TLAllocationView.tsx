@@ -124,6 +124,8 @@ export default function TLAllocationView({ activeStep, onFinalize, voterName, vo
 
   // Phase 2 gate: track whether the interest form has been submitted
   const [phase2Submitted, setPhase2Submitted] = useState(false);
+  // When the user clicks "Back" on the interest form, skip it and show Step2View directly
+  const [phase2Skipped, setPhase2Skipped] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -322,12 +324,13 @@ export default function TLAllocationView({ activeStep, onFinalize, voterName, vo
             onStatusChange={handleStatusChange}
           />
         ) : (
-          activeStep === 1 && !phase2Submitted && (voterRole === 'dev TL' || voterRole === 'QM') ? (
+          activeStep === 1 && !phase2Submitted && !phase2Skipped && (voterRole === 'dev TL' || voterRole === 'QM') ? (
             <Phase2InterestForm
               pitches={selectedPitches}
               voterName={voterName}
               voterRole={voterRole as 'dev TL' | 'QM'}
               onComplete={handlePhase2Complete}
+              onBack={() => setPhase2Skipped(true)}
             />
           ) : (
             <Step2View
