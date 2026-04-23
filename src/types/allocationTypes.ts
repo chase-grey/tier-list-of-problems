@@ -72,4 +72,8 @@ export interface AllocationConfig {
   devNames: string[];
   devTLNames: string[];
   qmNames: string[];
+  /** Map of TL name → email address for per-TL kickoff emails. */
+  tlEmails: Record<string, string>;
+  /** Quarter label used in email subjects, e.g. "4" or "Next Quarter". Defaults to "Next Quarter". */
+  quarterLabel?: string;
 }

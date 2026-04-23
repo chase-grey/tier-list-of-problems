@@ -59,6 +59,8 @@ function doPost(e) {
         return sendKickoffEmail(JSON.parse(e.postData.contents));
       case 'create-emr-records':
         return createEmcRecords(JSON.parse(e.postData.contents));
+      case 'refresh-pitches':
+        return refreshPitches(payload);
       default:
         return notFound();
     }
@@ -368,24 +370,98 @@ function sendKickoffEmail(body) {
 }
 
 /**
- * Stub for creating EMC2 project kickoff records.
- * Replace with real Epic EMC2 API calls once integration credentials are available.
+ * Send per-TL kickoff emails notifying each TL of their assigned projects.
+ * TL emails are resolved from the `tlEmails` map in the `allocation_config` Script Property.
+ * Also sends a full assignment summary to the testingCaptain from config.
  *
- * Expected body: { assignments: Object[] }
+ * Expected body: { assignments: { pitchId, pitchTitle, assignedDev, devTL, qm }[] }
  *
  * @param {Object} body - Parsed request body
- * @return {TextOutput} JSON stub response
+ * @return {TextOutput} JSON { sent: number, skipped: string[] }
  */
 function createEmcRecords(body) {
-  // TODO: Replace with Epic EMC2 API calls when integration credentials are available.
-  // Each assignment represents one project kickoff record to create.
   const assignments = body.assignments || [];
-  console.log('EMC2 records to create (' + assignments.length + '):', JSON.stringify(assignments));
-  return json200({
-    status: 'stub',
-    message: 'EMC2 record creation is not yet implemented. See console log for intended records.',
-    count: assignments.length
-  });
+  const props = PropertiesService.getScriptProperties();
+  const config = JSON.parse(props.getProperty('allocation_config') || '{}');
+  const tlEmails = config.tlEmails || {};
+  const quarterLabel = config.quarterLabel || 'Next Quarter';
+  const testingCaptain = config.testingCaptain || '';
+
+  const byTL = {};
+  for (const a of assignments) {
+    if (!byTL[a.devTL]) byTL[a.devTL] = [];
+    byTL[a.devTL].push(a);
+  }
+
+  function buildTableRows(rows) {
+    return rows.map(a => {
+      const qanLink = '<a href="https://emc2summary/GetSummaryReport.ashx/TRACK/ZQN/' + a.pitchId + '">' + a.pitchId + '</a>';
+      return '<tr><td>' + a.pitchTitle + '</td><td>' + qanLink + '</td><td>' + (a.assignedDev || '') + '</td><td>' + (a.qm || '') + '</td></tr>';
+    }).join('');
+  }
+
+  const tableHeader = '<table border="1" cellpadding="4" cellspacing="0"><thead><tr><th>Project Title</th><th>QAN Link</th><th>Lead Dev</th><th>QM</th></tr></thead><tbody>';
+  const tableFooter = '</tbody></table>';
+
+  let sent = 0;
+  const skipped = [];
+
+  for (const tlName of Object.keys(byTL)) {
+    const email = tlEmails[tlName];
+    if (!email) {
+      console.warn('No email found for TL: ' + tlName + ' — skipping.');
+      skipped.push(tlName);
+      continue;
+    }
+    const tlRows = byTL[tlName];
+    const htmlBody =
+      '<p>Hi ' + tlName + ', the quarterly allocation has been finalized. Please create a PRJ record for each project below in EMC2, link the source QAN on the Associated Records tab, and add the team members listed.</p>' +
+      tableHeader + buildTableRows(tlRows) + tableFooter +
+      '<p>Reply with questions. — SmartTools Allocation Tool</p>';
+    MailApp.sendEmail({
+      to: email,
+      subject: 'SmartTools Allocation — Your Q' + quarterLabel + ' Projects',
+      htmlBody: htmlBody,
+      name: 'SmartTools Allocation Tool'
+    });
+    sent++;
+  }
+
+  if (testingCaptain) {
+    const summaryHtml =
+      '<p>Full assignment summary for Q' + quarterLabel + ':</p>' +
+      tableHeader + buildTableRows(assignments) + tableFooter;
+    MailApp.sendEmail({
+      to: testingCaptain,
+      subject: 'SmartTools Allocation — Full Assignment Summary',
+      htmlBody: summaryHtml,
+      name: 'SmartTools Allocation Tool'
+    });
+  }
+
+  return json200({ sent: sent, skipped: skipped });
+}
+
+/**
+ * Refresh the PITCHES sheet with a full replacement dataset from the caller.
+ * Creates the sheet if it does not exist. Clears all existing data before writing.
+ *
+ * Expected body: { pitches: { pitch_id, title, problem, ideaForSolution, whyNow,
+ *   smartToolsFit, epicFit, maintenance, internCandidate, characteristics, success }[] }
+ *
+ * @param {Object} body - Parsed request body
+ * @return {TextOutput} JSON { updated: number }
+ */
+function refreshPitches(body) {
+  const pitches = body.pitches || [];
+  const sh = ss.getSheetByName('PITCHES') || ss.insertSheet('PITCHES');
+  sh.clearContents();
+
+  const headers = ['pitch_id', 'title', 'problem', 'ideaForSolution', 'whyNow', 'smartToolsFit', 'epicFit', 'maintenance', 'internCandidate', 'characteristics', 'success'];
+  const rows = [headers].concat(pitches.map(p => headers.map(k => p[k] != null ? p[k] : '')));
+  sh.getRange(1, 1, rows.length, headers.length).setValues(rows);
+
+  return json200({ updated: pitches.length });
 }
 
 /**
