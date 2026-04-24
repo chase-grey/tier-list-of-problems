@@ -259,15 +259,13 @@ export async function submitVotes(payload: SubmitVotesPayload): Promise<number> 
       votes: payload.votes
     };
     
-    // Direct POST to the API
+    // text/plain avoids CORS preflight — GAS parses body via e.postData.contents
     const response = await fetch(`${API_BASE_URL}?route=vote`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify(simplifiedPayload)
     });
-    
+
     if (!response.ok) {
       let errorText = await response.text();
       try {

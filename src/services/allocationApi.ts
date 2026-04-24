@@ -23,6 +23,21 @@ async function gasGet<T>(route: string): Promise<T> {
   return response.json();
 }
 
+// GAS requires text/plain to avoid the CORS preflight OPTIONS request.
+// The body is still JSON; GAS parses it via e.postData.contents.
+async function gasPost<T>(route: string, payload: unknown): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}?route=${route}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.error || `POST ${route} failed: ${response.status}`);
+  }
+  return response.json();
+}
+
 /**
  * Fetch the TL allocation config from Script Properties.
  * Returns null if the config has not been set up yet in the GAS backend.
@@ -77,16 +92,7 @@ export type SubmitInterestVotePayload = {
  */
 export async function submitPhase2InterestVote(payload: SubmitInterestVotePayload): Promise<number> {
   if (!API_BASE_URL) throw new Error('API URL not configured');
-  const response = await fetch(`${API_BASE_URL}?route=interest-vote`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
-  if (!response.ok) {
-    const err = await response.json().catch(() => ({}));
-    throw new Error(err.error || `interest-vote failed: ${response.status}`);
-  }
-  const data = await response.json();
+  const data = await gasPost<{ saved?: number }>('interest-vote', payload);
   return data.saved ?? 0;
 }
 
@@ -116,20 +122,12 @@ export type EmcAssignment = {
   assignedDev: string | null;
   devTL: string | null;
   qm: string | null;
+  pqa1?: string | null;
 };
 
 export async function createEmcRecords(payload: {
   assignments: EmcAssignment[];
-}): Promise<{ status: string; message: string; count: number }> {
+}): Promise<{ sent: number; skipped: string[] }> {
   if (!API_BASE_URL) throw new Error('API URL not configured');
-  const response = await fetch(`${API_BASE_URL}?route=create-emr-records`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
-  if (!response.ok) {
-    const err = await response.json().catch(() => ({}));
-    throw new Error(err.error || `create-emr-records failed: ${response.status}`);
-  }
-  return response.json();
+  return gasPost<{ sent: number; skipped: string[] }>('create-emr-records', payload);
 }
