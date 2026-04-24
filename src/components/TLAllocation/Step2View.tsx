@@ -15,7 +15,7 @@ import {
   ExpandLess as CollapseIcon,
 } from '@mui/icons-material';
 import type {
-  AllocationPitch, Phase2Interest, StaffingAssignment, AllocationConfig,
+  AllocationPitch, Phase2Interest, StaffingAssignment, AllocationConfig, InterestLevel,
 } from '../../types/allocationTypes';
 import InterestChip from './InterestChip';
 import InterestDot from './InterestDot';
@@ -28,7 +28,8 @@ interface Step2ViewProps {
   phase2Interests: Phase2Interest[];
   config: AllocationConfig;
   devByPitchId: Record<string, string | null>;
-  onAssign: (pitchId: string, field: 'devTL' | 'qm', value: string | null) => void;
+  devNames: string[];
+  onAssign: (pitchId: string, field: 'devTL' | 'qm' | 'pqa1', value: string | null) => void;
   onFinalize?: () => void;
 }
 
@@ -66,7 +67,7 @@ const CATEGORY_SHORT: Record<string, string> = {
 };
 
 export default function Step2View({
-  selectedPitches, assignments, phase2Interests, config, onAssign, devByPitchId,
+  selectedPitches, assignments, phase2Interests, config, onAssign, devByPitchId, devNames,
 }: Step2ViewProps) {
   // ── Sidebar resize (Item 5) ──────────────────────────────────────────────
   const [sidebarWidth, setSidebarWidth] = useState(() => Math.round(window.innerWidth / 3));
@@ -159,6 +160,13 @@ export default function Step2View({
     });
   };
 
+  const hasHighInterestPqa1 = (name: string) =>
+    assignments.some(a => {
+      if (a.pqa1 !== name) return false;
+      const tier = pitchMap.get(a.pitchId)?.devInterest[name];
+      return tier === 1 || tier === 2;
+    });
+
   // ── Sidebar section collapse state ──────────────────────────────────────
   const [sidebarCollapsed, setSidebarCollapsed] = useState<Record<string, boolean>>({});
   const toggleSidebarSection = (label: string) =>
@@ -236,6 +244,7 @@ export default function Step2View({
                     <col style={{ width: 72 }} />{/* dev read-only */}
                     <col style={{ width: 190 }} />{/* DevTL */}
                     <col style={{ width: 190 }} />{/* QM */}
+                    <col style={{ width: 190 }} />{/* PQA1 Reviewer */}
                   </colgroup>
                   <TableHead>
                     <TableRow sx={{ '& th': { py: 0.5, fontSize: '0.72rem', color: 'text.secondary' } }}>
@@ -249,11 +258,12 @@ export default function Step2View({
                       <TableCell width={72} align="center">Dev</TableCell>
                       <TableCell width={190} align="center">Dev TL</TableCell>
                       <TableCell width={190} align="center">QM</TableCell>
+                      <TableCell width={190} align="center">PQA1 Reviewer</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
                     {catPitches.map(pitch => {
-                      const a = assignMap.get(pitch.id) ?? { pitchId: pitch.id, devTL: null, qm: null };
+                      const a = assignMap.get(pitch.id) ?? { pitchId: pitch.id, devTL: null, qm: null, pqa1: null };
                       return (
                         <Step2Row
                           key={pitch.id}
@@ -261,6 +271,7 @@ export default function Step2View({
                           assignment={a}
                           devTLInterests={devTLInterests}
                           qmInterests={qmInterests}
+                          devNames={devNames}
                           onAssign={onAssign}
                           onRef={registerRow(pitch.id)}
                           highlighted={pitch.id === highlightPitchId}
@@ -380,6 +391,89 @@ export default function Step2View({
             {sectionIdx === 0 && <Divider sx={{ my: 1.25 }} />}
           </Box>
         ))}
+
+        <Divider sx={{ my: 1.25 }} />
+
+        {/* ── PQA1 Reviewers ── */}
+        <Box>
+          <Box
+            sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5, cursor: 'pointer', userSelect: 'none' }}
+            onClick={() => toggleSidebarSection('PQA1 Reviewers')}
+          >
+            {sidebarCollapsed['PQA1 Reviewers']
+              ? <ExpandIcon sx={{ fontSize: '0.9rem', color: 'text.secondary' }} />
+              : <CollapseIcon sx={{ fontSize: '0.9rem', color: 'text.secondary' }} />
+            }
+            <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: 0.5 }}>
+              PQA1 Reviewers
+            </Typography>
+          </Box>
+          <Collapse in={!sidebarCollapsed['PQA1 Reviewers']}>
+            {devNames.map(name => {
+              const assignedPitchIds = assignments
+                .filter(a => a.pqa1 === name)
+                .map(a => a.pitchId)
+                .sort((a, b) => {
+                  const pA = pitchMap.get(a);
+                  const pB = pitchMap.get(b);
+                  if (!pA || !pB) return 0;
+                  const catA = categories.indexOf(pA.category);
+                  const catB = categories.indexOf(pB.category);
+                  if (catA !== catB) return catA - catB;
+                  return selectedPitches.indexOf(pA) - selectedPitches.indexOf(pB);
+                });
+              const hasHigh = hasHighInterestPqa1(name);
+
+              return (
+                <Box key={name} sx={{ mb: 1 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                    {hasHigh
+                      ? <OkIcon fontSize="small" color="success" sx={{ fontSize: '0.9rem' }} />
+                      : <WarnIcon fontSize="small" color="warning" sx={{ fontSize: '0.9rem' }} />
+                    }
+                    <Typography variant="caption" fontWeight={600}>{name}</Typography>
+                    <Typography variant="caption" color="text.secondary" sx={{ ml: 'auto' }}>
+                      {assignedPitchIds.length} projects
+                    </Typography>
+                  </Box>
+                  {assignedPitchIds.map(pid => {
+                    const p = pitchMap.get(pid);
+                    if (!p) return null;
+                    const shortTitle = p.title.replace(/^[^/]+\/\s*/, '');
+                    const interestLevel = p.devInterest[name] ?? null;
+                    const noData = !(name in p.devInterest);
+                    return (
+                      <Box key={pid} sx={{ display: 'flex', alignItems: 'center', gap: 0.5, ml: 1.5, mt: 0.25 }}>
+                        <Tooltip title={`${p.title} — click to jump`} placement="top-start">
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                            onClick={() => handleFocusPitch(pid)}
+                            sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'pointer',
+                                  '&:hover': { textDecoration: 'underline' } }}
+                          >
+                            {shortTitle}
+                          </Typography>
+                        </Tooltip>
+                        <DevPitchInfo pitch={p} />
+                        {p.continuation && (
+                          <Tooltip title="Continuation project">
+                            <AutorenewIcon sx={{ fontSize: '0.75rem', color: 'text.disabled', flexShrink: 0 }} />
+                          </Tooltip>
+                        )}
+                        <Box sx={{ flex: 1 }} />
+                        {sidebarWidth < 280
+                          ? <InterestDot level={interestLevel} noData={noData} />
+                          : <InterestChip level={interestLevel} noData={noData} size="small" />
+                        }
+                      </Box>
+                    );
+                  })}
+                </Box>
+              );
+            })}
+          </Collapse>
+        </Box>
       </Box>
 
       {/* ── Shared email popover (Item 10) ── */}
@@ -431,7 +525,8 @@ interface Step2RowProps {
   assignment: StaffingAssignment;
   devTLInterests: Phase2Interest[];
   qmInterests: Phase2Interest[];
-  onAssign: (pitchId: string, field: 'devTL' | 'qm', value: string | null) => void;
+  devNames: string[];
+  onAssign: (pitchId: string, field: 'devTL' | 'qm' | 'pqa1', value: string | null) => void;
   onRef?: (el: HTMLTableRowElement | null) => void;
   highlighted?: boolean;
   devName: string | null;
@@ -442,7 +537,7 @@ interface Step2RowProps {
 }
 
 function Step2Row({
-  pitch, assignment, devTLInterests, qmInterests, onAssign, onRef, highlighted,
+  pitch, assignment, devTLInterests, qmInterests, devNames, onAssign, onRef, highlighted,
   devName, includeUXD, onToggleUXD, onOpenEmail, emailCustomized = false,
 }: Step2RowProps) {
   const [detailsAnchor, setDetailsAnchor] = useState<HTMLButtonElement | null>(null);
@@ -535,7 +630,70 @@ function Step2Row({
           onChange={v => onAssign(pitch.id, 'qm', v)}
         />
       </TableCell>
+      <TableCell>
+        <Pqa1Dropdown
+          value={assignment.pqa1 ?? null}
+          devNames={devNames}
+          devInterest={pitch.devInterest}
+          excludeDev={devName}
+          onChange={v => onAssign(pitch.id, 'pqa1', v)}
+        />
+      </TableCell>
     </TableRow>
+  );
+}
+
+// ─── PQA1 reviewer dropdown ────────────────────────────────────────────────────
+
+interface Pqa1DropdownProps {
+  value: string | null;
+  devNames: string[];
+  devInterest: Record<string, InterestLevel>;
+  excludeDev: string | null;
+  onChange: (val: string | null) => void;
+}
+
+function Pqa1Dropdown({ value, devNames, devInterest, excludeDev, onChange }: Pqa1DropdownProps) {
+  const sorted = devNames
+    .filter(d => d !== excludeDev)
+    .sort((a, b) => {
+      const tA = (devInterest[a] ?? 5) as number;
+      const tB = (devInterest[b] ?? 5) as number;
+      return tA - tB;
+    });
+
+  return (
+    <Select
+      size="small"
+      value={value ?? ''}
+      onChange={e => onChange(e.target.value || null)}
+      displayEmpty
+      sx={{ fontSize: '0.75rem', width: '100%' }}
+      renderValue={val => {
+        if (!val) return <Typography variant="caption" color="text.disabled">Assign…</Typography>;
+        const name = val as string;
+        const level = (devInterest[name] ?? null) as (1 | 2 | 3 | 4 | null);
+        const noData = !(name in devInterest);
+        return (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0 }}>
+            <Typography variant="caption" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+              {name.split(' ')[0]}
+            </Typography>
+            <InterestDot level={level} noData={noData} />
+          </Box>
+        );
+      }}
+    >
+      <MenuItem value=""><em>Unassign</em></MenuItem>
+      {sorted.map(dev => (
+        <MenuItem key={dev} value={dev}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
+            <Typography variant="body2" sx={{ flex: 1 }}>{dev}</Typography>
+            <InterestChip level={(devInterest[dev] ?? null) as (1 | 2 | 3 | 4 | null)} />
+          </Box>
+        </MenuItem>
+      ))}
+    </Select>
   );
 }
 

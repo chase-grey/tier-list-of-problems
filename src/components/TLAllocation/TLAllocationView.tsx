@@ -1,16 +1,17 @@
 import { useState, useMemo, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
-import { Box, Snackbar, Alert, CircularProgress, Typography } from '@mui/material';
+import { Box, CircularProgress, Typography } from '@mui/material';
 import type { AllocationPitch, AllocationConfig, AssignmentStatus, Phase2Interest, PlanAssignment, StaffingAssignment, AllocationPlan } from '../../types/allocationTypes';
 import type { Pitch } from '../../types/models';
 import {
   MOCK_CONFIG, MOCK_PITCHES, MOCK_PLANS, MOCK_PHASE2_INTERESTS,
 } from '../../mocks/allocationMockData';
-import { fetchAllocationConfig, fetchAllocationVoteData, createEmcRecords } from '../../services/allocationApi';
-import type { EmcAssignment } from '../../services/allocationApi';
+import { fetchAllocationConfig, fetchAllocationVoteData } from '../../services/allocationApi';
 import { generatePlans, autoAssignPqa1 } from '../../utils/allocationEngine';
 import { fetchPitches } from '../../services/api';
 import Step1View from './Step1View';
 import Step2View from './Step2View';
+import Stage2ResultsView from './Stage2ResultsView';
+import Stage4ResultsView from './Stage4ResultsView';
 
 export interface TLAllocationViewHandle {
   triggerFinalize: () => void;
@@ -124,7 +125,7 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
   const [allocationPlans, setAllocationPlans] = useState<AllocationPlan[]>(MOCK_PLANS);
   // Phase 2 interests: always fall back to mocks until a real submission workflow exists
   const phase2Interests: Phase2Interest[] = MOCK_PHASE2_INTERESTS;
-
+  const [showResults, setShowResults] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -258,31 +259,8 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
     setStep2Assignments(base.map(a => ({ ...a, pqa1: pqa1Map[a.pitchId] ?? null })));
   }, [activeStep, loading, phase2Interests, allocationConfig]);
 
-  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; failed?: boolean }>({ open: false, message: '' });
-
-  const handleFinalize = async () => {
-    // Build assignment list
-    const assignments: EmcAssignment[] = step2Assignments
-      .map(sa => {
-        const pitch = allocationPitches.find(p => p.id === sa.pitchId);
-        if (!pitch) return null;
-        return {
-          pitchId: sa.pitchId,
-          pitchTitle: pitch.title,
-          assignedDev: devByPitchId[sa.pitchId] ?? null,
-          devTL: sa.devTL,
-          qm: sa.qm,
-          pqa1: sa.pqa1 ?? null,
-        };
-      })
-      .filter((a): a is EmcAssignment => a !== null);
-
-    try {
-      await createEmcRecords({ assignments });
-      setSnackbar({ open: true, message: `Plan finalized! Kickoff emails sent to ${assignments.length} project${assignments.length !== 1 ? 's' : ''}.`, failed: false });
-    } catch (err) {
-      setSnackbar({ open: true, message: `Finalize failed: ${err instanceof Error ? err.message : String(err)}`, failed: true });
-    }
+  const handleFinalize = () => {
+    setShowResults(true);
     onFinalize?.();
   };
 
@@ -294,6 +272,23 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
         <CircularProgress size={24} />
         <Typography color="text.secondary">Loading allocation data…</Typography>
       </Box>
+    );
+  }
+
+  if (showResults) {
+    return activeStep === 0 ? (
+      <Stage2ResultsView
+        pitches={allocationPitches}
+        currentAssignments={currentAssignments}
+        quarterLabel={allocationConfig.quarterLabel}
+      />
+    ) : (
+      <Stage4ResultsView
+        pitches={allocationPitches}
+        currentAssignments={currentAssignments}
+        step2Assignments={step2Assignments}
+        config={allocationConfig}
+      />
     );
   }
 
@@ -332,16 +327,6 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
           </Typography>
         </Box>
       )}
-
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={6000}
-        onClose={() => setSnackbar(p => ({ ...p, open: false }))}
-      >
-        <Alert severity={snackbar.failed ? 'warning' : 'info'} onClose={() => setSnackbar(p => ({ ...p, open: false }))}>
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
     </Box>
   );
 });
