@@ -723,7 +723,7 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
             <TLAllocationView
               ref={tlViewRef}
               activeStep={allocationStep}
-              onFinalize={handleAllocationFinish}
+              onFinalize={undefined}
               voterName={state.voterName ?? ''}
               voterRole={state.voterRole ?? ''}
             />
