@@ -7,11 +7,10 @@ import {
 } from '../../mocks/allocationMockData';
 import { fetchAllocationConfig, fetchAllocationVoteData, sendKickoffEmail, createEmcRecords } from '../../services/allocationApi';
 import type { EmcAssignment } from '../../services/allocationApi';
-import { generatePlans } from '../../utils/allocationEngine';
+import { generatePlans, autoAssignPqa1 } from '../../utils/allocationEngine';
 import { fetchPitches } from '../../services/api';
 import Step1View from './Step1View';
 import Step2View from './Step2View';
-import Phase2InterestForm from './Phase2InterestForm';
 
 interface TLAllocationViewProps {
   activeStep: 0 | 1;
@@ -111,7 +110,7 @@ function enrichPitches(
   });
 }
 
-export default function TLAllocationView({ activeStep, onFinalize, voterName, voterRole }: TLAllocationViewProps) {
+export default function TLAllocationView({ activeStep, onFinalize }: TLAllocationViewProps) {
   // ── Data loading ──────────────────────────────────────────────────────────
   const [loading, setLoading] = useState(true);
   const [usingMockData, setUsingMockData] = useState(false);
@@ -122,10 +121,6 @@ export default function TLAllocationView({ activeStep, onFinalize, voterName, vo
   // Phase 2 interests: always fall back to mocks until a real submission workflow exists
   const phase2Interests: Phase2Interest[] = MOCK_PHASE2_INTERESTS;
 
-  // Phase 2 gate: track whether the interest form has been submitted
-  const [phase2Submitted, setPhase2Submitted] = useState(false);
-  // When the user clicks "Back" on the interest form, skip it and show Step2View directly
-  const [phase2Skipped, setPhase2Skipped] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -144,12 +139,14 @@ export default function TLAllocationView({ activeStep, onFinalize, voterName, vo
         const enriched = enrichPitches(pitches, voteData);
         const hasRealVotes = Object.keys(voteData).length > 0;
 
+        // Always apply the fetched config (needed for testingCaptain, tlEmails, etc.)
+        setAllocationConfig(effectiveConfig);
+
         if (!hasRealVotes) {
           // No real vote data yet — fall back to mocks so the UI is still populated
           setUsingMockData(true);
         } else {
           setAllocationPitches(enriched);
-          setAllocationConfig(effectiveConfig);
           setAllocationPlans(generatePlans(enriched, effectiveConfig));
           setUsingMockData(false);
         }
@@ -228,19 +225,10 @@ export default function TLAllocationView({ activeStep, onFinalize, voterName, vo
 
   const [step2Assignments, setStep2Assignments] = useState<StaffingAssignment[]>([]);
 
-  const prevStepRef = useRef<0 | 1>(0);
   const selectedPitchesRef = useRef(selectedPitches);
   selectedPitchesRef.current = selectedPitches;
-  useEffect(() => {
-    prevStepRef.current = activeStep;
-  }, [activeStep]);
 
-  const handlePhase2Complete = () => {
-    setPhase2Submitted(true);
-    setStep2Assignments(autoAssignStep2(selectedPitchesRef.current, phase2Interests, allocationConfig));
-  };
-
-  const handleStep2Assign = (pitchId: string, field: 'devTL' | 'qm', value: string | null) => {
+  const handleStep2Assign = (pitchId: string, field: 'devTL' | 'qm' | 'pqa1', value: string | null) => {
     setStep2Assignments(prev => {
       const exists = prev.find(a => a.pitchId === pitchId);
       if (exists) return prev.map(a => a.pitchId === pitchId ? { ...a, [field]: value } : a);
@@ -252,6 +240,19 @@ export default function TLAllocationView({ activeStep, onFinalize, voterName, vo
     () => Object.fromEntries(currentAssignments.map(a => [a.pitchId, a.assignedDev])),
     [currentAssignments]
   );
+
+  const devByPitchIdRef = useRef(devByPitchId);
+  devByPitchIdRef.current = devByPitchId;
+  const step2InitRef = useRef(false);
+
+  // Auto-initialize step2 assignments when entering step 1, waiting for data to load first.
+  useEffect(() => {
+    if (activeStep !== 1 || loading || step2InitRef.current) return;
+    step2InitRef.current = true;
+    const base = autoAssignStep2(selectedPitchesRef.current, phase2Interests, allocationConfig);
+    const pqa1Map = autoAssignPqa1(selectedPitchesRef.current, devByPitchIdRef.current, allocationConfig.devNames);
+    setStep2Assignments(base.map(a => ({ ...a, pqa1: pqa1Map[a.pitchId] ?? null })));
+  }, [activeStep, loading, phase2Interests, allocationConfig]);
 
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; failed?: boolean }>({ open: false, message: '' });
 
@@ -267,18 +268,19 @@ export default function TLAllocationView({ activeStep, onFinalize, voterName, vo
           assignedDev: devByPitchId[sa.pitchId] ?? null,
           devTL: sa.devTL,
           qm: sa.qm,
+          pqa1: sa.pqa1 ?? null,
         };
       })
       .filter((a): a is EmcAssignment => a !== null);
 
     // Build email body
     const rows = assignments.map(a =>
-      `<tr><td>${a.pitchTitle}</td><td>${a.assignedDev ?? '—'}</td><td>${a.devTL ?? '—'}</td><td>${a.qm ?? '—'}</td></tr>`
+      `<tr><td>${a.pitchTitle}</td><td>${a.assignedDev ?? '—'}</td><td>${a.devTL ?? '—'}</td><td>${a.qm ?? '—'}</td><td>${a.pqa1 ?? '—'}</td></tr>`
     ).join('');
     const htmlBody = `
       <h2>Quarterly Allocation — Selected Projects</h2>
       <table border="1" cellpadding="6" cellspacing="0">
-        <thead><tr><th>Project</th><th>Dev</th><th>Dev TL</th><th>QM</th></tr></thead>
+        <thead><tr><th>Project</th><th>Dev</th><th>Dev TL</th><th>QM</th><th>PQA1 Reviewer</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
     `;
@@ -324,25 +326,16 @@ export default function TLAllocationView({ activeStep, onFinalize, voterName, vo
             onStatusChange={handleStatusChange}
           />
         ) : (
-          activeStep === 1 && !phase2Submitted && !phase2Skipped && (voterRole === 'dev TL' || voterRole === 'QM') ? (
-            <Phase2InterestForm
-              pitches={selectedPitches}
-              voterName={voterName}
-              voterRole={voterRole as 'dev TL' | 'QM'}
-              onComplete={handlePhase2Complete}
-              onBack={() => setPhase2Skipped(true)}
-            />
-          ) : (
-            <Step2View
-              selectedPitches={selectedPitches}
-              assignments={step2Assignments}
-              phase2Interests={phase2Interests}
-              config={allocationConfig}
-              onAssign={handleStep2Assign}
-              onFinalize={handleFinalize}
-              devByPitchId={devByPitchId}
-            />
-          )
+          <Step2View
+            selectedPitches={selectedPitches}
+            assignments={step2Assignments}
+            phase2Interests={phase2Interests}
+            config={allocationConfig}
+            onAssign={handleStep2Assign}
+            onFinalize={handleFinalize}
+            devByPitchId={devByPitchId}
+            devNames={allocationConfig.devNames}
+          />
         )}
       </Box>
 

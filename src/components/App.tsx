@@ -80,11 +80,7 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
   const pollingStage = getPollingStage();
   // tl-1 = Allocation 1 only (step 0), tl-2 = Allocation 2 only (step 1)
   const allocationStep: 0 | 1 = pollingStage === 'tl-2' ? 1 : 0;
-  const [allocationFinalizedSnackbar, setAllocationFinalizedSnackbar] = useState(false);
-
-  const handleAllocationFinish = () => {
-    setAllocationFinalizedSnackbar(true);
-  };
+  const handleAllocationFinish = () => {};
 
   // Async pitch loading state
   const [loadedPitches, setLoadedPitches] = useState<(Pitch & { stage2?: boolean })[] | null>(null);
@@ -687,16 +683,6 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
         open={!state.voterName && initialHelpShown}
       />
 
-      <Snackbar
-        open={allocationFinalizedSnackbar}
-        autoHideDuration={6000}
-        onClose={() => setAllocationFinalizedSnackbar(false)}
-      >
-        <Alert severity="info" onClose={() => setAllocationFinalizedSnackbar(false)}>
-          Plan finalized! EMC2 record creation and email sending require backend integration.
-        </Alert>
-      </Snackbar>
-      
       <AvailabilityDialog 
         open={showAvailabilityDialog}
         onAvailabilitySet={handleAvailabilitySet}
@@ -735,7 +721,7 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
           {isTLStage && state.voterRole === 'dev TL' ? (
             <TLAllocationView
               activeStep={allocationStep}
-              onFinalize={() => setAllocationFinalizedSnackbar(true)}
+              onFinalize={handleAllocationFinish}
               voterName={state.voterName ?? ''}
               voterRole={state.voterRole ?? ''}
             />
