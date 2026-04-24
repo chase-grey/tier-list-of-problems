@@ -356,7 +356,7 @@ function sendKickoffEmail(body) {
   }
   try {
     recipients.forEach(email => {
-      MailApp.sendEmail({
+      GmailApp.sendEmail({
         to: email,
         subject: subject,
         htmlBody: htmlBody,
@@ -396,11 +396,11 @@ function createEmcRecords(body) {
   function buildTableRows(rows) {
     return rows.map(a => {
       const qanLink = '<a href="https://emc2summary/GetSummaryReport.ashx/TRACK/ZQN/' + a.pitchId + '">' + a.pitchId + '</a>';
-      return '<tr><td>' + a.pitchTitle + '</td><td>' + qanLink + '</td><td>' + (a.assignedDev || '') + '</td><td>' + (a.qm || '') + '</td></tr>';
+      return '<tr><td>' + a.pitchTitle + '</td><td>' + qanLink + '</td><td>' + (a.assignedDev || '') + '</td><td>' + (a.qm || '') + '</td><td>' + (a.pqa1 || '') + '</td></tr>';
     }).join('');
   }
 
-  const tableHeader = '<table border="1" cellpadding="4" cellspacing="0"><thead><tr><th>Project Title</th><th>QAN Link</th><th>Lead Dev</th><th>QM</th></tr></thead><tbody>';
+  const tableHeader = '<table border="1" cellpadding="4" cellspacing="0"><thead><tr><th>Project Title</th><th>QAN Link</th><th>Lead Dev</th><th>QM</th><th>PQA1 Reviewer</th></tr></thead><tbody>';
   const tableFooter = '</tbody></table>';
 
   let sent = 0;
@@ -418,7 +418,7 @@ function createEmcRecords(body) {
       '<p>Hi ' + tlName + ', the quarterly allocation has been finalized. Please create a PRJ record for each project below in EMC2, link the source QAN on the Associated Records tab, and add the team members listed.</p>' +
       tableHeader + buildTableRows(tlRows) + tableFooter +
       '<p>Reply with questions. — SmartTools Allocation Tool</p>';
-    MailApp.sendEmail({
+    GmailApp.sendEmail({
       to: email,
       subject: 'SmartTools Allocation — Your Q' + quarterLabel + ' Projects',
       htmlBody: htmlBody,
@@ -431,7 +431,7 @@ function createEmcRecords(body) {
     const summaryHtml =
       '<p>Full assignment summary for Q' + quarterLabel + ':</p>' +
       tableHeader + buildTableRows(assignments) + tableFooter;
-    MailApp.sendEmail({
+    GmailApp.sendEmail({
       to: testingCaptain,
       subject: 'SmartTools Allocation — Full Assignment Summary',
       htmlBody: summaryHtml,
