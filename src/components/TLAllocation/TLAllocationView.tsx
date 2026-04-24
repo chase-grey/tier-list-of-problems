@@ -280,7 +280,7 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
       <Stage2ResultsView
         pitches={allocationPitches}
         currentAssignments={currentAssignments}
-        quarterLabel={allocationConfig.quarterLabel}
+        config={allocationConfig}
       />
     ) : (
       <Stage4ResultsView
