@@ -356,11 +356,9 @@ function sendKickoffEmail(body) {
   }
   try {
     recipients.forEach(email => {
-      GmailApp.sendEmail({
-        to: email,
-        subject: subject,
+      GmailApp.sendEmail(email, subject, '', {
         htmlBody: htmlBody,
-        name: senderName || 'TL Allocation Tool'
+        name: senderName || 'TL Allocation Tool',
       });
     });
     return json200({ sent: recipients.length });
@@ -418,11 +416,9 @@ function createEmcRecords(body) {
       '<p>Hi ' + tlName + ', the quarterly allocation has been finalized. Please create a PRJ record for each project below in EMC2, link the source QAN on the Associated Records tab, and add the team members listed.</p>' +
       tableHeader + buildTableRows(tlRows) + tableFooter +
       '<p>Reply with questions. — SmartTools Allocation Tool</p>';
-    GmailApp.sendEmail({
-      to: email,
-      subject: 'SmartTools Allocation — Your Q' + quarterLabel + ' Projects',
+    GmailApp.sendEmail(email, 'SmartTools Allocation — Your Q' + quarterLabel + ' Projects', '', {
       htmlBody: htmlBody,
-      name: 'SmartTools Allocation Tool'
+      name: 'SmartTools Allocation Tool',
     });
     sent++;
   }
@@ -431,11 +427,9 @@ function createEmcRecords(body) {
     const summaryHtml =
       '<p>Full assignment summary for Q' + quarterLabel + ':</p>' +
       tableHeader + buildTableRows(assignments) + tableFooter;
-    GmailApp.sendEmail({
-      to: testingCaptain,
-      subject: 'SmartTools Allocation — Full Assignment Summary',
+    GmailApp.sendEmail(testingCaptain, 'SmartTools Allocation — Full Assignment Summary', '', {
       htmlBody: summaryHtml,
-      name: 'SmartTools Allocation Tool'
+      name: 'SmartTools Allocation Tool',
     });
   }
 
