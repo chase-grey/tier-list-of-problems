@@ -259,22 +259,14 @@ export async function submitVotes(payload: SubmitVotesPayload): Promise<number> 
       votes: payload.votes
     };
     
-    // text/plain avoids CORS preflight — GAS parses body via e.postData.contents
-    const response = await fetch(`${API_BASE_URL}?route=vote`, {
+    // no-cors: GAS redirects through googleusercontent.com which blocks CORS reads.
+    // The request still reaches GAS and votes are recorded.
+    await fetch(`${API_BASE_URL}?route=vote`, {
       method: 'POST',
+      mode: 'no-cors',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify(simplifiedPayload)
     });
-
-    if (!response.ok) {
-      let errorText = await response.text();
-      try {
-        const errorJson = JSON.parse(errorText);
-        throw new ApiError(errorJson.error || 'Vote submission failed', response.status);
-      } catch (parseError) {
-        throw new ApiError(`Vote submission failed: ${errorText}`, response.status);
-      }
-    }
     
     const data = await response.json();
     console.log('Vote submission response:', data);

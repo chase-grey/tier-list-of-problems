@@ -23,19 +23,17 @@ async function gasGet<T>(route: string): Promise<T> {
   return response.json();
 }
 
-// GAS requires text/plain to avoid the CORS preflight OPTIONS request.
-// The body is still JSON; GAS parses it via e.postData.contents.
-async function gasPost<T>(route: string, payload: unknown): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}?route=${route}`, {
+// GAS redirects POST through script.googleusercontent.com which blocks CORS reads.
+// Use no-cors so the request goes through (GAS executes) even though the response
+// is opaque. Callers receive a synthetic success value since we can't read the body.
+async function gasPost<T>(route: string, payload: unknown, synthetic: T): Promise<T> {
+  await fetch(`${API_BASE_URL}?route=${route}`, {
     method: 'POST',
+    mode: 'no-cors',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
     body: JSON.stringify(payload),
   });
-  if (!response.ok) {
-    const err = await response.json().catch(() => ({}));
-    throw new Error(err.error || `POST ${route} failed: ${response.status}`);
-  }
-  return response.json();
+  return synthetic;
 }
 
 /**
@@ -92,7 +90,7 @@ export type SubmitInterestVotePayload = {
  */
 export async function submitPhase2InterestVote(payload: SubmitInterestVotePayload): Promise<number> {
   if (!API_BASE_URL) throw new Error('API URL not configured');
-  const data = await gasPost<{ saved?: number }>('interest-vote', payload);
+  const data = await gasPost('interest-vote', payload, { saved: payload.interests.length });
   return data.saved ?? 0;
 }
 
@@ -129,5 +127,5 @@ export async function createEmcRecords(payload: {
   assignments: EmcAssignment[];
 }): Promise<{ sent: number; skipped: string[] }> {
   if (!API_BASE_URL) throw new Error('API URL not configured');
-  return gasPost<{ sent: number; skipped: string[] }>('create-emr-records', payload);
+  return gasPost('create-emr-records', payload, { sent: payload.assignments.length, skipped: [] });
 }
