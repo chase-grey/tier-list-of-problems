@@ -4,8 +4,7 @@
  */
 import type { Pitch, Vote } from '../types/models';
 import { getMockCsrfToken, submitMockVotes } from './mockApi';
-import { fetchPitchesByProject } from './pitchApiService';
-import { getPitchPrjId } from '../utils/config';
+import staticPitches from '../assets/pitches.json';
 
 // Get the API URL from environment variables safely
 const API_BASE_URL = ((import.meta as any).env?.VITE_API_URL) || '';
@@ -84,57 +83,11 @@ export interface SubmitVotesPayload {
   }>;
 }
 
-const PITCHES_SESSION_KEY = 'pitches.sessionCache';
-
 /**
- * Fetches all available pitches from the Track Shadow backend via Shadow Web.
- * Results are cached in sessionStorage so stage switches (page reloads) are instant.
- * In dev mode, falls back to the static pitches JSON if Shadow Web is unavailable.
+ * Fetches all available pitches from the bundled static JSON.
+ * Update src/assets/pitches.json once per quarter via the Dev Tools export button.
  */
 export async function fetchPitches(): Promise<Pitch[]> {
-  // Serve from sessionStorage cache if available (survives page reloads, not tab closes)
-  try {
-    const cached = sessionStorage.getItem(PITCHES_SESSION_KEY);
-    if (cached) {
-      const parsed = JSON.parse(cached) as Pitch[];
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        console.log(`[pitches] Serving ${parsed.length} pitches from session cache`);
-        return parsed;
-      }
-    }
-  } catch {
-    // ignore — proceed to fetch
-  }
-
-  const pitches = await fetchPitchesFromSource();
-
-  try {
-    sessionStorage.setItem(PITCHES_SESSION_KEY, JSON.stringify(pitches));
-  } catch {
-    // ignore — cache write failure is non-fatal
-  }
-
-  return pitches;
-}
-
-async function fetchPitchesFromSource(): Promise<Pitch[]> {
-  const prjId = getPitchPrjId();
-
-  if (prjId) {
-    try {
-      return await fetchPitchesByProject(prjId);
-    } catch (err) {
-      if (!(import.meta as any).env?.DEV) throw err;
-      console.warn('[dev] Shadow Web unavailable, falling back to static pitches-aug-26.json', err);
-    }
-  }
-
-  if (!(import.meta as any).env?.DEV) {
-    throw new ApiError('VITE_PITCH_PRJ_ID is not configured', 0);
-  }
-
-  // Dev fallback: load the static JSON bundled with the app
-  const { default: staticPitches } = await import('../assets/pitches-aug-26.json');
   return staticPitches as unknown as Pitch[];
 }
 
