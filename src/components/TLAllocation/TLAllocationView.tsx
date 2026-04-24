@@ -5,7 +5,7 @@ import type { Pitch } from '../../types/models';
 import {
   MOCK_CONFIG, MOCK_PITCHES, MOCK_PLANS, MOCK_PHASE2_INTERESTS,
 } from '../../mocks/allocationMockData';
-import { fetchAllocationConfig, fetchAllocationVoteData, sendKickoffEmail, createEmcRecords } from '../../services/allocationApi';
+import { fetchAllocationConfig, fetchAllocationVoteData, createEmcRecords } from '../../services/allocationApi';
 import type { EmcAssignment } from '../../services/allocationApi';
 import { generatePlans, autoAssignPqa1 } from '../../utils/allocationEngine';
 import { fetchPitches } from '../../services/api';
@@ -277,31 +277,11 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
       })
       .filter((a): a is EmcAssignment => a !== null);
 
-    // Build email body
-    const rows = assignments.map(a =>
-      `<tr><td>${a.pitchTitle}</td><td>${a.assignedDev ?? '—'}</td><td>${a.devTL ?? '—'}</td><td>${a.qm ?? '—'}</td><td>${a.pqa1 ?? '—'}</td></tr>`
-    ).join('');
-    const htmlBody = `
-      <h2>Quarterly Allocation — Selected Projects</h2>
-      <table border="1" cellpadding="6" cellspacing="0">
-        <thead><tr><th>Project</th><th>Dev</th><th>Dev TL</th><th>QM</th><th>PQA1 Reviewer</th></tr></thead>
-        <tbody>${rows}</tbody>
-      </table>
-    `;
-
     try {
-      await Promise.all([
-        sendKickoffEmail({
-          subject: 'Quarterly Allocation Finalized',
-          recipients: [allocationConfig.testingCaptain],
-          htmlBody,
-          senderName: 'TL Allocation Tool',
-        }),
-        createEmcRecords({ assignments }),
-      ]);
-      setSnackbar({ open: true, message: `Plan finalized! Email sent and ${assignments.length} EMC2 records queued.`, failed: false });
+      await createEmcRecords({ assignments });
+      setSnackbar({ open: true, message: `Plan finalized! Kickoff emails sent to ${assignments.length} project${assignments.length !== 1 ? 's' : ''}.`, failed: false });
     } catch (err) {
-      setSnackbar({ open: true, message: `Plan finalized, but some actions failed: ${err instanceof Error ? err.message : String(err)}`, failed: true });
+      setSnackbar({ open: true, message: `Finalize failed: ${err instanceof Error ? err.message : String(err)}`, failed: true });
     }
     onFinalize?.();
   };
