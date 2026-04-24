@@ -82,11 +82,10 @@ const BucketColumn = ({ tier, pitches, votes, columnCount = 9, onSendToBottom, u
   }, [pitches, votes, isUnsorted, tier]);
 
   return (
-    <Box 
-      sx={{ 
-        width: `calc((100% - ${(columnCount - 1) * 2}px) / ${columnCount})`, // Dynamic width based on column count with 2px margin between
-        minWidth: '200px', // Minimum usable width
-        mx: 0.5, // Margin on both sides for spacing
+    <Box
+      sx={{
+        flex: 1,
+        minWidth: '200px',
         height: '100%',
         display: 'flex',
         flexDirection: 'column'
@@ -134,7 +133,8 @@ const BucketColumn = ({ tier, pitches, votes, columnCount = 9, onSendToBottom, u
                       : '2px dashed rgba(0,0,0,0.2)'
                 : 'none',
               display: 'flex',
-              flexDirection: 'column'
+              flexDirection: 'column',
+              '&:focus, &:focus-visible': { outline: 'none' },
             }}
             aria-roledescription="bucket"
           >

@@ -145,18 +145,20 @@ export default function Stage2ResultsView({ pitches, currentAssignments, config 
       </Tabs>
 
       {viewTab === 0 ? (
-        <Table size="small" sx={{ mb: 4 }}>
+        <Table size="small" sx={{ mb: 4, tableLayout: 'fixed' }}>
           <TableHead>
             <TableRow>
-              <TableCell>Project</TableCell>
-              <TableCell>Category</TableCell>
+              <TableCell sx={{ width: '45%' }}>Project</TableCell>
+              <TableCell sx={{ width: '20%' }}>Category</TableCell>
               <TableCell>Dev</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {selected.map(({ assignment, pitch }) => (
               <TableRow key={pitch.id}>
-                <TableCell>{pitch.title}</TableCell>
+                <TableCell sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {pitch.title}
+                </TableCell>
                 <TableCell>
                   <Chip label={pitch.category} size="small" />
                 </TableCell>

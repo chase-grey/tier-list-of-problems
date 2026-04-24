@@ -111,3 +111,39 @@ function generatePlan(
 export function generatePlans(pitches: AllocationPitch[], config: AllocationConfig): AllocationPlan[] {
   return (['A', 'B', 'C'] as PlanVariant[]).map(v => generatePlan(v, pitches, config));
 }
+
+/**
+ * Auto-assign a PQA1 reviewer for each pitch using round-1 developer interest.
+ * The assigned dev is excluded from candidacy. Ties broken by current PQA1 load.
+ * Higher-priority pitches (lower teamPriorityScore) are assigned first.
+ * Returns pitchId → reviewer name (or null if no candidates remain).
+ */
+export function autoAssignPqa1(
+  pitches: AllocationPitch[],
+  devByPitchId: Record<string, string | null>,
+  devNames: string[],
+): Record<string, string | null> {
+  const pqa1Load: Record<string, number> = {};
+  devNames.forEach(d => { pqa1Load[d] = 0; });
+
+  const result: Record<string, string | null> = {};
+  const sorted = [...pitches].sort((a, b) => a.teamPriorityScore - b.teamPriorityScore);
+
+  for (const pitch of sorted) {
+    const assignedDev = devByPitchId[pitch.id] ?? null;
+    const candidate =
+      devNames
+        .filter(d => d !== assignedDev)
+        .sort((a, b) => {
+          const tA = (pitch.devInterest[a] ?? 5) as number;
+          const tB = (pitch.devInterest[b] ?? 5) as number;
+          if (tA !== tB) return tA - tB;
+          return pqa1Load[a] - pqa1Load[b];
+        })[0] ?? null;
+
+    result[pitch.id] = candidate;
+    if (candidate) pqa1Load[candidate]++;
+  }
+
+  return result;
+}

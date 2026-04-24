@@ -260,9 +260,138 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
     return () => document.removeEventListener('keydown', handle);
   }, [isTLStage, state.stage, showHelp, showResetConfirmation]);
 
-  // Access snackbar
+  // Get completion stats using our utility function
+  const stats = getCompletionStats(pitches);
+  const {
+    rankCount,
+    interestCount,
+    // minimumRequired is not used directly
+    isPriorityComplete,
+    isInterestComplete
+  } = stats;
+
+  // Check if the user has a role that can access interest ranking
+  // Stage 1: devs can rank interest (after priority)
+  // Stage 2: QM and dev TL can rank interest on subset of pitches
+  const canAccessInterestStage = state.voterRole !== null &&
+    state.available === true &&
+    (appStage2Mode
+      ? canRankInterestStage2(state.voterRole)  // Stage 2: QM and dev TL only
+      : canRankInterestStage1(state.voterRole)  // Stage 1: devs only
+    );
+
+  // Check if the user needs to rank interest (same logic as canAccessInterestStage, kept for backward compatibility)
+  const needsInterestRanking = canAccessInterestStage;
+
+  // Calculate completion status based on role and availability (now only requires 50%)
+  // In Stage 2 mode, priority stage is considered complete (locked from Stage 1)
+  const priorityStageComplete = appStage2Mode ? true : isPriorityComplete;
+
+  // Access snackbar (must precede handleStageChange which uses it)
   const { showSnackbar } = useSnackbar();
-  
+
+  // Toggle between priority and interest stages
+  const handleStageChange = () => {
+    console.log('[DEBUG] Starting stage transition', {
+      currentStage: state.stage,
+      voterRole: state.voterRole,
+      canAccessInterestStage,
+      priorityStageComplete,
+      available: state.available,
+      votesCount: Object.keys(state.votes || {}).length,
+      pitchesCount: Array.isArray(pitches) ? pitches.length : 0,
+      appStage2Mode
+    });
+
+    // Toggle between stages
+    const newStage = state.stage === 'priority' ? 'interest' : 'priority';
+
+    // In Stage 2 mode, prevent going back to priority stage (it's locked)
+    if (appStage2Mode && newStage === 'priority') {
+      showSnackbar('Priority ranking is locked. Stage 2 is for interest ranking only.', 'info');
+      return;
+    }
+
+    // Only allow switching to interest stage if conditions are met
+    if (newStage === 'interest' && (!canAccessInterestStage || !priorityStageComplete)) {
+      console.warn('[DEBUG] Interest stage transition blocked', {
+        canAccessInterestStage,
+        priorityStageComplete,
+        voterRole: state.voterRole,
+        available: state.available
+      });
+
+      // Show appropriate error message
+      if (!canAccessInterestStage) {
+        const roleMsg = appStage2Mode
+          ? 'Only QM and dev TL roles who are available can rank interest in Stage 2'
+          : 'Only devs who are available can rank interest';
+        showSnackbar(roleMsg, 'error');
+      } else {
+        showSnackbar('You must complete priority rankings first', 'error');
+      }
+      return;
+    }
+
+    // If switching to interest stage, set default interest levels for all cards
+    // But only do this if the user can access the interest stage and has completed priority ranking
+    if (newStage === 'interest') {
+      if (canAccessInterestStage && priorityStageComplete) {
+        console.log('[DEBUG] Setting default interest levels', {
+          pitchCount: Array.isArray(pitches) ? pitches.length : 0
+        });
+        setDefaultInterestLevels(pitches);
+      } else {
+        console.error('[DEBUG] Failed to set interest levels - requirements not met', {
+          canAccessInterestStage,
+          priorityStageComplete
+        });
+        // If requirements aren't met, stay on priority stage and show an error
+        showSnackbar('You cannot access the interest stage until priority ranking is completed', 'error');
+        return;
+      }
+    }
+
+    // Set the new stage
+    console.log(`[DEBUG] Setting stage to ${newStage}`);
+    setStage(newStage);
+  };
+
+  // Alt+letter — jump directly to a category tab or the interest tab.
+  // Uses a custom listener instead of the HTML accessKey attribute because
+  // accessKey requires Alt+Shift on Windows Chrome, not plain Alt.
+  useEffect(() => {
+    if (isTLStage) return;
+    const handle = (e: KeyboardEvent) => {
+      if (!e.altKey || e.shiftKey || e.ctrlKey || e.metaKey) return;
+      if (showHelp || showResetConfirmation) return;
+      const tag = (e.target as HTMLElement).tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      if ((e.target as HTMLElement).getAttribute('contenteditable') === 'true') return;
+
+      const letter = e.key.toLowerCase();
+
+      // Category tabs (priority stage only)
+      if (state.stage === 'priority') {
+        const entry = Object.entries(CAT_KEYS).find(([, k]) => k === letter);
+        if (entry) {
+          e.preventDefault();
+          setSelectedCategory(entry[0]);
+          setFocusedPitchId(null);
+          return;
+        }
+      }
+
+      // Interest tab
+      if (letter === 'i' && canAccessInterestStage && priorityStageComplete && state.stage === 'priority') {
+        e.preventDefault();
+        handleStageChange();
+      }
+    };
+    document.addEventListener('keydown', handle);
+    return () => document.removeEventListener('keydown', handle);
+  }, [isTLStage, state.stage, showHelp, showResetConfirmation, canAccessInterestStage, priorityStageComplete, handleStageChange, setFocusedPitchId]);
+
   // Sync reducer state with localStorage (debounced)
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -287,33 +416,6 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
     const pitchIds = pitches.map(pitch => pitch.id);
     syncPitches(pitchIds);
   }, [pitches]);
-  
-  // Get completion stats using our utility function
-  const stats = getCompletionStats(pitches);
-  const { 
-    rankCount,
-    interestCount,
-    // minimumRequired is not used directly
-    isPriorityComplete,
-    isInterestComplete 
-  } = stats;
-  
-  // Check if the user has a role that can access interest ranking
-  // Stage 1: devs can rank interest (after priority)
-  // Stage 2: QM and dev TL can rank interest on subset of pitches
-  const canAccessInterestStage = state.voterRole !== null && 
-    state.available === true &&
-    (appStage2Mode 
-      ? canRankInterestStage2(state.voterRole)  // Stage 2: QM and dev TL only
-      : canRankInterestStage1(state.voterRole)  // Stage 1: devs only
-    );
-  
-  // Check if the user needs to rank interest (same logic as canAccessInterestStage, kept for backward compatibility)
-  const needsInterestRanking = canAccessInterestStage;
-  
-  // Calculate completion status based on role and availability (now only requires 50%)
-  // In Stage 2 mode, priority stage is considered complete (locked from Stage 1)
-  const priorityStageComplete = appStage2Mode ? true : isPriorityComplete;
   
   // Check if export is enabled based on role and stage
   const isExportEnabled = priorityStageComplete && 
@@ -501,73 +603,6 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
   const handleAvailabilitySet = (available: boolean) => {
     setAvailability(available);
     showSnackbar(`Availability ${available ? 'confirmed' : 'noted - thanks for letting us know'}`, 'success');
-  };
-
-  // Toggle between priority and interest stages
-  const handleStageChange = () => {
-    console.log('[DEBUG] Starting stage transition', {
-      currentStage: state.stage,
-      voterRole: state.voterRole,
-      canAccessInterestStage,
-      priorityStageComplete,
-      available: state.available,
-      votesCount: Object.keys(state.votes || {}).length,
-      pitchesCount: Array.isArray(pitches) ? pitches.length : 0,
-      appStage2Mode
-    });
-
-    // Toggle between stages
-    const newStage = state.stage === 'priority' ? 'interest' : 'priority';
-    
-    // In Stage 2 mode, prevent going back to priority stage (it's locked)
-    if (appStage2Mode && newStage === 'priority') {
-      showSnackbar('Priority ranking is locked. Stage 2 is for interest ranking only.', 'info');
-      return;
-    }
-    
-    // Only allow switching to interest stage if conditions are met
-    if (newStage === 'interest' && (!canAccessInterestStage || !priorityStageComplete)) {
-      console.warn('[DEBUG] Interest stage transition blocked', { 
-        canAccessInterestStage, 
-        priorityStageComplete,
-        voterRole: state.voterRole,
-        available: state.available 
-      });
-      
-      // Show appropriate error message
-      if (!canAccessInterestStage) {
-        const roleMsg = appStage2Mode 
-          ? 'Only QM and dev TL roles who are available can rank interest in Stage 2'
-          : 'Only devs who are available can rank interest';
-        showSnackbar(roleMsg, 'error');
-      } else {
-        showSnackbar('You must complete priority rankings first', 'error');
-      }
-      return;
-    }
-    
-    // If switching to interest stage, set default interest levels for all cards
-    // But only do this if the user can access the interest stage and has completed priority ranking
-    if (newStage === 'interest') {
-      if (canAccessInterestStage && priorityStageComplete) {
-        console.log('[DEBUG] Setting default interest levels', { 
-          pitchCount: Array.isArray(pitches) ? pitches.length : 0 
-        });
-        setDefaultInterestLevels(pitches);
-      } else {
-        console.error('[DEBUG] Failed to set interest levels - requirements not met', { 
-          canAccessInterestStage, 
-          priorityStageComplete 
-        });
-        // If requirements aren't met, stay on priority stage and show an error
-        showSnackbar('You cannot access the interest stage until priority ranking is completed', 'error');
-        return;
-      }
-    }
-    
-    // Set the new stage
-    console.log(`[DEBUG] Setting stage to ${newStage}`);
-    setStage(newStage);
   };
 
   // Handle showing help dialog
@@ -774,14 +809,12 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
                     <Tab
                       key={cat}
                       value={cat}
-                      accessKey={CAT_KEYS[cat]}
                       label={<span style={{ whiteSpace: 'nowrap' }}><u>{cat[0]}</u>{cat.slice(1)}</span>}
                     />
                   ))}
                   {canAccessInterestStage && (
                     <Tab
                       value="__interest__"
-                      accessKey="i"
                       label={<span style={{ whiteSpace: 'nowrap' }}><u>I</u>nterest</span>}
                       disabled={!priorityStageComplete}
                     />

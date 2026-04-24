@@ -32,10 +32,11 @@ const PitchCard = ({ pitch, vote, index, onSendToBottom, userRole, focused, onSe
   // Current tier
   const currentTier = vote?.tier || null;
 
-  // Scroll into view when focused via keyboard nav
+  // Sync DOM focus and scroll when React focus lands on this card
   useEffect(() => {
-    if (focused) {
-      cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    if (focused && cardRef.current) {
+      cardRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      cardRef.current.focus({ preventScroll: true });
     }
   }, [focused]);
 
@@ -110,6 +111,11 @@ const PitchCard = ({ pitch, vote, index, onSendToBottom, userRole, focused, onSe
             outlineColor: focused ? 'primary.main' : 'transparent',
             outlineOffset: '2px',
             boxShadow: focused ? (theme) => `0 0 0 5px ${theme.palette.primary.main}33` : undefined,
+            '&:focus-visible': {
+              outline: '2px solid',
+              outlineColor: 'primary.main',
+              outlineOffset: '2px',
+            },
           }}
           role="button"
           tabIndex={0}

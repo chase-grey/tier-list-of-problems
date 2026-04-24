@@ -309,12 +309,12 @@ const InterestRanking: React.FC<InterestRankingProps> = ({
       <Container disableGutters maxWidth={false} sx={{ flexGrow: 1, minHeight: 0, display: 'flex', flexDirection: 'column', pt: 0.5, px: 0.5 }}>
 
         <DragDropContext onDragEnd={handleDragEnd}>
-          <Box 
+          <Box
             ref={containerRef}
-            sx={{ 
-              display: 'flex', 
+            sx={{
+              display: 'flex',
               flexWrap: { xs: 'wrap', lg: 'nowrap' }, // Wrap on smaller screens, no wrap on large screens
-              justifyContent: 'space-between',
+              gap: 0.5,
               pb: 0.5, // Reduced bottom padding
               flexGrow: 1,
               minHeight: 0,
@@ -342,11 +342,10 @@ const InterestRanking: React.FC<InterestRankingProps> = ({
             }}
           >
             {/* Unsorted column */}
-            <Box 
-              sx={{ 
-                width: `calc((100% - 16px) / 5)`, // Dynamic width based on 5 columns (4 interest levels + 1 unsorted)
-                minWidth: '200px', // Minimum usable width
-                mx: 0.5, // Margin on both sides for spacing
+            <Box
+              sx={{
+                flex: 1,
+                minWidth: '200px',
                 height: '100%'
               }}
               key="interest-unsorted">
@@ -374,11 +373,10 @@ const InterestRanking: React.FC<InterestRankingProps> = ({
               const columnPitches = interestColumns[columnId] || [];
               
               return (
-                <Box 
-                  sx={{ 
-                    width: `calc((100% - 16px) / 5)`, // Dynamic width based on 5 columns (4 interest levels + 1 unranked)
-                    minWidth: '200px', // Minimum usable width
-                    mx: 0.5, // Margin on both sides for spacing
+                <Box
+                  sx={{
+                    flex: 1,
+                    minWidth: '200px',
                     height: '100%'
                   }}
                   key={columnId}>

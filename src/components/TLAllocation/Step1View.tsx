@@ -11,6 +11,8 @@ import {
   CheckCircle as OkIcon,
   InfoOutlined as InfoIcon,
   Autorenew as AutorenewIcon,
+  ChevronLeft as ChevronLeftIcon,
+  ChevronRight as ChevronRightIcon,
 } from '@mui/icons-material';
 import type { AllocationPlan, AllocationPitch, AssignmentStatus, PlanAssignment } from '../../types/allocationTypes';
 import type { AllocationConfig } from '../../types/allocationTypes';
@@ -112,6 +114,7 @@ export default function Step1View({
   onPlanChange, onDevChange, onStatusChange,
 }: Step1ViewProps) {
   const [sidebarWidth, setSidebarWidth] = useState(() => Math.round(window.innerWidth / 3));
+  const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 1400);
   const sidebarRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ startX: number; startWidth: number; liveWidth: number } | null>(null);
 
@@ -297,7 +300,7 @@ export default function Step1View({
           const actualPct = stats.total > 0 ? Math.round((selectedInCat.length / stats.total) * 100) : 0;
 
           return (
-            <Paper key={cat} variant="outlined" sx={{ mb: 2, overflow: 'hidden' }}>
+            <Paper key={cat} variant="outlined" sx={{ mb: 2, overflow: 'auto' }}>
               {/* ITEM 6: clickable bucket header */}
               <Box
                 sx={{ px: 2, py: 1, bgcolor: 'action.hover', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', userSelect: 'none' }}
@@ -322,13 +325,13 @@ export default function Step1View({
 
               {/* Collapsible bucket content */}
               <Collapse in={isOpen(cat, 'bucket')}>
-                <Table size="small" sx={{ tableLayout: 'fixed' }}>
+                <Table size="small" sx={{ tableLayout: 'fixed', minWidth: 580 }}>
                   <colgroup>
                     <col />{/* pitch: takes remaining space */}
                     <col style={{ width: 56 }} />
                     <col style={{ width: 56 }} />
-                    <col style={{ width: 170 }} />
-                    <col style={{ width: 185 }} />
+                    <col style={{ width: 150 }} />
+                    <col style={{ width: 160 }} />
                   </colgroup>
                   <TableHead>
                     <TableRow sx={{ '& th': { py: 0.5, fontSize: '0.72rem', color: 'text.secondary' } }}>
@@ -343,8 +346,8 @@ export default function Step1View({
                           <span>TL</span>
                         </Tooltip>
                       </TableCell>
-                      <TableCell align="center" width={170}>Dev</TableCell>
-                      <TableCell width={185} align="center" />
+                      <TableCell align="center" width={150}>Dev</TableCell>
+                      <TableCell width={160} align="center" />
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -372,8 +375,8 @@ export default function Step1View({
                               <col />{/* pitch: flex to match outer table */}
                               <col style={{ width: 56 }} />
                               <col style={{ width: 56 }} />
-                              <col style={{ width: 170 }} />
-                              <col style={{ width: 185 }} />
+                              <col style={{ width: 150 }} />
+                              <col style={{ width: 160 }} />
                             </colgroup>
                             <TableBody>
                               {selectedInCat.map(a => (
@@ -417,8 +420,8 @@ export default function Step1View({
                               <col />{/* pitch: flex to match outer table */}
                               <col style={{ width: 56 }} />
                               <col style={{ width: 56 }} />
-                              <col style={{ width: 170 }} />
-                              <col style={{ width: 185 }} />
+                              <col style={{ width: 150 }} />
+                              <col style={{ width: 160 }} />
                             </colgroup>
                             <TableBody>
                               {nextUpInCat.map(a => (
@@ -462,8 +465,8 @@ export default function Step1View({
                               <col />{/* pitch: flex to match outer table */}
                               <col style={{ width: 56 }} />
                               <col style={{ width: 56 }} />
-                              <col style={{ width: 170 }} />
-                              <col style={{ width: 185 }} />
+                              <col style={{ width: 150 }} />
+                              <col style={{ width: 160 }} />
                             </colgroup>
                             <TableBody>
                               {cutInCat.map(a => (
@@ -492,18 +495,41 @@ export default function Step1View({
         })}
       </Box>
 
-      {/* ── Drag handle ── */}
+      {/* ── Drag handle + sidebar toggle ── */}
       <Box
-        onMouseDown={handleDragStart}
+        onMouseDown={sidebarOpen ? handleDragStart : undefined}
         sx={{
-          width: 6, flexShrink: 0, cursor: 'col-resize',
+          position: 'relative',
+          width: sidebarOpen ? 6 : 20,
+          flexShrink: 0,
+          cursor: sidebarOpen ? 'col-resize' : 'default',
           bgcolor: 'divider',
-          '&:hover': { bgcolor: 'primary.light' },
-          transition: 'background-color 0.15s',
+          '&:hover': { bgcolor: sidebarOpen ? 'primary.light' : 'action.hover' },
+          transition: 'background-color 0.15s, width 0.2s',
         }}
-      />
+      >
+        <Tooltip title={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'} placement="left">
+          <IconButton
+            size="small"
+            onClick={() => setSidebarOpen(o => !o)}
+            sx={{
+              position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+              width: 18, height: 18, p: 0, zIndex: 1,
+              bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider',
+              borderRadius: '3px',
+              '&:hover': { bgcolor: 'primary.light' },
+            }}
+          >
+            {sidebarOpen
+              ? <ChevronRightIcon sx={{ fontSize: '0.8rem' }} />
+              : <ChevronLeftIcon sx={{ fontSize: '0.8rem' }} />
+            }
+          </IconButton>
+        </Tooltip>
+      </Box>
 
       {/* ── Right: stats + dev assignments panel ── */}
+      {sidebarOpen && (
       <Box
         ref={sidebarRef}
         sx={{ width: sidebarWidth, flexShrink: 0, overflow: 'auto', p: 2, borderLeft: 0, borderColor: 'divider' }}
@@ -734,6 +760,7 @@ export default function Step1View({
           );
         })}
       </Box>
+      )}
     </Box>
   );
 }
@@ -821,13 +848,13 @@ function PitchRow({ assignment, pitch, devNames, onDevChange, onStatusChange, hi
         </Tooltip>
       </TableCell>
       {/* ITEM 2: show dev dropdown for all statuses (cut pitches just have opacity) */}
-      <TableCell>
+      <TableCell sx={{ px: 0.5, py: 0.25 }}>
         <Select
           size="small"
           value={assignment.assignedDev ?? ''}
           onChange={e => onDevChange(pitch.id, e.target.value || null)}
           displayEmpty
-          sx={{ fontSize: '0.75rem', width: '100%' }}
+          sx={{ fontSize: '0.75rem', width: '100%', '& .MuiSelect-select': { py: 0.5, px: 1 } }}
           renderValue={val => val
             ? <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0 }}>
                 <Typography variant="caption" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>

@@ -13,6 +13,8 @@ import {
   Autorenew as AutorenewIcon,
   ExpandMore as ExpandIcon,
   ExpandLess as CollapseIcon,
+  ChevronLeft as ChevronLeftIcon,
+  ChevronRight as ChevronRightIcon,
 } from '@mui/icons-material';
 import type {
   AllocationPitch, Phase2Interest, StaffingAssignment, AllocationConfig, InterestLevel,
@@ -71,6 +73,7 @@ export default function Step2View({
 }: Step2ViewProps) {
   // ── Sidebar resize (Item 5) ──────────────────────────────────────────────
   const [sidebarWidth, setSidebarWidth] = useState(() => Math.round(window.innerWidth / 3));
+  const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 1400);
   const sidebarRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ startX: number; startWidth: number; liveWidth: number } | null>(null);
 
@@ -222,7 +225,7 @@ export default function Step2View({
           if (catPitches.length === 0) return null;
           const collapsed = categoryCollapsed[cat] ?? false;
           return (
-            <Paper key={cat} variant="outlined" sx={{ mb: 2, overflow: 'hidden' }}>
+            <Paper key={cat} variant="outlined" sx={{ mb: 2, overflow: 'auto' }}>
               <Box
                 sx={{ px: 2, py: 1, bgcolor: 'action.hover', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', userSelect: 'none' }}
                 onClick={() => setCategoryCollapsed(prev => ({ ...prev, [cat]: !prev[cat] }))}
@@ -236,15 +239,15 @@ export default function Step2View({
                 <Typography variant="caption" color="text.secondary">{catPitches.length} projects</Typography>
               </Box>
               <Collapse in={!collapsed}>
-                <Table size="small" sx={{ tableLayout: 'fixed' }}>
+                <Table size="small" sx={{ tableLayout: 'fixed', minWidth: 820 }}>
                   <colgroup>
                     <col />{/* pitch: flex */}
                     <col style={{ width: 72 }} />{/* Email/Message */}
                     <col style={{ width: 48 }} />{/* UXD */}
                     <col style={{ width: 72 }} />{/* dev read-only */}
-                    <col style={{ width: 190 }} />{/* DevTL */}
-                    <col style={{ width: 190 }} />{/* QM */}
-                    <col style={{ width: 190 }} />{/* PQA1 Reviewer */}
+                    <col style={{ width: 155 }} />{/* DevTL */}
+                    <col style={{ width: 155 }} />{/* QM */}
+                    <col style={{ width: 155 }} />{/* PQA1 Reviewer */}
                   </colgroup>
                   <TableHead>
                     <TableRow sx={{ '& th': { py: 0.5, fontSize: '0.72rem', color: 'text.secondary' } }}>
@@ -256,9 +259,9 @@ export default function Step2View({
                         </Tooltip>
                       </TableCell>
                       <TableCell width={72} align="center">Dev</TableCell>
-                      <TableCell width={190} align="center">Dev TL</TableCell>
-                      <TableCell width={190} align="center">QM</TableCell>
-                      <TableCell width={190} align="center">PQA1 Reviewer</TableCell>
+                      <TableCell width={155} align="center">Dev TL</TableCell>
+                      <TableCell width={155} align="center">QM</TableCell>
+                      <TableCell width={155} align="center">PQA1 Reviewer</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -291,18 +294,41 @@ export default function Step2View({
         })}
       </Box>
 
-      {/* ── Drag handle (Item 5) ── */}
+      {/* ── Drag handle + sidebar toggle ── */}
       <Box
-        onMouseDown={handleDragStart}
+        onMouseDown={sidebarOpen ? handleDragStart : undefined}
         sx={{
-          width: 6, flexShrink: 0, cursor: 'col-resize',
+          position: 'relative',
+          width: sidebarOpen ? 6 : 20,
+          flexShrink: 0,
+          cursor: sidebarOpen ? 'col-resize' : 'default',
           bgcolor: 'divider',
-          '&:hover': { bgcolor: 'primary.light' },
-          transition: 'background-color 0.15s',
+          '&:hover': { bgcolor: sidebarOpen ? 'primary.light' : 'action.hover' },
+          transition: 'background-color 0.15s, width 0.2s',
         }}
-      />
+      >
+        <Tooltip title={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'} placement="left">
+          <IconButton
+            size="small"
+            onClick={() => setSidebarOpen(o => !o)}
+            sx={{
+              position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+              width: 18, height: 18, p: 0, zIndex: 1,
+              bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider',
+              borderRadius: '3px',
+              '&:hover': { bgcolor: 'primary.light' },
+            }}
+          >
+            {sidebarOpen
+              ? <ChevronRightIcon sx={{ fontSize: '0.8rem' }} />
+              : <ChevronLeftIcon sx={{ fontSize: '0.8rem' }} />
+            }
+          </IconButton>
+        </Tooltip>
+      </Box>
 
       {/* ── Right: people sidebar (Item 6) ── */}
+      {sidebarOpen && (
       <Box
         ref={sidebarRef}
         sx={{ width: sidebarWidth, flexShrink: 0, overflow: 'auto', p: 2 }}
@@ -475,6 +501,7 @@ export default function Step2View({
           </Collapse>
         </Box>
       </Box>
+      )}
 
       {/* ── Shared email popover (Item 10) ── */}
       <Popover
@@ -614,7 +641,7 @@ function Step2Row({
           {devName ? devName.split(' ')[0] : '—'}
         </Typography>
       </TableCell>
-      <TableCell>
+      <TableCell sx={{ px: 0.5, py: 0.25 }}>
         <AssignmentDropdown
           value={assignment.devTL}
           options={devTLInterests}
@@ -622,7 +649,7 @@ function Step2Row({
           onChange={v => onAssign(pitch.id, 'devTL', v)}
         />
       </TableCell>
-      <TableCell>
+      <TableCell sx={{ px: 0.5, py: 0.25 }}>
         <AssignmentDropdown
           value={assignment.qm}
           options={qmInterests}
@@ -630,7 +657,7 @@ function Step2Row({
           onChange={v => onAssign(pitch.id, 'qm', v)}
         />
       </TableCell>
-      <TableCell>
+      <TableCell sx={{ px: 0.5, py: 0.25 }}>
         <Pqa1Dropdown
           value={assignment.pqa1 ?? null}
           devNames={devNames}
@@ -668,7 +695,7 @@ function Pqa1Dropdown({ value, devNames, devInterest, excludeDev, onChange }: Pq
       value={value ?? ''}
       onChange={e => onChange(e.target.value || null)}
       displayEmpty
-      sx={{ fontSize: '0.75rem', width: '100%' }}
+      sx={{ fontSize: '0.75rem', width: '100%', '& .MuiSelect-select': { py: 0.5, px: 1 } }}
       renderValue={val => {
         if (!val) return <Typography variant="caption" color="text.disabled">Assign…</Typography>;
         const name = val as string;
@@ -719,7 +746,7 @@ function AssignmentDropdown({ value, options, pitchId, onChange }: AssignmentDro
       value={value ?? ''}
       onChange={e => onChange(e.target.value || null)}
       displayEmpty
-      sx={{ fontSize: '0.75rem', width: '100%' }}
+      sx={{ fontSize: '0.75rem', width: '100%', '& .MuiSelect-select': { py: 0.5, px: 1 } }}
       renderValue={val => {
         if (!val) return <Typography variant="caption" color="text.disabled">Assign…</Typography>;
         const selectedPerson = options.find(o => o.personName === (val as string));

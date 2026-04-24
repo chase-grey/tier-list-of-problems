@@ -75,8 +75,8 @@ export const TopBar = ({
   allocationFinishLabel = 'Finish Step',
 }: TopBarProps) => {
   const appTitle = allocationMode
-    ? (allocationStep === 0 ? 'Allocation 1: Plan' : 'Allocation 2: Team')
-    : (appStage2Mode || stage === 'interest') ? 'Stage 2: Preferences' : 'Stage 1: Voting';
+    ? (allocationStep === 0 ? 'Stage 2: Dev Matching' : 'Stage 4: Team Matching')
+    : (appStage2Mode || stage === 'interest') ? 'Stage 3: Interest Voting' : 'Stage 1: Priority Voting';
   return (
     <AppBar
       position="sticky"

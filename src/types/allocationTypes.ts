@@ -54,11 +54,12 @@ export interface Phase2Interest {
   interestByPitchId: Partial<Record<string, InterestLevel>>;
 }
 
-/** Step 2 output: dev TL + QM assigned to a project. */
+/** Step 2 output: dev TL, QM, and PQA1 reviewer assigned to a project. */
 export interface StaffingAssignment {
   pitchId: string;
   devTL: string | null;
   qm: string | null;
+  pqa1?: string | null;
 }
 
 /** Quarterly bandwidth config. */

@@ -29,10 +29,10 @@ const HelpDialog: React.FC<HelpDialogProps> = ({
   const sharePointUrl = 'https://epic1.sharepoint.com/:f:/s/SmartTools-Docs/IgCMGRgsBqd0SZqSL-gZ9sQGAZjgncTeb_kmoGM6_OODz_4?e=wVa9u4';
 
   const titleMap: Record<string, string> = {
-    stage1:      'Stage 1: Voting',
-    allocation1: 'Allocation 1: Plan',
-    stage2:      'Stage 2: Preferences',
-    allocation2: 'Allocation 2: Team',
+    stage1:      'Stage 1: Priority Voting',
+    allocation1: 'Stage 2: Dev Matching',
+    stage2:      'Stage 3: Interest Voting',
+    allocation2: 'Stage 4: Team Matching',
   };
 
   const currentKey = allocationMode

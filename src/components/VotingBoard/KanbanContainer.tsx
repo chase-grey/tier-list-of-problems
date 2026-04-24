@@ -147,12 +147,12 @@ const KanbanContainer = ({
         onReset={() => setHasDndError(false)}
       >
         <DragDropContext onDragEnd={onDragEnd}>
-          <Box 
+          <Box
             ref={containerRef}
-            sx={{ 
-              display: 'flex', 
+            sx={{
+              display: 'flex',
               flexWrap: { xs: 'wrap', lg: 'nowrap' }, // Wrap on smaller screens, no wrap on large screens
-              justifyContent: 'space-between',
+              gap: 0.5,
               p: 0.5,
               pb: 0.5, // Reduced bottom padding
               flexGrow: 1,

@@ -178,10 +178,10 @@ export default function Stage4ResultsView({ pitches, currentAssignments, step2As
       <Typography variant="h6" fontWeight="bold" sx={{ mb: 1 }}>
         Full Assignment Grid ({fullGrid.length} projects)
       </Typography>
-      <Table size="small" sx={{ mb: 4 }}>
+      <Table size="small" sx={{ mb: 4, tableLayout: 'fixed' }}>
         <TableHead>
           <TableRow>
-            <TableCell>Project</TableCell>
+            <TableCell sx={{ width: '35%' }}>Project</TableCell>
             <TableCell>Dev</TableCell>
             <TableCell>Dev TL</TableCell>
             <TableCell>QM</TableCell>
@@ -191,7 +191,9 @@ export default function Stage4ResultsView({ pitches, currentAssignments, step2As
         <TableBody>
           {fullGrid.map(({ pitch, dev, sa }) => (
             <TableRow key={pitch.id}>
-              <TableCell>{pitch.title}</TableCell>
+              <TableCell sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {pitch.title}
+              </TableCell>
               <TableCell>{dev ?? '—'}</TableCell>
               <TableCell>{sa.devTL ?? '—'}</TableCell>
               <TableCell>{sa.qm ?? '—'}</TableCell>

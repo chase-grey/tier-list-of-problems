@@ -156,6 +156,7 @@ const InterestColumn = ({
               '&::-webkit-scrollbar-track': {
                 backgroundColor: 'rgba(0, 0, 0, 0.1)',
               },
+              '&:focus, &:focus-visible': { outline: 'none' },
             }}
           >
             {(!Array.isArray(pitches) || pitches.length === 0) && !snapshot.isDraggingOver && (
@@ -366,10 +367,11 @@ const InterestCardShell = ({
   const cardRef = useRef<HTMLElement | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
 
-  // Scroll into view when focused via keyboard
+  // Sync DOM focus and scroll when React focus lands on this card
   useEffect(() => {
-    if (focused) {
-      cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    if (focused && cardRef.current) {
+      cardRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      cardRef.current.focus({ preventScroll: true });
     }
   }, [focused]);
 
@@ -421,6 +423,11 @@ const InterestCardShell = ({
         outline: focused ? '2px solid' : 'none',
         outlineColor: focused ? 'primary.main' : 'transparent',
         outlineOffset: '1px',
+        '&:focus-visible': {
+          outline: '2px solid',
+          outlineColor: 'primary.main',
+          outlineOffset: '1px',
+        },
       }}
       role="button"
       tabIndex={0}
