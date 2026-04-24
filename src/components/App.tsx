@@ -1,4 +1,4 @@
-import React, { useEffect, memo, useState, useMemo } from 'react';
+import React, { useEffect, memo, useState, useMemo, useRef } from 'react';
 import { ThemeProvider, CssBaseline, Box, Typography, Tabs, Tab, CircularProgress, Snackbar, Alert } from '@mui/material';
 import { darkTheme, lightTheme } from '../theme';
 import { NameGate } from './NameGate/NameGate';
@@ -25,7 +25,7 @@ import { getPollingCycleId, isStage2, isTLAllocationStage, getPollingStage } fro
 import { buildPollingKey, cleanupPollingStorageOnCycleChange, getEffectivePollingCycleId } from '../utils/pollingStorage';
 import { getInterestLevelLabel } from '../utils/voteActions';
 import { fetchPitches } from '../services/api';
-import TLAllocationView from './TLAllocation/TLAllocationView';
+import TLAllocationView, { type TLAllocationViewHandle } from './TLAllocation/TLAllocationView';
 import CategoryBandwidthBar from './VotingBoard/CategoryBandwidthBar';
 import type { CategoryBandwidthConfig } from './VotingBoard/CategoryBandwidthBar';
 
@@ -80,7 +80,8 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
   const pollingStage = getPollingStage();
   // tl-1 = Allocation 1 only (step 0), tl-2 = Allocation 2 only (step 1)
   const allocationStep: 0 | 1 = pollingStage === 'tl-2' ? 1 : 0;
-  const handleAllocationFinish = () => {};
+  const tlViewRef = useRef<TLAllocationViewHandle>(null);
+  const handleAllocationFinish = () => tlViewRef.current?.triggerFinalize();
 
   // Async pitch loading state
   const [loadedPitches, setLoadedPitches] = useState<(Pitch & { stage2?: boolean })[] | null>(null);
@@ -720,6 +721,7 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
           {/* TL Allocation stage: dev TLs see the allocation view; everyone else waits */}
           {isTLStage && state.voterRole === 'dev TL' ? (
             <TLAllocationView
+              ref={tlViewRef}
               activeStep={allocationStep}
               onFinalize={handleAllocationFinish}
               voterName={state.voterName ?? ''}

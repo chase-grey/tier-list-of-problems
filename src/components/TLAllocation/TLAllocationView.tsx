@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { Box, Snackbar, Alert, CircularProgress, Typography } from '@mui/material';
 import type { AllocationPitch, AllocationConfig, AssignmentStatus, Phase2Interest, PlanAssignment, StaffingAssignment, AllocationPlan } from '../../types/allocationTypes';
 import type { Pitch } from '../../types/models';
@@ -11,6 +11,10 @@ import { generatePlans, autoAssignPqa1 } from '../../utils/allocationEngine';
 import { fetchPitches } from '../../services/api';
 import Step1View from './Step1View';
 import Step2View from './Step2View';
+
+export interface TLAllocationViewHandle {
+  triggerFinalize: () => void;
+}
 
 interface TLAllocationViewProps {
   activeStep: 0 | 1;
@@ -110,7 +114,7 @@ function enrichPitches(
   });
 }
 
-export default function TLAllocationView({ activeStep, onFinalize }: TLAllocationViewProps) {
+const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProps>(function TLAllocationView({ activeStep, onFinalize }, ref) {
   // ── Data loading ──────────────────────────────────────────────────────────
   const [loading, setLoading] = useState(true);
   const [usingMockData, setUsingMockData] = useState(false);
@@ -302,6 +306,8 @@ export default function TLAllocationView({ activeStep, onFinalize }: TLAllocatio
     onFinalize?.();
   };
 
+  useImperativeHandle(ref, () => ({ triggerFinalize: handleFinalize }));
+
   if (loading) {
     return (
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 2 }}>
@@ -358,4 +364,6 @@ export default function TLAllocationView({ activeStep, onFinalize }: TLAllocatio
       </Snackbar>
     </Box>
   );
-}
+});
+
+export default TLAllocationView;
