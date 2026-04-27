@@ -75,6 +75,8 @@ export interface AllocationConfig {
   qmNames: string[];
   /** Map of TL name → email address for per-TL kickoff emails. */
   tlEmails: Record<string, string>;
+  /** Map of any team member name → email (devs, QMs, PQA1s, testing captain). */
+  memberEmails?: Record<string, string>;
   /** Quarter label used in email subjects, e.g. "4" or "Next Quarter". Defaults to "Next Quarter". */
   quarterLabel?: string;
 }

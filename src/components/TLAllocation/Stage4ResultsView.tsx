@@ -24,37 +24,31 @@ const PRJ_INSTRUCTIONS = `How to create a project record:
 4. On the Associated Records tab: attach the pitch ZQN record.
 5. Add the PRJ to the team backlog.`;
 
-function buildMailtoHref(to: string, subject: string, body: string): string {
-  return `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+function buildMailtoHref(to: string, cc: string, subject: string, body: string): string {
+  const parts = [`subject=${encodeURIComponent(subject)}`];
+  if (cc) parts.push(`cc=${encodeURIComponent(cc)}`);
+  parts.push(`body=${encodeURIComponent(body)}`);
+  return `mailto:${encodeURIComponent(to)}?${parts.join('&')}`;
 }
 
-function buildTLEmailBody(
+function buildProjectEmailBody(
   tl: string,
-  rows: { pitch: AllocationPitch; dev: string | null; sa: StaffingAssignment }[],
+  pitch: AllocationPitch,
+  dev: string | null,
+  sa: StaffingAssignment,
   config: AllocationConfig,
 ): string {
-  const q = config.quarterLabel ? `Q${config.quarterLabel}` : 'next quarter';
+  const shortTitle = pitch.title.replace(/^[^/]+\/\s*/, '');
+  const qmFirstName = sa.qm ? sa.qm.split(' ')[0] : 'QM';
   const lines: string[] = [
-    `Hi ${tl},`,
+    `Hi everyone, this is the team for ${shortTitle}! @${qmFirstName}, please setup a kickoff meeting for this pitch in the next week.`,
     '',
-    `Here are your assigned projects for ${q}:`,
-    '',
+    `Dev TL: ${tl}`,
+    `Dev: ${dev ?? '—'}`,
+    `QM: ${sa.qm ?? '—'}`,
   ];
-  rows.forEach(({ pitch, dev, sa }) => {
-    lines.push(`Project: ${pitch.title}`);
-    lines.push(`  Dev: ${dev ?? '—'}`);
-    lines.push(`  QM: ${sa.qm ?? '—'}`);
-    if (sa.pqa1) lines.push(`  PQA1: ${sa.pqa1}`);
-    if (config.testingCaptain) lines.push(`  Testing Captain: ${config.testingCaptain}`);
-    lines.push('');
-  });
-  lines.push('Please create a PRJ record for each project:');
-  lines.push('  1. Create a new PRJ record with the project title.');
-  lines.push('  2. On the People tab: add dev, QM, TL, and testing captain.');
-  lines.push('  3. On the Associated Records tab: attach the pitch ZQN.');
-  lines.push('  4. Add the PRJ to the team backlog.');
-  lines.push('');
-  lines.push('Thanks!');
+  if (sa.pqa1) lines.push(`PQA1: ${sa.pqa1}`);
+  if (config.testingCaptain) lines.push(`Testing Captain: ${config.testingCaptain}`);
   return lines.join('\n');
 }
 
@@ -137,17 +131,18 @@ export default function Stage4ResultsView({ pitches, currentAssignments, step2As
       'PER-TL FOLLOW-UPS',
     ];
     for (const [tl, rows] of Object.entries(byTL)) {
-      if (rows.length === 0) continue;
+      if (rows.length === 0 && (backlogByTL[tl]?.length ?? 0) === 0) continue;
       lines.push('');
-      lines.push(`${tl} (${rows.length} project${rows.length !== 1 ? 's' : ''})`);
-      lines.push('  [ ] Send kickoff email');
-      lines.push('  [ ] Create PRJ records:');
+      lines.push(`${tl}`);
       rows.forEach(({ pitch, dev, sa }) => {
-        lines.push(`    • ${pitch.title} — Dev: ${dev ?? '—'}, QM: ${sa.qm ?? '—'}${sa.pqa1 ? `, PQA1: ${sa.pqa1}` : ''}`);
+        const shortTitle = pitch.title.replace(/^[^/]+\/\s*/, '');
+        lines.push(`  ${shortTitle}`);
+        lines.push(`    [ ] Create PRJ record — Dev: ${dev ?? '—'}, QM: ${sa.qm ?? '—'}${sa.pqa1 ? `, PQA1: ${sa.pqa1}` : ''}. Attach pitch ZQN on Associated Records tab.`);
+        lines.push(`    [ ] Send kickoff email`);
       });
       const backlog = backlogByTL[tl] ?? [];
       if (backlog.length > 0) {
-        lines.push('  [ ] Create backlog PRJ records:');
+        lines.push(`  [ ] Create backlog PRJ records:`);
         backlog.forEach(({ pitch }, i) => {
           lines.push(`    ${i + 1}. ${pitch.title}`);
         });
@@ -236,71 +231,85 @@ export default function Stage4ResultsView({ pitches, currentAssignments, step2As
           const rows = byTL[tl] ?? [];
           const backlog = backlogByTL[tl] ?? [];
           const tlEmail = config.tlEmails?.[tl] ?? '';
-          const subject = `ST SmartTools Allocation${config.quarterLabel ? ` — Q${config.quarterLabel}` : ''} — Your Projects`;
-          const emailBody = buildTLEmailBody(tl, rows, config);
-          const mailtoHref = buildMailtoHref(tlEmail, subject, emailBody);
+          const emails = config.memberEmails ?? {};
 
           return (
             <Paper key={tl} variant="outlined" sx={{ p: 2 }}>
-              <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 1 }}>
+              <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 1.5 }}>
                 {tl}
               </Typography>
 
-              {rows.length > 0 && (
-                <>
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        checked={!!checkedItems[`email-${tl}`]}
-                        onChange={() => toggleCheck(`email-${tl}`)}
-                        size="small"
-                      />
-                    }
-                    label={
-                      <Box component="span" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Typography variant="body2">Send kickoff email</Typography>
-                        <Button
-                          size="small"
-                          variant="outlined"
-                          href={mailtoHref}
-                          sx={{ fontSize: '0.7rem', py: 0, px: 1, minWidth: 0 }}
-                        >
-                          Open in Outlook
-                        </Button>
-                      </Box>
-                    }
-                    sx={{ mb: 0.5, alignItems: 'flex-start' }}
-                  />
+              {rows.map(({ pitch, dev, sa }) => {
+                const shortTitle = pitch.title.replace(/^[^/]+\/\s*/, '');
+                const subject = `ST SmartTools Kickoff${config.quarterLabel ? ` — Q${config.quarterLabel}` : ''} — ${shortTitle}`;
+                const toEmail = [
+                  dev ? (emails[dev] ?? '') : '',
+                  sa.qm ? (emails[sa.qm] ?? '') : '',
+                ].filter(Boolean).join(',');
+                const ccEmail = [
+                  sa.pqa1 ? (emails[sa.pqa1] ?? '') : '',
+                  config.testingCaptain ? (emails[config.testingCaptain] ?? '') : '',
+                ].filter(Boolean).join(',');
+                const pitchMailtoHref = buildMailtoHref(
+                  toEmail || tlEmail,
+                  toEmail ? ccEmail : '',
+                  subject,
+                  buildProjectEmailBody(tl, pitch, dev, sa, config),
+                );
+                return (
+                  <Box key={pitch.id} sx={{ mb: 2 }}>
+                    <Typography variant="body2" fontWeight={600} sx={{ mb: 0.5 }}>
+                      {shortTitle}
+                    </Typography>
 
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        checked={!!checkedItems[`prj-${tl}`]}
-                        onChange={() => toggleCheck(`prj-${tl}`)}
-                        size="small"
-                      />
-                    }
-                    label={
-                      <Box>
-                        <Typography variant="body2" sx={{ mb: 0.5 }}>
-                          Create PRJ records ({rows.length} project{rows.length !== 1 ? 's' : ''})
-                        </Typography>
-                        <Box component="ul" sx={{ pl: 3, m: 0 }}>
-                          {rows.map(({ pitch, dev, sa }) => (
-                            <Box component="li" key={pitch.id}>
-                              <Typography variant="body2" color="text.secondary">
-                                {pitch.title} — Dev: {dev ?? '—'}, QM: {sa.qm ?? '—'}
-                                {sa.pqa1 ? `, PQA1: ${sa.pqa1}` : ''}
-                              </Typography>
-                            </Box>
-                          ))}
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={!!checkedItems[`prj-${tl}-${pitch.id}`]}
+                          onChange={() => toggleCheck(`prj-${tl}-${pitch.id}`)}
+                          size="small"
+                        />
+                      }
+                      label={
+                        <Box>
+                          <Typography variant="body2">Create PRJ record</Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            People tab: Dev TL: {tl}, Dev: {dev ?? '—'}, QM: {sa.qm ?? '—'}
+                            {sa.pqa1 ? `, PQA1: ${sa.pqa1}` : ''}
+                            {config.testingCaptain ? `, Testing Captain: ${config.testingCaptain}` : ''}
+                            {' · '}Attach pitch ZQN on Associated Records tab
+                          </Typography>
                         </Box>
-                      </Box>
-                    }
-                    sx={{ mb: 0.5, alignItems: 'flex-start' }}
-                  />
-                </>
-              )}
+                      }
+                      sx={{ mb: 0.25, alignItems: 'flex-start' }}
+                    />
+
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={!!checkedItems[`email-${tl}-${pitch.id}`]}
+                          onChange={() => toggleCheck(`email-${tl}-${pitch.id}`)}
+                          size="small"
+                        />
+                      }
+                      label={
+                        <Box component="span" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Typography variant="body2">Send kickoff email</Typography>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            href={pitchMailtoHref}
+                            sx={{ fontSize: '0.7rem', py: 0, px: 1, minWidth: 0 }}
+                          >
+                            Open in Outlook
+                          </Button>
+                        </Box>
+                      }
+                      sx={{ alignItems: 'flex-start' }}
+                    />
+                  </Box>
+                );
+              })}
 
               {backlog.length > 0 && (
                 <FormControlLabel

@@ -1,6 +1,6 @@
 /**
  * Mock data for the TL Allocation views.
- * Uses actual pitch IDs/titles/categories/details from pitches-aug-26.json but generates
+ * Uses actual pitch IDs/titles from pitches.json but generates
  * fake vote scores and interest levels. Replace with real backend data when
  * backend integration ships.
  */
@@ -11,7 +11,7 @@ import type {
   AllocationPlan,
   Phase2Interest,
 } from '../types/allocationTypes';
-import pitchData from '../assets/pitches-aug-26.json';
+import pitchData from '../assets/pitches.json';
 import { generatePlans } from '../utils/allocationEngine';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
@@ -24,20 +24,47 @@ export const MOCK_CONFIG: AllocationConfig = {
     'Address Technical Debt': 10,
   },
   nextUpCount: 15,
-  testingCaptain: 'Harper Evans',
+  testingCaptain: 'Lauren Dyer',
   devNames: [
-    'Alex Chen', 'Sam Rivera', 'Jordan Kim', 'Taylor Patel', 'Morgan Wu',
-    'Casey Johnson', 'Riley Thompson', 'Drew Martinez', 'Avery Davis',
-    'Blake Wilson', 'Cameron Moore', 'Skyler Lee', 'Parker Harris', 'Quinn Brown',
+    'Adam Still', 'Brandon Campos Botello', 'Dan Demp', 'Daoxing Zhang',
+    'David Coll', 'David Krajnik', 'Gauresh Walia', 'Jacob Franz',
+    'Jonathan Ray', 'Josh Lapicola', 'Ke Li', 'Michael Messer',
+    'Peter Paulson', 'Peter Wei Lin', 'Tim Paukovits',
   ],
-  devTLNames: ['Chase Grey', 'Jamie Taylor', 'Robin Singh'],
-  qmNames: ['Harper Evans', 'Finley Nguyen', 'Kendall Park', 'Logan Turner', 'Reese Anderson', 'Sage Mitchell'],
+  devTLNames: ['Chase Grey', 'Derek Strehlow', 'Nicholas Rose', 'Sheng Liu'],
+  qmNames: ['Aiden Caes', 'Anne Field', 'Damon Drury', 'Derek Skwarczynski', 'Julia Rowan', 'Lauren Dyer', 'Mariel Zech', 'Parker Volkman'],
   tlEmails: {
     'Chase Grey': 'cgrey@epic.com',
-    'Jamie Taylor': 'jtaylor@epic.com',
-    'Robin Singh': 'rsingh@epic.com',
+    'Derek Strehlow': 'dstrehlo@epic.com',
+    'Nicholas Rose': 'nirose@epic.com',
+    'Sheng Liu': 'Sheng@epic.com',
   },
-  quarterLabel: 'Q3 2026',
+  memberEmails: {
+    'Adam Still': 'astill@epic.com',
+    'Brandon Campos Botello': 'bcamposb@epic.com',
+    'Dan Demp': 'ddemp@epic.com',
+    'Daoxing Zhang': 'Daoxing@epic.com',
+    'David Coll': 'dcoll@epic.com',
+    'David Krajnik': 'dkrajnik@epic.com',
+    'Gauresh Walia': 'Gauresh@epic.com',
+    'Jacob Franz': 'jfranz@epic.com',
+    'Jonathan Ray': 'jray@epic.com',
+    'Josh Lapicola': 'jlapicol@epic.com',
+    'Ke Li': 'Ke@epic.com',
+    'Michael Messer': 'mmesser@epic.com',
+    'Peter Paulson': 'ppaulson@epic.com',
+    'Peter Wei Lin': 'pelin@epic.com',
+    'Tim Paukovits': 'tpaukovi@epic.com',
+    'Aiden Caes': 'Aiden@epic.com',
+    'Anne Field': 'afield@epic.com',
+    'Damon Drury': 'ddrury@epic.com',
+    'Derek Skwarczynski': 'dskwarcz@epic.com',
+    'Julia Rowan': 'jrowan@epic.com',
+    'Lauren Dyer': 'ldyer@epic.com',
+    'Mariel Zech': 'Mariel@epic.com',
+    'Parker Volkman': 'pvolkman@epic.com',
+  },
+  quarterLabel: 'Nov 26',
 };
 
 // ─── Score generation ─────────────────────────────────────────────────────────
@@ -53,23 +80,23 @@ function hashScore(seed: string, min: number, max: number): number {
 
 /** Devs whose primary interest area aligns with each category. */
 const DEV_AFFINITY: Record<string, string[]> = {
-  'Support AI Charting': ['Alex Chen', 'Sam Rivera', 'Taylor Patel', 'Casey Johnson', 'Avery Davis', 'Skyler Lee', 'Quinn Brown'],
-  'Create and Improve Tools and Framework': ['Jordan Kim', 'Riley Thompson', 'Cameron Moore', 'Parker Harris', 'Alex Chen', 'Skyler Lee'],
-  'Mobile Feature Parity': ['Drew Martinez', 'Taylor Patel'],
-  'Address Technical Debt': ['Morgan Wu', 'Blake Wilson', 'Quinn Brown'],
+  'Support AI Charting': ['Daoxing Zhang', 'Michael Messer', 'Jonathan Ray', 'Josh Lapicola', 'Peter Wei Lin'],
+  'Create and Improve Tools and Framework': ['Adam Still', 'David Coll', 'David Krajnik', 'Jacob Franz', 'Ke Li'],
+  'Mobile Feature Parity': ['Tim Paukovits', 'Gauresh Walia'],
+  'Address Technical Debt': ['Dan Demp', 'Peter Paulson', 'Brandon Campos Botello'],
 };
 
 /**
  * Devs with no interest data submitted at all.
  * Key absent from devInterest on every pitch = red indicator.
  */
-const NO_DATA_DEVS = new Set(['Quinn Brown']);
+const NO_DATA_DEVS = new Set(['Ke Li']);
 
 /**
  * Devs who only partially filled out interest (~50% of pitches).
  * Key present for some pitches but absent for others = amber indicator.
  */
-const PARTIAL_DATA_DEVS = new Set(['Morgan Wu']);
+const PARTIAL_DATA_DEVS = new Set(['Gauresh Walia']);
 
 function devInterestForPitch(pitchId: string, category: string): Record<string, (1 | 2 | 3 | 4 | null)> {
   const result: Record<string, (1 | 2 | 3 | 4 | null)> = {};
@@ -177,23 +204,26 @@ export const MOCK_PLANS: AllocationPlan[] = generatePlans(MOCK_PITCHES, MOCK_CON
 
 const TL_AFFINITY: Record<string, string[]> = {
   'Chase Grey': ['Support AI Charting'],
-  'Jamie Taylor': ['Create and Improve Tools and Framework'],
-  'Robin Singh': ['Create and Improve Tools and Framework', 'Address Technical Debt'],
+  'Derek Strehlow': ['Create and Improve Tools and Framework'],
+  'Nicholas Rose': ['Create and Improve Tools and Framework', 'Address Technical Debt'],
+  'Sheng Liu': ['Mobile Feature Parity', 'Support AI Charting'],
 };
 
 const QM_AFFINITY: Record<string, string[]> = {
-  'Harper Evans': ['Support AI Charting'],
-  'Finley Nguyen': ['Create and Improve Tools and Framework'],
-  'Kendall Park': ['Support AI Charting', 'Mobile Feature Parity'],
-  'Logan Turner': ['Address Technical Debt'],
-  'Reese Anderson': ['Create and Improve Tools and Framework'],
-  'Sage Mitchell': ['Support AI Charting'], // Sage has no data (omitted below)
+  'Aiden Caes': ['Support AI Charting'],
+  'Anne Field': ['Create and Improve Tools and Framework'],
+  'Damon Drury': ['Support AI Charting'],
+  'Derek Skwarczynski': ['Create and Improve Tools and Framework', 'Address Technical Debt'],
+  'Julia Rowan': ['Mobile Feature Parity'],
+  'Lauren Dyer': ['Support AI Charting'],
+  'Mariel Zech': ['Create and Improve Tools and Framework'],
+  'Parker Volkman': ['Address Technical Debt'],
 };
 
 /** People who submitted no Phase 2 interest data at all. */
-const PHASE2_NO_DATA = new Set(['Sage Mitchell', 'Robin Singh']);
+const PHASE2_NO_DATA = new Set(['Mariel Zech', 'Sheng Liu']);
 /** People who only filled out ~50% of Phase 2 pitches. */
-const PHASE2_PARTIAL_DATA = new Set(['Logan Turner', 'Jamie Taylor']);
+const PHASE2_PARTIAL_DATA = new Set(['Parker Volkman', 'Derek Strehlow']);
 
 function phase2InterestForPerson(name: string, role: 'dev TL' | 'QM', selectedPitchIds: string[]): Phase2Interest {
   if (PHASE2_NO_DATA.has(name)) {
