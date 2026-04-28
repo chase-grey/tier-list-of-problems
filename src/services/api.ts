@@ -3,7 +3,7 @@
  * Handles communication with the Shadow Web / Track Shadow backend
  */
 import type { Pitch, Vote } from '../types/models';
-import { getMockCsrfToken, submitMockVotes } from './mockApi';
+import { submitMockVotes } from './mockApi';
 import staticPitches from '../assets/pitches.json';
 
 // Get the API URL from environment variables safely
@@ -11,23 +11,12 @@ const API_BASE_URL = ((import.meta as any).env?.VITE_API_URL) || '';
 
 const USE_MOCK_API = false;
 
-/**
- * Format the URL for Google Apps Script with the proper handling for JSONP
- * to avoid CORS issues. Google Apps Script web apps support JSONP which
- * allows us to bypass CORS restrictions.
- * @param route The API route to call
- * @param jsonp Whether to use JSONP (default: true)
- * @returns The formatted URL
- */
-function getApiUrl(route: string, jsonp = true): string {
-  // Using Google Apps Script's support for JSONP via callback parameter
-  if (jsonp) {
-    // The callback parameter name is expected to be "callback"
-    return `${API_BASE_URL}?route=${route}&callback=_cb_${Date.now()}`;
-  }
-  
-  // Regular API URL without JSONP
-  return `${API_BASE_URL}?route=${route}`;
+// All GAS calls go through the Vite dev server proxy at /gas-proxy, which
+// forwards to GAS server-side and follows the 302 redirect that browsers can't.
+const GAS_PROXY = '/gas-proxy';
+
+function getApiUrl(route: string): string {
+  return `${GAS_PROXY}?route=${route}`;
 }
 
 /**
@@ -54,14 +43,6 @@ export type VoteResponse = {
 };
 
 /**
- * Response format for CSRF token
- * @internal Used in API implementations
- */
-export type TokenResponse = {
-  nonce: string;
-};
-
-/**
  * Response format for results
  */
 export interface ResultItem {
@@ -73,7 +54,6 @@ export interface ResultItem {
  * Format for submitting votes
  */
 export interface SubmitVotesPayload {
-  nonce: string;
   voterName: string;
   voterRole?: string;
   votes: Array<{
@@ -91,151 +71,61 @@ export async function fetchPitches(): Promise<Pitch[]> {
   return staticPitches as unknown as Pitch[];
 }
 
+
 /**
- * Gets a CSRF token from the server
+ * Submits priority tier votes to the backend (stage 1).
+ * Uses no-cors because GAS redirects through googleusercontent.com — the request
+ * still reaches GAS and votes are recorded, but the response is opaque.
+ * Deduplication is handled server-side via a SHA-256 checksum (voterName + pitchId + secret).
  */
-export async function getCsrfToken(): Promise<string> {
-  // Use mock API in development
+export async function submitVotes(payload: Omit<SubmitVotesPayload, 'nonce'>): Promise<number> {
   if (USE_MOCK_API) {
-    try {
-      console.log('Getting mock CSRF token');
-      const token = await getMockCsrfToken();
-      console.log('Mock CSRF token received:', token);
-      return token;
-    } catch (error) {
-      console.error('Mock CSRF token error:', error);
-      throw new ApiError('Error getting mock CSRF token', 0);
-    }
+    const savedCount = await submitMockVotes({ ...payload, nonce: 'mock' });
+    return savedCount;
   }
-  
-  // Use real API in production with CORS workaround
-  try {
-    // For Google Apps Script, we need a CORS workaround
-    // Using JSONP-like approach with <script> tag
-    console.log('Fetching CSRF token using JSONP approach for Google Apps Script');
-    
-    // Create a unique callback name
-    const callbackName = `jsonpCallback_${Date.now()}`;
-    const tokenUrl = `${API_BASE_URL}?route=token&callback=${callbackName}`;
-    console.log('Token URL with callback:', tokenUrl);
-    
-    // Create a promise that will be resolved by the JSONP callback
-    const tokenPromise = new Promise<string>((resolve, reject) => {
-      // Set up the global callback function
-      (window as any)[callbackName] = (data: any) => {
-        // Clean up the script tag and callback
-        if (script.parentNode) {
-          script.parentNode.removeChild(script);
-        }
-        delete (window as any)[callbackName];
-        
-        // Check if the response has the expected data
-        if (data && data.nonce) {
-          console.log('JSONP token received:', data.nonce);
-          resolve(data.nonce);
-        } else {
-          reject(new Error('Invalid token response'));
-        }
-      };
-      
-      // Set up error handling
-      const handleError = () => {
-        // Clean up
-        if (script.parentNode) {
-          script.parentNode.removeChild(script);
-        }
-        delete (window as any)[callbackName];
-        
-        reject(new Error('Failed to load token script'));
-      };
-      
-      // Create and append the script tag
-      const script = document.createElement('script');
-      script.src = tokenUrl;
-      script.async = true;
-      script.onerror = handleError;
-      
-      // Add a timeout for safety
-      const timeoutId = setTimeout(() => {
-        handleError();
-      }, 10000); // 10 seconds timeout
-      
-      // Add onload to clear the timeout
-      script.onload = () => {
-        clearTimeout(timeoutId);
-        // The callback will handle the rest
-      };
-      
-      document.head.appendChild(script);
-    });
-    
-    // Wait for the token
-    return await tokenPromise;
-  } catch (error) {
-    console.error('CSRF token fetch failed:', error);
-    if (error instanceof ApiError) {
-      throw error;
-    }
-    throw new ApiError(`Network error while getting CSRF token: ${error}`, 0);
+
+  const params = new URLSearchParams({
+    route: 'vote',
+    voterName: payload.voterName,
+    votes: JSON.stringify(payload.votes),
+  });
+  const response = await fetch(`${GAS_PROXY}?${params.toString()}`);
+  if (!response.ok) {
+    const text = await response.text().catch(() => '');
+    throw new ApiError(`Vote submission failed (${response.status})${text ? ': ' + text : ''}`, response.status);
   }
+  const data = await response.json();
+  return data.saved ?? payload.votes.length;
+}
+
+export interface SubmitInterestPayload {
+  voterName: string;
+  voterRole: string;
+  interests: Array<{ pitch_id: string; level: number | null }>;
 }
 
 /**
- * Submits votes to the backend
- * 
- * Simplified version that doesn't require CSRF tokens
+ * Submits interest ranking votes to the backend (stage 3 / interest-vote route).
+ * No CSRF nonce required for this endpoint.
  */
-export async function submitVotes(payload: SubmitVotesPayload): Promise<number> {
-  // Use mock API in development
+export async function submitInterestVotes(payload: SubmitInterestPayload): Promise<number> {
   if (USE_MOCK_API) {
-    try {
-      console.log('Submitting votes to mock API');
-      console.log('Vote payload:', JSON.stringify(payload, null, 2));
-      const savedCount = await submitMockVotes(payload);
-      console.log('Mock votes submitted successfully, saved count:', savedCount);
-      return savedCount;
-    } catch (error) {
-      console.error('Mock vote submission error:', error);
-      throw new ApiError('Error submitting votes to mock API', 0);
-    }
+    return payload.interests.length;
   }
-  
-  // Use real API with simplified approach
-  try {
-    // For simplicity, we're using direct fetch with JSON
-    console.log('Submitting votes directly to API');
-    console.log('Vote payload:', JSON.stringify(payload, null, 2));
-    
-    // Create simplified payload without CSRF token
-    const simplifiedPayload = {
-      voterName: payload.voterName,
-      votes: payload.votes
-    };
-    
-    // no-cors: GAS redirects through googleusercontent.com which blocks CORS reads.
-    // The request still reaches GAS and votes are recorded.
-    await fetch(`${API_BASE_URL}?route=vote`, {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify(simplifiedPayload)
-    });
-    
-    const data = await response.json();
-    console.log('Vote submission response:', data);
-    
-    if (data.saved !== undefined) {
-      return data.saved;
-    } else {
-      throw new ApiError('Invalid response format', 0);
-    }
-  } catch (error) {
-    console.error('Vote submission failed:', error);
-    if (error instanceof ApiError) {
-      throw error;
-    }
-    throw new ApiError(`Network error while submitting votes: ${error}`, 0);
+
+  const params = new URLSearchParams({
+    route: 'interest-vote',
+    voterName: payload.voterName,
+    role: payload.voterRole,
+    interests: JSON.stringify(payload.interests),
+  });
+  const response = await fetch(`${GAS_PROXY}?${params.toString()}`);
+  if (!response.ok) {
+    const text = await response.text().catch(() => '');
+    throw new ApiError(`Interest submission failed (${response.status})${text ? ': ' + text : ''}`, response.status);
   }
+  const data = await response.json();
+  return data.saved ?? payload.interests.length;
 }
 
 /**
@@ -266,18 +156,35 @@ export async function fetchResults(): Promise<ResultItem[]> {
 }
 
 /**
- * Convert frontend votes to backend format
+ * Convert frontend votes to the format expected by the ?route=vote endpoint.
+ * Only includes votes that have a tier set (backend requires tier 1–8).
  */
 export function convertVotesToApiFormat(votes: Record<string, Vote>): Array<{
   pitch_id: string;
-  tier?: number;
+  tier: number;
   interestLevel?: number | null;
 }> {
   return Object.entries(votes)
-    .filter(([_, vote]) => vote.tier || vote.interestLevel !== undefined)
+    .filter(([_, vote]) => vote.tier != null)
     .map(([pitchId, vote]) => ({
       pitch_id: pitchId,
-      ...(vote.tier ? { tier: vote.tier as number } : {}),
-      ...(vote.interestLevel !== undefined ? { interestLevel: vote.interestLevel } : {}),
+      tier: vote.tier as number,
+      ...(vote.interestLevel != null ? { interestLevel: vote.interestLevel } : {}),
+    }));
+}
+
+/**
+ * Convert frontend votes to the format expected by the ?route=interest-vote endpoint.
+ * Only includes votes that have an interestLevel set.
+ */
+export function convertVotesToInterestFormat(votes: Record<string, Vote>): Array<{
+  pitch_id: string;
+  level: number | null;
+}> {
+  return Object.entries(votes)
+    .filter(([_, vote]) => vote.interestLevel !== undefined && vote.interestLevel !== null)
+    .map(([pitchId, vote]) => ({
+      pitch_id: pitchId,
+      level: vote.interestLevel as number,
     }));
 }

@@ -14,7 +14,7 @@ import FeedbackDialog from './FeedbackDialog/FeedbackDialog';
 import type { FeedbackData } from './FeedbackDialog/FeedbackDialog';
 import DevAutoPopulate from './DevAutoPopulate';
 import { useLocalStorage } from '../hooks/useLocalStorage';
-import { exportVotes } from '../utils/csv';
+import { submitVotes, submitInterestVotes, convertVotesToApiFormat, convertVotesToInterestFormat } from '../services/api';
 import { isDevelopmentMode } from '../utils/testUtils';
 import type { DropResult } from '@hello-pangea/dnd';
 import type { AppState, Pitch, Tier, InterestLevel } from '../types/models';
@@ -92,6 +92,8 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
       .then(data => setLoadedPitches(data as (Pitch & { stage2?: boolean })[]))
       .catch(err => setPitchLoadError(err?.message || 'Failed to load pitches'));
   }, []);
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // State to control help dialog
   const [showHelp, setShowHelp] = useState(true); // Show help dialog by default
@@ -634,37 +636,44 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
     showSnackbar('All data has been reset. Please enter your name to continue.', 'success');
   };
 
-  // Handle finish/export process
+  const submitCurrentVotes = async () => {
+    if (!state.voterName || !state.voterRole) return;
+    setIsSubmitting(true);
+    try {
+      if (appStage2Mode) {
+        const interests = convertVotesToInterestFormat(state.votes);
+        await submitInterestVotes({ voterName: state.voterName, voterRole: state.voterRole, interests });
+      } else {
+        const apiVotes = convertVotesToApiFormat(state.votes);
+        await submitVotes({ voterName: state.voterName, votes: apiVotes });
+      }
+      showSnackbar('Your votes have been submitted successfully!', 'success');
+    } catch (err: any) {
+      showSnackbar(err?.message || 'Submission failed — please try again', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Handle finish process
   const handleFinish = () => {
     if (state.voterName && isExportEnabled) {
-      // Show feedback dialog before exporting
       setShowFeedback(true);
     } else {
       showSnackbar('Complete at least 50% of rankings first', 'error');
     }
   };
-  
-  // Handle feedback submission and export
-  const handleFeedbackSubmit = (feedbackData: FeedbackData) => {
-    // Close the feedback dialog
+
+  // Handle feedback submission
+  const handleFeedbackSubmit = (_feedbackData: FeedbackData) => {
     setShowFeedback(false);
-    
-    if (state.voterName && state.voterRole) { // Add null checks for both name and role
-      // Export votes with feedback data
-      exportVotes(state.voterName, state.voterRole, state.votes, pitches, feedbackData);
-      showSnackbar('Thank you for your feedback! Your data has been exported.', 'success');
-    }
+    submitCurrentVotes();
   };
-  
-  // Handle feedback dialog close (skip)
+
+  // Handle feedback dialog close (skip feedback, still submit votes)
   const handleFeedbackClose = () => {
     setShowFeedback(false);
-    
-    if (state.voterName && state.voterRole) { // Add null checks for both name and role
-      // Export votes without feedback
-      exportVotes(state.voterName, state.voterRole, state.votes, pitches);
-      showSnackbar('Your data has been exported successfully!', 'success');
-    }
+    submitCurrentVotes();
   };
   
   // Dev only: Handle auto-populate
@@ -733,7 +742,7 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
           rankCount={rankCount}
           interestCount={interestCount}
           onFinish={handleFinish}
-          isExportEnabled={isExportEnabled}
+          isExportEnabled={isExportEnabled && !isSubmitting}
           onHelpClick={handleHelpClick}
           onResetClick={handleResetClick}
           stage={state.stage}
@@ -880,7 +889,6 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
             open={showFeedback}
             onClose={handleFeedbackClose}
             onSubmit={handleFeedbackSubmit}
-            userRole={state.voterRole}
           />
 
           {/* Development-only Auto-Populate Tool */}

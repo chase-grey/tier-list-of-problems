@@ -26,7 +26,6 @@ const HelpDialog: React.FC<HelpDialogProps> = ({
   stage = 'priority', allocationMode = false, allocationStep = 0,
 }) => {
   const isCustomer = userRole === 'customer';
-  const sharePointUrl = 'https://epic1.sharepoint.com/:f:/s/SmartTools-Docs/IgCMGRgsBqd0SZqSL-gZ9sQGAZjgncTeb_kmoGM6_OODz_4?e=wVa9u4';
 
   const titleMap: Record<string, string> = {
     stage1:      'Stage 1: Priority Voting',
@@ -121,31 +120,9 @@ const HelpDialog: React.FC<HelpDialogProps> = ({
             <Divider sx={{ my: 2 }} />
             <Typography variant="h6" gutterBottom>Submitting</Typography>
             <Typography variant="body1" paragraph>
-              Click <strong>Finish</strong> (top right) to export your rankings as a CSV. Save it to SharePoint:
+              Click <strong>Finish</strong> (top right) to submit your rankings directly.
+              {isCustomer && <> If you have trouble, email your results to Chase Grey (<strong>cgrey@epic.com</strong>).</>}
             </Typography>
-            {!isCustomer ? (
-              <Box sx={{ p: 2, bgcolor: 'action.hover', borderRadius: 1, mb: 2, overflowX: 'auto' }}>
-                <Typography
-                  variant="body2"
-                  component="a"
-                  href={sharePointUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  sx={{
-                    color: (theme) => theme.palette.mode === 'dark' ? '#90caf9' : 'primary.main',
-                    wordBreak: 'break-all',
-                    textDecoration: 'none',
-                    '&:hover': { textDecoration: 'underline' },
-                  }}
-                >
-                  {sharePointUrl}
-                </Typography>
-              </Box>
-            ) : (
-              <Typography variant="body1">
-                Email your results to Chase Grey (<strong>cgrey@epic.com</strong>).
-              </Typography>
-            )}
           </>
         )}
 
@@ -261,7 +238,7 @@ const HelpDialog: React.FC<HelpDialogProps> = ({
             <Divider sx={{ my: 2 }} />
             <Typography variant="h6" gutterBottom>Submitting</Typography>
             <Typography variant="body1" paragraph>
-              Click <strong>Finish</strong> to export as CSV, then upload to SharePoint using your full name as the filename.
+              Click <strong>Finish</strong> (top right) to submit your rankings directly.
             </Typography>
           </>
         )}

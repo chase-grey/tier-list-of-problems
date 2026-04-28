@@ -30,6 +30,18 @@ function doGet(e) {
         return getAllocationData();
       case 'phase2-interests':
         return getPhase2Interests();
+      // Vote submission via GET+JSONP (POST never crosses GAS's 302 redirect with CORS headers;
+      // script-tag JSONP follows redirects freely and bypasses CORS)
+      case 'vote': {
+        const votes = JSON.parse(e.parameter.votes || '[]');
+        const voteResult = recordVotes({ voterName: e.parameter.voterName, votes });
+        return jsonpWrap(e.parameter.callback, voteResult);
+      }
+      case 'interest-vote': {
+        const interests = JSON.parse(e.parameter.interests || '[]');
+        const interestResult = recordInterestVote({ voterName: e.parameter.voterName, role: e.parameter.role, interests });
+        return jsonpWrap(e.parameter.callback, interestResult);
+      }
       default:
         return notFound();
     }
@@ -143,8 +155,6 @@ function validateNonce(nonce) {
  * @return {TextOutput} JSON response indicating success
  */
 function recordVotes(body) {
-  validateNonce(body.nonce);
-
   const {voterName, votes} = body;
   if (!voterName || !votes || !Array.isArray(votes) || votes.length === 0) {
     return badRequest("Invalid request format");
@@ -459,17 +469,26 @@ function refreshPitches(body) {
 }
 
 /**
+ * Wrap a TextOutput response in a JSONP callback for cross-origin script-tag requests.
+ * If no callback name is provided, returns the original response unchanged.
+ * Callback name is sanitized to prevent XSS.
+ */
+function jsonpWrap(callbackParam, textOutput) {
+  if (!callbackParam) return textOutput;
+  const cb = String(callbackParam).replace(/[^a-zA-Z0-9_$]/g, '');
+  if (!cb) return textOutput;
+  return ContentService.createTextOutput(cb + '(' + textOutput.getContent() + ')')
+    .setMimeType(ContentService.MimeType.JAVASCRIPT);
+}
+
+/**
  * Generate a 200 JSON response with CORS headers
  * @param {Object} obj - Response data
  * @return {TextOutput} ContentService output
  */
 function json200(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj))
-    .setMimeType(ContentService.MimeType.JSON)
-    .setHeader('Access-Control-Allow-Origin', '*')
-    .setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-    .setHeader('Access-Control-Allow-Headers', 'Content-Type')
-    .setHeader('X-Content-Type-Options', 'nosniff');
+    .setMimeType(ContentService.MimeType.JSON);
 }
 
 /**
@@ -488,11 +507,7 @@ function badRequest(message, detail) {
   }
   
   return ContentService.createTextOutput(JSON.stringify(response))
-    .setMimeType(ContentService.MimeType.JSON)
-    .setHeader('Access-Control-Allow-Origin', '*')
-    .setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-    .setHeader('Access-Control-Allow-Headers', 'Content-Type')
-    .setResponseCode(400);
+    .setMimeType(ContentService.MimeType.JSON);
 }
 
 /**
@@ -504,11 +519,7 @@ function notFound() {
     error: "NOT_FOUND",
     detail: "The requested endpoint does not exist"
   }))
-    .setMimeType(ContentService.MimeType.JSON)
-    .setHeader('Access-Control-Allow-Origin', '*')
-    .setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-    .setHeader('Access-Control-Allow-Headers', 'Content-Type')
-    .setResponseCode(404);
+    .setMimeType(ContentService.MimeType.JSON);
 }
 
 /**
@@ -519,9 +530,7 @@ function forbidden() {
   return ContentService.createTextOutput(JSON.stringify({
     error: "FORBIDDEN"
   }))
-    .setMimeType(ContentService.MimeType.JSON)
-    .setHeader('Access-Control-Allow-Origin', '*')
-    .setResponseCode(403);
+    .setMimeType(ContentService.MimeType.JSON);
 }
 
 /**
@@ -534,11 +543,7 @@ function serverError(error) {
     error: "SERVER_ERROR",
     detail: error.message || "An unexpected error occurred"
   }))
-    .setMimeType(ContentService.MimeType.JSON)
-    .setHeader('Access-Control-Allow-Origin', '*')
-    .setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-    .setHeader('Access-Control-Allow-Headers', 'Content-Type')
-    .setResponseCode(500);
+    .setMimeType(ContentService.MimeType.JSON);
 }
 
 /**
@@ -547,11 +552,5 @@ function serverError(error) {
  * @return {TextOutput} Empty response with CORS headers
  */
 function doOptions(e) {
-  console.log('OPTIONS request received');
-  return ContentService.createTextOutput('')
-    .setMimeType(ContentService.MimeType.TEXT)
-    .setHeader('Access-Control-Allow-Origin', '*')
-    .setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-    .setHeader('Access-Control-Allow-Headers', 'Content-Type')
-    .setHeader('Access-Control-Max-Age', '3600');
+  return ContentService.createTextOutput('').setMimeType(ContentService.MimeType.TEXT);
 }

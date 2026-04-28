@@ -8,7 +8,7 @@ import {
   Tooltip,
 } from '@mui/material';
 import {
-  GetApp as DownloadIcon,
+  Send as SendIcon,
   HelpOutline as HelpIcon,
   FormatListNumbered as RankedIcon,
   NavigateNext as NextIcon,
@@ -193,11 +193,11 @@ export const TopBar = ({
             <Button
               variant="contained"
               color="secondary"
-              startIcon={<DownloadIcon />}
+              startIcon={<SendIcon />}
               disabled={!isExportEnabled}
               accessKey="f"
               onClick={onFinish}
-              aria-label="Finish and export results"
+              aria-label="Finish and submit results"
               sx={{
                 fontWeight: isExportEnabled ? 'bold' : 'normal',
                 transition: 'all 0.2s ease',

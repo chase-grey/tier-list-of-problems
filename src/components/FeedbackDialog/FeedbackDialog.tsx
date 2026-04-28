@@ -1,15 +1,14 @@
 import React, { useState } from 'react';
-import { 
-  Dialog, 
-  DialogTitle, 
-  DialogContent, 
-  DialogActions, 
-  Button, 
-  Typography, 
-  TextField, 
-  Box, 
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  Typography,
+  TextField,
+  Box,
   Rating,
-  Link 
 } from '@mui/material';
 import SentimentVeryDissatisfiedIcon from '@mui/icons-material/SentimentVeryDissatisfied';
 import SentimentDissatisfiedIcon from '@mui/icons-material/SentimentDissatisfied';
@@ -27,7 +26,6 @@ interface FeedbackDialogProps {
   open: boolean;
   onClose: () => void;
   onSubmit: (feedbackData: FeedbackData) => void;
-  userRole: string | null;
 }
 
 // Custom icons for the rating component
@@ -62,9 +60,7 @@ function IconContainer(props: any) {
 /**
  * Dialog for collecting feedback before finishing the poll
  */
-export const FeedbackDialog: React.FC<FeedbackDialogProps> = ({ open, onClose, onSubmit, userRole }) => {
-  // Check if user is a customer
-  const isCustomer = userRole === 'customer';
+export const FeedbackDialog: React.FC<FeedbackDialogProps> = ({ open, onClose, onSubmit }) => {
   const [rating, setRating] = useState<number | null>(null);
   const [comments, setComments] = useState('');
   
@@ -79,16 +75,9 @@ export const FeedbackDialog: React.FC<FeedbackDialogProps> = ({ open, onClose, o
       maxWidth="sm"
       fullWidth
     >
-      <DialogTitle>Almost Done - Quick Feedback</DialogTitle>
-      
+      <DialogTitle>Optional: Quick Feedback</DialogTitle>
+
       <DialogContent>
-        <Typography variant="body1" paragraph sx={{ mt: 1, mb: 2, fontWeight: 'medium', color: 'info.main' }}>
-          {isCustomer ? (
-            <>After downloading, please email your CSV file to Chase Grey (cgrey@epic.com).</>
-          ) : (
-            <>After downloading, please save your CSV file to <Link href="https://epic1.sharepoint.com/:f:/s/SmartTools-Docs/IgCMGRgsBqd0SZqSL-gZ9sQGAZjgncTeb_kmoGM6_OODz_4?e=wVa9u4" target="_blank" rel="noopener noreferrer">this SharePoint site</Link> using your full name as the filename, or email it to cgrey@epic.com.</>
-          )}
-        </Typography>
         <Box sx={{ py: 2 }}>
           <Typography variant="subtitle1" gutterBottom>
             How would you rate your experience with this process?
