@@ -45,9 +45,7 @@ export const FeedbackDialog: React.FC<FeedbackDialogProps> = ({ open, onClose, o
             <ToggleButtonGroup
               value={rating}
               exclusive
-              onChange={(_, newValue) => {
-                if (newValue !== null) setRating(newValue);
-              }}
+              onChange={(_, newValue) => setRating(newValue)}
               sx={{ display: 'flex', width: '100%' }}
             >
               {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => (
