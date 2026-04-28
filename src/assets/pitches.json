@@ -16,6 +16,22 @@
     }
   },
   {
+    "id": "2005922",
+    "title": "PREVENT PARTS OF A NOTE TEMPLATE FROM BEING DELETED",
+    "category": null,
+    "continuation": false,
+    "details": {
+      "problem": "Organizational leads and compliance officers often have required SmartLists or documentation that they add for legal reasons. These sections must be filled out but end users can just delete it from any note and not have to do the documentation.\n(Optional) Idea for a solution - framed as a user story\nAdd a SmartLink that could be used similarly to a sectioning SmartLink but nothing in that section can be deleted in the note. This allows it to be more flexible and only added to certain parts of a template. We could also make the section more like a warn on delete SmartLink so that if any part of it is about to get deleted, there is a warning saying something like 'this is required documentation, are you sure you want to delete this?' to allow more flexibility for end users. Or maybe have\nboth options with different SmartLinks.\n(Optional) Characteristics of a good solution\nAllow sections of a SmartText to be required in a note in a way that makes deleting it difficult\n(Optional) Why is this worth solving now?",
+      "ideaForSolution": "Add a SmartLink that could be used similarly to a sectioning SmartLink but nothing in that section can be deleted in the note. This allows it to be more flexible and only added to certain parts of a template. We could also make the section more like a warn on delete SmartLink so that if any part of it is about to get deleted, there is a warning saying something like 'this is required documentation, are you sure you want to delete this?' to allow more flexibility for end users. Or maybe have\nboth options with different SmartLinks.",
+      "characteristics": "Allow sections of a SmartText to be required in a note in a way that makes deleting it difficult",
+      "whyNow": "(Optional) How does this fit into our larger SmartTools vision?\nThis would be a part of making it easy for users to do the right thing so that required documentation is actually filled out\n(Optional) How does this fit into our larger Epic and ST priorities?\nThis fits ST priorities because it would solve long standing existing pain points",
+      "smartToolsFit": "This would be a part of making it easy for users to do the right thing so that required documentation is actually filled out",
+      "success": "Parts of a template can be restricted from being deleted when added to a STB",
+      "maintenance": "",
+      "internCandidate": false
+    }
+  },
+  {
     "id": "2064134",
     "title": "ST / Allow nested SmartTools in reselectable SmartLists",
     "category": "Create and Improve Tools and Framework",
@@ -224,6 +240,22 @@
     }
   },
   {
+    "id": "8033379",
+    "title": "ST/ SmartPhrase/ Show user tags in the smarttool butler",
+    "category": null,
+    "continuation": false,
+    "details": {
+      "problem": "A physician has built out a bunch of tags to organize her SmartPhrases in the Manager but can't find them to use in the note so she has to switch back to the SmartPhrase Manager to be able to benefit from her new organization system with tags\n(Optional) Idea for a solution - framed as a user story\nUsers will be able to open the SmartTool butler and filter by tags or add tags to SmartPhrases and SmartLinks. This will make it easier for end users to use their tags in their workflow and add tags to SmartLinks, which are also often hard to find and organize\n(Optional) Characteristics of a good solution\nTags will be usable in an end users actual workflow, they're easy to see and add new ones, and makes it easier to find their SmartTools\n(Optional) Why is this worth solving now?\nWe released tags in Nov 25 so we should keep this project moving. The main feedback that we got from usability studies is that they wanted this available in the note so it's something that is already requested and will continue to be a pain point until we fix it",
+      "ideaForSolution": "Users will be able to open the SmartTool butler and filter by tags or add tags to SmartPhrases and SmartLinks. This will make it easier for end users to use their tags in their workflow and add tags to SmartLinks, which are also often hard to find and organize",
+      "characteristics": "Tags will be usable in an end users actual workflow, they're easy to see and add new ones, and makes it easier to find their SmartTools",
+      "whyNow": "We released tags in Nov 25 so we should keep this project moving. The main feedback that we got from usability studies is that they wanted this available in the note so it's something that is already requested and will continue to be a pain point until we fix it\n(Optional) How does this fit into our larger SmartTools vision?\nSmarttool build and access should reduce time and mental load for users to use the tools and UX should make SmartTools easy to find, share, and discover and this would help achieve that.\n(Optional) How does this fit into our larger Epic and ST priorities?\nThis is an enhancement that would help users and could help reduce burnout by improving efficiency",
+      "smartToolsFit": "Smarttool build and access should reduce time and mental load for users to use the tools and UX should make SmartTools easy to find, share, and discover and this would help achieve that.",
+      "success": "Users can use their tags while they're writing their note without having to switch workspaces",
+      "maintenance": "Low, this should just be another column in the butler after it has been released",
+      "internCandidate": false
+    }
+  },
+  {
     "id": "8066648",
     "title": "ST / May '26 Pitch / Reevaluate and Unify SmartSection UI Across Apps",
     "category": "Create and Improve Tools and Framework",
@@ -234,6 +266,38 @@
       "characteristics": "*  Existing SmartSections should be updated to use the new patterns\n*  Core SmartTools code should be updated so that it's easy to do the right thing",
       "whyNow": "*  We are releasing more SmartSections every version\n*  The core work of implementing many SmartSections is already done\n*  Because we have 4-5 big SmartSections now, we can see that there has been a lot of clashes in SmartSection layout and styling\n(Optional) How does this fit into our larger SmartTools vision?\n*  SmartTools we develop should be easy to build and expand on\n*  App teams should not have to rehash the same discussions on styling and positioning for every new SmartSection\n*  Tools we develop should be a joy to use\n*  Each SmartSection should not require a separate mental model for users\n(Optional) How does this fit into our larger Epic and ST priorities?",
       "smartToolsFit": "*  SmartTools we develop should be easy to build and expand on",
+      "success": "",
+      "maintenance": "",
+      "internCandidate": false
+    }
+  },
+  {
+    "id": "8076785",
+    "title": "DoCo/SmartTools/Create an inline mobile plain text STB control",
+    "category": null,
+    "continuation": false,
+    "details": {
+      "problem": "When I am using Hyperspace on mobile and fill documentation with SmartText Box, it would be nice to start typing into the STB as if it is a inline control instead of launching the STB in a separate view to edit.\n(Optional) Idea for a solution - framed as a user story\nImplement a inline control version of STB that can work in mobile\n(Optional) Characteristics of a good solution\nProvide good user experience. Seemless as if typing in entry field. Reduce jumping to activity and clicks\n(Optional) Why is this worth solving now?\nWe have much more activities will be available to mobile.",
+      "ideaForSolution": "Implement a inline control version of STB that can work in mobile",
+      "characteristics": "Provide good user experience. Seemless as if typing in entry field. Reduce jumping to activity and clicks",
+      "whyNow": "We have much more activities will be available to mobile.\n(Optional) How does this fit into our larger SmartTools vision?\n***\n(Optional) How does this fit into our larger Epic and ST priorities?",
+      "smartToolsFit": "",
+      "success": "",
+      "maintenance": "",
+      "internCandidate": false
+    }
+  },
+  {
+    "id": "8105976",
+    "title": "ST / May 26 Pitches / AI Text Assistant / Prompts will become harder to find in AITA menu once custom prompts and sharing are enabled",
+    "category": null,
+    "continuation": false,
+    "details": {
+      "problem": "As a clinician with particular text I want to generate, and looking for an AI prompt that fits my goal, I have access to many custom prompts - both ones that I've created and ones that my colleagues have shared with me. However, I have to dig through a very long list of prompts in the AI Text Assistant to find one that might match, and even then, I'm not sure if the prompt will fit my needs until I try it. This is not only time consuming, it is also frustrating enough that I will either just\nwrite my own prompt on the fly (inefficient and defeats the purpose of sharing functionality), stick to pre-defined prompts (don't get to leverage the benefits of custom prompts), or avoid using the Text Assistant altogether.\nWithout redesigning the menu, that could result in a menu like one of these, where we either add more subcategories or funnel all prompts into the existing \"My Prompts\". Either one would lead to an extremely bloated and hard-to-sort through list:\nRelated questions:\n*  Discoverability of shared prompts (both user and system). How do users know when they have new prompts available?\n*  How can users keep track of prompts they have/what they can be used for? (particularly if we don't have a manager)\n(Optional) Idea for a solution - framed as a user story\nMore investigation is needed before coming to a solution, however some potential ideas are:\n*  Surface relevant prompt suggestions based on the text and surrounding workflow context\n*  Maybe this even replaces the Recent prompts\n*  Turn the AITA search into a semantic search, rather than exact word matching (similar to what Chart Search is doing with Cloud Search)\n*  Others?\n(Optional) Characteristics of a good solution\n*  \"Just in time\" rather than \"just in case\" - it should be easy for me to find the prompt that fits my needs when I want it, rather than making me look through every possible option\n(Optional) Why is this worth solving now?\n*  Once users can share prompts with each other, it's very likely that users will have access to many more prompts than they already have, and they might not be familiar with the ins and outs of each one. We don't want to introduce the potential for users' menus to get very bloated without a way for them to effectively navigate all the available options. (Similar to how users have to go to the SmartPhrase Manager today to find the SmartPhrase they want to use, because memorizing the mnemonics\nis impossible)",
+      "ideaForSolution": "More investigation is needed before coming to a solution, however some potential ideas are:\n*  Surface relevant prompt suggestions based on the text and surrounding workflow context\n*  Maybe this even replaces the Recent prompts\n*  Turn the AITA search into a semantic search, rather than exact word matching (similar to what Chart Search is doing with Cloud Search)\n*  Others?",
+      "characteristics": "*  \"Just in time\" rather than \"just in case\" - it should be easy for me to find the prompt that fits my needs when I want it, rather than making me look through every possible option",
+      "whyNow": "*  Once users can share prompts with each other, it's very likely that users will have access to many more prompts than they already have, and they might not be familiar with the ins and outs of each one. We don't want to introduce the potential for users' menus to get very bloated without a way for them to effectively navigate all the available options. (Similar to how users have to go to the SmartPhrase Manager today to find the SmartPhrase they want to use, because memorizing the mnemonics\nis impossible)\n(Optional) How does this fit into our larger SmartTools vision?\n***\n(Optional) How does this fit into our larger Epic and ST priorities?",
+      "smartToolsFit": "",
       "success": "",
       "maintenance": "",
       "internCandidate": false
