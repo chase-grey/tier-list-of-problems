@@ -14,7 +14,7 @@ import FeedbackDialog from './FeedbackDialog/FeedbackDialog';
 import type { FeedbackData } from './FeedbackDialog/FeedbackDialog';
 import DevAutoPopulate from './DevAutoPopulate';
 import { useLocalStorage } from '../hooks/useLocalStorage';
-import { submitVotes, submitInterestVotes, convertVotesToApiFormat, convertVotesToInterestFormat } from '../services/api';
+import { submitVotes, submitInterestVotes, submitFeedback, convertVotesToApiFormat, convertVotesToInterestFormat } from '../services/api';
 import { isDevelopmentMode } from '../utils/testUtils';
 import type { DropResult } from '@hello-pangea/dnd';
 import type { AppState, Pitch, Tier, InterestLevel } from '../types/models';
@@ -81,8 +81,16 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
   // tl-1 = Allocation 1 only (step 0), tl-2 = Allocation 2 only (step 1)
   const allocationStep: 0 | 1 = pollingStage === 'tl-2' ? 1 : 0;
   const tlViewRef = useRef<TLAllocationViewHandle>(null);
-  const handleAllocationFinish = () => tlViewRef.current?.triggerFinalize();
   const [allocationFinalized, setAllocationFinalized] = useState(false);
+  const [allocationLoading, setAllocationLoading] = useState(false);
+
+  const handleAllocationFinish = async () => {
+    setAllocationLoading(true);
+    try {
+      await tlViewRef.current?.triggerFinalize();
+    } catch { /* error shown by snackbar in triggerFinalize */ }
+    finally { setAllocationLoading(false); }
+  };
   const [submitState, setSubmitState] = useState<'idle' | 'submitted' | 'changed'>('idle');
 
   // Async pitch loading state
@@ -174,6 +182,13 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
     setAvailability,
     getCompletionStats
   } = useVoteManagement(completeState);
+
+  // Persist state to localStorage on every change so refreshes don't lose progress.
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(appStateStorageKey, JSON.stringify(state));
+    } catch { /* ignore quota/security errors */ }
+  }, [state, appStateStorageKey]);
 
   // Only pass pitches visible on screen to the keyboard nav hook.
   // In priority stage the board only renders the selected category — passing all
@@ -652,9 +667,17 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
   };
 
   // Handle feedback submission
-  const handleFeedbackSubmit = (_feedbackData: FeedbackData) => {
+  const handleFeedbackSubmit = (feedbackData: FeedbackData) => {
     setShowFeedback(false);
     submitCurrentVotes();
+    if (feedbackData.rating != null || feedbackData.comments) {
+      submitFeedback({
+        voterName: state.voterName || '',
+        voterRole: state.voterRole || '',
+        rating: feedbackData.rating,
+        comments: feedbackData.comments,
+      }).catch(err => console.error('Feedback submission failed:', err));
+    }
   };
 
   // Handle feedback dialog close (skip feedback, still submit votes)
@@ -729,7 +752,7 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
           rankCount={rankCount}
           interestCount={interestCount}
           onFinish={handleFinish}
-          isExportEnabled={isExportEnabled && !isSubmitting}
+          isExportEnabled={isExportEnabled}
           onHelpClick={handleHelpClick}
           onResetClick={handleResetClick}
           stage={state.stage}
@@ -745,9 +768,9 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
           allocationMode={isTLStage}
           allocationStep={allocationStep}
           onAllocationFinish={isTLStage && state.voterRole === 'dev TL' ? handleAllocationFinish : undefined}
-          allocationFinishLabel={allocationFinalized
-            ? (allocationStep === 0 ? 'Resubmit Plan' : 'Resubmit')
-            : (allocationStep === 0 ? 'Finish Plan' : 'Finalize')}
+          allocationFinishEnabled={!allocationFinalized && !allocationLoading}
+          allocationFinishLoading={allocationLoading}
+          votingLoading={isSubmitting}
           submitState={submitState}
         />
         
@@ -758,6 +781,7 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
               ref={tlViewRef}
               activeStep={allocationStep}
               onFinalize={() => setAllocationFinalized(true)}
+              onAllocationChange={() => setAllocationFinalized(false)}
               voterName={state.voterName ?? ''}
               voterRole={state.voterRole ?? ''}
             />

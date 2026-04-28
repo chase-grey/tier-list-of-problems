@@ -145,11 +145,11 @@ export interface FinalAssignmentPayload extends PlanAssignmentPayload {
  * Saves the finalized stage 2 plan (pitch decisions + dev assignments) to the PLAN sheet.
  */
 export async function savePlan(assignments: PlanAssignmentPayload[]): Promise<number> {
-  const params = new URLSearchParams({
-    route: 'save-plan',
-    assignments: JSON.stringify(assignments),
+  const response = await fetch(`${GAS_PROXY}?route=save-plan`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ assignments }),
   });
-  const response = await fetch(`${GAS_PROXY}?${params.toString()}`);
   if (!response.ok) {
     const text = await response.text().catch(() => '');
     throw new ApiError(`Save plan failed (${response.status})${text ? ': ' + text : ''}`, response.status);
@@ -163,11 +163,11 @@ export async function savePlan(assignments: PlanAssignmentPayload[]): Promise<nu
  * merging with the stage 2 dev assignments already stored there.
  */
 export async function saveFinalAssignments(assignments: FinalAssignmentPayload[]): Promise<number> {
-  const params = new URLSearchParams({
-    route: 'save-final-assignments',
-    assignments: JSON.stringify(assignments),
+  const response = await fetch(`${GAS_PROXY}?route=save-final-assignments`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ assignments }),
   });
-  const response = await fetch(`${GAS_PROXY}?${params.toString()}`);
   if (!response.ok) {
     const text = await response.text().catch(() => '');
     throw new ApiError(`Save final assignments failed (${response.status})${text ? ': ' + text : ''}`, response.status);
@@ -228,6 +228,31 @@ export async function updateFollowup(
   if (!response.ok) {
     const text = await response.text().catch(() => '');
     throw new ApiError(`Update followup failed (${response.status})${text ? ': ' + text : ''}`, response.status);
+  }
+}
+
+export interface SubmitFeedbackPayload {
+  voterName: string;
+  voterRole: string;
+  rating: number | null;
+  comments: string;
+}
+
+/**
+ * Submits optional feedback (rating + comments) to the FEEDBACK sheet.
+ */
+export async function submitFeedback(payload: SubmitFeedbackPayload): Promise<void> {
+  const params = new URLSearchParams({
+    route: 'feedback',
+    voterName: payload.voterName,
+    voterRole: payload.voterRole,
+    comments: payload.comments,
+    ...(payload.rating != null ? { rating: String(payload.rating) } : {}),
+  });
+  const response = await fetch(`${GAS_PROXY}?${params.toString()}`);
+  if (!response.ok) {
+    const text = await response.text().catch(() => '');
+    throw new ApiError(`Feedback submission failed (${response.status})${text ? ': ' + text : ''}`, response.status);
   }
 }
 

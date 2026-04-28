@@ -42,6 +42,15 @@ function doGet(e) {
         return getFollowups();
       case 'update-followup':
         return updateFollowup(e.parameter);
+      case 'feedback': {
+        const feedbackResult = recordFeedback({
+          voterName: e.parameter.voterName,
+          voterRole: e.parameter.voterRole,
+          rating: e.parameter.rating ? Number(e.parameter.rating) : null,
+          comments: e.parameter.comments || '',
+        });
+        return feedbackResult;
+      }
       // Vote submission via GET+JSONP (POST never crosses GAS's 302 redirect with CORS headers;
       // script-tag JSONP follows redirects freely and bypasses CORS)
       case 'vote': {
@@ -83,6 +92,8 @@ function doPost(e) {
         return savePlan(payload.assignments || []);
       case 'save-final-assignments':
         return saveFinalAssignments(payload.assignments || []);
+      case 'feedback':
+        return recordFeedback(payload);
       case 'send-kickoff-email':
         return sendKickoffEmail(JSON.parse(e.postData.contents));
       case 'create-emr-records':
@@ -215,6 +226,30 @@ function recordVotes(body) {
   }
 
   return json200({ saved: votes.length });
+}
+
+/**
+ * Records user feedback (rating + comments) to the FEEDBACK sheet.
+ */
+function recordFeedback(body) {
+  const { voterName, voterRole, rating, comments } = body;
+  if (!voterName) {
+    return badRequest("voterName is required");
+  }
+
+  const sh = ss.getSheetByName('FEEDBACK') ||
+    (() => {
+      const newSheet = ss.insertSheet('FEEDBACK');
+      newSheet.appendRow(['timestamp', 'voterName', 'voterRole', 'rating', 'comments']);
+      return newSheet;
+    })();
+
+  if (sh.getLastRow() === 0) {
+    sh.appendRow(['timestamp', 'voterName', 'voterRole', 'rating', 'comments']);
+  }
+
+  sh.appendRow([new Date(), voterName, voterRole || '', rating ?? '', comments || '']);
+  return json200({ saved: 1 });
 }
 
 /**
