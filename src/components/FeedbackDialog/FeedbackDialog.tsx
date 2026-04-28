@@ -8,15 +8,10 @@ import {
   Typography,
   TextField,
   Box,
-  Rating,
+  ToggleButton,
+  ToggleButtonGroup,
 } from '@mui/material';
-import SentimentVeryDissatisfiedIcon from '@mui/icons-material/SentimentVeryDissatisfied';
-import SentimentDissatisfiedIcon from '@mui/icons-material/SentimentDissatisfied';
-import SentimentSatisfiedIcon from '@mui/icons-material/SentimentSatisfied';
-import SentimentSatisfiedAltIcon from '@mui/icons-material/SentimentSatisfiedAlt';
-import SentimentVerySatisfiedIcon from '@mui/icons-material/SentimentVerySatisfied';
 
-// Interface for the feedback data
 export interface FeedbackData {
   rating: number | null;
   comments: string;
@@ -28,53 +23,16 @@ interface FeedbackDialogProps {
   onSubmit: (feedbackData: FeedbackData) => void;
 }
 
-// Custom icons for the rating component
-const customIcons: { [index: string]: { icon: React.ReactElement; label: string } } = {
-  1: {
-    icon: <SentimentVeryDissatisfiedIcon color="error" />,
-    label: 'Very Dissatisfied',
-  },
-  2: {
-    icon: <SentimentDissatisfiedIcon color="error" />,
-    label: 'Dissatisfied',
-  },
-  3: {
-    icon: <SentimentSatisfiedIcon color="warning" />,
-    label: 'Neutral',
-  },
-  4: {
-    icon: <SentimentSatisfiedAltIcon color="success" />,
-    label: 'Satisfied',
-  },
-  5: {
-    icon: <SentimentVerySatisfiedIcon color="success" />,
-    label: 'Very Satisfied',
-  },
-};
-
-function IconContainer(props: any) {
-  const { value, ...other } = props;
-  return <span {...other}>{customIcons[value].icon}</span>;
-}
-
-/**
- * Dialog for collecting feedback before finishing the poll
- */
 export const FeedbackDialog: React.FC<FeedbackDialogProps> = ({ open, onClose, onSubmit }) => {
   const [rating, setRating] = useState<number | null>(null);
   const [comments, setComments] = useState('');
-  
+
   const handleSubmit = () => {
     onSubmit({ rating, comments });
   };
-  
+
   return (
-    <Dialog 
-      open={open} 
-      onClose={onClose}
-      maxWidth="sm"
-      fullWidth
-    >
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
       <DialogTitle>Optional: Quick Feedback</DialogTitle>
 
       <DialogContent>
@@ -82,29 +40,36 @@ export const FeedbackDialog: React.FC<FeedbackDialogProps> = ({ open, onClose, o
           <Typography variant="subtitle1" gutterBottom>
             How would you rate your experience with this process?
           </Typography>
-          
-          <Box sx={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center',
-            my: 3
-          }}>
-            <Rating
-              name="highlight-selected-only"
+
+          <Box sx={{ mt: 2, mb: 0.5 }}>
+            <ToggleButtonGroup
               value={rating}
+              exclusive
               onChange={(_, newValue) => {
-                setRating(newValue);
+                if (newValue !== null) setRating(newValue);
               }}
-              IconContainerComponent={IconContainer}
-              highlightSelectedOnly
-              size="large"
-            />
+              sx={{ display: 'flex', width: '100%' }}
+            >
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => (
+                <ToggleButton
+                  key={n}
+                  value={n}
+                  sx={{ flex: 1, py: 1, fontWeight: rating === n ? 700 : 400 }}
+                >
+                  {n}
+                </ToggleButton>
+              ))}
+            </ToggleButtonGroup>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.5 }}>
+              <Typography variant="caption" color="text.secondary">Not great</Typography>
+              <Typography variant="caption" color="text.secondary">Amazing</Typography>
+            </Box>
           </Box>
-          
-          <Typography variant="subtitle1" gutterBottom sx={{ mt: 2 }}>
+
+          <Typography variant="subtitle1" gutterBottom sx={{ mt: 3 }}>
             Any additional feedback or comments?
           </Typography>
-          
+
           <TextField
             label="Feedback"
             multiline
@@ -117,14 +82,14 @@ export const FeedbackDialog: React.FC<FeedbackDialogProps> = ({ open, onClose, o
           />
         </Box>
       </DialogContent>
-      
+
       <DialogActions>
         <Button onClick={onClose} color="primary">
           Skip
         </Button>
-        <Button 
-          onClick={handleSubmit} 
-          color="secondary" 
+        <Button
+          onClick={handleSubmit}
+          color="secondary"
           variant="contained"
           disabled={rating === null}
         >
