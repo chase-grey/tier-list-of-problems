@@ -84,15 +84,7 @@ export const FeedbackDialog: React.FC<FeedbackDialogProps> = ({ open, onClose, o
       </DialogContent>
 
       <DialogActions>
-        <Button onClick={onClose} color="primary">
-          Skip
-        </Button>
-        <Button
-          onClick={handleSubmit}
-          color="secondary"
-          variant="contained"
-          disabled={rating === null}
-        >
+        <Button onClick={handleSubmit} color="secondary" variant="contained">
           Submit & Finish
         </Button>
       </DialogActions>
