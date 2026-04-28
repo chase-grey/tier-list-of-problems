@@ -18,7 +18,7 @@
   {
     "id": "2005922",
     "title": "PREVENT PARTS OF A NOTE TEMPLATE FROM BEING DELETED",
-    "category": null,
+    "category": "Create and Improve Tools and Framework",
     "continuation": false,
     "details": {
       "problem": "Organizational leads and compliance officers often have required SmartLists or documentation that they add for legal reasons. These sections must be filled out but end users can just delete it from any note and not have to do the documentation.\n(Optional) Idea for a solution - framed as a user story\nAdd a SmartLink that could be used similarly to a sectioning SmartLink but nothing in that section can be deleted in the note. This allows it to be more flexible and only added to certain parts of a template. We could also make the section more like a warn on delete SmartLink so that if any part of it is about to get deleted, there is a warning saying something like 'this is required documentation, are you sure you want to delete this?' to allow more flexibility for end users. Or maybe have\nboth options with different SmartLinks.\n(Optional) Characteristics of a good solution\nAllow sections of a SmartText to be required in a note in a way that makes deleting it difficult\n(Optional) Why is this worth solving now?",
@@ -242,7 +242,7 @@
   {
     "id": "8033379",
     "title": "ST/ SmartPhrase/ Show user tags in the smarttool butler",
-    "category": null,
+    "category": "Create and Improve Tools and Framework",
     "continuation": false,
     "details": {
       "problem": "A physician has built out a bunch of tags to organize her SmartPhrases in the Manager but can't find them to use in the note so she has to switch back to the SmartPhrase Manager to be able to benefit from her new organization system with tags\n(Optional) Idea for a solution - framed as a user story\nUsers will be able to open the SmartTool butler and filter by tags or add tags to SmartPhrases and SmartLinks. This will make it easier for end users to use their tags in their workflow and add tags to SmartLinks, which are also often hard to find and organize\n(Optional) Characteristics of a good solution\nTags will be usable in an end users actual workflow, they're easy to see and add new ones, and makes it easier to find their SmartTools\n(Optional) Why is this worth solving now?\nWe released tags in Nov 25 so we should keep this project moving. The main feedback that we got from usability studies is that they wanted this available in the note so it's something that is already requested and will continue to be a pain point until we fix it",
