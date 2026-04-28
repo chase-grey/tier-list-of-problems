@@ -172,6 +172,18 @@ export default function Stage4ResultsView({ pitches, currentAssignments, step2As
     tl => (byTL[tl]?.length ?? 0) > 0 || (backlogByTL[tl]?.length ?? 0) > 0
   );
 
+  const isTLDone = (tl: string): boolean => {
+    const rows = byTL[tl] ?? [];
+    const backlog = backlogByTL[tl] ?? [];
+    const projectsDone = rows.every(({ pitch }) =>
+      !!checkedItems[`prj-${tl}-${pitch.id}`] && !!checkedItems[`email-${tl}-${pitch.id}`]
+    );
+    const backlogDone = backlog.length === 0 || !!checkedItems[`backlog-${tl}`];
+    return rows.length > 0 && projectsDone && backlogDone;
+  };
+
+  const allFollowupsDone = tlsWithWork.length > 0 && tlsWithWork.every(isTLDone);
+
   return (
     <Box sx={{ p: 3, overflow: 'auto', height: '100%' }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3 }}>
@@ -244,9 +256,9 @@ export default function Stage4ResultsView({ pitches, currentAssignments, step2As
 
       <Divider sx={{ mb: 3 }} />
 
-      {/* Per-TL follow-ups */}
-      <Typography variant="h6" fontWeight="bold" sx={{ mb: 2 }}>
-        Per-TL Follow-ups
+      {/* TL Follow-ups */}
+      <Typography variant="h6" fontWeight="bold" sx={{ mb: 2, color: allFollowupsDone ? 'success.main' : 'text.primary' }}>
+        TL Follow-ups {allFollowupsDone && '✓'}
       </Typography>
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
         {tlsWithWork.map(tl => {
@@ -254,11 +266,18 @@ export default function Stage4ResultsView({ pitches, currentAssignments, step2As
           const backlog = backlogByTL[tl] ?? [];
           const tlEmail = config.tlEmails?.[tl] ?? '';
           const emails = config.memberEmails ?? {};
+          const tlDone = isTLDone(tl);
 
           return (
-            <Paper key={tl} variant="outlined" sx={{ p: 2 }}>
-              <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 1.5 }}>
-                {tl}
+            <Paper key={tl} variant="outlined" sx={{
+              p: 2,
+              ...(tlDone && {
+                borderColor: 'success.main',
+                bgcolor: 'rgba(46, 125, 50, 0.05)',
+              }),
+            }}>
+              <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 1.5, color: tlDone ? 'success.main' : 'text.primary' }}>
+                {tl} {tlDone && '✓'}
               </Typography>
 
               {rows.map(({ pitch, dev, sa }) => {
@@ -278,88 +297,99 @@ export default function Stage4ResultsView({ pitches, currentAssignments, step2As
                   subject,
                   buildProjectEmailBody(tl, pitch, dev, sa, config),
                 );
+                const allDone = !!checkedItems[`prj-${tl}-${pitch.id}`] && !!checkedItems[`email-${tl}-${pitch.id}`];
                 return (
-                  <Box key={pitch.id} sx={{ mb: 2 }}>
+                  <Box key={pitch.id} sx={{
+                    mb: 2,
+                    ...(allDone && {
+                      bgcolor: 'rgba(46, 125, 50, 0.08)',
+                      border: '1px solid',
+                      borderColor: 'success.main',
+                      borderRadius: 1,
+                      px: 1,
+                      py: 0.5,
+                      mx: -1,
+                    }),
+                  }}>
                     <Typography variant="body2" fontWeight={600} sx={{ mb: 0.5 }}>
                       {shortTitle}
                     </Typography>
 
-                    <FormControlLabel
-                      control={
-                        <Checkbox
-                          checked={!!checkedItems[`prj-${tl}-${pitch.id}`]}
-                          onChange={() => toggleCheck(`prj-${tl}-${pitch.id}`, pitch.id, 'projectCreated')}
-                          size="small"
-                        />
-                      }
-                      label={
-                        <Box>
-                          <Typography variant="body2">Create PRJ record</Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            People tab: Dev TL: {tl}, Dev: {dev ?? '—'}, QM: {sa.qm ?? '—'}
-                            {sa.pqa1 ? `, PQA1: ${sa.pqa1}` : ''}
-                            {config.testingCaptain ? `, Testing Captain: ${config.testingCaptain}` : ''}
-                            {' · '}Attach pitch ZQN on Associated Records tab
-                          </Typography>
-                        </Box>
-                      }
-                      sx={{ mb: 0.25, alignItems: 'flex-start' }}
-                    />
-
-                    <FormControlLabel
-                      control={
-                        <Checkbox
-                          checked={!!checkedItems[`email-${tl}-${pitch.id}`]}
-                          onChange={() => toggleCheck(`email-${tl}-${pitch.id}`, pitch.id, 'kickoffEmailSent')}
-                          size="small"
-                        />
-                      }
-                      label={
-                        <Box component="span" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <Typography variant="body2">Send kickoff email</Typography>
-                          <Button
+                    <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start' }}>
+                      <FormControlLabel
+                        control={
+                          <Checkbox
+                            checked={!!checkedItems[`prj-${tl}-${pitch.id}`]}
+                            onChange={() => toggleCheck(`prj-${tl}-${pitch.id}`, pitch.id, 'projectCreated')}
                             size="small"
-                            variant="outlined"
-                            href={pitchMailtoHref}
-                            sx={{ fontSize: '0.7rem', py: 0, px: 1, minWidth: 0 }}
-                          >
-                            Open in Outlook
-                          </Button>
-                        </Box>
-                      }
-                      sx={{ alignItems: 'center' }}
-                    />
+                          />
+                        }
+                        label={
+                          <Box>
+                            <Typography variant="body2">Create PRJ record</Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              People tab: Dev TL: {tl}, Dev: {dev ?? '—'}, QM: {sa.qm ?? '—'}
+                              {sa.pqa1 ? `, PQA1: ${sa.pqa1}` : ''}
+                              {config.testingCaptain ? `, Testing Captain: ${config.testingCaptain}` : ''}
+                              {' · '}Attach pitch ZQN on Associated Records tab
+                            </Typography>
+                          </Box>
+                        }
+                        sx={{ flex: 1, mb: 0, alignItems: 'flex-start' }}
+                      />
+
+                      <FormControlLabel
+                        control={
+                          <Checkbox
+                            checked={!!checkedItems[`email-${tl}-${pitch.id}`]}
+                            onChange={() => toggleCheck(`email-${tl}-${pitch.id}`, pitch.id, 'kickoffEmailSent')}
+                            size="small"
+                          />
+                        }
+                        label={
+                          <Box component="span" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Typography variant="body2">Send kickoff email</Typography>
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              href={pitchMailtoHref}
+                              sx={{ fontSize: '0.7rem', py: 0, px: 1, minWidth: 0 }}
+                            >
+                              Open in Outlook
+                            </Button>
+                          </Box>
+                        }
+                        sx={{ flexShrink: 0, alignItems: 'center' }}
+                      />
+                    </Box>
                   </Box>
                 );
               })}
 
               {backlog.length > 0 && (
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={!!checkedItems[`backlog-${tl}`]}
-                      onChange={() => setCheckedItems(prev => ({ ...prev, [`backlog-${tl}`]: !prev[`backlog-${tl}`] }))}
-                      size="small"
+                <Box>
+                  <Typography variant="body2" sx={{ mb: 0.5 }}>
+                    Create backlog PRJ records ({backlog.length})
+                  </Typography>
+                  {backlog.map(({ pitch }) => (
+                    <FormControlLabel
+                      key={pitch.id}
+                      control={
+                        <Checkbox
+                          checked={!!checkedItems[`backlog-${tl}-${pitch.id}`]}
+                          onChange={() => setCheckedItems(prev => ({ ...prev, [`backlog-${tl}-${pitch.id}`]: !prev[`backlog-${tl}-${pitch.id}`] }))}
+                          size="small"
+                        />
+                      }
+                      label={
+                        <Typography variant="body2" color="text.secondary">
+                          {pitch.title}
+                        </Typography>
+                      }
+                      sx={{ display: 'flex', alignItems: 'center', mb: 0.25 }}
                     />
-                  }
-                  label={
-                    <Box>
-                      <Typography variant="body2" sx={{ mb: 0.5 }}>
-                        Create backlog PRJ records ({backlog.length})
-                      </Typography>
-                      <Box component="ol" sx={{ pl: 3, m: 0 }}>
-                        {backlog.map(({ pitch }, i) => (
-                          <Box component="li" key={pitch.id}>
-                            <Typography variant="body2" color="text.secondary">
-                              {i + 1}. {pitch.title} [{pitch.category}]
-                            </Typography>
-                          </Box>
-                        ))}
-                      </Box>
-                    </Box>
-                  }
-                  sx={{ alignItems: 'flex-start' }}
-                />
+                  ))}
+                </Box>
               )}
             </Paper>
           );
