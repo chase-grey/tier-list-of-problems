@@ -79,6 +79,10 @@ function doPost(e) {
         return recordVotes(payload);
       case 'interest-vote':
         return recordInterestVote(payload);
+      case 'save-plan':
+        return savePlan(payload.assignments || []);
+      case 'save-final-assignments':
+        return saveFinalAssignments(payload.assignments || []);
       case 'send-kickoff-email':
         return sendKickoffEmail(JSON.parse(e.postData.contents));
       case 'create-emr-records':
@@ -168,7 +172,7 @@ function validateNonce(nonce) {
  */
 function recordVotes(body) {
   const {voterName, voterRole, votes} = body;
-  if (!voterName || !votes || !Array.isArray(votes) || votes.length === 0) {
+  if (!voterName || !votes || !Array.isArray(votes)) {
     return badRequest("Invalid request format");
   }
 
@@ -198,18 +202,19 @@ function recordVotes(body) {
     }
   }
 
-  const rows = votes.map(v => [
-    now,
-    voterName,
-    voterRole || '',
-    v.pitch_id,
-    v.tier,
-    (v.interestLevel != null) ? v.interestLevel : ''
-  ]);
+  if (votes.length > 0) {
+    const rows = votes.map(v => [
+      now,
+      voterName,
+      voterRole || '',
+      v.pitch_id,
+      v.tier,
+      (v.interestLevel != null) ? v.interestLevel : ''
+    ]);
+    sh.getRange(sh.getLastRow() + 1, 1, rows.length, 6).setValues(rows);
+  }
 
-  sh.getRange(sh.getLastRow() + 1, 1, rows.length, 6).setValues(rows);
-
-  return json200({ saved: rows.length });
+  return json200({ saved: votes.length });
 }
 
 /**
