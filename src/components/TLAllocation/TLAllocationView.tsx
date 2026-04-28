@@ -16,12 +16,13 @@ import Stage2ResultsView from './Stage2ResultsView';
 import Stage4ResultsView from './Stage4ResultsView';
 
 export interface TLAllocationViewHandle {
-  triggerFinalize: () => void;
+  triggerFinalize: () => Promise<void>;
 }
 
 interface TLAllocationViewProps {
   activeStep: 0 | 1;
   onFinalize?: () => void;
+  onAllocationChange?: () => void;
   voterName: string;
   voterRole: string;
 }
@@ -102,7 +103,7 @@ function autoAssignStep2(
 
 function enrichPitches(
   basePitches: Pitch[],
-  voteData: Record<string, { teamVotes: Record<string, 1|2|3|4>; tlVotes: Record<string, 1|2|3|4>; teamPriorityScore: number; tlPriorityScore: number }>,
+  voteData: Record<string, { teamVotes: Record<string, 0|1|2|3|4>; tlVotes: Record<string, 0|1|2|3|4>; teamPriorityScore: number; tlPriorityScore: number }>,
 ): AllocationPitch[] {
   return basePitches.map(p => {
     const v = voteData[p.id];
@@ -117,7 +118,7 @@ function enrichPitches(
   });
 }
 
-const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProps>(function TLAllocationView({ activeStep, onFinalize }, ref) {
+const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProps>(function TLAllocationView({ activeStep, onFinalize, onAllocationChange }, ref) {
   const { showSnackbar } = useSnackbar();
 
   // ── Data loading ──────────────────────────────────────────────────────────
@@ -191,6 +192,7 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
   }, [activePlanId, planOverrides, allocationPlans]);
 
   const mutateCurrentAssignments = (updater: (prev: PlanAssignment[]) => PlanAssignment[]) => {
+    onAllocationChange?.();
     setPlanOverrides(prev => ({
       ...prev,
       [activePlanId]: updater(
@@ -238,6 +240,7 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
   selectedPitchesRef.current = selectedPitches;
 
   const handleStep2Assign = (pitchId: string, field: 'devTL' | 'qm' | 'pqa1', value: string | null) => {
+    onAllocationChange?.();
     setStep2Assignments(prev => {
       const exists = prev.find(a => a.pitchId === pitchId);
       if (exists) return prev.map(a => a.pitchId === pitchId ? { ...a, [field]: value } : a);
@@ -275,6 +278,7 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
         showSnackbar('Plan saved — dev assignments recorded in the sheet', 'success');
       } catch (err: any) {
         showSnackbar(`Failed to save plan: ${err?.message ?? 'unknown error'}`, 'error');
+        throw err;
       }
     } else {
       const devByPitch = Object.fromEntries(currentAssignments.map(a => [a.pitchId, a]));
@@ -294,6 +298,7 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
         showSnackbar('Team assignments saved to the sheet', 'success');
       } catch (err: any) {
         showSnackbar(`Failed to save assignments: ${err?.message ?? 'unknown error'}`, 'error');
+        throw err;
       }
     }
     setShowResults(true);

@@ -138,14 +138,14 @@ function devInterestForPitch(pitchId: string, category: string): Record<string, 
 const ALL_VOTERS = [...MOCK_CONFIG.devNames, ...MOCK_CONFIG.devTLNames, ...MOCK_CONFIG.qmNames];
 
 function priorityVotesForPitch(pitchId: string, category: string): {
-  teamVotes: Record<string, 1 | 2 | 3 | 4>;
-  tlVotes: Record<string, 1 | 2 | 3 | 4>;
+  teamVotes: Record<string, 0 | 1 | 2 | 3 | 4>;
+  tlVotes: Record<string, 0 | 1 | 2 | 3 | 4>;
   teamPriorityScore: number;
   tlPriorityScore: number;
 } {
   // AI Charting pitches skew toward higher priority (lower tier number)
   const boost = category === 'Support AI Charting' ? 0.28 : 0;
-  const teamVotes: Record<string, 1 | 2 | 3 | 4> = {};
+  const teamVotes: Record<string, 0 | 1 | 2 | 3 | 4> = {};
 
   for (const voter of ALL_VOTERS) {
     const r = hashScore(`${pitchId}-${voter}-priority`, 0, 1);
@@ -160,7 +160,7 @@ function priorityVotesForPitch(pitchId: string, category: string): {
 
   const tlVotes = Object.fromEntries(
     MOCK_CONFIG.devTLNames.map(tl => [tl, teamVotes[tl]])
-  ) as Record<string, 1 | 2 | 3 | 4>;
+  ) as Record<string, 0 | 1 | 2 | 3 | 4>;
 
   const allTiers = Object.values(teamVotes);
   const teamPriorityScore = allTiers.reduce((s, t) => s + t, 0) / allTiers.length;

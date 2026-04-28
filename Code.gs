@@ -189,7 +189,7 @@ function recordVotes(body) {
 
   for (const vote of votes) {
     if (!vote.pitch_id ||
-        typeof vote.tier !== 'number' || vote.tier < 1 || vote.tier > 8) {
+        typeof vote.tier !== 'number' || vote.tier < 0 || vote.tier > 8) {
       return badRequest("Invalid vote format");
     }
   }
@@ -271,7 +271,7 @@ function getConfig() {
  * Dev TL voters are identified via devTLNames in the allocation_config Script Property.
  *
  * Response shape:
- *   { [pitchId]: { teamVotes: {name: 1|2|3|4}, tlVotes: {name: 1|2|3|4},
+ *   { [pitchId]: { teamVotes: {name: 0|1|2|3|4}, tlVotes: {name: 0|1|2|3|4},
  *                  teamPriorityScore: number, tlPriorityScore: number } }
  *
  * @return {TextOutput} JSON vote data keyed by pitch ID
@@ -295,8 +295,8 @@ function getAllocationData() {
     const pitchId      = row[3]; // column D
     const tier         = row[4]; // column E
     const interestLevel = row[5]; // column F
-    if (!voterName || !pitchId || tier === '' || tier === null) continue;
-    const numTier = Math.max(1, Math.min(4, Math.round(Number(tier))));
+    if (!voterName || !pitchId || tier === '' || tier === null || tier === undefined) continue;
+    const numTier = Number(tier) === 0 ? 0 : Math.max(1, Math.min(4, Math.round(Number(tier))));
     if (!pitchVoteMap[pitchId]) pitchVoteMap[pitchId] = {};
     pitchVoteMap[pitchId][voterName] = numTier;
     if (interestLevel !== '' && interestLevel !== null && interestLevel !== undefined) {
@@ -314,8 +314,8 @@ function getAllocationData() {
     for (const name of Object.keys(voterTiers)) {
       if (devTLNames.has(name)) tlVotes[name] = voterTiers[name];
     }
-    const allTiers = Object.values(teamVotes);
-    const tlTiers = Object.values(tlVotes);
+    const allTiers = Object.values(teamVotes).filter(t => t > 0);
+    const tlTiers = Object.values(tlVotes).filter(t => t > 0);
     const teamPriorityScore = allTiers.length > 0
       ? allTiers.reduce((s, t) => s + t, 0) / allTiers.length
       : 0;

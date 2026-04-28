@@ -62,10 +62,11 @@ function interestLabel(avg: number): string {
 
 // ─── VoteBreakdown: tooltip content showing per-voter priority tiers ──────────
 
-const TIER_LABEL: Record<1 | 2 | 3 | 4, string> = { 1: 'Highest', 2: 'High', 3: 'Medium', 4: 'Low' };
+const TIER_LABEL: Record<0 | 1 | 2 | 3 | 4, string> = { 0: 'Unsorted', 1: 'Highest', 2: 'High', 3: 'Medium', 4: 'Low' };
 
-function VoteBreakdown({ votes, label }: { votes: Record<string, 1 | 2 | 3 | 4 | null>; label: string }) {
-  const sorted = Object.entries(votes).sort(([, a], [, b]) => (a ?? 5) - (b ?? 5));
+function VoteBreakdown({ votes, label }: { votes: Record<string, 0 | 1 | 2 | 3 | 4 | null>; label: string }) {
+  // tier=0 (explicitly unsorted) sorts after tier 4; null sorts last
+  const sorted = Object.entries(votes).sort(([, a], [, b]) => (a === 0 ? 5 : a ?? 6) - (b === 0 ? 5 : b ?? 6));
   return (
     <Box sx={{ p: 0.5 }}>
       <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5, fontWeight: 700 }}>
@@ -74,8 +75,8 @@ function VoteBreakdown({ votes, label }: { votes: Record<string, 1 | 2 | 3 | 4 |
       {sorted.map(([name, tier]) => (
         <Box key={name} sx={{ display: 'flex', justifyContent: 'space-between', gap: 1.5 }}>
           <Typography variant="caption">{name.split(' ')[0]}</Typography>
-          <Typography variant="caption" sx={{ color: tier != null ? priorityColor(tier) : 'text.disabled', fontWeight: 700 }}>
-            {tier != null ? `${TIER_LABEL[tier]} (${tier})` : 'Unranked (–)'}
+          <Typography variant="caption" sx={{ color: (tier != null && tier > 0) ? priorityColor(tier) : 'text.disabled', fontWeight: 700 }}>
+            {(tier != null && tier > 0) ? `${TIER_LABEL[tier]} (${tier})` : tier === 0 ? 'Unsorted' : 'Unranked (–)'}
           </Typography>
         </Box>
       ))}
@@ -325,13 +326,13 @@ export default function Step1View({
 
               {/* Collapsible bucket content */}
               <Collapse in={isOpen(cat, 'bucket')}>
-                <Table size="small" sx={{ tableLayout: 'fixed', minWidth: 580 }}>
+                <Table size="small" sx={{ tableLayout: 'fixed', minWidth: 620 }}>
                   <colgroup>
                     <col />{/* pitch: takes remaining space */}
                     <col style={{ width: 56 }} />
                     <col style={{ width: 56 }} />
                     <col style={{ width: 150 }} />
-                    <col style={{ width: 160 }} />
+                    <col style={{ width: 200 }} />
                   </colgroup>
                   <TableHead>
                     <TableRow sx={{ '& th': { py: 0.5, fontSize: '0.72rem', color: 'text.secondary' } }}>
@@ -376,7 +377,7 @@ export default function Step1View({
                               <col style={{ width: 56 }} />
                               <col style={{ width: 56 }} />
                               <col style={{ width: 150 }} />
-                              <col style={{ width: 160 }} />
+                              <col style={{ width: 200 }} />
                             </colgroup>
                             <TableBody>
                               {selectedInCat.map(a => (
@@ -421,7 +422,7 @@ export default function Step1View({
                               <col style={{ width: 56 }} />
                               <col style={{ width: 56 }} />
                               <col style={{ width: 150 }} />
-                              <col style={{ width: 160 }} />
+                              <col style={{ width: 200 }} />
                             </colgroup>
                             <TableBody>
                               {nextUpInCat.map(a => (
@@ -466,7 +467,7 @@ export default function Step1View({
                               <col style={{ width: 56 }} />
                               <col style={{ width: 56 }} />
                               <col style={{ width: 150 }} />
-                              <col style={{ width: 160 }} />
+                              <col style={{ width: 200 }} />
                             </colgroup>
                             <TableBody>
                               {cutInCat.map(a => (
@@ -847,37 +848,38 @@ function PitchRow({ assignment, pitch, devNames, onDevChange, onStatusChange, hi
           </Typography>
         </Tooltip>
       </TableCell>
-      {/* ITEM 2: show dev dropdown for all statuses (cut pitches just have opacity) */}
       <TableCell sx={{ px: 0.5, py: 0.25 }}>
-        <Select
-          size="small"
-          value={assignment.assignedDev ?? ''}
-          onChange={e => onDevChange(pitch.id, e.target.value || null)}
-          displayEmpty
-          sx={{ fontSize: '0.75rem', width: '100%', '& .MuiSelect-select': { py: 0.5, px: 1 } }}
-          renderValue={val => val
-            ? <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0 }}>
-                <Typography variant="caption" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
-                  {(val as string).split(' ')[0]}
-                </Typography>
-                <InterestDot
-                  level={pitch.devInterest[val as string] ?? null}
-                  noData={!((val as string) in pitch.devInterest)}
-                />
-              </Box>
-            : <Typography variant="caption" color="text.disabled">Assign dev…</Typography>
-          }
-        >
-          <MenuItem value=""><em>Unassign</em></MenuItem>
-          {sortedDevs.map(dev => (
-            <MenuItem key={dev} value={dev} sx={{ px: 2, py: 0.75 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%', minWidth: 0 }}>
-                <Typography variant="body2" sx={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{dev}</Typography>
-                <InterestChip level={pitch.devInterest[dev] ?? null} noData={!(dev in pitch.devInterest)} />
-              </Box>
-            </MenuItem>
-          ))}
-        </Select>
+        {highlight === 'selected' && (
+          <Select
+            size="small"
+            value={assignment.assignedDev ?? ''}
+            onChange={e => onDevChange(pitch.id, e.target.value || null)}
+            displayEmpty
+            sx={{ fontSize: '0.75rem', width: '100%', '& .MuiSelect-select': { py: 0.5, px: 1 } }}
+            renderValue={val => val
+              ? <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0 }}>
+                  <Typography variant="caption" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                    {(val as string).split(' ')[0]}
+                  </Typography>
+                  <InterestDot
+                    level={pitch.devInterest[val as string] ?? null}
+                    noData={!((val as string) in pitch.devInterest)}
+                  />
+                </Box>
+              : <Typography variant="caption" color="text.disabled">Assign dev…</Typography>
+            }
+          >
+            <MenuItem value=""><em>Unassign</em></MenuItem>
+            {sortedDevs.map(dev => (
+              <MenuItem key={dev} value={dev} sx={{ px: 2, py: 0.75 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%', minWidth: 0 }}>
+                  <Typography variant="body2" sx={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{dev}</Typography>
+                  <InterestChip level={pitch.devInterest[dev] ?? null} noData={!(dev in pitch.devInterest)} />
+                </Box>
+              </MenuItem>
+            ))}
+          </Select>
+        )}
       </TableCell>
       <TableCell sx={{ px: 1 }}>
         <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-end' }}>

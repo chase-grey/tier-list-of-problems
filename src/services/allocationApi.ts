@@ -7,8 +7,8 @@ import type { AllocationConfig, Phase2Interest } from '../types/allocationTypes'
 const API_BASE_URL = ((import.meta as any).env?.VITE_API_URL) || '';
 
 export type AllocationVoteData = {
-  teamVotes: Record<string, 1 | 2 | 3 | 4>;
-  tlVotes: Record<string, 1 | 2 | 3 | 4>;
+  teamVotes: Record<string, 0 | 1 | 2 | 3 | 4>;
+  tlVotes: Record<string, 0 | 1 | 2 | 3 | 4>;
   teamPriorityScore: number;
   tlPriorityScore: number;
   devInterest: Record<string, number | null>;

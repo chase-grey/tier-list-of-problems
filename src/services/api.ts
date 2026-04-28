@@ -143,37 +143,34 @@ export interface FinalAssignmentPayload extends PlanAssignmentPayload {
 
 /**
  * Saves the finalized stage 2 plan (pitch decisions + dev assignments) to the PLAN sheet.
+ * Uses no-cors so the POST crosses GAS's redirect without a CORS read failure;
+ * the response is opaque so we return a synthetic saved count.
  */
 export async function savePlan(assignments: PlanAssignmentPayload[]): Promise<number> {
-  const response = await fetch(`${GAS_PROXY}?route=save-plan`, {
+  if (!API_BASE_URL) throw new ApiError('API URL not configured', 0);
+  await fetch(`${API_BASE_URL}?route=save-plan`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    mode: 'no-cors',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
     body: JSON.stringify({ assignments }),
   });
-  if (!response.ok) {
-    const text = await response.text().catch(() => '');
-    throw new ApiError(`Save plan failed (${response.status})${text ? ': ' + text : ''}`, response.status);
-  }
-  const data = await response.json();
-  return data.saved ?? assignments.length;
+  return assignments.length;
 }
 
 /**
  * Saves the finalized stage 4 team assignments (devTL, QM, PQA1) to the PLAN sheet,
  * merging with the stage 2 dev assignments already stored there.
+ * Uses no-cors for the same reason as savePlan.
  */
 export async function saveFinalAssignments(assignments: FinalAssignmentPayload[]): Promise<number> {
-  const response = await fetch(`${GAS_PROXY}?route=save-final-assignments`, {
+  if (!API_BASE_URL) throw new ApiError('API URL not configured', 0);
+  await fetch(`${API_BASE_URL}?route=save-final-assignments`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    mode: 'no-cors',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
     body: JSON.stringify({ assignments }),
   });
-  if (!response.ok) {
-    const text = await response.text().catch(() => '');
-    throw new ApiError(`Save final assignments failed (${response.status})${text ? ': ' + text : ''}`, response.status);
-  }
-  const data = await response.json();
-  return data.saved ?? assignments.length;
+  return assignments.length;
 }
 
 /**
@@ -258,7 +255,9 @@ export async function submitFeedback(payload: SubmitFeedbackPayload): Promise<vo
 
 /**
  * Convert frontend votes to the format expected by the ?route=vote endpoint.
- * Only includes votes that have a tier set (backend requires tier 1–8).
+ * Ranked pitches send tier 1–4. Pitches explicitly moved back to unsorted send
+ * tier=0 so the backend can record that the voter submitted but left it unranked.
+ * Pitches the voter never touched (tier=undefined) are excluded entirely.
  */
 export function convertVotesToApiFormat(votes: Record<string, Vote>): Array<{
   pitch_id: string;
@@ -266,10 +265,10 @@ export function convertVotesToApiFormat(votes: Record<string, Vote>): Array<{
   interestLevel?: number | null;
 }> {
   return Object.entries(votes)
-    .filter(([_, vote]) => vote.tier != null)
+    .filter(([_, vote]) => vote.tier !== undefined)
     .map(([pitchId, vote]) => ({
       pitch_id: pitchId,
-      tier: vote.tier as number,
+      tier: vote.tier ?? 0,  // null (explicitly unsorted) → 0
       ...(vote.interestLevel != null ? { interestLevel: vote.interestLevel } : {}),
     }));
 }
