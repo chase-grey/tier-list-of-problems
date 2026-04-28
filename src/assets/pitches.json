@@ -4,60 +4,64 @@
     "title": "ST/ SmartPhrase/ Show user tags in the smarttool butler",
     "details": {
       "problem": "A physician has built out a bunch of tags to organize her SmartPhrases in the Manager but can't find them to use in the note so she has to switch back to the SmartPhrase Manager to be able to benefit from her new organization system with tags",
-      "ideaForSolution": "Users will be able to open the SmartTool butler and filter by tags or add tags to SmartPhrases and SmartLinks. This will make it easier for end users to use their tags in their workflow and add tags to SmartLinks, which are also often hard to find and organize (Optional) Characteristics of a good solution Tags will be usable in an end users actual workflow, they're easy to see and add new ones, and makes it easier to find their SmartTools",
+      "ideaForSolution": "Users will be able to open the SmartTool butler and filter by tags or add tags to SmartPhrases and SmartLinks. This will make it easier for end users to use their tags in their workflow and add tags to SmartLinks, which are also often hard to find and organize",
       "whyNow": "We released tags in Nov 25 so we should keep this project moving. The main feedback that we got from usability studies is that they wanted this available in the note so it's something that is already requested and will continue to be a pain point until we fix it",
       "smartToolsFit": "Smarttool build and access should reduce time and mental load for users to use the tools and UX should make SmartTools easy to find, share, and discover and this would help achieve that.",
-      "epicFit": "This is an enhancement that would help users and could help reduce burnout by improving efficiency (Optional) How will we measure success? Users can use their tags while they're writing their note without having to switch workspaces",
+      "epicFit": "This is an enhancement that would help users and could help reduce burnout by improving efficiency",
       "maintenance": "Low, this should just be another column in the butler after it has been released",
       "internCandidate": false,
-      "characteristics": "",
-      "success": ""
-    }
+      "characteristics": "Tags will be usable in an end users actual workflow, they're easy to see and add new ones, and makes it easier to find their SmartTools",
+      "success": "Users can use their tags while they're writing their note without having to switch workspaces"
+    },
+    "category": "Create and Improve Tools and Framework"
   },
   {
     "id": "709400",
     "title": "ST / ALLOW MARKING USER SMARTPHRASES AS PERSONAL/SENSITIVE TO HIDE FROM OTHER EDITORS",
     "details": {
       "problem": "Users might create a SmartPhrase for a signature that doesn't make sense for other people to have access to or as a personal reference that isn't meant for others to use. If other people use their private SmartPhrases, this can make them feel like their privacy has been violated or annoyed that they can't control their personal smartphrases Currently individual SmartPhrases can be copied by other end users. North Memorial has some very specific specialty related smartphrases that while they don2t contain PHI, should not be used by other users. Right now, the ability to copy a smartphrase is controlled by a security point so it takes an all or nothing approach which isn2t really useful for individual smartphrases. Impact & Frequency Speciality specific smartphrases can be copied and used outside of that speciality Suggested Fix An ideal solution would be to have a checkbox within the smartphrase which would restrict it from being copied ****Notes from Duplicate QA note [5449168]**** Ella Stutz 10/20/2019 8:21 PM Filling out this template Users are able to add themselves to other users' SmartPhrases using the \"Add Me\" button or create their own copy using the \"Create a Copy\" button. There's not a way to have a user SmartPhrase be private to just that user. Impact (include clinical, financial, or other real world effect) Users could add themselves to a different user's SmartLink without realizing that it doesn't work for them, e.g. If it has the user's name in it as a signature. Frequency (how often different end users could experience this problem) Unclear Steps to Reproduce (If this QAN is high priority, check prior versions as well before submitting) User ID/Password: Additional Info (optional) Suggested Fix: Add the ability to mark a SmartPhrase as private/unable to be shared. Reproduced in Final Stage or Released versions when note was written?",
-      "ideaForSolution": "Allow end users the choice to hide their SmartPhrases that aren't appropriate for others to use, preventing other users from searching or sharing SmartPhrases without the user's permission. This will make end users feel like they have control over their SmartPhrases (Optional) Characteristics of a good solution Create a button in the user SmartPhrase editor that allows it to only be searchable or viewable by editors so SmartPhrases that aren't meant to be shared don't have to be. There could also be an HDF setting to allow organizations to turn this feature off if they don't think SmartPhrases should ever be private. Private SmartPhrases should able to be changed back to public SmartPhrases at any point and vice versa, and allow it to be shared limitedly if users are added as editors so it can be shared if the owner gives permission",
+      "ideaForSolution": "Allow end users the choice to hide their SmartPhrases that aren't appropriate for others to use, preventing other users from searching or sharing SmartPhrases without the user's permission. This will make end users feel like they have control over their SmartPhrases",
       "whyNow": "It was recently marked as a potential SPRE by a customer because they saw it as such a concern and it is regularly requested in ideas.epic.com",
       "smartToolsFit": "It will improve effectiveness because users already have the signature SmartPhrases but it will increase trust and feelings of security if they know that their personal information can't be taken by others",
-      "epicFit": "This fits ST priorities because it would solve long standing existing pain points (Optional) How will we measure success? SmartPhrases can be made private",
-      "maintenance": "***",
+      "epicFit": "This fits ST priorities because it would solve long standing existing pain points",
+      "maintenance": "",
       "internCandidate": false,
-      "characteristics": "",
-      "success": ""
-    }
+      "characteristics": "Create a button in the user SmartPhrase editor that allows it to only be searchable or viewable by editors so SmartPhrases that aren't meant to be shared don't have to be. There could also be an HDF setting to allow organizations to turn this feature off if they don't think SmartPhrases should ever be private. Private SmartPhrases should able to be changed back to public SmartPhrases at any point and vice versa, and allow it to be shared limitedly if users are added as editors so it can be shared if the owner gives permission",
+      "success": "SmartPhrases can be made private"
+    },
+    "category": "Create and Improve Tools and Framework"
   },
   {
     "id": "2005922",
     "title": "PREVENT PARTS OF A NOTE TEMPLATE FROM BEING DELETED",
     "details": {
       "problem": "Organizational leads and compliance officers often have required SmartLists or documentation that they add for legal reasons. These sections must be filled out but end users can just delete it from any note and not have to do the documentation. My organizations' hospital coding department send documentation queries to providers by creating a note, entering a smarttext of fields that the provider needs to fill, and then sharing the note to the provider.  However, there is no way to prevent the providers from deleting out the SmartText and then signing the note.  This causes frustration for coders, who then have to create a new \"query\" note, and ultimately wastes time for the providers. Impact (include clinical, financial, or other real world effect) Coders may have to send the same questions to a provider multiple times. Providers waste time. Frequency (how often different end users could experience this problem) Consistently happens at select Steps to Reproduce (If this QAN is high priority, check prior versions as well before submitting) User ID/Password: Create a note, enter a smarttext without filling out the wildcards, share the note. Open the note as a provider.  See that you can delete out the full smarttext (or just the wildcards) and then sign the note. Additional Info (optional) Suggested Fix: Create an option to no longer allow providers from removing smarttexts from notes they did not start. Reproduced in Final Stage or Released versions when note was written? cYesc QAN Feedback Source: Customer Reported - Other QAN How Found: Circumstantial Find",
-      "ideaForSolution": "Add a SmartLink that could be used similarly to a sectioning SmartLink but nothing in that section can be deleted in the note. This allows it to be more flexible and only added to certain parts of a template. We could also make the section more like a warn on delete SmartLink so that if any part of it is about to get deleted, there is a warning saying something like 'this is required documentation, are you sure you want to delete this?' to allow more flexibility for end users. Or maybe have both options with different SmartLinks. (Optional) Characteristics of a good solution Allow sections of a SmartText to be required in a note in a way that makes deleting it difficult",
-      "whyNow": "***",
+      "ideaForSolution": "Add a SmartLink that could be used similarly to a sectioning SmartLink but nothing in that section can be deleted in the note. This allows it to be more flexible and only added to certain parts of a template. We could also make the section more like a warn on delete SmartLink so that if any part of it is about to get deleted, there is a warning saying something like 'this is required documentation, are you sure you want to delete this?' to allow more flexibility for end users. Or maybe have both options with different SmartLinks.",
+      "whyNow": "",
       "smartToolsFit": "This would be a part of making it easy for users to do the right thing so that required documentation is actually filled out",
-      "epicFit": "This fits ST priorities because it would solve long standing existing pain points (Optional) How will we measure success? Parts of a template can be restricted from being deleted when added to a STB",
-      "maintenance": "***",
+      "epicFit": "This fits ST priorities because it would solve long standing existing pain points",
+      "maintenance": "",
       "internCandidate": false,
-      "characteristics": "",
-      "success": ""
-    }
+      "characteristics": "Allow sections of a SmartText to be required in a note in a way that makes deleting it difficult",
+      "success": "Parts of a template can be restricted from being deleted when added to a STB"
+    },
+    "category": "Create and Improve Tools and Framework"
   },
   {
     "id": "6246577",
     "title": "ST - SPELL CHECK - USE VOIKKO FOR FINNISH",
     "details": {
       "problem": "I am a doctor in Finland. Spell checking is something I expect all programs to have, but our Epic system doesn't have spell checking. So my notes and letters have silly misspellings, making me look unprofessional.",
-      "ideaForSolution": "Other software that we use has decent Finnish spell checking, so clearly it's possible. Please give us this basic feature. (Optional) Characteristics of a good solution Spell Check will work for Finnish. It will recognize the vast majority of words that our users use on a daily basis. And the suggestions it gives for misspellings will be reasonably good.",
+      "ideaForSolution": "Other software that we use has decent Finnish spell checking, so clearly it's possible. Please give us this basic feature.",
       "whyNow": "We are currently in a legal gray area with Apotti. Our contract says that we need to provide Finnish Spell Check, which we technically do. However, our Finnish Spell Check functionality is bad enough that Apotti has taken every step possible to disable it across their entire organization. So effectively, they don't have Spell Check right now. Before they disabled it, users reported that the suggestions it gave for misspellings were \"useless and disturbing\" (see QAN 4957237). The mediocrity of our Finnish Spell Check functionality is mostly due to the fact that Finnish is an outlier among agglutinative languages. We can't solve the problem by just finding or building a better word list. SSCE, which is the only spell check engine we currently use, simply can't handle the structure of Finnish. Hunspell would almost certainly be better than SSCE for Finnish, but the consensus on the internet is that Voikko is THE spell checker to use for Finnish. Hunspell is considered the best spell checker for most languages or at least the best open-source spell checker. But the README for hunspell-fi doesn't inspire confidence in using it for Finnish. One speed bump to using Voikko at Epic will be the way it is licensed. The engine itself is licensed under MPL, which means that it can be used in proprietary software. But the ready-made content is licensed under GPLv3, which is a copylef license. This means that redistributing the content (i.e., creating an Epic-released lexicon that uses it) would force Epic to make our own software open-source. Obviously, we won't do that... The typical solution to the copyleft content in the software industry is to provide instructions for users to install the content themselves. That way, the content is not redistributed by the vender, and they can avoid open-sourcing their own code. As of August 2025, we now support custom spell check lexicons, so it would be possible for Apotti to create a custom Finnish lexicon that uses the open-source content. However, I have heard that our contracts with customers prohibit them from loading open-source content into their Epic system. So we will have to discuss this with Epic Legal, and we may have to amend our contract with Apotti. An alternative for the content would be for us to somehow build our own content to feed into Voikko. I don't have a good sense of what that would take, though.",
       "smartToolsFit": "Software must work (and users should agree that it does)",
-      "epicFit": "Software must work (Optional) How will we measure success? Apotti will re-enable Spell Check and keep it enabled",
-      "maintenance": "***",
+      "epicFit": "Software must work",
+      "maintenance": "",
       "internCandidate": false,
-      "characteristics": "",
-      "success": ""
-    }
+      "characteristics": "Spell Check will work for Finnish. It will recognize the vast majority of words that our users use on a daily basis. And the suggestions it gives for misspellings will be reasonably good.",
+      "success": "Apotti will re-enable Spell Check and keep it enabled"
+    },
+    "category": "Create and Improve Tools and Framework"
   },
   {
     "id": "8311680",
@@ -72,22 +76,24 @@
       "internCandidate": false,
       "characteristics": "",
       "success": ""
-    }
+    },
+    "category": "Support AI Charting"
   },
   {
     "id": "3752427",
     "title": "SMARTTOOLS / SPELL CHECK / EXCLUDE PATIENT FIRST AND LAST NAME IN SPELL CHECK",
     "details": {
       "problem": "In an XGM Focus Group Idea Post, a user requested that the first and last name of the patient be excluded from spell check (even if the names are not in the dictionary). TEXT OF THE POST: Spell check will stop on patient name if not in dictionary. Suggested Solution When spell-checking notes, ignore words that exactly match the patient's first or last name, unless the name is unknown and automatically assigned (e.g., Xxxphiladelphia for an unconscious patient arriving in the stabilization room). If this QAN is high priority, check prior versions before submitting QAN Feedback Source: UGM Focus Group Suggestion Derek Strehlow As a physician, I get frustrated when my patient's name is flagged as misspelled by the spell checker. This adds extra clicks for me to ensure I'm creating professional documentation.",
-      "ideaForSolution": "Have the spell checker not flag the patient's name. (Optional) Characteristics of a good solution Minimally the patient's name is not marked as misspelled. Stretch goal could be having the patient name be able to be suggested by the spell checker for minor typos to the name.",
+      "ideaForSolution": "Have the spell checker not flag the patient's name.",
       "whyNow": "This may be worth prioritizing now that Ambient technology is becoming more commonplace. Before, when patient's names were largely pulled into notes with SmartLinks (which are exempt from spell checking) this wasn't as big of an issue. Text generated by Nuance, Abridge, etc. and eventually our own Ambient product will commonly include the patient's name and it seems we're not excluding ambient-generated content from spell check.",
       "smartToolsFit": "Create tools to improve efficiency of documentation.",
-      "epicFit": "Innovate with system intelligence to reduce clinician burnout and improve user efficiency Software must work, maintain high quality (Optional) How will we measure success? ***",
+      "epicFit": "Innovate with system intelligence to reduce clinician burnout and improve user efficiency Software must work, maintain high quality",
       "maintenance": "None",
       "internCandidate": false,
-      "characteristics": "",
+      "characteristics": "Minimally the patient's name is not marked as misspelled. Stretch goal could be having the patient name be able to be suggested by the spell checker for minor typos to the name.",
       "success": ""
-    }
+    },
+    "category": "Create and Improve Tools and Framework"
   },
   {
     "id": "8242499",
@@ -102,82 +108,88 @@
       "internCandidate": false,
       "characteristics": "",
       "success": ""
-    }
+    },
+    "category": "Mobile Feature Parity"
   },
   {
     "id": "7931146",
     "title": "ST / SmartTextBox / Allow setting the \\rtlch and \\ltrch RTF keywords",
     "details": {
       "problem": "As a builder, I struggle to create SmartTexts (E-Sig templates, letter templates, patient instructions) in Arabic and other right-to-left languages since the way punctuation is handled isn't consistent with Word (the way we get documents from our translators). When mixing Arabic with English text, for example, a largely Arabic template with addresses, phone numbers, etc mixed in the order of parenthesis, dashes, and English text appear in the wrong location and order. Right now the SmartTextBox allows you to set a paragraph level right-to-left (tlpar) and left-to-right (trpar) flags, but doesn't expose the ability to set the character level properties (trch and tlch). The use case for the character level properties would be department names, medication names, etc, that are in English, in the middle of a paragraph that is otherwise in Arabic. This is fairly common for letter build. Right now, customers would need to copy/paste from Word to set these properties. Impact (Explain WHY this is a problem. Include clinical, financial, or other real world effect) Extra steps for building letters for hardcoded text. Harder to correct problematic build like we have in QAN 7669024 where the SmartLink mnemonic is correctly set to LTR, but that setting is lost because the trch flag is within the mnemonic. Extra chance of causing issues with the copy/paste. Frequency (Explain WHO is impacted WHEN and HOW OFTEN) Fairly frequent for Tapestry analysts doing letter build. I think I've heard issues like this from 2-3 customers in the last couple months. Affected Hosts (Indicate which hosts this issue is present in; use .AFFECTEDHOSTS dot phrase for updates; see this wiki to determine if hyperdrive could be affecting customers in a given version.) NA - Not a Hyperspace client related issue Steps to Reproduce (If this QAN is high priority, check prior versions as well before submitting) User ID/Password:  1/epic Build a SmartText that is primarily Arabic, but has SmartLinks and English text mixed throughout. Additional Info (optional) Suggested Fix: What would likely be ideal would be: Moving the existing paragraph level configuration for RTL to the Paragraph Properties popup Change the toolbar button to now set the character level style Maybe make this always on and now dependent on HDF item 20379? I'm not as sold on this and we could move that to another QAN if one doesn't already exist.",
-      "ideaForSolution": "Minimally, let me set the \"right-to-left character\" and \"left-to-right character\" settings within RTF so I can explicitly set the direction for text. (Optional) Characteristics of a good solution A good solution might be: Adding a button to the SmartTextBox toolbar to allow toggling between LTR and RTL text flow at the character level. Currently, we have a setting related to this, but it is just for the paragraph level.",
+      "ideaForSolution": "Minimally, let me set the \"right-to-left character\" and \"left-to-right character\" settings within RTF so I can explicitly set the direction for text.",
       "whyNow": "SmartText build using Arabic is increasingly common. Arabic is the second most translated language for AVSs (behind Spanish) and we're seeing more of this content be built in Epic compared to created on demand by a translator.",
       "smartToolsFit": "SmartTools (tools) we develop should be easy to build and expand on.",
-      "epicFit": "Software must work, maintain high quality (Optional) How will we measure success? Analyst happiness.",
+      "epicFit": "Software must work, maintain high quality",
       "maintenance": "Lowered maintenance costs (analyst time) if these can just work out of the box.",
       "internCandidate": false,
-      "characteristics": "",
-      "success": ""
-    }
+      "characteristics": "A good solution might be: Adding a button to the SmartTextBox toolbar to allow toggling between LTR and RTL text flow at the character level. Currently, we have a setting related to this, but it is just for the paragraph level.",
+      "success": "Analyst happiness."
+    },
+    "category": "Create and Improve Tools and Framework"
   },
   {
     "id": "7983256",
     "title": "st / pitch / hsweb / smarttextbox - RTL update and TS migration",
     "details": {
       "problem": "As a developer, I want the TextLine.js component of the SmartTextBox codebase to be converted from raw JavaScript to TypeScript, so that it aligns with the rest of the codebase. This will ensure type safety, improve code readability, and facilitate easier maintenance and implementation of RTL-related updates, ultimately enhancing the functionality and usability of the templates for end users.",
-      "ideaForSolution": "As a developer, I want to convert the existing TextLine logic into one or more TypeScript files before implementing numerous functional changes, so that I can ensure type safety and avoid unnecessary complications that arise from the lack of type safety in other parts of the codebase. (Optional) Characteristics of a good solution Having all of the RTL-related logic included in TypeScript instead of JavaScript should be sufficient to solve this completely.",
+      "ideaForSolution": "As a developer, I want to convert the existing TextLine logic into one or more TypeScript files before implementing numerous functional changes, so that I can ensure type safety and avoid unnecessary complications that arise from the lack of type safety in other parts of the codebase.",
       "whyNow": "We are actively pursuing new RTL changes in the near future (touched on in QAN 7938948), and this type of restructuring is better to be done before any large functional changes. With new customers and new workflows looking to leverage RTL content as of late, now seems like an opportune moment for bringing this code in line with the rest of the code base.",
       "smartToolsFit": "It will help improve efficiency and code stability by providing more structure around one of our most-sensitive areas.",
-      "epicFit": "This aligns with Epic's priorities to innovate with system intelligence to improve user/developer efficiency. This aligns with SmartTools' team priorities to help maintain our high quality product by enforcing type safety like we do elsewhere in our codebase. (Optional) How will we measure success? Having all of the RTL-related logic included in TypeScript instead of JavaScript should be sufficient to solve this completely.",
+      "epicFit": "This aligns with Epic's priorities to innovate with system intelligence to improve user/developer efficiency. This aligns with SmartTools' team priorities to help maintain our high quality product by enforcing type safety like we do elsewhere in our codebase.",
       "maintenance": "Theoretically this should help with lowering long-term maintenance costs as we will get more for free with the TypeScript platform.",
       "internCandidate": false,
-      "characteristics": "",
-      "success": ""
-    }
+      "characteristics": "Having all of the RTL-related logic included in TypeScript instead of JavaScript should be sufficient to solve this completely.",
+      "success": "Having all of the RTL-related logic included in TypeScript instead of JavaScript should be sufficient to solve this completely."
+    },
+    "category": "Address Technical Debt"
   },
   {
     "id": "7974873",
     "title": "st / pitch / hsweb / smarttextbox - manual jagged table cell creation",
     "details": {
       "problem": "Jagged tables are often a crucial piece of the puzzle for users to solve a problem at hand. Sometimes it is to meet governmental requirements while other times it is simply finding the best way to fit the necessary content into the limited space available to them. While we support displaying and maintaining jagged tables which already exist, we have limited options available for actively creating one from scratch. If you know the precise (HTML-style) layout of the table ahead of time, you can prepare the columns and strategically merge specific cells to get to the desired result. However, if you want to adjust it after-the-fact, your options become more limited. Similarly, resizing existing cells operates on full columns, which may not be obvious to all users. This means that mouse-based resizing may not always yield the expected results.",
-      "ideaForSolution": "Users will often rely on third party tools to provide or create the jagged tables they use. One major resource here is MS Word, which provides a number of additional user interface options over what is available within Epic. We can look to these types of tools for inspiration on what users have grown to expect. One feature which should be relatively easy to implement is to allow users to use selection ranges to \"filter\" their mouse-based resizing. Given a table like this: 12345678910111213141516171819202122232425 a user could select cells 12, 13, 17, and 18 before attempting to drag the border highlighted in red. This could then adjust the selected border region only, causing the standard table to become jagged. Additionally, you could end up in a state like this: and from that point on (unless using the selection-based approach from earlier), those two borders will be considered \"connected\". We already allow \"similar\" borders to be moved together, but we don't have a great way to \"link\" them if they started out different. Word's general approach is to use some periodic \"stop points\" while dragging borders around so that it's easier for the borders to align perfectly (instead of being off by a portion of a pixel). There are other options here as well, beyond simple border adjustments. Other editors also allow splitting, merging, and deleting cells. We eventually added support for merging cells which have a clean rectangular perimeter. However, once that has been done it is sort of \"stuck\" that way (other than an immediate undo action). It would be nice if we could easily \"unmerge\" that cell back into its natural component cells, as well as split a non-merged cell to allow for more granularity in an existing row. To round out the functionality suite, it may also be beneficial to support deleting individual cells (instead of needing to remove entire rows or columns together). (Optional) Characteristics of a good solution We should be able to re-create any jagged table we find in our test documents from scratch within a web STB. If we can choose a random existing document and recreate it reliably (and without an unnecessary amount of effort compared to other editors), we will be in a good spot.",
+      "ideaForSolution": "Users will often rely on third party tools to provide or create the jagged tables they use. One major resource here is MS Word, which provides a number of additional user interface options over what is available within Epic. We can look to these types of tools for inspiration on what users have grown to expect. One feature which should be relatively easy to implement is to allow users to use selection ranges to \"filter\" their mouse-based resizing. Given a table like this: 12345678910111213141516171819202122232425 a user could select cells 12, 13, 17, and 18 before attempting to drag the border highlighted in red. This could then adjust the selected border region only, causing the standard table to become jagged. Additionally, you could end up in a state like this: and from that point on (unless using the selection-based approach from earlier), those two borders will be considered \"connected\". We already allow \"similar\" borders to be moved together, but we don't have a great way to \"link\" them if they started out different. Word's general approach is to use some periodic \"stop points\" while dragging borders around so that it's easier for the borders to align perfectly (instead of being off by a portion of a pixel). There are other options here as well, beyond simple border adjustments. Other editors also allow splitting, merging, and deleting cells. We eventually added support for merging cells which have a clean rectangular perimeter. However, once that has been done it is sort of \"stuck\" that way (other than an immediate undo action). It would be nice if we could easily \"unmerge\" that cell back into its natural component cells, as well as split a non-merged cell to allow for more granularity in an existing row. To round out the functionality suite, it may also be beneficial to support deleting individual cells (instead of needing to remove entire rows or columns together).",
       "whyNow": "We have received many concerns over users struggling to recreate 3rd party documents for things such as insurance or governmental forms, where matching styling is very important. Similarly, label-based workflows have encountered struggles when attempting to best-utilize the limited space available on their size of labels.",
       "smartToolsFit": "This fits our mission on several levels. First, it helps create a consistency between our editor and MS Word (as well as other similar tools). It will help improve efficiency by avoiding the need for users to migrate their content between Epic and a 3rd party application to make (seemingly) minor edits. By improving this functionality, we make it easy for users to expand on existing SmartTools, as many templates (ETX, HH1) involve tables and many of those tables are jagged in some way. Lastly, this helps make users' SmartTools easier to build and hopefully more of a joy to use because of that.",
-      "epicFit": "This aligns with Epic's priorities to innovate with system intelligence to reduce clinician burnout and improve user efficiency. This aligns with SmartTools' team priorities to solve existing pain points. (Optional) How will we measure success? We should be able to re-create any jagged table we find in our test documents from scratch within a web STB. If we can choose a random existing document and recreate it reliably (and without an unnecessary amount of effort compared to other editors), we will be in a good spot.",
+      "epicFit": "This aligns with Epic's priorities to innovate with system intelligence to reduce clinician burnout and improve user efficiency. This aligns with SmartTools' team priorities to solve existing pain points.",
       "maintenance": "This will add some new options for testing moving forward. Realistically, these types of workflows should probably be tested now - we will just be changing the expected behaviors to be more helpful ones.",
       "internCandidate": false,
-      "characteristics": "",
-      "success": ""
-    }
+      "characteristics": "We should be able to re-create any jagged table we find in our test documents from scratch within a web STB. If we can choose a random existing document and recreate it reliably (and without an unnecessary amount of effort compared to other editors), we will be in a good spot.",
+      "success": "We should be able to re-create any jagged table we find in our test documents from scratch within a web STB. If we can choose a random existing document and recreate it reliably (and without an unnecessary amount of effort compared to other editors), we will be in a good spot."
+    },
+    "category": "Create and Improve Tools and Framework"
   },
   {
     "id": "7974971",
     "title": "st / pitch / hsweb / smarttextbox - stylesheets",
     "details": {
       "problem": "Content referenced by users throughout the day are easier to interpret at scale when they are managed consistently. This is part of why we have set standards in our own internal usability guides. If our users want to maintain formatting consistency, they often need to take manual steps to ensure that one document's styling matches another, individually specifying each piece of formatting. We have the format painter tool to help with this concept, but that is limited to a single instance of an individual editor. There is not a current way to bring styling into line at scale (easily).",
-      "ideaForSolution": "We should provide support for formatting stylesheets in SmartTextBox controls which are RichText-enabled. These will represent groupings of stylings which can easily be applied to a selected region with a single click (potentially). Similarly, we could apply table-level stylesheets to help users create better-looking table structures without excessive manual intervention. (Optional) Characteristics of a good solution A good solution would likely \"feel\" similar to MS Word, which provides a good barometer for success.",
+      "ideaForSolution": "We should provide support for formatting stylesheets in SmartTextBox controls which are RichText-enabled. These will represent groupings of stylings which can easily be applied to a selected region with a single click (potentially). Similarly, we could apply table-level stylesheets to help users create better-looking table structures without excessive manual intervention.",
       "whyNow": "As we continue to roll out more AI features our customers will be much more likely to have large quantities of content inserted into their notes/documents where the formatting is not immediately defined by them. Therefore, they are more likely to want to reformat the content after the fact. Pre-defined stylesheets can help users to accomplish this task more quickly, and therefore makes it more likely for them to actually do it.",
       "smartToolsFit": "This fits our mission on several levels. First, it helps create a consistency between our editor and MS Word (as well as other similar tools). It will help improve efficiency by joining multiple tasks into a single action. By adding this functionality, we make it easier for users to build and expand on existing SmartTools, simplifying the steps involved and making it easier to do the \"right thing\". Lastly, this helps make users' SmartTools more of a joy to use because they can easily take bland content and make it more user-friendly.",
-      "epicFit": "This aligns with Epic's priorities to innovate with system intelligence to reduce clinician burnout and improve user efficiency. This aligns with SmartTools' team priorities to solve existing pain points and improve AI-related workflows. (Optional) How will we measure success? A good solution would likely \"feel\" similar to MS Word, which provides a good barometer for success.",
+      "epicFit": "This aligns with Epic's priorities to innovate with system intelligence to reduce clinician burnout and improve user efficiency. This aligns with SmartTools' team priorities to solve existing pain points and improve AI-related workflows.",
       "maintenance": "This will likely require a bit more testing overall. However, since this is mostly just grouping together existing pieces of functionality, it will likely not be more of a cost than it reaps in benefits.",
       "internCandidate": false,
-      "characteristics": "",
-      "success": ""
-    }
+      "characteristics": "A good solution would likely \"feel\" similar to MS Word, which provides a good barometer for success.",
+      "success": "A good solution would likely \"feel\" similar to MS Word, which provides a good barometer for success."
+    },
+    "category": "Create and Improve Tools and Framework"
   },
   {
     "id": "7975409",
     "title": "st / pitch / hsweb / smarttextbox - improved shape support",
     "details": {
       "problem": "Shapes (notably positioned shapes) are sometimes a crucial piece of the puzzle for users to solve a problem at hand. Sometimes it is to meet governmental requirements while other times it is simply finding the best way to fit the necessary content into the limited space available to them. While we support displaying and maintaining some types of shapes which already exist, we have limited options available for actively creating them from scratch, or even simply moving them around within the document. This means that users need to copy and paste from external sources and hope that things copy over correctly, as they are largely unable to modify them after-the-fact.",
-      "ideaForSolution": "A user may need to take a document from a third party (such as an insurance provider) and implement it as a SmartText record to be able to integrate it into other Epic workflows such as letters or other communication methods. This can be via direct document insertion, copy/paste, etc. Once it is inside of the SmartTextBox, they typically have two paths forward: Everything looks great, continue Something is wrong, use a 3rd party tool to attempt to adjust the source content and try again For cases where we hit path #1, that's great, we have nothing more to do for the user. For cases where we hit path #2, there are many things which we could implement to help them massage the data into the form they desire. First, we can allow the user to click-and-drag to move the shape around on-screen. This will allow them to make subtle adjustments to handle things such as discrepancies in page layout, font differences, etc. Additionally, we could provide a popup (similar to MS Word) to define the positioning discretely for users who do not want to rely on their mouse dexterity. Second, we could support \"more advanced\" wrapping styles. This will be quite difficult from a technical perspective, but would open up many more options for users in terms of what they can more-easily implement when needed. This currently needs to be worked-around via tables to do the positioning. This is sometimes acceptable in a one-off situation, but for users who need to do this dozens or hundreds of times over a short period of time (which for some customers can be quite common) this becomes very tedious. For advanced shapes which themselves contain more content, we can provide mechanisms for editing that inner-content. This could be key for consistency in terms of matching fonts, colors, etc. Lastly, we could introduce the ability to create a new shape from scratch, rather than requiring a 3rd party product such as MS Word in order to create a custom document which starts as an \"idea\" instead of coming from a template of a 3rd party. (Optional) Characteristics of a good solution A more likely situation is that we would be able to properly handle any document which our users receive from their vendors, or at least be able to take it in and bend it to our will in terms of layout.",
+      "ideaForSolution": "A user may need to take a document from a third party (such as an insurance provider) and implement it as a SmartText record to be able to integrate it into other Epic workflows such as letters or other communication methods. This can be via direct document insertion, copy/paste, etc. Once it is inside of the SmartTextBox, they typically have two paths forward: Everything looks great, continue Something is wrong, use a 3rd party tool to attempt to adjust the source content and try again For cases where we hit path #1, that's great, we have nothing more to do for the user. For cases where we hit path #2, there are many things which we could implement to help them massage the data into the form they desire. First, we can allow the user to click-and-drag to move the shape around on-screen. This will allow them to make subtle adjustments to handle things such as discrepancies in page layout, font differences, etc. Additionally, we could provide a popup (similar to MS Word) to define the positioning discretely for users who do not want to rely on their mouse dexterity. Second, we could support \"more advanced\" wrapping styles. This will be quite difficult from a technical perspective, but would open up many more options for users in terms of what they can more-easily implement when needed. This currently needs to be worked-around via tables to do the positioning. This is sometimes acceptable in a one-off situation, but for users who need to do this dozens or hundreds of times over a short period of time (which for some customers can be quite common) this becomes very tedious. For advanced shapes which themselves contain more content, we can provide mechanisms for editing that inner-content. This could be key for consistency in terms of matching fonts, colors, etc. Lastly, we could introduce the ability to create a new shape from scratch, rather than requiring a 3rd party product such as MS Word in order to create a custom document which starts as an \"idea\" instead of coming from a template of a 3rd party.",
       "whyNow": "With the migration of the SmartText editor to web, we are regularly running into situations where users attempt to perform workflows which were previously possible (albeit a bit buggy in some situations) with the SubSystems-backed control.",
       "smartToolsFit": "This fits our mission on several levels. First, it helps create a consistency between our editor and MS Word (as well as other similar tools). It will help improve efficiency by allowing edits to happen directly within the SmartTextBox instead of requiring sending back and forth between the STB and a 3rd party application. By adding this functionality, we make it easier for users to build and expand on existing SmartTools, simplifying the steps involved and making it easier to do the \"right thing\". Lastly, this helps make users' SmartTools more of a joy to use because they can create more user-friendly, modern content.",
-      "epicFit": "This aligns with Epic's priorities to innovate with system intelligence to reduce clinician burnout and improve user efficiency. This aligns with SmartTools' team priorities to solve existing pain points. (Optional) How will we measure success? Success can be measured in levels; we may need to iterate on this across multiple versions to reach the ideal end result. Being able to support documents which customers are encountering will be a great start. Even if we cannot handle all of them, we could set a threshold to cover the majority of documents for our first pass and then make incremental improvements over time.",
+      "epicFit": "This aligns with Epic's priorities to innovate with system intelligence to reduce clinician burnout and improve user efficiency. This aligns with SmartTools' team priorities to solve existing pain points.",
       "maintenance": "This will likely require a lot of additional testing/maintenance, as the majority of the features needed here are net-new concepts for the SmartTextBox control - that is why they haven't been implemented yet.",
       "internCandidate": false,
-      "characteristics": "",
-      "success": ""
-    }
+      "characteristics": "A more likely situation is that we would be able to properly handle any document which our users receive from their vendors, or at least be able to take it in and bend it to our will in terms of layout.",
+      "success": "Success can be measured in levels; we may need to iterate on this across multiple versions to reach the ideal end result. Being able to support documents which customers are encountering will be a great start. Even if we cannot handle all of them, we could set a threshold to cover the majority of documents for our first pass and then make incremental improvements over time."
+    },
+    "category": "Create and Improve Tools and Framework"
   },
   {
     "id": "8314213",
@@ -192,52 +204,56 @@
       "internCandidate": false,
       "characteristics": "",
       "success": ""
-    }
+    },
+    "category": "Create and Improve Tools and Framework"
   },
   {
     "id": "8212129",
     "title": "ST / Editors / Make it easier to define headings",
     "details": {
       "problem": "In order to define headings, users must right-click on a paragraph, open Paragraph Properties, and select an outline level aside from Body Text. Given consecutive paragraphs should never very rarely have the same heading level and we don't support non-continuous selections, this requires opening the dialog separately for each such paragraph. Beyond this, it is impossible to tell which paragraphs have a heading level applied without opening this dialog (or leveraging the new navigation menu), as heading levels on their own don't impact the visible format of the text. Related to this, short of using format painter, there is no way to easily standardize the format of each heading level across a document or template. This results in inconsistent (if not sloppy) styling and confuses users trying to make sense of the document's structure. The result of all this is that most templates (e.g. SmartTexts, SmartPhrases) forgo setting proper heading levels, not only failing to meet accessibility standards but also sacrificing navigation usability improvements from the navigation menu project when those templates are put to use in workflow.",
-      "ideaForSolution": "Users should be able to visualize and configure headings via a sidebar card in the SmartText and SmartPhrase editors. This would include listing the heading levels present in the document (H1, H2, ...H6), defining shared formatting for those headings, and applying both heading level and shared formatting to paragraphs with minimal clicks and no Paragraph Properties dialog. Better still, users should be able to click a button and have it automatically determine proper headings from styling alone (e.g. bold, italic, font size). This could even be done as a validation check on Save, guiding the user into properly configuring their template before it's put to use. Related to this, to assist with cleaning up existing templates, we should provide a Build Wizard that leverages such logic to analyze all existing templates and help TS or admins identify and configure headings for all SmartTexts and SmartPhrases that need them. (Optional) Characteristics of a good solution Discoverable Easy to use Intuitive",
+      "ideaForSolution": "Users should be able to visualize and configure headings via a sidebar card in the SmartText and SmartPhrase editors. This would include listing the heading levels present in the document (H1, H2, ...H6), defining shared formatting for those headings, and applying both heading level and shared formatting to paragraphs with minimal clicks and no Paragraph Properties dialog. Better still, users should be able to click a button and have it automatically determine proper headings from styling alone (e.g. bold, italic, font size). This could even be done as a validation check on Save, guiding the user into properly configuring their template before it's put to use. Related to this, to assist with cleaning up existing templates, we should provide a Build Wizard that leverages such logic to analyze all existing templates and help TS or admins identify and configure headings for all SmartTexts and SmartPhrases that need them.",
       "whyNow": "The navigation menu project has made it so defining headings provides more value than simply aiding accessibility tools like screen readers.",
       "smartToolsFit": "Makes it easier for customers to build and maintain templates that meet accessibility guidelines while also offering for optimal navigation in workflow.",
-      "epicFit": "Makes our product more accessible and easy to navigate within (Optional) How will we measure success? How many fewer templates are left without proper headings defined.",
+      "epicFit": "Makes our product more accessible and easy to navigate within",
       "maintenance": "Another card to test in our editors and potentially a build wizard to test.",
       "internCandidate": false,
-      "characteristics": "",
-      "success": ""
-    }
+      "characteristics": "Discoverable Easy to use Intuitive",
+      "success": "How many fewer templates are left without proper headings defined."
+    },
+    "category": "Create and Improve Tools and Framework"
   },
   {
     "id": "8212015",
     "title": "ST / Aug '26 Pitch / Help Me Prompt",
     "details": {
       "problem": "As a physician, I do not have time to write complex prompts or learn how I should write prompts for optimal outcomes. Epic should make it easier for me by helping me come up with more detailed prompts that fit my needs when a pre-defined prompt does not already exist for my workflow.",
-      "ideaForSolution": "Create an agent that can: Evaluate the \"quality\" of the custom prompt Provide alternative prompts when prompts are too simple (Optional) Characteristics of a good solution Consistently provides adequate prompt alternatives.",
+      "ideaForSolution": "Create an agent that can: Evaluate the \"quality\" of the custom prompt Provide alternative prompts when prompts are too simple",
       "whyNow": "While we have training materials that cover prompting to some extent, how you prompt is critically important to the outcome of any AI tool. Many physicians do not have the time to get up to speed on \"how\" they should write prompts, so lowering the barrier to a working prompt will help improve the tool.",
       "smartToolsFit": "",
-      "epicFit": "Innovate withystem intelligenceo reduce clinician burnout and improve user efficiency Continue making progress on the AI Text Assistant ast'sne of the starter kit AI features that is quickly beingroadly adoptedcross the Epic community (Optional) How will we measure success? TBD - it somewhat depends how we decide to implement. We could... Measure how often they generate a net-new prompt, or See how often they ask to modify an existing prompt",
+      "epicFit": "Innovate withystem intelligenceo reduce clinician burnout and improve user efficiency Continue making progress on the AI Text Assistant ast'sne of the starter kit AI features that is quickly beingroadly adoptedcross the Epic community",
       "maintenance": "Low maintenance, high testing.",
       "internCandidate": false,
-      "characteristics": "",
-      "success": ""
-    }
+      "characteristics": "Consistently provides adequate prompt alternatives.",
+      "success": "TBD - it somewhat depends how we decide to implement. We could... Measure how often they generate a net-new prompt, or See how often they ask to modify an existing prompt"
+    },
+    "category": "Support AI Charting"
   },
   {
     "id": "8205501",
     "title": "ST / Citation / Make AI citation UI follow the UX guide",
     "details": {
       "problem": "As a physician, I use several AI features where they would show generated content with AI citations. I noticed that the citation hover bubble UI from different feature are not consistent. Especially the location of the hyperlink from the citations are different which is annoying me. Recently, we start to use some AI SmartLinks in note that pulls in AI citations, the UI is looking different from patient insights. What the current UX guide has for citation hover bubble What we have with STB generated AI citations We are a bit far from the UX guide.",
-      "ideaForSolution": "I expect Epic can provide consistent UI so that the user doesn't have to keep switching between different ways to use the similar feature. (Optional) Characteristics of a good solution Meet the released UX guide",
+      "ideaForSolution": "I expect Epic can provide consistent UI so that the user doesn't have to keep switching between different ways to use the similar feature.",
       "whyNow": "The longer we wait, the longer and more people would be on the old UI that we eventually would change and it would be harder for a big UI overhaul.",
       "smartToolsFit": "",
-      "epicFit": "Innovate withnfrastructure forystem intelligence, such as buildingew agent components and UI for app teams to leverage (Optional) How will we measure success? This is Epic standard to have consistent UI, especially when all apps are following the same guide",
+      "epicFit": "Innovate withnfrastructure forystem intelligence, such as buildingew agent components and UI for app teams to leverage",
       "maintenance": "Low",
       "internCandidate": false,
-      "characteristics": "",
-      "success": ""
-    }
+      "characteristics": "Meet the released UX guide",
+      "success": "This is Epic standard to have consistent UI, especially when all apps are following the same guide"
+    },
+    "category": "Support AI Charting"
   },
   {
     "id": "8315742",
@@ -252,7 +268,8 @@
       "internCandidate": false,
       "characteristics": "",
       "success": ""
-    }
+    },
+    "category": "Support AI Charting"
   },
   {
     "id": "8315752",
@@ -267,7 +284,8 @@
       "internCandidate": false,
       "characteristics": "",
       "success": ""
-    }
+    },
+    "category": "Address Technical Debt"
   },
   {
     "id": "8315827",
@@ -282,67 +300,72 @@
       "internCandidate": false,
       "characteristics": "",
       "success": ""
-    }
+    },
+    "category": "Support AI Charting"
   },
   {
     "id": "3401552",
     "title": "ST / SmartLists / Allow Unicode SmartList selections (limited RTF or Unicode plaintext)",
     "details": {
       "problem": "As a builder, creating SmartLists with Arabic, Chinese, or other languages that need Unicode support is time consuming to do because you need to create many extra SmartText records for that text. This also means that features like refreshable SmartLists and SDEs don't work or aren't reliable because picking an option with a nested SmartTool forces the SmartList to become non-reselectable.",
-      "ideaForSolution": "If I was allowed to add Arabic, Chinese, etc directly in the SmartList then I could more quickly build out SmartLists that include these languages. (Optional) Characteristics of a good solution Allow for Unicode text entry whether that is supporting RTF (in a fairly locked down sense -- tables likely shouldn't be an option, but text styling (color, bolding) have been requested in the past) or just Unicode plaintext. Stretch goal could be allowing for \"display text\" (QAN 4282536) to make picking options from the SmartList easier for people that aren't able to read the language.",
+      "ideaForSolution": "If I was allowed to add Arabic, Chinese, etc directly in the SmartList then I could more quickly build out SmartLists that include these languages.",
       "whyNow": "Frequently requested and our software has an increasing focus on supporting languages outside of the standard Latin characters you get with Windows-1252 encodings.",
       "smartToolsFit": "Make good SmartTools (tools) build intuitive. Tools we develop should be easy to build.",
-      "epicFit": "Solving existing pain points, such as ideas frequently reported during immersion, submitted through ideas.epic.com, or from other forms of feedback (Optional) How will we measure success? ***",
+      "epicFit": "Solving existing pain points, such as ideas frequently reported during immersion, submitted through ideas.epic.com, or from other forms of feedback",
       "maintenance": "Low once stable if we limit the things you can embed in a SmartList.",
       "internCandidate": false,
-      "characteristics": "",
+      "characteristics": "Allow for Unicode text entry whether that is supporting RTF (in a fairly locked down sense -- tables likely shouldn't be an option, but text styling (color, bolding) have been requested in the past) or just Unicode plaintext. Stretch goal could be allowing for \"display text\" (QAN 4282536) to make picking options from the SmartList easier for people that aren't able to read the language.",
       "success": ""
-    }
+    },
+    "category": "Create and Improve Tools and Framework"
   },
   {
     "id": "2064134",
     "title": "ST / Allow nested SmartTools in reselectable SmartLists",
     "details": {
       "problem": "SmartTools are very powerful to me as a physician to document on the patient. SmartLists in particular are a great tool for pieces of text that I use frequently. One big drawback is that SmartLists are forced to become editable text if I pick an option that contains an embedded SmartTool. This means I don't have a good way to have SmartList options that include the patient name in them and what I pick is either generic text or uses a wildcard where I can manually enter the patient's name. This interferes with my desired workflow as I copy notes forward and make updates to the text within them. The Simple design SmartText, which is used pretty widely across teams for designs, has a lot of SmartLists that, among other things, can set extended properties on the XDS to discretely document attributes of the design. However, designs often change over multiple iterations, and several of these SmartLists are not re-editable. This makes it very challenging to properly document these attributes accurately. The only good way to get the SmartList options back is to add a second copy of the SmartText and copy stuff around, which is a headache. Impact (Explain WHY this is a problem. Include clinical, financial, or other real world effect) *** Frequency (how often different end users could experience this problem) *** Steps to Reproduce (If this QAN is high priority, check prior versions as well before submitting) Have you confirmed which hosts (ie. hyperdrive, hybrid, Hyperspace Web) are/are not affected? ces/Unsure/NA:15924c User ID/Password:  *** *** Additional Info (optional) Suggested Fix: Make all the SmartLists included in the included templates re-selectable. This probably applies to other system templates, like PRJs, Readiness, and QANs. cetup/Usability/Other Options:2663c ****Notes from Duplicate QA note [6934921] SMARTTOOLS / SMARTTEXTBOX(HSWEB) / LISTS / CANNOT RESELECT SMARTLINKS FROM A SMARTLIST **** Gracelyn Chen 10/19/2022 8:48 AM Help Filling out this template, Issue Documentation Process For SmartLists where the selections are SmartLinks, should it be allowed to refresh the SmartList to pick different SmartLinks that you want Impact (Explain WHY this is a problem. Include clinical, financial, or other real world effect) Users who incorrectly select a SmartLink option from a SmartLink may be frustrated when thy can't reselect from the SmartList Alternatively users using functionality like copy letter to reuse a letter template may be confused when they can't find the original SmartList they added that pulled in the SmartLink Frequency (How often different end users could experience this problem) Anytime a user has SmartLinks as the selection option in a SmartList Affected Hosts (Indicate which hosts this issue is present in; use .AFFECTEDHOSTS dot phrase for updates; see this wiki to determine if hyperdrive could be affecting customers in a given version.) Classic Hyperspace - Web (SmartText Box) Steps to Reproduce (If this QAN is high priority, check prior versions as well before submitting) User ID/Password:  474700/bear Open HD-St1-c, log in as 474700/bear Open an enc > go to wrap-up activity > communications section Create a new communication > add letter template \"Ac Qa SmartList with Table Smarlink\" From the SmartList in the letter body, select  SmartLink Verify that you can't reselect from the SmartList ---->      ( No reselect from SmartList option) ****Notes from Duplicate QA note [6934921] SMARTTOOLS / SMARTTEXTBOX(HSWEB) / LISTS / CANNOT RESELECT SMARTLINKS FROM A SMARTLIST **** Gracelyn Chen 10/19/2022 8:48 AM Help Filling out this template, Issue Documentation Process For SmartLists where the selections are SmartLinks, should it be allowed to refresh the SmartList to pick different SmartLinks that you want Impact (Explain WHY this is a problem. Include clinical, financial, or other real world effect) Users who incorrectly select a SmartLink option from a SmartLink may be frustrated when thy can't reselect from the SmartList Alternatively users using functionality like copy letter to reuse a letter template may be confused when they can't find the original SmartList they added that pulled in the SmartLink Frequency (How often different end users could experience this problem) Anytime a user has SmartLinks as the selection option in a SmartList Affected Hosts (Indicate which hosts this issue is present in; use .AFFECTEDHOSTS dot phrase for updates; see this wiki to determine if hyperdrive could be affecting customers in a given version.) Classic Hyperspace - Web (SmartText Box) Steps to Reproduce (If this QAN is high priority, check prior versions as well before submitting) User ID/Password:  474700/bear Open HD-St1-c, log in as 474700/bear Open an enc > go to wrap-up activity > communications section Create a new communication > add letter template \"Ac Qa SmartList with Table Smarlink\" From the SmartList in the letter body, select  SmartLink Verify that you can't reselect from the SmartList ---->      ( No reselect from SmartList option) ****Notes from Duplicate QA note [6710747] MR / SMARTLIST THAT RESOLVES TO SMARTTEXT SHOULD BE RESELECTABLE **** Ruston Juneau 2/21/2022 3:24 PM Help Filling out this template, Issue Documentation Process When users add a SmartList to their note that then resolves to a SmartText that is added, the SmartList is not reselectable when the note is Copied Forward. This is causing concern that the note that is copied forward should have a different SmartList selected but does not make it easy for the user to reselect the original SmartList. There should be some mechanism of saying that when a SmartList is added to a note, the original SmartList should be referenced back and reselectable when notes are copied forward. Impact (Explain WHY this is a problem. Include clinical, financial, or other real world effect) Note documentation may be incorrect since a user copied the note forward and did not appropriately remove the old text and it is not easy for the user to reselect from the original list. MDACC is using a SmartPhrase that resolves to a SmartList and from the SmartList, the embedded SmartLists then resolve to a SmartText to ensure the correct statement is added in the note to support the new CMS billing guidelines for CY22. Without an easy way for users to reselect the parent SmartList, providers and removing and changing the text on their own in the note and adding conflicting or incorrect information to support their billing. Creating a SmartPhrase to capture this is one of the two options Epic recommended for helping with this workflow in CY22, but we did not specifically say that the SmartPhrase should include a SmartList that then resolves to a SmartText. I think it's possible other organizations will be using the same method and have SmartLists that resolve to SmartTexts that are not easy to correct. Frequency (How often different end users could experience this problem) Multiple times per hour Affected Hosts (Indicate which hosts this issue is present in, use .AFFECTEDHOSTS dot phrase for updates) NA - Not a Hyperspace client related issue Additional Info (optional) Suggested Fix: Make it possible to indicate that a SmartList is a parent SmartList that should be automatically loaded as a fresh SmartList when a note is copied forward, even if the SmartList has embedded SmartLists and resolves to SmartText. If the SmartList resolves to a SmartText, then the SmartText should automatically be removed when the note is copied forward and the SmartList is ready to be reselected. ****Notes from Duplicate QA note [6934921] SMARTTOOLS / SMARTTEXTBOX(HSWEB) / LISTS / CANNOT RESELECT SMARTLINKS FROM A SMARTLIST **** Gracelyn Chen 10/19/2022 8:48 AM Help Filling out this template, Issue Documentation Process For SmartLists where the selections are SmartLinks, should it be allowed to refresh the SmartList to pick different SmartLinks that you want Impact (Explain WHY this is a problem. Include clinical, financial, or other real world effect) Users who incorrectly select a SmartLink option from a SmartLink may be frustrated when thy can't reselect from the SmartList Alternatively users using functionality like copy letter to reuse a letter template may be confused when they can't find the original SmartList they added that pulled in the SmartLink Frequency (How often different end users could experience this problem) Anytime a user has SmartLinks as the selection option in a SmartList Affected Hosts (Indicate which hosts this issue is present in; use .AFFECTEDHOSTS dot phrase for updates; see this wiki to determine if hyperdrive could be affecting customers in a given version.) Classic Hyperspace - Web (SmartText Box) Steps to Reproduce (If this QAN is high priority, check prior versions as well before submitting) User ID/Password:  474700/bear Open HD-St1-c, log in as 474700/bear Open an enc > go to wrap-up activity > communications section Create a new communication > add letter template \"Ac Qa SmartList with Table Smarlink\" From the SmartList in the letter body, select  SmartLink Verify that you can't reselect from the SmartList ---->      ( No reselect from SmartList option) ****Notes from Duplicate QA note [4631776] ST/SELECTING ETX RECORDS OFF OF REFRESHABLE ELT RECORDS, WE SHOULD MAINTAIN THE REFRESHABILITY OF THE SMARTLIST **** Adrienne Alimasa 4/12/2018 11:52 AM Filling out this template SmartLists that contain SmartTexts are not actually refreshable, even though they are marked as such.  Note that the SmartList doesn't need to directly contain the SmartTexts - if we go down a rabbit hole of SmartLists that ends on a SmartText, this issue applies. Impact & Frequency (include clinical, financial, or other real world effect) Annoying to end users. This specifically impacts the admissions coordinator for the rehab unit at Thomas Jefferson who want to update her notes, but this is really applicable for any sort of note. Suggested Fix 1) Make the Refreshable checkbox un-selectable if SmartTexts are added to the SmartLists 2) Make it refreshable! ****Notes from Duplicate QA note [5325754] REFRESHABLE SMARTLINKS IN RESELECTABLE SMARTLISTS MAKE THE SMARTLISTS UN-RESELECTABLE **** Jon Cohen 7/29/2019 8:37 AM Filling out this template A reSELECTable SmartList becomes un-reSELECTable if one or more of the SmartList selections contains a SmartLink, whether or not that SmartLink is REFRESHable. Impact (include clinical, financial, or other real world effect) Whether the user is writing a note for the first time and needs to amend a SmartList selection or is addending an existing note by reSELECTing the SmartList, not being able to reSELECT the SmartList is a significant usability issue, especially if there's no SmartPhrase to bring up that SmartList again. Frequency (how often different end users could experience this problem) This is very workflow dependent. If users frequently addend notes and want to modify the SmartList selections, they're going to get stuck here every time. Steps to Reproduce (If this QAN is high priority, check prior versions as well before submitting) IPADM/epic - create a reselectable SmartList with two or more options In each of those options, add a refreshable smartLink 3.    Pull your SmartList into a note and make a selection 4.    Try to reselect your SmartList by right-clicking Additional Info (optional) Suggested Fix: Make these SmartLists reselectable in this scenario. Reproduced in Final Stage or Released versions when note was written? cYesc cetup/Usability/Other Options:2663c ****Notes from Duplicate QA note [7851369] EMC2/PRJ RECORD/RESELECTABLE SMARTLISTS AREN'T RESELECTABLE IN DOC NOTES ON PLANNING TAB **** Damon Piscitelli 2/26/2025 10:29 AM Help Filling out this template, Issue Documentation Process I'm trying to add a reselectable SmartList to a SmartText used in the Documentation Notes of a PRJ record in EMC2. I can't get the SmartList to be reselectable. I've used Hubble Chat and seen a few other posts on BG, but nothing has worked. My SmartText is IB PRJ Doc Readiness Review [38124]. My SmartList is IB PRJ Doc Readiness Review Decision [22648] I tried making a new SmartList, but it didn't work either: IB PRJ Process SmartList [24238] I'm wondering if this will be considered a duplicate of QAN 7829278, but I don't consider this an enhancement because reselectable SmartLists are not functioning the way they do elsewhere. Impact (Explain WHY this is a problem. Include clinical, financial, or other real world effect) Limits the usability of this Documentation Notes and prevents me from completing a workflow I need to do. Frequency (Explain WHO is impacted WHEN and HOW OFTEN) I'm guessing this is rare if it hasn't come up before, but I don't think it's limited to my SmartList Affected Hosts (Indicate which hosts this issue is present in; use .AFFECTEDHOSTS dot phrase for updates; see this wiki to determine if hyperdrive could be affecting customers in a given version.) cist of Confirmed Affected Hosts:15992c Steps to Reproduce (If this QAN is high priority, check prior versions as well before submitting) User ID/Password:  *** Try to add the records listed above to the Documentation Notes of a PRJ record Select a value in the SmartList Try to reselect the value Additional Info (optional) Suggested Fix: *** cetup/Usability/Other Options:2663c",
-      "ideaForSolution": "(Optional) Characteristics of a good solution Provide a way for picking SmartList selections with embedded SmartTools and have the SmartList stay reselectable. This might require a new setting in the SmartList itself on whether a given selection should stay reselectable or not when picked. Consider what this means for SmartLists selections with SDEs where we can now keep it reselectable so text stays in sync.",
+      "ideaForSolution": "",
       "whyNow": "Common pain point for EMC2 and end user workflows.",
-      "smartToolsFit": "***",
-      "epicFit": "Solving existing pain points, such as ideas frequently reported during immersion, submitted through ideas.epic.com, or from other forms of feedback (Optional) How will we measure success? ***",
+      "smartToolsFit": "",
+      "epicFit": "Solving existing pain points, such as ideas frequently reported during immersion, submitted through ideas.epic.com, or from other forms of feedback",
       "maintenance": "No real change.",
       "internCandidate": false,
-      "characteristics": "",
+      "characteristics": "Provide a way for picking SmartList selections with embedded SmartTools and have the SmartList stay reselectable. This might require a new setting in the SmartList itself on whether a given selection should stay reselectable or not when picked. Consider what this means for SmartLists selections with SDEs where we can now keep it reselectable so text stays in sync.",
       "success": ""
-    }
+    },
+    "category": "Create and Improve Tools and Framework"
   },
   {
     "id": "8215275",
     "title": "ST / Custom Prompts / Create a Manager activity similar to the SmartPhrase Manager",
     "details": {
       "problem": "As an analyst, one of the areas I own is maintaining the custom prompts my organization has created for use in the SmartTextBox. I currently need to pick the record I want to review and edit from a normal record picker popup instead of being able to use an activity that lets me see all of our prompts that impact specific groups of areas.",
-      "ideaForSolution": "The SmartPhrase Manager is a really helpful activity that we use to maintain SmartPhrases. A similar activity for maintaining Custom Prompts would be great. Plus, both SmartPhrases and Prompts are BOTH HH1 records! This new activity would allow the following to allow me to efficiently do my job: Filtering by the \"level\" (DEP, system wide, etc) the Custom Prompts are available at. Deleting Custom Prompts that are no longer used. Searching within our prompts for some specific piece of text. (Optional) Characteristics of a good solution Listing all prompts the organization has created Filtering by the \"level\" (DEP, system wide, etc) the Custom Prompts are available at. Deleting Custom Prompts that are no longer used. Searching within our prompts for some specific piece of text.",
+      "ideaForSolution": "The SmartPhrase Manager is a really helpful activity that we use to maintain SmartPhrases. A similar activity for maintaining Custom Prompts would be great. Plus, both SmartPhrases and Prompts are BOTH HH1 records! This new activity would allow the following to allow me to efficiently do my job: Filtering by the \"level\" (DEP, system wide, etc) the Custom Prompts are available at. Deleting Custom Prompts that are no longer used. Searching within our prompts for some specific piece of text.",
       "whyNow": "Maintaining custom prompts is expected to be a pain point once PRJ ST / AI Text Assistant / Sharing custom prompts (system level)  [ 334812] gets released in May26.",
       "smartToolsFit": "SmartTools (tools) we develop should be easy to build and expand on.",
-      "epicFit": "AI (Optional) How will we measure success? ***",
+      "epicFit": "AI",
       "maintenance": "This project would make maintenance easier being able to more easily find prompts that need editing, allowing some editing within the new Manager activity, etc.",
       "internCandidate": false,
-      "characteristics": "",
+      "characteristics": "Listing all prompts the organization has created Filtering by the \"level\" (DEP, system wide, etc) the Custom Prompts are available at. Deleting Custom Prompts that are no longer used. Searching within our prompts for some specific piece of text.",
       "success": ""
-    }
+    },
+    "category": "Support AI Charting"
   },
   {
     "id": "7993631",
     "title": "ST / Infrastructure / CREATE MASTERFILE FOR SMARTTOOLS CONTEXTS",
     "details": {
       "problem": "As a builder within the Epic system, SmartTool contexts make my life harder than it needs to be: Epic releases SmartLinks, but they aren't available in the fields I want them to be. They are available in some activities within the patient chart, but not others that it should be. I then need to create copies of the Epic SmartLinks with makes future maintenance harder with more records fall out of sync with other changes Epic has made. I have a hard time figuring out what context to list on a SmartText so it shows up in the activity within the patient chart but not in other places where it doesn't make sense. When building SmartTexts, I don't have the options available to me that I always want to configure and instead need to switch between different SmartText Editor activities to do everything I want. For example, I can use the Letter Template Editor to build a letter template and configure headers/footers. However, I need to switch to the SmartText Editor to be able to configure overrides to use a different letter template when the letter is created for a child instead of an adult. As an Epic developer / TS: Creating a new SmartTool context is time consuming because I need to update many SmartLinks to include that new context so I instead typically just use MR Charting / IP Charting because its quick and easy for clinical focused SmartLinks. I don't know what SmartTool contexts I should all list when creating a new SmartLinks so I just copy something from an existing SmartLink or mark it as being available to all contexts even though it doesn't make sense to be used to billing / patient access workflows.",
-      "ideaForSolution": "Create a new INI for storing SmartTools contexts Have that include a hierarchy so SmartLinks available to \"patient\" (ex: DOB, patient name, etc) are automatically available to anything more specific. Have the SmartText Editor change what cards are available based on the chosen contexts so header/footer configuration options are available when someone is building a letter template no matter how they opened the SmartText Editor. (Optional) Characteristics of a good solution Records for storing settings for each context Easier SmartLink maintenance by allowing new contexts to have appropriate SmartLinks available to it without manually updating SmartLinks (Stretch goal or future wave) SmartText Editor automatically adapts to context level settings (ex: showing header/footer card for \"letter\" contexts)",
+      "ideaForSolution": "Create a new INI for storing SmartTools contexts Have that include a hierarchy so SmartLinks available to \"patient\" (ex: DOB, patient name, etc) are automatically available to anything more specific. Have the SmartText Editor change what cards are available based on the chosen contexts so header/footer configuration options are available when someone is building a letter template no matter how they opened the SmartText Editor.",
       "whyNow": "Saves time / mental load for Epic and customers.",
-      "smartToolsFit": "***",
-      "epicFit": "*** (Optional) How will we measure success? ***",
+      "smartToolsFit": "",
+      "epicFit": "",
       "maintenance": "Maintenance costs / TS time should go down when things are more intuitive from the start.",
       "internCandidate": false,
-      "characteristics": "",
+      "characteristics": "Records for storing settings for each context Easier SmartLink maintenance by allowing new contexts to have appropriate SmartLinks available to it without manually updating SmartLinks (Stretch goal or future wave) SmartText Editor automatically adapts to context level settings (ex: showing header/footer card for \"letter\" contexts)",
       "success": ""
-    }
+    },
+    "category": "Address Technical Debt"
   },
   {
     "id": "8318365",
@@ -357,7 +380,8 @@
       "internCandidate": false,
       "characteristics": "",
       "success": ""
-    }
+    },
+    "category": "Create and Improve Tools and Framework"
   },
   {
     "id": "8319188",
@@ -372,7 +396,8 @@
       "internCandidate": false,
       "characteristics": "",
       "success": ""
-    }
+    },
+    "category": "Support AI Charting"
   },
   {
     "id": "8319403",
@@ -387,7 +412,8 @@
       "internCandidate": false,
       "characteristics": "",
       "success": ""
-    }
+    },
+    "category": "Support AI Charting"
   },
   {
     "id": "8320089",
@@ -402,22 +428,24 @@
       "internCandidate": false,
       "characteristics": "",
       "success": ""
-    }
+    },
+    "category": "Support AI Charting"
   },
   {
     "id": "8212877",
     "title": "ST / SmartTextBox / Consolidate SmartTool search buttons into one",
     "details": {
       "problem": "It's confusing that SmartPhrases and SmartTexts are considered separate things. It can be annoying to have to remember which is which, and then go to the correct button. Additionally, this takes up extra space on the toolbar, leading to clutter.",
-      "ideaForSolution": "Consolidate the butler, SmartText, and SmartList field into one single searchable field Note, this also would help improve discoverability of the butler, which depending on the organization, is not always heavily used. (Optional) Characteristics of a good solution Finding SmartTools should be consistent and easy without having to remember what I'm looking for.",
+      "ideaForSolution": "Consolidate the butler, SmartText, and SmartList field into one single searchable field Note, this also would help improve discoverability of the butler, which depending on the organization, is not always heavily used.",
       "whyNow": "Ties in well with other Simplify Epic initiatives (reducing clutter but consolidating buttons), reduces mental load to remember what kind of SmartTool you are looking for (many users don't even know the difference between a SmartPhrase and SmartText), and makes it easier to discover the butler, which also ties into other butler related enhancements.",
       "smartToolsFit": "Reduce mental load to find SmartTools",
-      "epicFit": "Solving existing pain points observed on immersion and during user interviews (Optional) How will we measure success? The existing feature tracking for usage can be tied in as well as clutter score. Additionally, this is often something mentioned in immersions, so real world feedback can also be useful.",
+      "epicFit": "Solving existing pain points observed on immersion and during user interviews",
       "maintenance": "Minimal",
       "internCandidate": false,
-      "characteristics": "",
-      "success": ""
-    }
+      "characteristics": "Finding SmartTools should be consistent and easy without having to remember what I'm looking for.",
+      "success": "The existing feature tracking for usage can be tied in as well as clutter score. Additionally, this is often something mentioned in immersions, so real world feedback can also be useful."
+    },
+    "category": "Address Technical Debt"
   },
   {
     "id": "8320148",
@@ -432,22 +460,24 @@
       "internCandidate": false,
       "characteristics": "",
       "success": ""
-    }
+    },
+    "category": "Address Technical Debt"
   },
   {
     "id": "7993629",
     "title": "ST / SmartTool Editors / Use AI to swap out placeholders for SmartLinks (Tapestry imports, Personalization Station reconciliation)",
     "details": {
       "problem": "As a SmartTool builder in the Tapestry space, I have content imported from the 3rd party payors that needs to be updated to swap out placeholders with Epic's SmartLinks. This is a very time consuming process to identify these placeholders (which are formatted differently from document to document) and also find the correct SmartLink to use instead. As an end user, after importing my SmartPhrases from another organization I need to replace non-Epic released SmartLinks and non-user SmartLists with the correct SmartTool for the new organization. This is a tedious and time consuming process that takes time away from caring for patients. Letter build is a GIANT time commitment for install and for health systems in perpetuity but it does seem like AI could greatly reduce that. Several customers actually have 1 or more full FTEs that work on letters/notifications. The time spent doing config of SmartLinks and formatting is astounding driving up our install & staffing costs. This week it took us over an hour to make our first letter. We have 600 to go. Frequency (Explain WHO is impacted WHEN and HOW OFTEN) Every customer Suggestion: Can we use LLM models so that a customer can feed in PDFs and then output a SmartText with formatting & SmartLinks. Many of the SmartLinks are obvious or preceded by a label like \"Name:\", \"Member ID:\", \"Service Date\". It seems that this would make it very easy for ML or LLM to draft a SmartText with the right SmartLink. The expectation is that the output is not a 100% accurate letter but rather that the health plan team can get a starting point that is 50%-90% done rather than from scratch.",
-      "ideaForSolution": "AI can help me both identify the placeholders in the imported content along with the replacement. (Optional) Characteristics of a good solution There might be a confidence score or something for automatic swaps vs something that needs manual review.",
+      "ideaForSolution": "AI can help me both identify the placeholders in the imported content along with the replacement.",
       "whyNow": "This change could be a big time saver for builders and end users (depending on who uses it).",
       "smartToolsFit": "Tools we develop should be easy to build and increase efficiency",
-      "epicFit": "Solving existing pain points (Optional) How will we measure success? We might want to develop/SU something for tracking time it takes to make these updates without any big changes. However, that is not something that has a really obvious thing to measure besides time in activity until placeholders are resolved..",
+      "epicFit": "Solving existing pain points",
       "maintenance": "Overall reduction since it makes maintenance easier.",
       "internCandidate": false,
-      "characteristics": "",
-      "success": ""
-    }
+      "characteristics": "There might be a confidence score or something for automatic swaps vs something that needs manual review.",
+      "success": "We might want to develop/SU something for tracking time it takes to make these updates without any big changes. However, that is not something that has a really obvious thing to measure besides time in activity until placeholders are resolved.."
+    },
+    "category": "Create and Improve Tools and Framework"
   },
   {
     "id": "8320189",
@@ -462,7 +492,8 @@
       "internCandidate": false,
       "characteristics": "",
       "success": ""
-    }
+    },
+    "category": "Create and Improve Tools and Framework"
   },
   {
     "id": "8319928",
@@ -477,7 +508,8 @@
       "internCandidate": false,
       "characteristics": "",
       "success": ""
-    }
+    },
+    "category": "Support AI Charting"
   },
   {
     "id": "8320398",
@@ -492,22 +524,24 @@
       "internCandidate": false,
       "characteristics": "",
       "success": ""
-    }
+    },
+    "category": "Create and Improve Tools and Framework"
   },
   {
     "id": "7914897",
     "title": "ST / SmartTextBox / Support webp Image File Format",
     "details": {
       "problem": "Epic is the leading EHR company and identifies itself as an \"R&D Shop\". So as a user, I expect Epic to be on the cutting edge of technology. Unfortunately, Epic does not yet support the webp file format, which is supported by 97% of browsers. The webp file format is supposedly superior to jpeg and png, which makes me think that I should prefer that format. However, if I try to insert or paste a webp image, Epic flat-out refuses it. Looks like we made PRJ 334216 to indicate that we need to support .webp files <eventually>. Do we have a sense of how much effort/complexity would be involved with supporting webp images? The design just indicates we are punting, but it's unclear to me whether we might get this pretty easily with a little work right now. Minimally, we should probably create a QAN for the project and attach BlobImageService.cs so we remember to update this code at some point. Impact (Explain WHY this is a problem. Include clinical, financial, or other real world effect) If we don't remember to fix this, then webp files will not be supported. Frequency (Explain WHO is impacted WHEN and HOW OFTEN) This will become very common soon. Affected Hosts (Indicate which hosts this issue is present in; use .AFFECTEDHOSTS dot phrase for updates; see this wiki to determine if hyperdrive could be affecting customers in a given version.) HS via Windows (fka. Hyperdrive) HS via Browser: Chrome HS for Mac Classic Client Steps to Reproduce (If this QAN is high priority, check prior versions as well before submitting) User ID/Password:  1/epic Find a webp file on google images Download it Try to insert it as an image into an STB See things fail Additional Info (optional) Suggested Fix: see attached project",
-      "ideaForSolution": "Let me use webp files. If you have to, convert them to something else behind the scenes. (Optional) Characteristics of a good solution It should \"just work\"",
+      "ideaForSolution": "Let me use webp files. If you have to, convert them to something else behind the scenes.",
       "whyNow": "The webp file format has had wide support since 2018. And as of 2024, it is supported by 97% of all browsers in use. In particular, it is supported by all of the browsers that Epic targets. Furthermore, webp is becoming ubiquitous in web searches. And its prevalence is only likely to increase. This is a trend we should keep up with.",
       "smartToolsFit": "Software Must Work > Address compatibility with 3rd party products",
-      "epicFit": "Innovate and solve existing pain points (Optional) How will we measure success? Pasting/inserting webp images will work",
+      "epicFit": "Innovate and solve existing pain points",
       "maintenance": "Low",
       "internCandidate": false,
-      "characteristics": "",
-      "success": ""
-    }
+      "characteristics": "It should \"just work\"",
+      "success": "Pasting/inserting webp images will work"
+    },
+    "category": "Create and Improve Tools and Framework"
   },
   {
     "id": "8320421",
@@ -522,7 +556,8 @@
       "internCandidate": false,
       "characteristics": "",
       "success": ""
-    }
+    },
+    "category": "Support AI Charting"
   },
   {
     "id": "8320432",
@@ -537,7 +572,8 @@
       "internCandidate": false,
       "characteristics": "",
       "success": ""
-    }
+    },
+    "category": "Support AI Charting"
   },
   {
     "id": "8313715",
@@ -552,7 +588,8 @@
       "internCandidate": false,
       "characteristics": "",
       "success": ""
-    }
+    },
+    "category": "Support AI Charting"
   },
   {
     "id": "8320787",
@@ -567,52 +604,56 @@
       "internCandidate": false,
       "characteristics": "",
       "success": ""
-    }
+    },
+    "category": "Support AI Charting"
   },
   {
     "id": "7993912",
     "title": "ST / Generative AI / Better identify what changed",
     "details": {
       "problem": "Currently, when a user runs a text action on a selected block of text, they are able to view the original text in a bubble for comparison. However, in the case of text actions that make minimal changes (e.g. Fix spelling and grammar), it can be difficult to spot the differences. This makes it more likely that a user would click Looks Good without thoroughly reviewing the generated text, allowing hallucinations or other discrepancies to slip through. The same holds true for text actions that are geared towards reformatting the text (e.g. Format as list). Additionally, for text actions that make larger changes to the text (e.g. Summarize), it can be painstaking to match each piece of generated text to the corresponding original text in the bubble. This either results in users taking longer than ideal to verify the summary or forgo proper review to save time. In the latter case, not only could hallucinations slip through, but also key omissions. There is also the new behavior (as of DLG 2281056 in May 26) where we will sometimes run simultaneous identical prompts on non-consecutive blocks of text in order to omit protected content (e.g. SmartSection headers, SmartBlocks, hard-to-delete SmartLinks, SmartList with SDEs). In some ways, this can help with identifying what changed, as it splits up the comparison for each section. However, this is traded for a new usability concern where users need to click Looks Good multiple times for one prompt, even potentially for blocks of text that didn't actually change.",
-      "ideaForSolution": "When this was first pitched, I proposed three ideas for fixing this: Highlight key medical terms between the original content and the AI generated content when viewing the two side by side. This could look like highlighting the word \"concussion\" so a clinician can see if this key word was preserved, omitted, or added through a hallucination. Highlight numbers between the original content and the AI generated content when viewing the two side by side. This could look like highlighting key lab values, vitals, dates, or other numbers so a clinician can see if these numbers were preserved, omitted, or added through a hallucination. Create a \"metal detector\" option. The idea here is a user could hover over a word in either the AI generated content or the original content. All instances of that word between the AI generated content and original content would then be highlighted, making it easier for users to spot what was preserved, omitted, or added through a hallucination. However, in light of recent (and proposed) development, I would like to propose a 4th option where we support only highlighting text that actually changed in the case of prompts that make minimal or potentially modifications to the text (e.g. words/sentences instead of full paragraphs). Fix spelling and grammar would fall into this bucket, as would potentially rephrase. We could then switch back to a floating Looks Good toolbar for these, while providing a AI banner in the top-right that summarizes the changes and provides \"Accept All\" and Reject All buttons. This would work similar to how type.ai works, a third-party AI text editor I've been messing with which has a slick UI. (Optional) Characteristics of a good solution Seamless integration with our current comparison UI Discoverable without being intrusive Facilitates accurate and more efficient review of generated text",
+      "ideaForSolution": "When this was first pitched, I proposed three ideas for fixing this: Highlight key medical terms between the original content and the AI generated content when viewing the two side by side. This could look like highlighting the word \"concussion\" so a clinician can see if this key word was preserved, omitted, or added through a hallucination. Highlight numbers between the original content and the AI generated content when viewing the two side by side. This could look like highlighting key lab values, vitals, dates, or other numbers so a clinician can see if these numbers were preserved, omitted, or added through a hallucination. Create a \"metal detector\" option. The idea here is a user could hover over a word in either the AI generated content or the original content. All instances of that word between the AI generated content and original content would then be highlighted, making it easier for users to spot what was preserved, omitted, or added through a hallucination. However, in light of recent (and proposed) development, I would like to propose a 4th option where we support only highlighting text that actually changed in the case of prompts that make minimal or potentially modifications to the text (e.g. words/sentences instead of full paragraphs). Fix spelling and grammar would fall into this bucket, as would potentially rephrase. We could then switch back to a floating Looks Good toolbar for these, while providing a AI banner in the top-right that summarizes the changes and provides \"Accept All\" and Reject All buttons. This would work similar to how type.ai works, a third-party AI text editor I've been messing with which has a slick UI.",
       "whyNow": "Users have requested this in demos and usability testing sessions.",
-      "smartToolsFit": "***",
-      "epicFit": "*** (Optional) How will we measure success? ***",
-      "maintenance": "***",
+      "smartToolsFit": "",
+      "epicFit": "",
+      "maintenance": "",
       "internCandidate": false,
-      "characteristics": "",
+      "characteristics": "Seamless integration with our current comparison UI Discoverable without being intrusive Facilitates accurate and more efficient review of generated text",
       "success": ""
-    }
+    },
+    "category": "Support AI Charting"
   },
   {
     "id": "8212130",
     "title": "ST / Toolbar / Support speed buttons directly in SmartTextBox",
     "details": {
       "problem": "Currently, when a user favorites a SmartPhrase, SmartLink, or SmartText, it simply makes that SmartTool show up at the top of search lists in Butler or ST Lookup. Similarly, pinning text actions only makes them show up at the top of the drop down menu. In either case, a minimum of two clicks is required to access those tools, if not some typing as well (e.g. dot phrase). To get one-click access to frequently used features, users must rely on either app-defined buttons or creating their own quick buttons, both of which are limited to only workflows that support such buttons (e.g. Notes). Given the additional overhead in supporting such buttons, not to mention occupying valuable UI space outside the SmartTextBox, most workflows don't support such buttons. The result is users needing extra steps to access tools they use frequently.",
-      "ideaForSolution": "Users should be able to configure quick buttons in any SmartTextBox, regardless of application or workflow. They should be able to customize and organize them in such a way as to provide the most value, whether that be overriding the caption with something shorter to fit more buttons or even grouping quick buttons At minimum, users shouldn't need to launch ST Lookup or the Butler to access their favorited or recently used SmartTools. They should be available in a split button drop down, like how text actions work. In the case of SmartTexts, such a split button could replace the current toolbar field, saving additional space on top of what the rich-text simplify project is affording us. (Optional) Characteristics of a good solution Intuitive Flexible Maximum user efficiency with minimum additional UI clutter",
+      "ideaForSolution": "Users should be able to configure quick buttons in any SmartTextBox, regardless of application or workflow. They should be able to customize and organize them in such a way as to provide the most value, whether that be overriding the caption with something shorter to fit more buttons or even grouping quick buttons At minimum, users shouldn't need to launch ST Lookup or the Butler to access their favorited or recently used SmartTools. They should be available in a split button drop down, like how text actions work. In the case of SmartTexts, such a split button could replace the current toolbar field, saving additional space on top of what the rich-text simplify project is affording us.",
       "whyNow": "The simplify project has given us more space to work with on the toolbar. This is also a natural progression of that project.",
       "smartToolsFit": "Reduces clicks",
-      "epicFit": "Makes end users more efficient (Optional) How will we measure success? How many users chooses to configure such quick buttons",
+      "epicFit": "Makes end users more efficient",
       "maintenance": "More customization options for the SmartTextBox toolbar.",
       "internCandidate": false,
-      "characteristics": "",
-      "success": ""
-    }
+      "characteristics": "Intuitive Flexible Maximum user efficiency with minimum additional UI clutter",
+      "success": "How many users chooses to configure such quick buttons"
+    },
+    "category": "Create and Improve Tools and Framework"
   },
   {
     "id": "8212121",
     "title": "ST / Generative AI / Make custom prompts smarter",
     "details": {
       "problem": "When it comes to custom prompts in SmartTextBox, users have only two choices: Generate text from scratch and insert it at the current cursor position Modify and replace selected text For on-the-fly prompts, which occurs is based solely on whether they selected text before typing the prompt. For saved custom prompts, it's instead based on a \"Requires Selected Text\" toggle in the editor, which defaults based on whether text was selected upon creation. This is both limiting in terms of what should be possible with custom prompts, and leads to confusion when how we process the prompt doesn't match the user's expectations based on what they typed.",
-      "ideaForSolution": "So long as the user provides the necessary information in their prompt, we should be smarter about how we process it. For example: If they tell us to \"Format the physical exam as a list\", it should be able to find and select the text to modify. If they tell us to \"Provide a summary of the A&P at the top of the note\", it should be able to locate the necessary input but insert the result at the beginning of the document instead of overwriting the A&P (which isn't even allowed currently due to SmartSection protections) If they tell us to \"Check the document for contradictions\", it should take the whole document as input but not insert the result into the document, instead displaying it in a banner that can be dismissed. Something like this: The input wouldn't even necessarily need to come from the document. It could be other information in the chart, leveraging Forager once we narrow down what kinds of information it needs that aren't present in the document. Custom prompts could even serve as a unified SmartTool lookup, helping users find the SmartTool they want (and how to configure it) from a simple prompt. Additionally, this classification could carry forward to saving custom prompts, replacing the confusing \"Requires selected text\" with more granular and intuitive options that could be defaulted based on AI processing. While we're at it, we could even have the AI come up with a good name and description for the saved prompt, making it even easier for users to build their AI tool suite. (Optional) Characteristics of a good solution Matches user expectations Flexible Performant",
+      "ideaForSolution": "So long as the user provides the necessary information in their prompt, we should be smarter about how we process it. For example: If they tell us to \"Format the physical exam as a list\", it should be able to find and select the text to modify. If they tell us to \"Provide a summary of the A&P at the top of the note\", it should be able to locate the necessary input but insert the result at the beginning of the document instead of overwriting the A&P (which isn't even allowed currently due to SmartSection protections) If they tell us to \"Check the document for contradictions\", it should take the whole document as input but not insert the result into the document, instead displaying it in a banner that can be dismissed. Something like this: The input wouldn't even necessarily need to come from the document. It could be other information in the chart, leveraging Forager once we narrow down what kinds of information it needs that aren't present in the document. Custom prompts could even serve as a unified SmartTool lookup, helping users find the SmartTool they want (and how to configure it) from a simple prompt. Additionally, this classification could carry forward to saving custom prompts, replacing the confusing \"Requires selected text\" with more granular and intuitive options that could be defaulted based on AI processing. While we're at it, we could even have the AI come up with a good name and description for the saved prompt, making it even easier for users to build their AI tool suite.",
       "whyNow": "We are the midst of a project to assist users in manually selecting the input to send with text actions. Inferring the input from the prompt without requiring the user to perform additional steps is the logical next step.",
       "smartToolsFit": "Makes our AI features powerful and a joy to use.",
-      "epicFit": "Reducing clicks and leveraging AI to optimize user experience. (Optional) How will we measure success? Increased usage of custom prompts.",
+      "epicFit": "Reducing clicks and leveraging AI to optimize user experience.",
       "maintenance": "Supporting more options for custom prompts will require additional testing.",
       "internCandidate": false,
-      "characteristics": "",
-      "success": ""
-    }
+      "characteristics": "Matches user expectations Flexible Performant",
+      "success": "Increased usage of custom prompts."
+    },
+    "category": "Support AI Charting"
   },
   {
     "id": "8319923",
@@ -627,22 +668,24 @@
       "internCandidate": false,
       "characteristics": "",
       "success": ""
-    }
+    },
+    "category": "Create and Improve Tools and Framework"
   },
   {
     "id": "8066648",
     "title": "ST / May '26 Pitch / Reevaluate and Unify SmartSection UI Across Apps",
     "details": {
       "problem": "Users are starting to encounter more and more SmartSections in their workflows, and this trend will continue as we release more SmartSections. However, each of these SmartSections looks a little different, and sometimes they have to remember which SmartSections have which buttons/features where. This adds extra cognitive load.",
-      "ideaForSolution": "All SmartSections should follow some sort of pattern for their general interactive structure (Optional) Characteristics of a good solution Existing SmartSections should be updated to use the new patterns Core SmartTools code should be updated so that it's easy to do the right thing",
+      "ideaForSolution": "All SmartSections should follow some sort of pattern for their general interactive structure",
       "whyNow": "We are releasing more SmartSections every version The core work of implementing many SmartSections is already done Because we have 4-5 big SmartSections now, we can see that there has been a lot of clashes in SmartSection layout and styling",
       "smartToolsFit": "SmartTools we develop should be easy to build and expand on App teams should not have to rehash the same discussions on styling and positioning for every new SmartSection Tools we develop should be a joy to use Each SmartSection should not require a separate mental model for users",
-      "epicFit": "*** (Optional) How will we measure success? ***",
-      "maintenance": "***",
+      "epicFit": "",
+      "maintenance": "",
       "internCandidate": false,
-      "characteristics": "",
+      "characteristics": "Existing SmartSections should be updated to use the new patterns Core SmartTools code should be updated so that it's easy to do the right thing",
       "success": ""
-    }
+    },
+    "category": "Create and Improve Tools and Framework"
   },
   {
     "id": "8322299",
@@ -657,7 +700,8 @@
       "internCandidate": false,
       "characteristics": "",
       "success": ""
-    }
+    },
+    "category": "Mobile Feature Parity"
   },
   {
     "id": "8322295",
@@ -672,22 +716,24 @@
       "internCandidate": false,
       "characteristics": "",
       "success": ""
-    }
+    },
+    "category": "Mobile Feature Parity"
   },
   {
     "id": "8076785",
     "title": "DoCo/SmartTools/Create an inline mobile plain text STB control",
     "details": {
       "problem": "When I am using Hyperspace on mobile and fill documentation with SmartText Box, it would be nice to start typing into the STB as if it is a inline control instead of launching the STB in a separate view to edit. In mobile, there are a ton of inline SmartTextBoxes that launch into another view to edit, because they use the mobile edit activity (SmartList in the sidebar). We should create a mobile control for the plain text SmartTextBox that is usable for inline editing/is easy for apps to implement so that users can do inline SmartList selection with the touch UI, without jumping into another activity. Impact (include clinical, financial, or other real world effect) Elimination of 2+ clicks per field. Frequency (how often different end users could experience this problem) Often. Suggested Fix Create an inline mobile plain text SmartTextBox that allows SmartList selection without having to jump into the full mobile UI. Setup Environments: Current Stage 1 Primary Client:  cRoverc User ID/Password:  66660/epic (for Care Plans), there area also other places that use SmartForms and have a lot of comment/SmartTextBox fields like this (114961/epic > Forms activity). Steps to Reproduce Example below is care plan, but SmartForms in mobile also have a bunch of SmartTextBoxes that would be",
-      "ideaForSolution": "Implement a inline control version of STB that can work in mobile (Optional) Characteristics of a good solution Provide good user experience. Seemless as if typing in entry field. Reduce jumping to activity and clicks",
+      "ideaForSolution": "Implement a inline control version of STB that can work in mobile",
       "whyNow": "We have much more activities will be available to mobile.",
-      "smartToolsFit": "***",
-      "epicFit": "*** (Optional) How will we measure success? ***",
-      "maintenance": "***",
+      "smartToolsFit": "",
+      "epicFit": "",
+      "maintenance": "",
       "internCandidate": false,
-      "characteristics": "",
+      "characteristics": "Provide good user experience. Seemless as if typing in entry field. Reduce jumping to activity and clicks",
       "success": ""
-    }
+    },
+    "category": "Mobile Feature Parity"
   },
   {
     "id": "8311705",
@@ -702,7 +748,8 @@
       "internCandidate": false,
       "characteristics": "",
       "success": ""
-    }
+    },
+    "category": "Support AI Charting"
   },
   {
     "id": "8322688",
@@ -717,7 +764,8 @@
       "internCandidate": false,
       "characteristics": "",
       "success": ""
-    }
+    },
+    "category": "Create and Improve Tools and Framework"
   },
   {
     "id": "8322713",
@@ -732,22 +780,24 @@
       "internCandidate": false,
       "characteristics": "",
       "success": ""
-    }
+    },
+    "category": "Support AI Charting"
   },
   {
     "id": "8105976",
     "title": "ST / May 26 Pitches / AI Text Assistant / Prompts will become harder to find in AITA menu once custom prompts and sharing are enabled",
     "details": {
       "problem": "As a clinician with particular text I want to generate, and looking for an AI prompt that fits my goal, I have access to many custom prompts - both ones that I've created and ones that my colleagues have shared with me. However, I have to dig through a very long list of prompts in the AI Text Assistant to find one that might match, and even then, I'm not sure if the prompt will fit my needs until I try it. This is not only time consuming, it is also frustrating enough that I will either just write my own prompt on the fly (inefficient and defeats the purpose of sharing functionality), stick to pre-defined prompts (don't get to leverage the benefits of custom prompts), or avoid using the Text Assistant altogether. Without redesigning the menu, that could result in a menu like one of these, where we either add more subcategories or funnel all prompts into the existing \"My Prompts\". Either one would lead to an extremely bloated and hard-to-sort through list: Related questions: Discoverability of shared prompts (both user and system). How do users know when they have new prompts available? How can users keep track of prompts they have/what they can be used for? (particularly if we don't have a manager)",
-      "ideaForSolution": "More investigation is needed before coming to a solution, however some potential ideas are: Surface relevant prompt suggestions based on the text and surrounding workflow context Maybe this even replaces the Recent prompts Turn the AITA search into a semantic search, rather than exact word matching (similar to what Chart Search is doing with Cloud Search) Others? (Optional) Characteristics of a good solution \"Just in time\" rather than \"just in case\" - it should be easy for me to find the prompt that fits my needs when I want it, rather than making me look through every possible option",
+      "ideaForSolution": "More investigation is needed before coming to a solution, however some potential ideas are: Surface relevant prompt suggestions based on the text and surrounding workflow context Maybe this even replaces the Recent prompts Turn the AITA search into a semantic search, rather than exact word matching (similar to what Chart Search is doing with Cloud Search) Others?",
       "whyNow": "Once users can share prompts with each other, it's very likely that users will have access to many more prompts than they already have, and they might not be familiar with the ins and outs of each one. We don't want to introduce the potential for users' menus to get very bloated without a way for them to effectively navigate all the available options. (Similar to how users have to go to the SmartPhrase Manager today to find the SmartPhrase they want to use, because memorizing the mnemonics is impossible)",
-      "smartToolsFit": "***",
-      "epicFit": "*** (Optional) How will we measure success? ***",
-      "maintenance": "***",
+      "smartToolsFit": "",
+      "epicFit": "",
+      "maintenance": "",
       "internCandidate": false,
-      "characteristics": "",
+      "characteristics": "\"Just in time\" rather than \"just in case\" - it should be easy for me to find the prompt that fits my needs when I want it, rather than making me look through every possible option",
       "success": ""
-    }
+    },
+    "category": "Support AI Charting"
   },
   {
     "id": "8325055",
@@ -762,7 +812,8 @@
       "internCandidate": false,
       "characteristics": "",
       "success": ""
-    }
+    },
+    "category": "Support AI Charting"
   },
   {
     "id": "8311693",
@@ -777,7 +828,8 @@
       "internCandidate": false,
       "characteristics": "",
       "success": ""
-    }
+    },
+    "category": "Mobile Feature Parity"
   },
   {
     "id": "8325724",
@@ -792,6 +844,7 @@
       "internCandidate": false,
       "characteristics": "",
       "success": ""
-    }
+    },
+    "category": "Mobile Feature Parity"
   }
 ]

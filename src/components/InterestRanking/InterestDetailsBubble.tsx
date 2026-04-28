@@ -43,18 +43,20 @@ const InterestDetailsBubble = ({ pitch, vote, anchorEl, onClose, userRole }: Int
     }
   };
   
-  // Renders a detail section if the content exists
   const renderDetailSection = (label: string, content?: string | boolean) => {
-    if (content === undefined || content === '' || content === null) return null;
-    
+    const cleaned = typeof content === 'string'
+      ? content.replace(/^\*+\s*|\s*\*+$/g, '').trim()
+      : content;
+    if (cleaned === undefined || cleaned === '' || cleaned === null) return null;
+
     return (
       <>
         <Box sx={{ mb: 1, mt: 2 }}>
           <Typography variant="subtitle2" color="text.secondary">
             {label}
           </Typography>
-          <Typography variant="body2">
-            {typeof content === 'boolean' ? 'Yes' : content}
+          <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+            {typeof cleaned === 'boolean' ? 'Yes' : cleaned}
           </Typography>
         </Box>
         <Divider />
