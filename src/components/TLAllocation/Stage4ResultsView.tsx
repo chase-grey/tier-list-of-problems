@@ -1,28 +1,23 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import {
   Box, Typography, Table, TableBody, TableCell, TableHead, TableRow,
   Button, Divider, Paper, Checkbox, FormControlLabel,
-  Accordion, AccordionSummary, AccordionDetails,
 } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import type {
   AllocationPitch, PlanAssignment, StaffingAssignment, AllocationConfig,
 } from '../../types/allocationTypes';
+import { useSnackbar } from '../../hooks/useSnackbar';
+import { getFollowups, updateFollowup } from '../../services/api';
 
 interface Props {
   pitches: AllocationPitch[];
   currentAssignments: PlanAssignment[];
   step2Assignments: StaffingAssignment[];
   config: AllocationConfig;
+  onBack?: () => void;
 }
-
-const PRJ_INSTRUCTIONS = `How to create a project record:
-1. In TRACK, create a new PRJ record with the project title.
-2. On the People tab: add the dev as the developer, QM as quality manager, dev TL as TL, and testing captain.
-3. On the Details tab: set the quarter/cycle and category.
-4. On the Associated Records tab: attach the pitch ZQN record.
-5. Add the PRJ to the team backlog.`;
 
 function buildMailtoHref(to: string, cc: string, subject: string, body: string): string {
   const parts = [`subject=${encodeURIComponent(subject)}`];
@@ -52,8 +47,22 @@ function buildProjectEmailBody(
   return lines.join('\n');
 }
 
-export default function Stage4ResultsView({ pitches, currentAssignments, step2Assignments, config }: Props) {
+export default function Stage4ResultsView({ pitches, currentAssignments, step2Assignments, config, onBack }: Props) {
+  const { showSnackbar } = useSnackbar();
   const [checkedItems, setCheckedItems] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    getFollowups().then(followups => {
+      const loaded: Record<string, boolean> = {};
+      for (const [pitchId, state] of Object.entries(followups)) {
+        const sa = step2Assignments.find(a => a.pitchId === pitchId);
+        const tl = sa?.devTL ?? '';
+        if (state.projectCreated) loaded[`prj-${tl}-${pitchId}`] = true;
+        if (state.kickoffEmailSent) loaded[`email-${tl}-${pitchId}`] = true;
+      }
+      setCheckedItems(loaded);
+    }).catch(() => {});
+  }, [step2Assignments]);
 
   const pitchById = useMemo(
     () => Object.fromEntries(pitches.map(p => [p.id, p])),
@@ -108,8 +117,15 @@ export default function Stage4ResultsView({ pitches, currentAssignments, step2As
     return map;
   }, [fullGrid, config.devTLNames]);
 
-  const toggleCheck = (key: string) =>
-    setCheckedItems(prev => ({ ...prev, [key]: !prev[key] }));
+  const toggleCheck = (key: string, pitchId: string, field: 'projectCreated' | 'kickoffEmailSent') => {
+    setCheckedItems(prev => {
+      const next = { ...prev, [key]: !prev[key] };
+      updateFollowup(pitchId, field, next[key]).catch(() =>
+        showSnackbar('Failed to save follow-up status', 'error')
+      );
+      return next;
+    });
+  };
 
   const handleCopy = () => {
     const q = config.quarterLabel ? ` — Q${config.quarterLabel}` : '';
@@ -149,6 +165,7 @@ export default function Stage4ResultsView({ pitches, currentAssignments, step2As
       }
     }
     navigator.clipboard.writeText(lines.join('\n'));
+    showSnackbar('Summary copied to clipboard', 'success');
   };
 
   const tlsWithWork = config.devTLNames.filter(
@@ -159,6 +176,11 @@ export default function Stage4ResultsView({ pitches, currentAssignments, step2As
     <Box sx={{ p: 3, overflow: 'auto', height: '100%' }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3 }}>
         <Box>
+          {onBack && (
+            <Button startIcon={<ArrowBackIcon />} onClick={onBack} sx={{ mb: 1, pl: 0 }} color="inherit">
+              Back to editing
+            </Button>
+          )}
           <Typography variant="h4" fontWeight="bold">Team Matching Results</Typography>
           {config.quarterLabel && (
             <Typography variant="h6" color="text.secondary">Q{config.quarterLabel}</Typography>
@@ -266,7 +288,7 @@ export default function Stage4ResultsView({ pitches, currentAssignments, step2As
                       control={
                         <Checkbox
                           checked={!!checkedItems[`prj-${tl}-${pitch.id}`]}
-                          onChange={() => toggleCheck(`prj-${tl}-${pitch.id}`)}
+                          onChange={() => toggleCheck(`prj-${tl}-${pitch.id}`, pitch.id, 'projectCreated')}
                           size="small"
                         />
                       }
@@ -288,7 +310,7 @@ export default function Stage4ResultsView({ pitches, currentAssignments, step2As
                       control={
                         <Checkbox
                           checked={!!checkedItems[`email-${tl}-${pitch.id}`]}
-                          onChange={() => toggleCheck(`email-${tl}-${pitch.id}`)}
+                          onChange={() => toggleCheck(`email-${tl}-${pitch.id}`, pitch.id, 'kickoffEmailSent')}
                           size="small"
                         />
                       }
@@ -305,7 +327,7 @@ export default function Stage4ResultsView({ pitches, currentAssignments, step2As
                           </Button>
                         </Box>
                       }
-                      sx={{ alignItems: 'flex-start' }}
+                      sx={{ alignItems: 'center' }}
                     />
                   </Box>
                 );
@@ -316,7 +338,7 @@ export default function Stage4ResultsView({ pitches, currentAssignments, step2As
                   control={
                     <Checkbox
                       checked={!!checkedItems[`backlog-${tl}`]}
-                      onChange={() => toggleCheck(`backlog-${tl}`)}
+                      onChange={() => setCheckedItems(prev => ({ ...prev, [`backlog-${tl}`]: !prev[`backlog-${tl}`] }))}
                       size="small"
                     />
                   }
@@ -344,18 +366,6 @@ export default function Stage4ResultsView({ pitches, currentAssignments, step2As
         })}
       </Box>
 
-      <Divider sx={{ mt: 3, mb: 3 }} />
-
-      <Accordion>
-        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-          <Typography variant="subtitle1" fontWeight="bold">How to Create Project Records</Typography>
-        </AccordionSummary>
-        <AccordionDetails>
-          <Typography variant="body2" sx={{ whiteSpace: 'pre-line' }}>
-            {PRJ_INSTRUCTIONS}
-          </Typography>
-        </AccordionDetails>
-      </Accordion>
     </Box>
   );
 }

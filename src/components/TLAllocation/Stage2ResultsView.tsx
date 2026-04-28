@@ -1,29 +1,24 @@
 import { useMemo, useState } from 'react';
 import {
   Box, Typography, Table, TableBody, TableCell, TableHead, TableRow,
-  Button, Divider, Chip, Tabs, Tab, Checkbox, FormControlLabel,
-  Accordion, AccordionSummary, AccordionDetails, Paper,
+  Button, Divider, Chip, Tabs, Tab, Paper,
 } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import type { AllocationPitch, PlanAssignment, AllocationConfig } from '../../types/allocationTypes';
+import { useSnackbar } from '../../hooks/useSnackbar';
 
 interface Props {
   pitches: AllocationPitch[];
   currentAssignments: PlanAssignment[];
   config: AllocationConfig;
+  onBack?: () => void;
 }
 
-const PRJ_INSTRUCTIONS = `How to create a project record:
-1. In TRACK, create a new PRJ record with the project title.
-2. On the People tab: add the dev as the developer, QM as quality manager, dev TL as TL, and testing captain.
-3. On the Details tab: set the quarter/cycle and category.
-4. On the Associated Records tab: attach the pitch ZQN record.
-5. Add the PRJ to the team backlog.`;
 
-export default function Stage2ResultsView({ pitches, currentAssignments, config }: Props) {
+export default function Stage2ResultsView({ pitches, currentAssignments, config, onBack }: Props) {
+  const { showSnackbar } = useSnackbar();
   const [viewTab, setViewTab] = useState<0 | 1>(0);
-  const [checkedItems, setCheckedItems] = useState<Record<string, boolean>>({});
 
   const pitchById = useMemo(
     () => Object.fromEntries(pitches.map(p => [p.id, p])),
@@ -65,17 +60,6 @@ export default function Stage2ResultsView({ pitches, currentAssignments, config 
     return { byDev: map, unassigned };
   }, [selected, config.devNames]);
 
-  // Follow-up items: one per dev with assigned projects + stage 3 kick-off
-  const followUpItems = useMemo(() => {
-    const devsWithProjects = Object.entries(byDev.byDev)
-      .filter(([, rows]) => rows.length > 0)
-      .map(([dev, rows]) => ({ dev, rows }));
-    return devsWithProjects;
-  }, [byDev]);
-
-  const toggleCheck = (key: string) =>
-    setCheckedItems(prev => ({ ...prev, [key]: !prev[key] }));
-
   const handleCopy = () => {
     const q = config.quarterLabel ? ` — Q${config.quarterLabel}` : '';
     const lines: string[] = [
@@ -106,25 +90,23 @@ export default function Stage2ResultsView({ pitches, currentAssignments, config 
 
     lines.push('');
     lines.push(`UP NEXT — LIFEBOAT ORDER (${nextUp.length})`);
-    lines.push('Add these to the backlog in this order:');
     nextUp.forEach(({ pitch }, i) => {
       lines.push(`  ${i + 1}. ${pitch.title} [${pitch.category}]`);
     });
 
-    lines.push('');
-    lines.push('FOLLOW-UPS');
-    followUpItems.forEach(({ dev, rows }) => {
-      lines.push(`[ ] Let ${dev} know their projects: ${rows.map(r => r.pitch.title).join(', ')} — check for concerns`);
-    });
-    lines.push('[ ] Start Stage 3: send interest voting link to devs for next round');
-
     navigator.clipboard.writeText(lines.join('\n'));
+    showSnackbar('Summary copied to clipboard', 'success');
   };
 
   return (
     <Box sx={{ p: 3, overflow: 'auto', height: '100%' }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3 }}>
         <Box>
+          {onBack && (
+            <Button startIcon={<ArrowBackIcon />} onClick={onBack} sx={{ mb: 1, pl: 0 }} color="inherit">
+              Back to editing
+            </Button>
+          )}
           <Typography variant="h4" fontWeight="bold">Dev Matching Results</Typography>
           {config.quarterLabel && (
             <Typography variant="h6" color="text.secondary">Q{config.quarterLabel}</Typography>
@@ -215,11 +197,8 @@ export default function Stage2ResultsView({ pitches, currentAssignments, config 
 
       <Divider sx={{ mb: 3 }} />
 
-      <Typography variant="h6" fontWeight="bold" sx={{ mb: 0.5 }}>
+      <Typography variant="h6" fontWeight="bold" sx={{ mb: 2 }}>
         Up Next — Lifeboat Order ({nextUp.length})
-      </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Add these to the backlog in this order (sorted by team vote priority).
       </Typography>
       <Box component="ol" sx={{ pl: 3, m: 0, mb: 4 }}>
         {nextUp.map(({ pitch }) => (
@@ -234,58 +213,6 @@ export default function Stage2ResultsView({ pitches, currentAssignments, config 
         ))}
       </Box>
 
-      <Divider sx={{ mb: 3 }} />
-
-      <Typography variant="h6" fontWeight="bold" sx={{ mb: 1 }}>
-        Follow-ups
-      </Typography>
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mb: 3 }}>
-        {followUpItems.map(({ dev, rows }) => (
-          <FormControlLabel
-            key={dev}
-            control={
-              <Checkbox
-                checked={!!checkedItems[`dev-${dev}`]}
-                onChange={() => toggleCheck(`dev-${dev}`)}
-                size="small"
-              />
-            }
-            label={
-              <Typography variant="body2">
-                Let <strong>{dev}</strong> know their project{rows.length !== 1 ? 's' : ''}:{' '}
-                {rows.map(r => r.pitch.title).join(', ')} — check for concerns
-              </Typography>
-            }
-          />
-        ))}
-        <FormControlLabel
-          control={
-            <Checkbox
-              checked={!!checkedItems['stage3']}
-              onChange={() => toggleCheck('stage3')}
-              size="small"
-            />
-          }
-          label={
-            <Typography variant="body2">
-              Start Stage 3: send interest voting link to devs for next round
-            </Typography>
-          }
-        />
-      </Box>
-
-      <Divider sx={{ mb: 3 }} />
-
-      <Accordion>
-        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-          <Typography variant="subtitle1" fontWeight="bold">How to Create Project Records</Typography>
-        </AccordionSummary>
-        <AccordionDetails>
-          <Typography variant="body2" sx={{ whiteSpace: 'pre-line' }}>
-            {PRJ_INSTRUCTIONS}
-          </Typography>
-        </AccordionDetails>
-      </Accordion>
     </Box>
   );
 }

@@ -38,11 +38,13 @@ interface TopBarProps {
   onUpdateName: (name: string) => void;
   onUpdateRole: (role: string) => void;
   onUpdateAvailability: (available: boolean) => void;
-  appStage2Mode?: boolean; // True when app is in Stage 2 (interest ranking only, priority locked)
-  allocationMode?: boolean; // True when in a TL allocation stage
-  allocationStep?: 0 | 1;  // Which allocation step is active
-  onAllocationFinish?: () => void; // Called when the allocation Finish button is clicked
-  allocationFinishLabel?: string;  // Label for the allocation Finish button
+  appStage2Mode?: boolean;
+  allocationMode?: boolean;
+  allocationStep?: 0 | 1;
+  onAllocationFinish?: () => void;
+  allocationFinishLabel?: string;
+  allocationFinishEnabled?: boolean;
+  submitState?: 'idle' | 'submitted' | 'changed';
 }
 
 /**
@@ -73,10 +75,12 @@ export const TopBar = ({
   allocationStep = 0,
   onAllocationFinish,
   allocationFinishLabel = 'Finish Step',
+  allocationFinishEnabled = true,
+  submitState = 'idle',
 }: TopBarProps) => {
   const appTitle = allocationMode
     ? (allocationStep === 0 ? 'Stage 2: Dev Matching' : 'Stage 4: Team Matching')
-    : (appStage2Mode || stage === 'interest') ? 'Stage 3: Interest Voting' : 'Stage 1: Priority Voting';
+    : appStage2Mode ? 'Stage 3: Interest Voting' : 'Stage 1: Priority Voting';
   return (
     <AppBar
       position="sticky"
@@ -116,9 +120,17 @@ export const TopBar = ({
         {allocationMode && onAllocationFinish && (
           <Button
             variant="contained"
-            color="primary"
+            color="secondary"
+            startIcon={<SendIcon />}
+            disabled={!allocationFinishEnabled}
             accessKey="f"
             onClick={onAllocationFinish}
+            aria-label="Finish and save allocation"
+            sx={{
+              fontWeight: allocationFinishEnabled ? 'bold' : 'normal',
+              transition: 'all 0.2s ease',
+              '&:not(:disabled)': { boxShadow: 3 },
+            }}
           >
             <u>F</u>{allocationFinishLabel.slice(1)}
           </Button>
@@ -192,19 +204,24 @@ export const TopBar = ({
 
             <Button
               variant="contained"
-              color="secondary"
+              color={submitState === 'submitted' ? 'success' : 'secondary'}
               startIcon={<SendIcon />}
-              disabled={!isExportEnabled}
+              disabled={submitState === 'submitted' || !isExportEnabled}
               accessKey="f"
               onClick={onFinish}
               aria-label="Finish and submit results"
               sx={{
-                fontWeight: isExportEnabled ? 'bold' : 'normal',
+                fontWeight: (submitState !== 'submitted' && isExportEnabled) ? 'bold' : 'normal',
                 transition: 'all 0.2s ease',
-                '&:not(:disabled)': { boxShadow: 3 }
+                '&:not(:disabled)': { boxShadow: 3 },
               }}
             >
-              <u>F</u>inish
+              {submitState === 'submitted'
+                ? 'Submitted ✓'
+                : submitState === 'changed'
+                ? <><u>R</u>esubmit</>
+                : <><u>F</u>inish</>
+              }
             </Button>
           </>
         )}

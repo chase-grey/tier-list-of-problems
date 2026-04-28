@@ -87,6 +87,7 @@ export async function submitVotes(payload: Omit<SubmitVotesPayload, 'nonce'>): P
   const params = new URLSearchParams({
     route: 'vote',
     voterName: payload.voterName,
+    ...(payload.voterRole ? { voterRole: payload.voterRole } : {}),
     votes: JSON.stringify(payload.votes),
   });
   const response = await fetch(`${GAS_PROXY}?${params.toString()}`);
@@ -128,6 +129,53 @@ export async function submitInterestVotes(payload: SubmitInterestPayload): Promi
   return data.saved ?? payload.interests.length;
 }
 
+export interface PlanAssignmentPayload {
+  pitchId: string;
+  status: 'selected' | 'next-up' | 'cut';
+  assignedDev: string | null;
+}
+
+export interface FinalAssignmentPayload extends PlanAssignmentPayload {
+  devTL: string | null;
+  qm: string | null;
+  pqa1?: string | null;
+}
+
+/**
+ * Saves the finalized stage 2 plan (pitch decisions + dev assignments) to the PLAN sheet.
+ */
+export async function savePlan(assignments: PlanAssignmentPayload[]): Promise<number> {
+  const params = new URLSearchParams({
+    route: 'save-plan',
+    assignments: JSON.stringify(assignments),
+  });
+  const response = await fetch(`${GAS_PROXY}?${params.toString()}`);
+  if (!response.ok) {
+    const text = await response.text().catch(() => '');
+    throw new ApiError(`Save plan failed (${response.status})${text ? ': ' + text : ''}`, response.status);
+  }
+  const data = await response.json();
+  return data.saved ?? assignments.length;
+}
+
+/**
+ * Saves the finalized stage 4 team assignments (devTL, QM, PQA1) to the PLAN sheet,
+ * merging with the stage 2 dev assignments already stored there.
+ */
+export async function saveFinalAssignments(assignments: FinalAssignmentPayload[]): Promise<number> {
+  const params = new URLSearchParams({
+    route: 'save-final-assignments',
+    assignments: JSON.stringify(assignments),
+  });
+  const response = await fetch(`${GAS_PROXY}?${params.toString()}`);
+  if (!response.ok) {
+    const text = await response.text().catch(() => '');
+    throw new ApiError(`Save final assignments failed (${response.status})${text ? ': ' + text : ''}`, response.status);
+  }
+  const data = await response.json();
+  return data.saved ?? assignments.length;
+}
+
 /**
  * Fetches aggregated results (admin only)
  */
@@ -152,6 +200,34 @@ export async function fetchResults(): Promise<ResultItem[]> {
       throw error;
     }
     throw new ApiError('Network error while fetching results', 0);
+  }
+}
+
+/**
+ * Fetches current follow-up completion state (projectCreated, kickoffEmailSent) from the PLAN sheet.
+ */
+export async function getFollowups(): Promise<Record<string, { projectCreated: boolean; kickoffEmailSent: boolean }>> {
+  const response = await fetch(`${GAS_PROXY}?route=get-followups`);
+  if (!response.ok) {
+    throw new ApiError(`Get followups failed (${response.status})`, response.status);
+  }
+  const data = await response.json();
+  return data.followups ?? {};
+}
+
+/**
+ * Updates a single follow-up checkbox (projectCreated or kickoffEmailSent) for a pitch in the PLAN sheet.
+ */
+export async function updateFollowup(
+  pitchId: string,
+  field: 'projectCreated' | 'kickoffEmailSent',
+  value: boolean,
+): Promise<void> {
+  const params = new URLSearchParams({ route: 'update-followup', pitchId, field, value: String(value) });
+  const response = await fetch(`${GAS_PROXY}?${params.toString()}`);
+  if (!response.ok) {
+    const text = await response.text().catch(() => '');
+    throw new ApiError(`Update followup failed (${response.status})${text ? ': ' + text : ''}`, response.status);
   }
 }
 

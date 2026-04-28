@@ -6,6 +6,8 @@ import {
   MOCK_CONFIG, MOCK_PITCHES, MOCK_PLANS, MOCK_PHASE2_INTERESTS,
 } from '../../mocks/allocationMockData';
 import { fetchAllocationConfig, fetchAllocationVoteData } from '../../services/allocationApi';
+import { savePlan, saveFinalAssignments } from '../../services/api';
+import { useSnackbar } from '../../hooks/useSnackbar';
 import { generatePlans, autoAssignPqa1 } from '../../utils/allocationEngine';
 import { fetchPitches } from '../../services/api';
 import Step1View from './Step1View';
@@ -116,6 +118,8 @@ function enrichPitches(
 }
 
 const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProps>(function TLAllocationView({ activeStep, onFinalize }, ref) {
+  const { showSnackbar } = useSnackbar();
+
   // ── Data loading ──────────────────────────────────────────────────────────
   const [loading, setLoading] = useState(true);
   const [usingMockData, setUsingMockData] = useState(false);
@@ -259,7 +263,39 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
     setStep2Assignments(base.map(a => ({ ...a, pqa1: pqa1Map[a.pitchId] ?? null })));
   }, [activeStep, loading, phase2Interests, allocationConfig]);
 
-  const handleFinalize = () => {
+  const handleFinalize = async () => {
+    if (activeStep === 0) {
+      const payload = currentAssignments.map(a => ({
+        pitchId: a.pitchId,
+        status: a.status,
+        assignedDev: a.assignedDev,
+      }));
+      try {
+        await savePlan(payload);
+        showSnackbar('Plan saved — dev assignments recorded in the sheet', 'success');
+      } catch (err: any) {
+        showSnackbar(`Failed to save plan: ${err?.message ?? 'unknown error'}`, 'error');
+      }
+    } else {
+      const devByPitch = Object.fromEntries(currentAssignments.map(a => [a.pitchId, a]));
+      const payload = step2Assignments.map(sa => {
+        const plan = devByPitch[sa.pitchId];
+        return {
+          pitchId: sa.pitchId,
+          status: plan?.status ?? 'selected',
+          assignedDev: plan?.assignedDev ?? null,
+          devTL: sa.devTL,
+          qm: sa.qm,
+          pqa1: sa.pqa1 ?? null,
+        };
+      });
+      try {
+        await saveFinalAssignments(payload);
+        showSnackbar('Team assignments saved to the sheet', 'success');
+      } catch (err: any) {
+        showSnackbar(`Failed to save assignments: ${err?.message ?? 'unknown error'}`, 'error');
+      }
+    }
     setShowResults(true);
     onFinalize?.();
   };
@@ -281,6 +317,7 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
         pitches={allocationPitches}
         currentAssignments={currentAssignments}
         config={allocationConfig}
+        onBack={() => setShowResults(false)}
       />
     ) : (
       <Stage4ResultsView
@@ -288,6 +325,7 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
         currentAssignments={currentAssignments}
         step2Assignments={step2Assignments}
         config={allocationConfig}
+        onBack={() => setShowResults(false)}
       />
     );
   }

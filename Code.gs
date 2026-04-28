@@ -30,11 +30,23 @@ function doGet(e) {
         return getAllocationData();
       case 'phase2-interests':
         return getPhase2Interests();
+      case 'save-plan': {
+        const assignments = JSON.parse(e.parameter.assignments || '[]');
+        return savePlan(assignments);
+      }
+      case 'save-final-assignments': {
+        const assignments = JSON.parse(e.parameter.assignments || '[]');
+        return saveFinalAssignments(assignments);
+      }
+      case 'get-followups':
+        return getFollowups();
+      case 'update-followup':
+        return updateFollowup(e.parameter);
       // Vote submission via GET+JSONP (POST never crosses GAS's 302 redirect with CORS headers;
       // script-tag JSONP follows redirects freely and bypasses CORS)
       case 'vote': {
         const votes = JSON.parse(e.parameter.votes || '[]');
-        const voteResult = recordVotes({ voterName: e.parameter.voterName, votes });
+        const voteResult = recordVotes({ voterName: e.parameter.voterName, voterRole: e.parameter.voterRole, votes });
         return jsonpWrap(e.parameter.callback, voteResult);
       }
       case 'interest-vote': {
@@ -155,12 +167,11 @@ function validateNonce(nonce) {
  * @return {TextOutput} JSON response indicating success
  */
 function recordVotes(body) {
-  const {voterName, votes} = body;
+  const {voterName, voterRole, votes} = body;
   if (!voterName || !votes || !Array.isArray(votes) || votes.length === 0) {
     return badRequest("Invalid request format");
   }
 
-  // Validate votes (appetite is optional/legacy; tier is still required)
   for (const vote of votes) {
     if (!vote.pitch_id ||
         typeof vote.tier !== 'number' || vote.tier < 1 || vote.tier > 8) {
@@ -168,39 +179,37 @@ function recordVotes(body) {
     }
   }
 
-  const email = Session.getActiveUser().getEmail() || '';
   const sh = ss.getSheetByName('VOTES');
   const now = new Date();
-  const secret = PropertiesService.getScriptProperties().getProperty('pepper') || 'default-secret';
+
+  if (sh.getLastRow() === 0) {
+    sh.appendRow(['timestamp', 'voterName', 'voterRole', 'pitch_id', 'tier', 'interestLevel']);
+  }
+
+  // Delete all existing rows for this voter so resubmissions overwrite cleanly.
+  if (sh.getLastRow() > 1) {
+    const nameCol = sh.getRange(2, 2, sh.getLastRow() - 1, 1).getValues().flat();
+    const toDelete = [];
+    for (let i = 0; i < nameCol.length; i++) {
+      if (nameCol[i] === voterName) toDelete.push(i + 2);
+    }
+    for (let i = toDelete.length - 1; i >= 0; i--) {
+      sh.deleteRow(toDelete[i]);
+    }
+  }
 
   const rows = votes.map(v => [
     now,
     voterName,
-    email,
+    voterRole || '',
     v.pitch_id,
-    v.appetite != null ? v.appetite : '',
     v.tier,
-    Utilities.computeDigest(
-      Utilities.DigestAlgorithm.SHA_256,
-      voterName + v.pitch_id + secret,
-      Utilities.Charset.UTF_8
-    ).map(byte => ('0' + (byte & 0xFF).toString(16)).slice(-2)).join(''),
     (v.interestLevel != null) ? v.interestLevel : ''
   ]);
 
-  // Remove duplicates before append (still based on column G checksum)
-  let checksumRange = [];
-  if (sh.getLastRow() > 1) {
-    checksumRange = sh.getRange('G2:G' + sh.getLastRow()).getValues().flat();
-  }
+  sh.getRange(sh.getLastRow() + 1, 1, rows.length, 6).setValues(rows);
 
-  const newRows = rows.filter(r => !checksumRange.includes(r[6]));
-
-  if (newRows.length) {
-    sh.getRange(sh.getLastRow() + 1, 1, newRows.length, 8).setValues(newRows);
-  }
-
-  return json200({ saved: newRows.length });
+  return json200({ saved: rows.length });
 }
 
 /**
@@ -237,21 +246,18 @@ function getAllocationData() {
   const sh = ss.getSheetByName('VOTES');
   if (!sh || sh.getLastRow() <= 1) return json200({});
 
-  const rows = sh.getRange(2, 1, sh.getLastRow() - 1, 8).getValues();
+  const rows = sh.getRange(2, 1, sh.getLastRow() - 1, 6).getValues();
 
-  // Group votes by pitch: { pitchId -> { voterName -> tier } }
-  // Also collect interest levels: { pitchId -> { voterName -> 1|2|3|4 } }
   const pitchVoteMap = {};
   const pitchInterestMap = {};
   for (const row of rows) {
     const voterName    = row[1]; // column B
     const pitchId      = row[3]; // column D
-    const tier         = row[5]; // column F
-    const interestLevel = row[7]; // column H
+    const tier         = row[4]; // column E
+    const interestLevel = row[5]; // column F
     if (!voterName || !pitchId || tier === '' || tier === null) continue;
     const numTier = Math.max(1, Math.min(4, Math.round(Number(tier))));
     if (!pitchVoteMap[pitchId]) pitchVoteMap[pitchId] = {};
-    // Last write wins; checksum dedup at write-time means at most one row per voter-pitch
     pitchVoteMap[pitchId][voterName] = numTier;
     if (interestLevel !== '' && interestLevel !== null && interestLevel !== undefined) {
       if (!pitchInterestMap[pitchId]) pitchInterestMap[pitchId] = {};
@@ -281,6 +287,126 @@ function getAllocationData() {
   }
 
   return json200(result);
+}
+
+/**
+ * Save the finalized stage 2 plan to the PLAN sheet.
+ * Clears and rewrites the sheet on each call so it always reflects the latest plan.
+ *
+ * Expected assignments: [{ pitchId, status: 'selected'|'next-up'|'cut', assignedDev: string|null }]
+ *
+ * @param {Array} assignments
+ * @return {TextOutput} JSON { saved: number }
+ */
+function savePlan(assignments) {
+  if (!Array.isArray(assignments) || assignments.length === 0) {
+    return badRequest('assignments must be a non-empty array');
+  }
+
+  let sh = ss.getSheetByName('PLAN');
+  if (!sh) sh = ss.insertSheet('PLAN');
+  sh.clearContents();
+
+  const now = new Date();
+  const headers = ['timestamp', 'pitchId', 'status', 'assignedDev'];
+  const rows = [headers].concat(
+    assignments.map(a => [now, a.pitchId, a.status, a.assignedDev || ''])
+  );
+  sh.getRange(1, 1, rows.length, 4).setValues(rows);
+
+  return json200({ saved: assignments.length });
+}
+
+/**
+ * Update the PLAN sheet with final stage 4 team assignments.
+ * Merges devTL, qm, and pqa1 into the existing rows (matched by pitchId).
+ * If a row for a pitchId doesn't exist yet it is appended.
+ *
+ * Expected assignments: [{ pitchId, status, assignedDev, devTL, qm, pqa1 }]
+ *
+ * @param {Array} assignments
+ * @return {TextOutput} JSON { saved: number }
+ */
+function saveFinalAssignments(assignments) {
+  if (!Array.isArray(assignments) || assignments.length === 0) {
+    return badRequest('assignments must be a non-empty array');
+  }
+
+  let sh = ss.getSheetByName('PLAN');
+  if (!sh) sh = ss.insertSheet('PLAN');
+
+  // Preserve existing follow-up state before clearing
+  const existingFollowups = {};
+  if (sh.getLastRow() > 1) {
+    const existing = sh.getRange(2, 1, sh.getLastRow() - 1, 9).getValues();
+    for (const row of existing) {
+      const pid = row[1];
+      if (pid) existingFollowups[pid] = { projectCreated: row[7] === true, kickoffEmailSent: row[8] === true };
+    }
+  }
+
+  sh.clearContents();
+
+  const now = new Date();
+  const headers = ['timestamp', 'pitchId', 'status', 'assignedDev', 'devTL', 'qm', 'pqa1', 'projectCreated', 'kickoffEmailSent'];
+  const rows = [headers].concat(
+    assignments.map(a => [
+      now,
+      a.pitchId,
+      a.status || '',
+      a.assignedDev || '',
+      a.devTL || '',
+      a.qm || '',
+      a.pqa1 || '',
+      existingFollowups[a.pitchId]?.projectCreated || false,
+      existingFollowups[a.pitchId]?.kickoffEmailSent || false,
+    ])
+  );
+  sh.getRange(1, 1, rows.length, 9).setValues(rows);
+
+  return json200({ saved: assignments.length });
+}
+
+/**
+ * Returns follow-up completion state for all pitches in the PLAN sheet.
+ * @return {TextOutput} JSON { followups: { [pitchId]: { projectCreated, kickoffEmailSent } } }
+ */
+function getFollowups() {
+  const sh = ss.getSheetByName('PLAN');
+  if (!sh || sh.getLastRow() <= 1) return json200({ followups: {} });
+
+  const data = sh.getRange(2, 1, sh.getLastRow() - 1, 9).getValues();
+  const followups = {};
+  for (const row of data) {
+    const pitchId = row[1];
+    if (!pitchId) continue;
+    followups[pitchId] = {
+      projectCreated: row[7] === true,
+      kickoffEmailSent: row[8] === true,
+    };
+  }
+  return json200({ followups });
+}
+
+/**
+ * Updates a single follow-up field (projectCreated or kickoffEmailSent) for a pitch.
+ * @param {Object} params - { pitchId, field, value }
+ */
+function updateFollowup(params) {
+  const { pitchId, field, value } = params;
+  if (!pitchId || !field) return badRequest('pitchId and field required');
+  if (field !== 'projectCreated' && field !== 'kickoffEmailSent') return badRequest('field must be projectCreated or kickoffEmailSent');
+
+  const sh = ss.getSheetByName('PLAN');
+  if (!sh || sh.getLastRow() <= 1) return notFound();
+
+  const ids = sh.getRange(2, 2, sh.getLastRow() - 1, 1).getValues().flat();
+  const rowIdx = ids.indexOf(pitchId);
+  if (rowIdx === -1) return notFound();
+
+  const col = field === 'projectCreated' ? 8 : 9;
+  sh.getRange(rowIdx + 2, col).setValue(value === 'true' || value === true);
+  return json200({ updated: 1 });
 }
 
 /**

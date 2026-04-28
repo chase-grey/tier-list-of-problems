@@ -82,6 +82,8 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
   const allocationStep: 0 | 1 = pollingStage === 'tl-2' ? 1 : 0;
   const tlViewRef = useRef<TLAllocationViewHandle>(null);
   const handleAllocationFinish = () => tlViewRef.current?.triggerFinalize();
+  const [allocationFinalized, setAllocationFinalized] = useState(false);
+  const [submitState, setSubmitState] = useState<'idle' | 'submitted' | 'changed'>('idle');
 
   // Async pitch loading state
   const [loadedPitches, setLoadedPitches] = useState<(Pitch & { stage2?: boolean })[] | null>(null);
@@ -170,7 +172,6 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
     updateName,
     updateRole,
     setAvailability,
-    setDefaultInterestLevels,
     getCompletionStats
   } = useVoteManagement(completeState);
 
@@ -223,11 +224,11 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
     votes: state.votes,
     stage: state.stage,
     isActive: !isTLStage && !showHelp && !showResetConfirmation,
-    setTier: (id, tier) => setTier(id, tier),
-    clearTier: (id) => setTier(id, null),
+    setTier: (id, tier) => { setTier(id, tier); markVoteChanged(); },
+    clearTier: (id) => { setTier(id, null); markVoteChanged(); },
     clearTierToTop: handleClearTierToTop,
-    setInterest: (id, level) => setInterest(id, level),
-    clearInterest: (id) => setInterest(id, null),
+    setInterest: (id, level) => { setInterest(id, level); markVoteChanged(); },
+    clearInterest: (id) => { setInterest(id, null); markVoteChanged(); },
     clearInterestToTop: handleClearInterestToTop,
     sendToBottom: handleSendToBottomPriorityUnsorted,
     openHelp: () => setShowHelp(true),
@@ -335,27 +336,6 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
       return;
     }
 
-    // If switching to interest stage, set default interest levels for all cards
-    // But only do this if the user can access the interest stage and has completed priority ranking
-    if (newStage === 'interest') {
-      if (canAccessInterestStage && priorityStageComplete) {
-        console.log('[DEBUG] Setting default interest levels', {
-          pitchCount: Array.isArray(pitches) ? pitches.length : 0
-        });
-        setDefaultInterestLevels(pitches);
-      } else {
-        console.error('[DEBUG] Failed to set interest levels - requirements not met', {
-          canAccessInterestStage,
-          priorityStageComplete
-        });
-        // If requirements aren't met, stay on priority stage and show an error
-        showSnackbar('You cannot access the interest stage until priority ranking is completed', 'error');
-        return;
-      }
-    }
-
-    // Set the new stage
-    console.log(`[DEBUG] Setting stage to ${newStage}`);
     setStage(newStage);
   };
 
@@ -554,6 +534,7 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
     const newTimestamp = computeInsertionTimestamp(prevTimestamp, nextTimestamp);
 
     setTier(draggableId, destTier, newTimestamp);
+    markVoteChanged();
 
     // Only announce when the column changes (avoid noisy snackbars for reordering)
     if (source.droppableId !== destination.droppableId) {
@@ -585,6 +566,7 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
 
       // Set the interest level in state
       setInterest(pitchId, interestLevel, timestamp);
+      markVoteChanged();
 
       // Avoid noisy snackbars when the user is only reordering within a column
       if (previousLevel === interestLevel) {
@@ -645,14 +627,19 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
         await submitInterestVotes({ voterName: state.voterName, voterRole: state.voterRole, interests });
       } else {
         const apiVotes = convertVotesToApiFormat(state.votes);
-        await submitVotes({ voterName: state.voterName, votes: apiVotes });
+        await submitVotes({ voterName: state.voterName, voterRole: state.voterRole ?? undefined, votes: apiVotes });
       }
       showSnackbar('Your votes have been submitted successfully!', 'success');
+      setSubmitState('submitted');
     } catch (err: any) {
       showSnackbar(err?.message || 'Submission failed — please try again', 'error');
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const markVoteChanged = () => {
+    setSubmitState(prev => prev === 'submitted' ? 'changed' : prev);
   };
 
   // Handle finish process
@@ -757,8 +744,11 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
           appStage2Mode={appStage2Mode}
           allocationMode={isTLStage}
           allocationStep={allocationStep}
-          onAllocationFinish={isTLStage ? handleAllocationFinish : undefined}
-          allocationFinishLabel={allocationStep === 0 ? 'Finish Plan' : 'Finalize'}
+          onAllocationFinish={isTLStage && state.voterRole === 'dev TL' ? handleAllocationFinish : undefined}
+          allocationFinishLabel={allocationFinalized
+            ? (allocationStep === 0 ? 'Resubmit Plan' : 'Resubmit')
+            : (allocationStep === 0 ? 'Finish Plan' : 'Finalize')}
+          submitState={submitState}
         />
         
         <Box component="main" sx={{ flexGrow: 1, overflow: 'hidden', p: 0, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
@@ -767,7 +757,7 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
             <TLAllocationView
               ref={tlViewRef}
               activeStep={allocationStep}
-              onFinalize={undefined}
+              onFinalize={() => setAllocationFinalized(true)}
               voterName={state.voterName ?? ''}
               voterRole={state.voterRole ?? ''}
             />

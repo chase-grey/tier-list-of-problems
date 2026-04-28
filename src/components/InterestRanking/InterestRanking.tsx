@@ -1,14 +1,16 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import {
   Box,
   Container,
+  ToggleButtonGroup,
+  ToggleButton,
+  Typography,
 } from '@mui/material';
 import { DragDropContext } from '@hello-pangea/dnd';
 import InterestColumn from './InterestColumn';
 import type { DropResult } from '@hello-pangea/dnd';
 import type { Pitch, Vote, InterestLevel } from '../../types/models';
 import { initEnhancedDropDetection, cleanupEnhancedDropDetection } from '../../utils/enhancedDropDetection';
-import { mapTierToInterestLevel } from '../../utils/voteActions';
 
 // Interest level labels that correspond to each level (1-4)
 // Display most interested on the left. Saved data semantics: 1 = highest interest, 4 = lowest interest.
@@ -50,18 +52,12 @@ const InterestRanking: React.FC<InterestRankingProps> = ({
   focusedPitchId,
   onFocusPitch,
 }) => {
-  // Reference to the scrollable container
   const containerRef = useRef<HTMLDivElement>(null);
-  
-  // Setup enhanced drop detection for the container
+  const [unsortedSort, setUnsortedSort] = useState<'default' | 'priority' | 'category'>('default');
+
   useEffect(() => {
-    // Initialize enhanced drop detection
     initEnhancedDropDetection();
-    
-    // Return cleanup function
-    return () => {
-      cleanupEnhancedDropDetection();
-    };
+    return () => { cleanupEnhancedDropDetection(); };
   }, []);
   
   // Get all pitches that should be shown in this stage (includes all pitches now)
@@ -91,127 +87,55 @@ const InterestRanking: React.FC<InterestRankingProps> = ({
     });
   }, [pitches, votes]);
   
-  // For each interest level, get pitches that have been assigned to it
+  // Distribute pitches to interest level columns. Pitches with no explicit interestLevel go to unsorted.
   const interestColumns = React.useMemo(() => {
-    const columns: Record<string, Pitch[]> = {};
-    
-    // Add unsorted column
-    columns['interest-unsorted'] = [];
-    
-    // Initialize interest level columns with empty arrays
-    for (let i = 1; i <= 4; i++) {
-      columns[`interest-${i}`] = [];
-    }
-    
-    // Create arrays to collect pitches for each column before randomizing
+    const columns: Record<string, Pitch[]> = { 'interest-unsorted': [] };
+    for (let i = 1; i <= 4; i++) columns[`interest-${i}`] = [];
+
     const unsortedPitches: Pitch[] = [];
-    
-    // Process each pitch - now with better error handling to ensure all pitches are accounted for
-    pitchesForInterestStage.forEach((pitch) => {
-      try {
-        // Every pitch should have an ID at this point since we filtered in pitchesForInterestStage
-        const pitchId = pitch.id;
-        
-        // Get interest level and tier with proper null/undefined checking
-        const vote = votes ? votes[pitchId] : undefined;
-        const interestLevel = vote?.interestLevel;
-        const tier = vote?.tier;
-        
-        // Flag to track if pitch was placed in a column
-        let pitchPlaced = false;
 
-        // Handle explicit interest level assignment
-        if (interestLevel !== undefined) {
-          if (interestLevel === null) {
-            // Explicitly set to unsorted
-            unsortedPitches.push(pitch);
-            pitchPlaced = true;
-          } else {
-            // Add to the appropriate interest level column
-            const columnKey = `interest-${interestLevel}`;
-            if (columns[columnKey]) {
-              columns[columnKey].push(pitch);
-              pitchPlaced = true;
-            }
-          }
-        }
-        
-        // If pitch hasn't been placed yet, process based on tier
-        if (!pitchPlaced) {
-          if (!tier) {
-            // No tier means it goes in unsorted
-            unsortedPitches.push(pitch);
-            pitchPlaced = true;
-          } else {
-            // Map tier to interest level
-            const defaultInterestLevel = mapTierToInterestLevel(tier);
-            
-            if (defaultInterestLevel === null) {
-              // Null interest level means unsorted
-              unsortedPitches.push(pitch);
-              pitchPlaced = true;
-            } else {
-              // Add to the appropriate interest level column
-              const columnKey = `interest-${defaultInterestLevel}`;
-              if (columns[columnKey]) {
-                columns[columnKey].push(pitch);
-                pitchPlaced = true;
-              }
-            }
-          }
-        }
+    for (const pitch of pitchesForInterestStage) {
+      const vote = votes?.[pitch.id];
+      const interestLevel = vote?.interestLevel;
 
-        // Safety check - if pitch wasn't placed anywhere yet, put it in unsorted
-        if (!pitchPlaced) {
-          unsortedPitches.push(pitch);
-        }
-      } catch (error) {
-        // If there's an error processing a pitch, put it in unsorted rather than skipping it
-        
-        // Even with error, make sure the pitch is included somewhere
-        if (pitch && pitch.id) {
-          unsortedPitches.push(pitch);
-        }
+      if (interestLevel !== undefined && interestLevel !== null) {
+        const key = `interest-${interestLevel}`;
+        if (columns[key]) { columns[key].push(pitch); continue; }
       }
-    });
-    
-    try {
-      for (let i = 1; i <= 4; i++) {
-        const columnId = `interest-${i}`;
-        const columnPitches = columns[columnId];
-        
-        if (Array.isArray(columnPitches) && columnPitches.length > 0) {
-          columns[columnId].sort((a, b) => {
-            try {
-              const timestampA = votes && a && a.id ? (votes[a.id]?.timestamp || 0) : 0;
-              const timestampB = votes && b && b.id ? (votes[b.id]?.timestamp || 0) : 0;
-              return timestampA - timestampB;
-            } catch (error) {
-              return 0;
-            }
-          });
-        }
-      }
-    } catch (error) {
+      unsortedPitches.push(pitch);
     }
-    
-    // Keep unsorted pitches in a stable order (randomization prevents precise insertion/reordering)
 
-    try {
-      columns['interest-unsorted'] = Array.isArray(unsortedPitches)
-        ? unsortedPitches.sort((a, b) => {
-            const timestampA = votes && a && a.id ? (votes[a.id]?.timestamp || 0) : 0;
-            const timestampB = votes && b && b.id ? (votes[b.id]?.timestamp || 0) : 0;
-            if (timestampA !== timestampB) return timestampA - timestampB;
-            return a.id.localeCompare(b.id);
-          })
-        : [];
-    } catch (error) {
-      columns['interest-unsorted'] = [];
+    // Sort placed columns by drag timestamp
+    for (let i = 1; i <= 4; i++) {
+      columns[`interest-${i}`].sort((a, b) =>
+        (votes?.[a.id]?.timestamp ?? 0) - (votes?.[b.id]?.timestamp ?? 0)
+      );
     }
-    
+
+    // Sort unsorted column based on selected sort mode
+    if (unsortedSort === 'priority') {
+      unsortedPitches.sort((a, b) => {
+        const tierA = votes?.[a.id]?.tier ?? 99;
+        const tierB = votes?.[b.id]?.tier ?? 99;
+        if (tierA !== tierB) return tierA - tierB;
+        return a.title.localeCompare(b.title);
+      });
+    } else if (unsortedSort === 'category') {
+      unsortedPitches.sort((a, b) =>
+        a.category.localeCompare(b.category) || a.title.localeCompare(b.title)
+      );
+    } else {
+      unsortedPitches.sort((a, b) => {
+        const tsA = votes?.[a.id]?.timestamp ?? 0;
+        const tsB = votes?.[b.id]?.timestamp ?? 0;
+        if (tsA !== tsB) return tsA - tsB;
+        return a.id.localeCompare(b.id);
+      });
+    }
+
+    columns['interest-unsorted'] = unsortedPitches;
     return columns;
-  }, [pitchesForInterestStage, votes]);
+  }, [pitchesForInterestStage, votes, unsortedSort]);
 
   const handleSendToBottomInterestUnsorted = (pitchId: string) => {
     const unsortedPitchIds = (interestColumns['interest-unsorted'] || []).map(p => p.id);
@@ -306,6 +230,20 @@ const InterestRanking: React.FC<InterestRankingProps> = ({
 
   return (
     <Box sx={{ flexGrow: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 1, py: 0.5, flexShrink: 0 }}>
+        <Typography variant="caption" color="text.secondary">Sort unsorted by:</Typography>
+        <ToggleButtonGroup
+          value={unsortedSort}
+          exclusive
+          onChange={(_, v) => { if (v) setUnsortedSort(v); }}
+          size="small"
+        >
+          <ToggleButton value="default" sx={{ py: 0.25, px: 1, fontSize: '0.7rem' }}>Recent</ToggleButton>
+          <ToggleButton value="priority" sx={{ py: 0.25, px: 1, fontSize: '0.7rem' }}>Priority</ToggleButton>
+          <ToggleButton value="category" sx={{ py: 0.25, px: 1, fontSize: '0.7rem' }}>Category</ToggleButton>
+        </ToggleButtonGroup>
+      </Box>
+
       <Container disableGutters maxWidth={false} sx={{ flexGrow: 1, minHeight: 0, display: 'flex', flexDirection: 'column', pt: 0.5, px: 0.5 }}>
 
         <DragDropContext onDragEnd={handleDragEnd}>
