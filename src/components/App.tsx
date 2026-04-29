@@ -187,8 +187,7 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
     resetAll,
     syncPitches,
     setNameAndRole,
-    updateName,
-    updateRole,
+
     setAvailability,
     getCompletionStats
   } = useVoteManagement(completeState);
@@ -750,8 +749,7 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
           priorityStageComplete={priorityStageComplete}
           themeMode={themeMode}
           onToggleTheme={onToggleTheme}
-          onUpdateName={handleUpdateName}
-          onUpdateRole={handleUpdateRole}
+          onUpdateNameAndRole={handleUpdateNameAndRole}
           onUpdateAvailability={handleUpdateAvailability}
           appStage2Mode={appStage2Mode}
           allocationMode={isTLStage}

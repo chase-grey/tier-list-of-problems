@@ -3,9 +3,9 @@ import { Box, CircularProgress, Typography } from '@mui/material';
 import type { AllocationPitch, AllocationConfig, AssignmentStatus, Phase2Interest, PlanAssignment, StaffingAssignment, AllocationPlan } from '../../types/allocationTypes';
 import type { Pitch } from '../../types/models';
 import {
-  MOCK_CONFIG, MOCK_PITCHES, MOCK_PLANS, MOCK_PHASE2_INTERESTS,
+  MOCK_CONFIG, MOCK_PITCHES, MOCK_PLANS,
 } from '../../mocks/allocationMockData';
-import { fetchAllocationConfig, fetchAllocationVoteData } from '../../services/allocationApi';
+import { fetchAllocationConfig, fetchAllocationVoteData, fetchPhase2Interests } from '../../services/allocationApi';
 import { savePlan, saveFinalAssignments } from '../../services/api';
 import { useSnackbar } from '../../hooks/useSnackbar';
 import { generatePlans, autoAssignPqa1 } from '../../utils/allocationEngine';
@@ -128,8 +128,7 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
   const [allocationPitches, setAllocationPitches] = useState<AllocationPitch[]>(MOCK_PITCHES);
   const [allocationConfig, setAllocationConfig] = useState<AllocationConfig>(MOCK_CONFIG);
   const [allocationPlans, setAllocationPlans] = useState<AllocationPlan[]>(MOCK_PLANS);
-  // Phase 2 interests: always fall back to mocks until a real submission workflow exists
-  const phase2Interests: Phase2Interest[] = MOCK_PHASE2_INTERESTS;
+  const [phase2Interests, setPhase2Interests] = useState<Phase2Interest[]>([]);
   const [showResults, setShowResults] = useState(false);
 
   useEffect(() => {
@@ -137,10 +136,11 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
 
     async function loadData() {
       try {
-        const [pitches, voteData, config] = await Promise.all([
+        const [pitches, voteData, config, interests] = await Promise.all([
           fetchPitches(),
           fetchAllocationVoteData(),
           fetchAllocationConfig(),
+          fetchPhase2Interests(),
         ]);
 
         if (cancelled) return;
@@ -151,6 +151,7 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
 
         // Always apply the fetched config (needed for testingCaptain, tlEmails, etc.)
         setAllocationConfig(effectiveConfig);
+        setPhase2Interests(interests);
 
         if (!hasRealVotes) {
           // No real vote data yet — fall back to mocks so the UI is still populated

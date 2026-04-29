@@ -10,6 +10,21 @@
 const ss = SpreadsheetApp.getActiveSpreadsheet();
 
 /**
+ * Returns a map of pitchId → pitchTitle from the PITCHES sheet.
+ * Returns an empty object if the sheet doesn't exist or has no data.
+ */
+function getPitchTitleMap() {
+  const sh = ss.getSheetByName('PITCHES');
+  if (!sh || sh.getLastRow() < 2) return {};
+  const rows = sh.getRange(2, 1, sh.getLastRow() - 1, 2).getValues();
+  const map = {};
+  for (const [id, title] of rows) {
+    if (id) map[String(id)] = title || '';
+  }
+  return map;
+}
+
+/**
  * Router for GET requests
  */
 function doGet(e) {
@@ -38,6 +53,8 @@ function doGet(e) {
         const assignments = JSON.parse(e.parameter.assignments || '[]');
         return saveFinalAssignments(assignments);
       }
+      case 'get-plan':
+        return getPlanStatuses();
       case 'get-followups':
         return getFollowups();
       case 'update-followup':
@@ -198,7 +215,11 @@ function recordVotes(body) {
   const now = new Date();
 
   if (sh.getLastRow() === 0) {
-    sh.appendRow(['timestamp', 'voterName', 'voterRole', 'pitch_id', 'tier', 'interestLevel']);
+    sh.appendRow(['timestamp', 'voterName', 'voterRole', 'pitch_id', 'pitchTitle', 'tier', 'interestLevel']);
+  } else if (sh.getLastColumn() < 7) {
+    // Migrate old schema: insert pitchTitle column after pitch_id (col 4)
+    sh.insertColumnAfter(4);
+    sh.getRange(1, 5).setValue('pitchTitle');
   }
 
   // Delete all existing rows for this voter so resubmissions overwrite cleanly.
@@ -219,10 +240,11 @@ function recordVotes(body) {
       voterName,
       voterRole || '',
       v.pitch_id,
+      v.pitchTitle || '',
       v.tier,
       (v.interestLevel != null) ? v.interestLevel : ''
     ]);
-    sh.getRange(sh.getLastRow() + 1, 1, rows.length, 6).setValues(rows);
+    sh.getRange(sh.getLastRow() + 1, 1, rows.length, 7).setValues(rows);
   }
 
   return json200({ saved: votes.length });
@@ -286,15 +308,15 @@ function getAllocationData() {
   const sh = ss.getSheetByName('VOTES');
   if (!sh || sh.getLastRow() <= 1) return json200({});
 
-  const rows = sh.getRange(2, 1, sh.getLastRow() - 1, 6).getValues();
+  const rows = sh.getRange(2, 1, sh.getLastRow() - 1, 7).getValues();
 
   const pitchVoteMap = {};
   const pitchInterestMap = {};
   for (const row of rows) {
     const voterName    = row[1]; // column B
     const pitchId      = row[3]; // column D
-    const tier         = row[4]; // column E
-    const interestLevel = row[5]; // column F
+    const tier         = row[5]; // column F (after pitchTitle in col E)
+    const interestLevel = row[6]; // column G
     if (!voterName || !pitchId || tier === '' || tier === null || tier === undefined) continue;
     const numTier = Number(tier) === 0 ? 0 : Math.max(1, Math.min(4, Math.round(Number(tier))));
     if (!pitchVoteMap[pitchId]) pitchVoteMap[pitchId] = {};
@@ -348,11 +370,12 @@ function savePlan(assignments) {
   sh.clearContents();
 
   const now = new Date();
-  const headers = ['timestamp', 'pitchId', 'status', 'assignedDev'];
+  const pitchTitles = getPitchTitleMap();
+  const headers = ['timestamp', 'pitchId', 'pitchTitle', 'status', 'assignedDev'];
   const rows = [headers].concat(
-    assignments.map(a => [now, a.pitchId, a.status, a.assignedDev || ''])
+    assignments.map(a => [now, a.pitchId, pitchTitles[String(a.pitchId)] || '', a.status, a.assignedDev || ''])
   );
-  sh.getRange(1, 1, rows.length, 4).setValues(rows);
+  sh.getRange(1, 1, rows.length, 5).setValues(rows);
 
   return json200({ saved: assignments.length });
 }
@@ -375,24 +398,31 @@ function saveFinalAssignments(assignments) {
   let sh = ss.getSheetByName('PLAN');
   if (!sh) sh = ss.insertSheet('PLAN');
 
-  // Preserve existing follow-up state before clearing
+  // Preserve existing follow-up state before clearing.
+  // pitchTitle column was added in a schema update: old sheets have 9 cols, new have 10.
   const existingFollowups = {};
   if (sh.getLastRow() > 1) {
-    const existing = sh.getRange(2, 1, sh.getLastRow() - 1, 9).getValues();
+    const numCols = sh.getLastColumn();
+    const hasTitle = numCols >= 10; // new schema: pitchTitle shifts followup cols right by 1
+    const pcIdx = hasTitle ? 8 : 7;
+    const keIdx = hasTitle ? 9 : 8;
+    const existing = sh.getRange(2, 1, sh.getLastRow() - 1, numCols).getValues();
     for (const row of existing) {
       const pid = row[1];
-      if (pid) existingFollowups[pid] = { projectCreated: row[7] === true, kickoffEmailSent: row[8] === true };
+      if (pid) existingFollowups[pid] = { projectCreated: row[pcIdx] === true, kickoffEmailSent: row[keIdx] === true };
     }
   }
 
   sh.clearContents();
 
   const now = new Date();
-  const headers = ['timestamp', 'pitchId', 'status', 'assignedDev', 'devTL', 'qm', 'pqa1', 'projectCreated', 'kickoffEmailSent'];
+  const pitchTitles = getPitchTitleMap();
+  const headers = ['timestamp', 'pitchId', 'pitchTitle', 'status', 'assignedDev', 'devTL', 'qm', 'pqa1', 'projectCreated', 'kickoffEmailSent'];
   const rows = [headers].concat(
     assignments.map(a => [
       now,
       a.pitchId,
+      pitchTitles[String(a.pitchId)] || '',
       a.status || '',
       a.assignedDev || '',
       a.devTL || '',
@@ -402,9 +432,26 @@ function saveFinalAssignments(assignments) {
       existingFollowups[a.pitchId]?.kickoffEmailSent || false,
     ])
   );
-  sh.getRange(1, 1, rows.length, 9).setValues(rows);
+  sh.getRange(1, 1, rows.length, 10).setValues(rows);
 
   return json200({ saved: assignments.length });
+}
+
+/**
+ * Returns the status of all pitches in the PLAN sheet.
+ * @return {TextOutput} JSON { statuses: { [pitchId]: 'selected'|'next-up'|'cut' } }
+ */
+function getPlanStatuses() {
+  const sh = ss.getSheetByName('PLAN');
+  if (!sh || sh.getLastRow() <= 1) return json200({ statuses: {} });
+  const data = sh.getRange(2, 2, sh.getLastRow() - 1, 3).getValues(); // cols: pitchId, pitchTitle, status
+  const statuses = {};
+  for (const row of data) {
+    const pitchId = String(row[0]);
+    if (!pitchId) continue;
+    statuses[pitchId] = row[2]; // 'selected' | 'next-up' | 'cut'
+  }
+  return json200({ statuses });
 }
 
 /**
@@ -415,14 +462,14 @@ function getFollowups() {
   const sh = ss.getSheetByName('PLAN');
   if (!sh || sh.getLastRow() <= 1) return json200({ followups: {} });
 
-  const data = sh.getRange(2, 1, sh.getLastRow() - 1, 9).getValues();
+  const data = sh.getRange(2, 1, sh.getLastRow() - 1, 10).getValues();
   const followups = {};
   for (const row of data) {
     const pitchId = row[1];
     if (!pitchId) continue;
     followups[pitchId] = {
-      projectCreated: row[7] === true,
-      kickoffEmailSent: row[8] === true,
+      projectCreated: row[8] === true,
+      kickoffEmailSent: row[9] === true,
     };
   }
   return json200({ followups });
@@ -444,7 +491,7 @@ function updateFollowup(params) {
   const rowIdx = ids.indexOf(pitchId);
   if (rowIdx === -1) return notFound();
 
-  const col = field === 'projectCreated' ? 8 : 9;
+  const col = field === 'projectCreated' ? 9 : 10;
   sh.getRange(rowIdx + 2, col).setValue(value === 'true' || value === true);
   return json200({ updated: 1 });
 }

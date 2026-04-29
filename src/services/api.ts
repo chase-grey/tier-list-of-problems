@@ -84,19 +84,14 @@ export async function submitVotes(payload: Omit<SubmitVotesPayload, 'nonce'>): P
     return savedCount;
   }
 
-  const params = new URLSearchParams({
-    route: 'vote',
-    voterName: payload.voterName,
-    ...(payload.voterRole ? { voterRole: payload.voterRole } : {}),
-    votes: JSON.stringify(payload.votes),
+  if (!API_BASE_URL) throw new ApiError('API URL not configured', 0);
+  await fetch(`${API_BASE_URL}?route=vote`, {
+    method: 'POST',
+    mode: 'no-cors',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ voterName: payload.voterName, voterRole: payload.voterRole, votes: payload.votes }),
   });
-  const response = await fetch(`${GAS_PROXY}?${params.toString()}`);
-  if (!response.ok) {
-    const text = await response.text().catch(() => '');
-    throw new ApiError(`Vote submission failed (${response.status})${text ? ': ' + text : ''}`, response.status);
-  }
-  const data = await response.json();
-  return data.saved ?? payload.votes.length;
+  return payload.votes.length;
 }
 
 export interface SubmitInterestPayload {
@@ -201,6 +196,19 @@ export async function fetchResults(): Promise<ResultItem[]> {
 }
 
 /**
+ * Fetches the status of all pitches in the PLAN sheet (selected / next-up / cut).
+ * Returns an empty object if the PLAN sheet has no data yet.
+ */
+export async function fetchPlanStatuses(): Promise<Record<string, 'selected' | 'next-up' | 'cut'>> {
+  const response = await fetch(`${GAS_PROXY}?route=get-plan`);
+  if (!response.ok) {
+    throw new ApiError(`Get plan statuses failed (${response.status})`, response.status);
+  }
+  const data = await response.json();
+  return data.statuses ?? {};
+}
+
+/**
  * Fetches current follow-up completion state (projectCreated, kickoffEmailSent) from the PLAN sheet.
  */
 export async function getFollowups(): Promise<Record<string, { projectCreated: boolean; kickoffEmailSent: boolean }>> {
@@ -259,15 +267,20 @@ export async function submitFeedback(payload: SubmitFeedbackPayload): Promise<vo
  * tier=0 so the backend can record that the voter submitted but left it unranked.
  * Pitches the voter never touched (tier=undefined) are excluded entirely.
  */
-export function convertVotesToApiFormat(votes: Record<string, Vote>): Array<{
+export function convertVotesToApiFormat(
+  votes: Record<string, Vote>,
+  pitchTitles?: Record<string, string>,
+): Array<{
   pitch_id: string;
+  pitchTitle?: string;
   tier: number;
   interestLevel?: number | null;
 }> {
   return Object.entries(votes)
-    .filter(([_, vote]) => vote.tier !== undefined)
+    .filter(([_, vote]) => vote.tier !== undefined || vote.interestLevel !== undefined)
     .map(([pitchId, vote]) => ({
       pitch_id: pitchId,
+      ...(pitchTitles ? { pitchTitle: pitchTitles[pitchId] ?? '' } : {}),
       tier: vote.tier ?? 0,  // null (explicitly unsorted) → 0
       ...(vote.interestLevel != null ? { interestLevel: vote.interestLevel } : {}),
     }));

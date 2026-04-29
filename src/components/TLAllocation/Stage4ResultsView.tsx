@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import {
   Box, Typography, Table, TableBody, TableCell, TableHead, TableRow,
-  Button, Divider, Paper, Checkbox, FormControlLabel,
+  Button, Divider, Link, Paper, Checkbox, FormControlLabel,
 } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
@@ -153,7 +153,7 @@ export default function Stage4ResultsView({ pitches, currentAssignments, step2As
       rows.forEach(({ pitch, dev, sa }) => {
         const shortTitle = pitch.title.replace(/^[^/]+\/\s*/, '');
         lines.push(`  ${shortTitle}`);
-        lines.push(`    [ ] Create PRJ record — Dev: ${dev ?? '—'}, QM: ${sa.qm ?? '—'}${sa.pqa1 ? `, PQA1: ${sa.pqa1}` : ''}. Attach pitch ZQN on Associated Records tab.`);
+        lines.push(`    [ ] Create PRJ record — Attach QAN ${pitch.id} on Associated Records tab. Dev: ${dev ?? '—'}, QM: ${sa.qm ?? '—'}${sa.pqa1 ? `, PQA1: ${sa.pqa1}` : ''}.`);
         lines.push(`    [ ] Send kickoff email`);
       });
       const backlog = backlogByTL[tl] ?? [];
@@ -316,27 +316,30 @@ export default function Stage4ResultsView({ pitches, currentAssignments, step2As
                     </Typography>
 
                     <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start' }}>
-                      <FormControlLabel
-                        control={
-                          <Checkbox
-                            checked={!!checkedItems[`prj-${tl}-${pitch.id}`]}
-                            onChange={() => toggleCheck(`prj-${tl}-${pitch.id}`, pitch.id, 'projectCreated')}
-                            size="small"
-                          />
-                        }
-                        label={
-                          <Box>
-                            <Typography variant="body2">Create PRJ record</Typography>
-                            <Typography variant="caption" color="text.secondary">
-                              People tab: Dev TL: {tl}, Dev: {dev ?? '—'}, QM: {sa.qm ?? '—'}
-                              {sa.pqa1 ? `, PQA1: ${sa.pqa1}` : ''}
-                              {config.testingCaptain ? `, Testing Captain: ${config.testingCaptain}` : ''}
-                              {' · '}Attach pitch ZQN on Associated Records tab
-                            </Typography>
-                          </Box>
-                        }
-                        sx={{ flex: 1, mb: 0, alignItems: 'flex-start' }}
-                      />
+                      <Box sx={{ display: 'flex', alignItems: 'flex-start', flex: 1 }}>
+                        <Checkbox
+                          checked={!!checkedItems[`prj-${tl}-${pitch.id}`]}
+                          onChange={() => toggleCheck(`prj-${tl}-${pitch.id}`, pitch.id, 'projectCreated')}
+                          size="small"
+                          sx={{ mt: '-2px', mr: 1 }}
+                        />
+                        <Box>
+                          <Typography variant="body2">Create PRJ record</Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            <Link
+                              href={`https://emc2summary/GetSummaryReport.ashx/TRACK/ZQN/${pitch.id}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              onClick={e => e.stopPropagation()}
+                            >
+                              QAN {pitch.id}
+                            </Link>
+                            {' on Associated Records tab · '}People tab: Dev TL: {tl}, Dev: {dev ?? '—'}, QM: {sa.qm ?? '—'}
+                            {sa.pqa1 ? `, PQA1: ${sa.pqa1}` : ''}
+                            {config.testingCaptain ? `, Testing Captain: ${config.testingCaptain}` : ''}
+                          </Typography>
+                        </Box>
+                      </Box>
 
                       <FormControlLabel
                         control={

@@ -274,6 +274,8 @@ export default function Step2View({
                           assignment={a}
                           devTLInterests={devTLInterests}
                           qmInterests={qmInterests}
+                          devTLNames={config.devTLNames}
+                          qmNames={config.qmNames}
                           devNames={devNames}
                           onAssign={onAssign}
                           onRef={registerRow(pitch.id)}
@@ -552,6 +554,8 @@ interface Step2RowProps {
   assignment: StaffingAssignment;
   devTLInterests: Phase2Interest[];
   qmInterests: Phase2Interest[];
+  devTLNames: string[];
+  qmNames: string[];
   devNames: string[];
   onAssign: (pitchId: string, field: 'devTL' | 'qm' | 'pqa1', value: string | null) => void;
   onRef?: (el: HTMLTableRowElement | null) => void;
@@ -564,7 +568,7 @@ interface Step2RowProps {
 }
 
 function Step2Row({
-  pitch, assignment, devTLInterests, qmInterests, devNames, onAssign, onRef, highlighted,
+  pitch, assignment, devTLInterests, qmInterests, devTLNames, qmNames, devNames, onAssign, onRef, highlighted,
   devName, includeUXD, onToggleUXD, onOpenEmail, emailCustomized = false,
 }: Step2RowProps) {
   const [detailsAnchor, setDetailsAnchor] = useState<HTMLButtonElement | null>(null);
@@ -644,6 +648,7 @@ function Step2Row({
       <TableCell sx={{ px: 0.5, py: 0.25 }}>
         <AssignmentDropdown
           value={assignment.devTL}
+          allNames={devTLNames}
           options={devTLInterests}
           pitchId={pitch.id}
           onChange={v => onAssign(pitch.id, 'devTL', v)}
@@ -652,6 +657,7 @@ function Step2Row({
       <TableCell sx={{ px: 0.5, py: 0.25 }}>
         <AssignmentDropdown
           value={assignment.qm}
+          allNames={qmNames}
           options={qmInterests}
           pitchId={pitch.id}
           onChange={v => onAssign(pitch.id, 'qm', v)}
@@ -728,17 +734,25 @@ function Pqa1Dropdown({ value, devNames, devInterest, excludeDev, onChange }: Pq
 
 interface AssignmentDropdownProps {
   value: string | null;
+  allNames: string[];
   options: Phase2Interest[];
   pitchId: string;
   onChange: (val: string | null) => void;
 }
 
-function AssignmentDropdown({ value, options, pitchId, onChange }: AssignmentDropdownProps) {
-  const sorted = [...options].sort((a, b) => {
+function AssignmentDropdown({ value, allNames, options, pitchId, onChange }: AssignmentDropdownProps) {
+  const interestMap = new Map(options.map(o => [o.personName, o]));
+
+  // Interest submitters first (sorted by level), then remaining names alphabetically
+  const withInterest = [...options].sort((a, b) => {
     const tA = a.interestByPitchId[pitchId] ?? 5;
     const tB = b.interestByPitchId[pitchId] ?? 5;
     return (tA as number) - (tB as number);
   });
+  const withoutInterest = allNames
+    .filter(n => !interestMap.has(n))
+    .sort((a, b) => a.localeCompare(b));
+  const allEntries = [...withInterest.map(o => o.personName), ...withoutInterest];
 
   return (
     <Select
@@ -749,9 +763,9 @@ function AssignmentDropdown({ value, options, pitchId, onChange }: AssignmentDro
       sx={{ fontSize: '0.75rem', width: '100%', '& .MuiSelect-select': { py: 0.5, px: 1 } }}
       renderValue={val => {
         if (!val) return <Typography variant="caption" color="text.disabled">Assign…</Typography>;
-        const selectedPerson = options.find(o => o.personName === (val as string));
-        const level = (selectedPerson?.interestByPitchId[pitchId] ?? null) as (1 | 2 | 3 | 4 | null);
-        const noData = selectedPerson ? !(pitchId in selectedPerson.interestByPitchId) : false;
+        const person = interestMap.get(val as string);
+        const level = (person?.interestByPitchId[pitchId] ?? null) as (1 | 2 | 3 | 4 | null);
+        const noData = !person || !(pitchId in person.interestByPitchId);
         return (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0 }}>
             <Typography variant="caption" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
@@ -763,14 +777,18 @@ function AssignmentDropdown({ value, options, pitchId, onChange }: AssignmentDro
       }}
     >
       <MenuItem value=""><em>Unassign</em></MenuItem>
-      {sorted.map(person => (
-        <MenuItem key={person.personName} value={person.personName}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
-            <Typography variant="body2" sx={{ flex: 1 }}>{person.personName}</Typography>
-            <InterestChip level={person.interestByPitchId[pitchId] ?? null} />
-          </Box>
-        </MenuItem>
-      ))}
+      {allEntries.map(name => {
+        const person = interestMap.get(name);
+        const level = (person?.interestByPitchId[pitchId] ?? null) as (1 | 2 | 3 | 4 | null);
+        return (
+          <MenuItem key={name} value={name}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
+              <Typography variant="body2" sx={{ flex: 1 }}>{name}</Typography>
+              <InterestChip level={level} />
+            </Box>
+          </MenuItem>
+        );
+      })}
     </Select>
   );
 }

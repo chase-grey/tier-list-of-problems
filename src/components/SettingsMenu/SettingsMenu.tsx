@@ -8,9 +8,6 @@ import {
   Divider,
   Switch,
   TextField,
-  FormControl,
-  InputLabel,
-  Select,
   Typography,
   Tooltip,
   Dialog,
@@ -18,17 +15,20 @@ import {
   DialogContent,
   DialogActions,
   Button,
+  Box,
+  Chip,
 } from '@mui/material';
+import Autocomplete from '@mui/material/Autocomplete';
 import {
   MoreHoriz as MoreHorizIcon,
   DarkMode as DarkModeIcon,
   LightMode as LightModeIcon,
   Person as PersonIcon,
-  Work as WorkIcon,
   EventAvailable as AvailableIcon,
   RestartAlt as ResetIcon,
 } from '@mui/icons-material';
 import { isContributorRole } from '../../types/models';
+import { TEAM_ROSTER, type TeamMember } from '../../data/teamRoster';
 
 interface SettingsMenuProps {
   themeMode: 'dark' | 'light';
@@ -36,8 +36,7 @@ interface SettingsMenuProps {
   voterName: string | null;
   voterRole: string | null;
   available: boolean | null;
-  onUpdateName: (name: string) => void;
-  onUpdateRole: (role: string) => void;
+  onUpdateNameAndRole: (name: string, role: string) => void;
   onUpdateAvailability: (available: boolean) => void;
   onResetClick: () => void;
 }
@@ -48,22 +47,15 @@ export const SettingsMenu: React.FC<SettingsMenuProps> = ({
   voterName,
   voterRole,
   available,
-  onUpdateName,
-  onUpdateRole,
+  onUpdateNameAndRole,
   onUpdateAvailability,
   onResetClick,
 }) => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
 
-  // Edit dialogs state
   const [editNameOpen, setEditNameOpen] = useState(false);
-  const [editRoleOpen, setEditRoleOpen] = useState(false);
-  const [availabilityPromptOpen, setAvailabilityPromptOpen] = useState(false);
-  const [tempName, setTempName] = useState('');
-  const [tempRole, setTempRole] = useState('');
-  const [tempOtherRole, setTempOtherRole] = useState('');
-  const [pendingRole, setPendingRole] = useState<string | null>(null);
+  const [tempMember, setTempMember] = useState<TeamMember | null>(null);
 
   const handleClick = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -75,96 +67,29 @@ export const SettingsMenu: React.FC<SettingsMenuProps> = ({
 
   const handleThemeToggle = () => {
     onToggleTheme();
-    // Don't close menu after toggling theme
   };
 
   const handleAvailabilityToggle = () => {
     onUpdateAvailability(!available);
-    // Don't close menu after toggling availability
   };
 
-  // Name edit handlers
   const handleEditNameOpen = () => {
-    setTempName(voterName || '');
+    const current = TEAM_ROSTER.find(m => m.name === voterName) ?? null;
+    setTempMember(current);
     setEditNameOpen(true);
     handleClose();
   };
 
   const handleEditNameClose = () => {
     setEditNameOpen(false);
-    setTempName('');
+    setTempMember(null);
   };
 
   const handleEditNameSave = () => {
-    if (tempName.trim()) {
-      onUpdateName(tempName.trim());
+    if (tempMember) {
+      onUpdateNameAndRole(tempMember.name, tempMember.role);
     }
     handleEditNameClose();
-  };
-
-  // Role edit handlers
-  const handleEditRoleOpen = () => {
-    // Check if current role is a standard role or custom
-    const standardRoles = ['dev', 'TS', 'QM', 'UXD', 'dev TL', 'QM TL', 'TLTL', 'customer', 'other'];
-    if (voterRole && standardRoles.includes(voterRole)) {
-      setTempRole(voterRole);
-      setTempOtherRole('');
-    } else {
-      setTempRole('other');
-      setTempOtherRole(voterRole || '');
-    }
-    setEditRoleOpen(true);
-    handleClose();
-  };
-
-  const handleEditRoleClose = () => {
-    setEditRoleOpen(false);
-    setTempRole('');
-    setTempOtherRole('');
-  };
-
-  const handleEditRoleSave = () => {
-    const finalRole = tempRole === 'other' ? tempOtherRole.trim() : tempRole;
-    if (finalRole) {
-      const wasContributor = voterRole && isContributorRole(voterRole);
-      const isNowContributor = isContributorRole(finalRole);
-      
-      // If changing from non-contributor to contributor, prompt for availability
-      if (!wasContributor && isNowContributor) {
-        setPendingRole(finalRole);
-        handleEditRoleClose();
-        setAvailabilityPromptOpen(true);
-        return;
-      }
-      
-      // If changing from contributor to non-contributor, clear availability
-      if (wasContributor && !isNowContributor) {
-        onUpdateAvailability(false);
-      }
-      // Otherwise (contributor to contributor), keep existing availability
-      
-      onUpdateRole(finalRole);
-    }
-    handleEditRoleClose();
-  };
-
-  // Availability prompt handlers (shown after role change to contributor)
-  const handleAvailabilityPromptYes = () => {
-    if (pendingRole) {
-      onUpdateRole(pendingRole);
-      onUpdateAvailability(true);
-    }
-    setAvailabilityPromptOpen(false);
-    setPendingRole(null);
-  };
-
-  const handleAvailabilityPromptNo = () => {
-    if (pendingRole) {
-      onUpdateRole(pendingRole);
-      onUpdateAvailability(false);
-    }
-    setAvailabilityPromptOpen(false);
-    setPendingRole(null);
   };
 
   const handleResetClick = () => {
@@ -172,7 +97,6 @@ export const SettingsMenu: React.FC<SettingsMenuProps> = ({
     onResetClick();
   };
 
-  // Check if user is a developer (can see availability option)
   const isDeveloper = voterRole && isContributorRole(voterRole);
 
   return (
@@ -195,20 +119,10 @@ export const SettingsMenu: React.FC<SettingsMenuProps> = ({
         anchorEl={anchorEl}
         open={open}
         onClose={handleClose}
-        MenuListProps={{
-          'aria-labelledby': 'settings-button',
-        }}
-        anchorOrigin={{
-          vertical: 'bottom',
-          horizontal: 'right',
-        }}
-        transformOrigin={{
-          vertical: 'top',
-          horizontal: 'right',
-        }}
-        PaperProps={{
-          sx: { minWidth: 280 }
-        }}
+        MenuListProps={{ 'aria-labelledby': 'settings-button' }}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+        PaperProps={{ sx: { minWidth: 280 } }}
       >
         {/* Theme Toggle */}
         <MenuItem onClick={handleThemeToggle}>
@@ -225,32 +139,21 @@ export const SettingsMenu: React.FC<SettingsMenuProps> = ({
           <ListItemIcon>
             <PersonIcon />
           </ListItemIcon>
-          <ListItemText 
-            primary="Update Name" 
-            secondary={voterName || 'Not set'}
+          <ListItemText
+            primary="Change Name"
+            secondary={voterName ? `${voterName} · ${voterRole ?? ''}` : 'Not set'}
           />
         </MenuItem>
 
-        {/* Update Role */}
-        <MenuItem onClick={handleEditRoleOpen}>
-          <ListItemIcon>
-            <WorkIcon />
-          </ListItemIcon>
-          <ListItemText 
-            primary="Update Role" 
-            secondary={voterRole || 'Not set'}
-          />
-        </MenuItem>
-
-        {/* Availability Toggle - Only show for developers */}
+        {/* Availability Toggle - only for contributor roles */}
         {isDeveloper && (
           <MenuItem onClick={handleAvailabilityToggle}>
             <ListItemIcon>
               <AvailableIcon />
             </ListItemIcon>
-            <ListItemText 
-              primary="Available Next Quarter" 
-              secondary={available ? 'Yes - can rank interests' : 'No - priority only'}
+            <ListItemText
+              primary="Available Next Quarter"
+              secondary={available ? 'Yes — can rank interests' : 'No — priority only'}
             />
             <Switch
               edge="end"
@@ -272,113 +175,53 @@ export const SettingsMenu: React.FC<SettingsMenuProps> = ({
         </MenuItem>
       </Menu>
 
-      {/* Edit Name Dialog */}
+      {/* Change Name Dialog */}
       <Dialog open={editNameOpen} onClose={handleEditNameClose} maxWidth="xs" fullWidth>
-        <DialogTitle>Update Name</DialogTitle>
+        <DialogTitle>Change Name</DialogTitle>
         <DialogContent>
-          <TextField
+          <Autocomplete
             autoFocus
-            margin="dense"
-            label="Your Full Name"
-            type="text"
-            fullWidth
-            variant="outlined"
-            value={tempName}
-            onChange={(e) => setTempName(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && tempName.trim()) {
-                handleEditNameSave();
-              }
+            autoHighlight
+            autoSelect
+            options={TEAM_ROSTER}
+            getOptionLabel={(option) => option.name}
+            filterOptions={(options, { inputValue }) => {
+              const lower = inputValue.toLowerCase();
+              return options.filter(o =>
+                o.name.split(' ').some(word => word.toLowerCase().startsWith(lower))
+              );
             }}
+            value={tempMember}
+            onChange={(_, value) => setTempMember(value)}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="Your Name"
+                placeholder="Start typing…"
+                variant="outlined"
+                margin="dense"
+              />
+            )}
+            renderOption={(props, option) => (
+              <li {...props} key={option.name}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
+                  <span style={{ flex: 1 }}>{option.name}</span>
+                  <Chip label={option.role} size="small" variant="outlined" sx={{ fontSize: '0.7rem' }} />
+                </Box>
+              </li>
+            )}
+            isOptionEqualToValue={(option, value) => option.name === value.name}
           />
+          {tempMember && (
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+              Role: <strong>{tempMember.role}</strong>
+            </Typography>
+          )}
         </DialogContent>
         <DialogActions>
           <Button onClick={handleEditNameClose}>Cancel</Button>
-          <Button 
-            onClick={handleEditNameSave} 
-            variant="contained" 
-            disabled={!tempName.trim()}
-          >
+          <Button onClick={handleEditNameSave} variant="contained" disabled={!tempMember}>
             Save
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Edit Role Dialog */}
-      <Dialog open={editRoleOpen} onClose={handleEditRoleClose} maxWidth="xs" fullWidth>
-        <DialogTitle>Update Role</DialogTitle>
-        <DialogContent>
-          <FormControl fullWidth variant="outlined" margin="dense">
-            <InputLabel id="edit-role-select-label">Your Role</InputLabel>
-            <Select
-              labelId="edit-role-select-label"
-              value={tempRole}
-              label="Your Role"
-              onChange={(e) => setTempRole(e.target.value)}
-            >
-              <MenuItem value="dev">Dev</MenuItem>
-              <MenuItem value="TS">TS</MenuItem>
-              <MenuItem value="QM">QM</MenuItem>
-              <MenuItem value="UXD">UXD</MenuItem>
-              <MenuItem value="dev TL">Dev TL</MenuItem>
-              <MenuItem value="QM TL">QM TL</MenuItem>
-              <MenuItem value="TLTL">TLTL</MenuItem>
-              <MenuItem value="customer">Customer</MenuItem>
-              <MenuItem value="other">Other</MenuItem>
-            </Select>
-          </FormControl>
-
-          {tempRole === 'other' && (
-            <TextField
-              margin="dense"
-              label="Please specify your role"
-              type="text"
-              fullWidth
-              variant="outlined"
-              value={tempOtherRole}
-              onChange={(e) => setTempOtherRole(e.target.value)}
-            />
-          )}
-
-          {/* Show info about availability when switching to/from contributor role */}
-          {isContributorRole(tempRole === 'other' ? tempOtherRole : tempRole) && !isDeveloper && (
-            <Typography variant="body2" color="info.main" sx={{ mt: 2 }}>
-              You'll be asked about your availability for next quarter.
-            </Typography>
-          )}
-          {!isContributorRole(tempRole === 'other' ? tempOtherRole : tempRole) && isDeveloper && (
-            <Typography variant="body2" color="warning.main" sx={{ mt: 2 }}>
-              This role does not have access to interest ranking.
-            </Typography>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleEditRoleClose}>Cancel</Button>
-          <Button 
-            onClick={handleEditRoleSave} 
-            variant="contained" 
-            disabled={!tempRole || (tempRole === 'other' && !tempOtherRole.trim())}
-          >
-            Save
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Availability Prompt Dialog - shown when changing to a contributor role */}
-      <Dialog open={availabilityPromptOpen} onClose={handleAvailabilityPromptNo} maxWidth="xs" fullWidth>
-        <DialogTitle>Availability for Next Quarter</DialogTitle>
-        <DialogContent>
-          <Typography variant="body1">
-            Will you be available to work on projects next quarter?
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-            This determines if you can rank your interest in pitches.
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleAvailabilityPromptNo}>No</Button>
-          <Button onClick={handleAvailabilityPromptYes} variant="contained">
-            Yes
           </Button>
         </DialogActions>
       </Dialog>
