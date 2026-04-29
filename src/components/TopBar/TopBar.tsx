@@ -6,6 +6,7 @@ import {
   Box,
   IconButton,
   Tooltip,
+  CircularProgress,
 } from '@mui/material';
 import {
   Send as SendIcon,
@@ -14,6 +15,7 @@ import {
   NavigateNext as NextIcon,
   NavigateBefore as PrevIcon,
   ThumbUp as InterestIcon,
+  CheckCircle as CheckCircleIcon,
 } from '@mui/icons-material';
 import { SettingsMenu } from '../SettingsMenu/SettingsMenu';
 
@@ -35,15 +37,15 @@ interface TopBarProps {
   priorityStageComplete: boolean;
   themeMode: 'dark' | 'light';
   onToggleTheme: () => void;
-  onUpdateName: (name: string) => void;
-  onUpdateRole: (role: string) => void;
+  onUpdateNameAndRole: (name: string, role: string) => void;
   onUpdateAvailability: (available: boolean) => void;
   appStage2Mode?: boolean;
   allocationMode?: boolean;
   allocationStep?: 0 | 1;
   onAllocationFinish?: () => void;
-  allocationFinishLabel?: string;
   allocationFinishEnabled?: boolean;
+  allocationFinishLoading?: boolean;
+  votingLoading?: boolean;
   submitState?: 'idle' | 'submitted' | 'changed';
 }
 
@@ -67,15 +69,15 @@ export const TopBar = ({
   priorityStageComplete,
   themeMode,
   onToggleTheme,
-  onUpdateName,
-  onUpdateRole,
+  onUpdateNameAndRole,
   onUpdateAvailability,
   appStage2Mode = false,
   allocationMode = false,
   allocationStep = 0,
   onAllocationFinish,
-  allocationFinishLabel = 'Finish Step',
   allocationFinishEnabled = true,
+  allocationFinishLoading = false,
+  votingLoading = false,
   submitState = 'idle',
 }: TopBarProps) => {
   const appTitle = allocationMode
@@ -109,8 +111,7 @@ export const TopBar = ({
             voterName={voterName}
             voterRole={voterRole}
             available={available}
-            onUpdateName={onUpdateName}
-            onUpdateRole={onUpdateRole}
+            onUpdateNameAndRole={onUpdateNameAndRole}
             onUpdateAvailability={onUpdateAvailability}
             onResetClick={onResetClick}
           />
@@ -120,19 +121,24 @@ export const TopBar = ({
         {allocationMode && onAllocationFinish && (
           <Button
             variant="contained"
-            color="secondary"
-            startIcon={<SendIcon />}
-            disabled={!allocationFinishEnabled}
-            accessKey="f"
-            onClick={onAllocationFinish}
+            color={allocationFinishEnabled ? 'secondary' : 'success'}
+            startIcon={
+              allocationFinishLoading
+                ? <CircularProgress size={16} color="inherit" />
+                : allocationFinishEnabled ? <SendIcon /> : <CheckCircleIcon />
+            }
+            accessKey={allocationFinishEnabled && !allocationFinishLoading ? 'f' : undefined}
+            onClick={allocationFinishEnabled && !allocationFinishLoading ? onAllocationFinish : undefined}
+            tabIndex={allocationFinishEnabled && !allocationFinishLoading ? undefined : -1}
             aria-label="Finish and save allocation"
             sx={{
               fontWeight: allocationFinishEnabled ? 'bold' : 'normal',
               transition: 'all 0.2s ease',
-              '&:not(:disabled)': { boxShadow: 3 },
+              boxShadow: allocationFinishEnabled ? 3 : 0,
+              pointerEvents: (allocationFinishEnabled && !allocationFinishLoading) ? 'auto' : 'none',
             }}
           >
-            <u>F</u>{allocationFinishLabel.slice(1)}
+            {allocationFinishLoading ? 'Saving…' : allocationFinishEnabled ? <><u>F</u>inish</> : 'Finished ✓'}
           </Button>
         )}
 
@@ -205,23 +211,24 @@ export const TopBar = ({
             <Button
               variant="contained"
               color={submitState === 'submitted' ? 'success' : 'secondary'}
-              startIcon={<SendIcon />}
-              disabled={submitState === 'submitted' || !isExportEnabled}
-              accessKey="f"
-              onClick={onFinish}
+              startIcon={
+                votingLoading
+                  ? <CircularProgress size={16} color="inherit" />
+                  : submitState === 'submitted' ? <CheckCircleIcon /> : <SendIcon />
+              }
+              disabled={!isExportEnabled && submitState !== 'submitted'}
+              accessKey={submitState !== 'submitted' && !votingLoading ? 'f' : undefined}
+              onClick={submitState !== 'submitted' && !votingLoading ? onFinish : undefined}
+              tabIndex={submitState !== 'submitted' && !votingLoading ? undefined : -1}
               aria-label="Finish and submit results"
               sx={{
-                fontWeight: (submitState !== 'submitted' && isExportEnabled) ? 'bold' : 'normal',
+                fontWeight: (isExportEnabled && submitState !== 'submitted') ? 'bold' : 'normal',
                 transition: 'all 0.2s ease',
-                '&:not(:disabled)': { boxShadow: 3 },
+                boxShadow: (isExportEnabled && submitState !== 'submitted') ? 3 : 0,
+                pointerEvents: (submitState === 'submitted' || votingLoading) ? 'none' : 'auto',
               }}
             >
-              {submitState === 'submitted'
-                ? 'Submitted ✓'
-                : submitState === 'changed'
-                ? <><u>R</u>esubmit</>
-                : <><u>F</u>inish</>
-              }
+              {votingLoading ? 'Saving…' : submitState === 'submitted' ? 'Finished ✓' : <><u>F</u>inish</>}
             </Button>
           </>
         )}

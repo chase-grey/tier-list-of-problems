@@ -1,10 +1,7 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect } from 'react';
 import {
   Box,
   Container,
-  ToggleButtonGroup,
-  ToggleButton,
-  Typography,
 } from '@mui/material';
 import { DragDropContext } from '@hello-pangea/dnd';
 import InterestColumn from './InterestColumn';
@@ -53,7 +50,6 @@ const InterestRanking: React.FC<InterestRankingProps> = ({
   onFocusPitch,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [unsortedSort, setUnsortedSort] = useState<'default' | 'priority' | 'category'>('default');
 
   useEffect(() => {
     initEnhancedDropDetection();
@@ -112,30 +108,37 @@ const InterestRanking: React.FC<InterestRankingProps> = ({
       );
     }
 
-    // Sort unsorted column based on selected sort mode
-    if (unsortedSort === 'priority') {
-      unsortedPitches.sort((a, b) => {
-        const tierA = votes?.[a.id]?.tier ?? 99;
-        const tierB = votes?.[b.id]?.tier ?? 99;
-        if (tierA !== tierB) return tierA - tierB;
-        return a.title.localeCompare(b.title);
-      });
-    } else if (unsortedSort === 'category') {
-      unsortedPitches.sort((a, b) =>
-        a.category.localeCompare(b.category) || a.title.localeCompare(b.title)
-      );
-    } else {
-      unsortedPitches.sort((a, b) => {
-        const tsA = votes?.[a.id]?.timestamp ?? 0;
-        const tsB = votes?.[b.id]?.timestamp ?? 0;
-        if (tsA !== tsB) return tsA - tsB;
-        return a.id.localeCompare(b.id);
-      });
-    }
+    // Unsorted column: sort by priority tier so highest-priority pitches appear first
+    unsortedPitches.sort((a, b) => {
+      const tierA = votes?.[a.id]?.tier ?? 99;
+      const tierB = votes?.[b.id]?.tier ?? 99;
+      if (tierA !== tierB) return tierA - tierB;
+      return (votes?.[a.id]?.timestamp ?? 0) - (votes?.[b.id]?.timestamp ?? 0);
+    });
 
     columns['interest-unsorted'] = unsortedPitches;
     return columns;
-  }, [pitchesForInterestStage, votes, unsortedSort]);
+  }, [pitchesForInterestStage, votes]);
+
+  // True when every pitch is still in the unsorted column (no interest level assigned yet)
+  const allUnsorted = pitchesForInterestStage.every(p => {
+    const level = votes[p.id]?.interestLevel;
+    return level === undefined || level === null;
+  });
+
+  // Assign interest levels based on priority tiers: 1-2→1, 3-4→2, 5-6→3, 7+/none→4
+  const handleQuickSortByPriority = () => {
+    const now = Date.now();
+    pitchesForInterestStage.forEach((pitch, i) => {
+      const tier = votes[pitch.id]?.tier ?? 99;
+      let level: InterestLevel;
+      if (tier <= 2) level = 1;
+      else if (tier <= 4) level = 2;
+      else if (tier <= 6) level = 3;
+      else level = 4;
+      onSetInterest(pitch.id, level, now + i);
+    });
+  };
 
   const handleSendToBottomInterestUnsorted = (pitchId: string) => {
     const unsortedPitchIds = (interestColumns['interest-unsorted'] || []).map(p => p.id);
@@ -230,20 +233,6 @@ const InterestRanking: React.FC<InterestRankingProps> = ({
 
   return (
     <Box sx={{ flexGrow: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 1, py: 0.5, flexShrink: 0 }}>
-        <Typography variant="caption" color="text.secondary">Sort unsorted by:</Typography>
-        <ToggleButtonGroup
-          value={unsortedSort}
-          exclusive
-          onChange={(_, v) => { if (v) setUnsortedSort(v); }}
-          size="small"
-        >
-          <ToggleButton value="default" sx={{ py: 0.25, px: 1, fontSize: '0.7rem' }}>Recent</ToggleButton>
-          <ToggleButton value="priority" sx={{ py: 0.25, px: 1, fontSize: '0.7rem' }}>Priority</ToggleButton>
-          <ToggleButton value="category" sx={{ py: 0.25, px: 1, fontSize: '0.7rem' }}>Category</ToggleButton>
-        </ToggleButtonGroup>
-      </Box>
-
       <Container disableGutters maxWidth={false} sx={{ flexGrow: 1, minHeight: 0, display: 'flex', flexDirection: 'column', pt: 0.5, px: 0.5 }}>
 
         <DragDropContext onDragEnd={handleDragEnd}>
@@ -296,6 +285,7 @@ const InterestRanking: React.FC<InterestRankingProps> = ({
                 userRole={userRole}
                 onSendToBottomUnsorted={handleSendToBottomInterestUnsorted}
                 onSetAllCategory={handleSetAllCategory}
+                onQuickSort={allUnsorted ? handleQuickSortByPriority : undefined}
                 focusedPitchId={focusedPitchId}
                 onFocusPitch={onFocusPitch}
               />

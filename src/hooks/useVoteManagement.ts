@@ -314,7 +314,7 @@ export const useVoteManagement = (initialState: AppState) => {
     const totalCount = pitches.length;
     const votes = state.votes || {};
     const rankCount = Object.values(votes).filter(v => v && v.tier).length;
-    const interestCount = Object.values(votes).filter(v => v && v.interestLevel !== undefined).length;
+    const interestCount = Object.values(votes).filter(v => v && v.interestLevel != null).length;
     
     const minimumRequired = Math.ceil(totalCount / 2);
     

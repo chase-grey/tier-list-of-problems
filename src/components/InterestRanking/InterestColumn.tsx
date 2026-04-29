@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { Box, Typography, Paper, IconButton, Tooltip, Stack, Menu, MenuItem } from '@mui/material';
+import { Box, Typography, Paper, IconButton, Tooltip, Stack, Menu, MenuItem, Button } from '@mui/material';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import InfoOutlined from '@mui/icons-material/InfoOutlined';
 import Autorenew from '@mui/icons-material/Autorenew';
 import South from '@mui/icons-material/South';
@@ -42,6 +43,7 @@ interface InterestColumnProps {
   userRole?: string | null;
   onSendToBottomUnsorted?: (pitchId: string) => void;
   onSetAllCategory?: (category: string, level: InterestLevel) => void;
+  onQuickSort?: () => void;
   focusedPitchId?: string | null;
   onFocusPitch?: (id: string | null) => void;
 }
@@ -58,6 +60,7 @@ const InterestColumn = ({
   userRole,
   onSendToBottomUnsorted,
   onSetAllCategory,
+  onQuickSort,
   focusedPitchId,
   onFocusPitch,
 }: InterestColumnProps) => {
@@ -117,6 +120,19 @@ const InterestColumn = ({
           {label} ({Array.isArray(pitches) ? pitches.length : 0})
         </Typography>
       </Paper>
+
+      {/* Quick sort button: only shown when all pitches are unsorted */}
+      {onQuickSort && (
+        <Button
+          variant="outlined"
+          size="small"
+          onClick={onQuickSort}
+          startIcon={<AutoAwesomeIcon fontSize="small" />}
+          sx={{ mb: 1, width: '100%', fontSize: '0.75rem' }}
+        >
+          Quick sort by my priority votes
+        </Button>
+      )}
 
       {/* Droppable area */}
       <Droppable droppableId={columnId}>
