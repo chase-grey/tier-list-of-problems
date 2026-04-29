@@ -8,11 +8,11 @@ import type { Pitch } from '../types/models';
 import type {
   AllocationConfig,
   AllocationPitch,
-  AllocationPlan,
+  PlanAssignment,
   Phase2Interest,
 } from '../types/allocationTypes';
 import pitchData from '../assets/pitches.json';
-import { generatePlans } from '../utils/allocationEngine';
+import { generateDefaultPlan } from '../utils/allocationEngine';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
@@ -198,7 +198,7 @@ export const MOCK_PITCHES: AllocationPitch[] = (pitchData as unknown as Pitch[])
 
 // ─── Plan generation ──────────────────────────────────────────────────────────
 
-export const MOCK_PLANS: AllocationPlan[] = generatePlans(MOCK_PITCHES, MOCK_CONFIG);
+export const MOCK_PLAN: PlanAssignment[] = generateDefaultPlan(MOCK_PITCHES, MOCK_CONFIG);
 
 // ─── Phase 2 interest ─────────────────────────────────────────────────────────
 
@@ -261,7 +261,7 @@ function phase2InterestForPerson(name: string, role: 'dev TL' | 'QM', selectedPi
 }
 
 // Use Plan C's selected pitches as the Phase 2 pitch set (balanced plan is the default)
-const defaultSelectedIds = MOCK_PLANS[2].assignments
+const defaultSelectedIds = MOCK_PLAN
   .filter(a => a.status === 'selected')
   .map(a => a.pitchId);
 

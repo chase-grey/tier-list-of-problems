@@ -1,7 +1,7 @@
 import { lazy, Suspense, useRef, useMemo, useState, useCallback } from 'react';
 import {
   Box, Typography, Paper, Table, TableBody, TableCell, TableHead, TableRow,
-  ToggleButton, ToggleButtonGroup, Select, MenuItem, Divider, Tooltip,
+  Select, MenuItem, Divider, Tooltip,
   LinearProgress, Chip, Collapse, IconButton,
 } from '@mui/material';
 import {
@@ -14,7 +14,7 @@ import {
   ChevronLeft as ChevronLeftIcon,
   ChevronRight as ChevronRightIcon,
 } from '@mui/icons-material';
-import type { AllocationPlan, AllocationPitch, AssignmentStatus, PlanAssignment } from '../../types/allocationTypes';
+import type { AllocationPitch, AssignmentStatus, PlanAssignment } from '../../types/allocationTypes';
 import type { AllocationConfig } from '../../types/allocationTypes';
 import InterestChip from './InterestChip';
 import InterestDot from './InterestDot';
@@ -23,11 +23,8 @@ const DetailsBubble = lazy(() => import('../VotingBoard/PitchCard/DetailsBubble'
 
 interface Step1ViewProps {
   pitches: AllocationPitch[];
-  plans: AllocationPlan[];
-  activePlanId: 'A' | 'B' | 'C';
   currentAssignments: PlanAssignment[];
   config: AllocationConfig;
-  onPlanChange: (id: 'A' | 'B' | 'C') => void;
   onDevChange: (pitchId: string, dev: string | null) => void;
   onStatusChange: (pitchId: string, newStatus: AssignmentStatus) => void;
 }
@@ -111,8 +108,8 @@ function DevPitchInfo({ pitch }: { pitch: AllocationPitch }) {
 }
 
 export default function Step1View({
-  pitches, plans, activePlanId, currentAssignments, config,
-  onPlanChange, onDevChange, onStatusChange,
+  pitches, currentAssignments, config,
+  onDevChange, onStatusChange,
 }: Step1ViewProps) {
   const [sidebarWidth, setSidebarWidth] = useState(() => Math.round(window.innerWidth / 3));
   const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 1400);
@@ -261,28 +258,6 @@ export default function Step1View({
     <Box sx={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
       {/* ── Left: project list ── */}
       <Box sx={{ flex: 1, overflow: 'auto', p: 2, minWidth: 0 }}>
-        {/* Plan toggle */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-          <Typography variant="subtitle2" color="text.secondary">Plan:</Typography>
-          <ToggleButtonGroup
-            value={activePlanId}
-            exclusive
-            onChange={(_, v) => v && onPlanChange(v)}
-            size="small"
-          >
-            {plans.map(plan => (
-              <Tooltip key={plan.id} title={plan.description} placement="bottom">
-                <ToggleButton value={plan.id} accessKey={plan.id.toLowerCase()} sx={{ px: 2 }}>
-                  <u>{plan.id}</u>
-                </ToggleButton>
-              </Tooltip>
-            ))}
-          </ToggleButtonGroup>
-          <Typography variant="caption" color="text.secondary">
-            {plans.find(p => p.id === activePlanId)?.label}
-          </Typography>
-        </Box>
-
         {/* Category sections */}
         {categories.map(cat => {
           const selectedInCat = currentAssignments.filter(

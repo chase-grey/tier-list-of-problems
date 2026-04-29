@@ -1,14 +1,14 @@
 import { useState, useMemo, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { Box, CircularProgress, Typography } from '@mui/material';
-import type { AllocationPitch, AllocationConfig, AssignmentStatus, Phase2Interest, PlanAssignment, StaffingAssignment, AllocationPlan } from '../../types/allocationTypes';
+import type { AllocationPitch, AllocationConfig, AssignmentStatus, Phase2Interest, PlanAssignment, StaffingAssignment } from '../../types/allocationTypes';
 import type { Pitch } from '../../types/models';
 import {
-  MOCK_CONFIG, MOCK_PITCHES, MOCK_PLANS,
+  MOCK_CONFIG, MOCK_PITCHES, MOCK_PLAN,
 } from '../../mocks/allocationMockData';
 import { fetchAllocationConfig, fetchAllocationVoteData, fetchPhase2Interests } from '../../services/allocationApi';
 import { savePlan, saveFinalAssignments } from '../../services/api';
 import { useSnackbar } from '../../hooks/useSnackbar';
-import { generatePlans, autoAssignPqa1 } from '../../utils/allocationEngine';
+import { generateDefaultPlan, autoAssignPqa1 } from '../../utils/allocationEngine';
 import { fetchPitches } from '../../services/api';
 import Step1View from './Step1View';
 import Step2View from './Step2View';
@@ -127,7 +127,7 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
 
   const [allocationPitches, setAllocationPitches] = useState<AllocationPitch[]>(MOCK_PITCHES);
   const [allocationConfig, setAllocationConfig] = useState<AllocationConfig>(MOCK_CONFIG);
-  const [allocationPlans, setAllocationPlans] = useState<AllocationPlan[]>(MOCK_PLANS);
+  const [planAssignments, setPlanAssignments] = useState<PlanAssignment[]>(MOCK_PLAN);
   const [phase2Interests, setPhase2Interests] = useState<Phase2Interest[]>([]);
   const [showResults, setShowResults] = useState(false);
 
@@ -158,7 +158,7 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
           setUsingMockData(true);
         } else {
           setAllocationPitches(enriched);
-          setAllocationPlans(generatePlans(enriched, effectiveConfig));
+          setPlanAssignments(generateDefaultPlan(enriched, effectiveConfig));
           setUsingMockData(false);
         }
       } catch {
@@ -173,33 +173,11 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
   }, []);
 
   // ── Step 1 state ──────────────────────────────────────────────────────────
-  const [activePlanId, setActivePlanId] = useState<'A' | 'B' | 'C'>('C');
-  const [planOverrides, setPlanOverrides] = useState<Record<'A' | 'B' | 'C', PlanAssignment[] | null>>({
-    A: null, B: null, C: null,
-  });
-
-  // Reset overrides when plans change (e.g., real data loaded after mount)
-  const prevPlansRef = useRef(allocationPlans);
-  useEffect(() => {
-    if (prevPlansRef.current !== allocationPlans) {
-      setPlanOverrides({ A: null, B: null, C: null });
-      prevPlansRef.current = allocationPlans;
-    }
-  }, [allocationPlans]);
-
-  const currentAssignments = useMemo<PlanAssignment[]>(() => {
-    if (planOverrides[activePlanId]) return planOverrides[activePlanId]!;
-    return allocationPlans.find(p => p.id === activePlanId)?.assignments ?? [];
-  }, [activePlanId, planOverrides, allocationPlans]);
+  const currentAssignments = planAssignments;
 
   const mutateCurrentAssignments = (updater: (prev: PlanAssignment[]) => PlanAssignment[]) => {
     onAllocationChange?.();
-    setPlanOverrides(prev => ({
-      ...prev,
-      [activePlanId]: updater(
-        prev[activePlanId] ?? allocationPlans.find(p => p.id === activePlanId)?.assignments ?? []
-      ),
-    }));
+    setPlanAssignments(prev => updater(prev));
   };
 
   const handleDevChange = (pitchId: string, dev: string | null) => {
@@ -342,11 +320,8 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
         {activeStep === 0 ? (
           <Step1View
             pitches={allocationPitches}
-            plans={allocationPlans}
-            activePlanId={activePlanId}
             currentAssignments={currentAssignments}
             config={allocationConfig}
-            onPlanChange={setActivePlanId}
             onDevChange={handleDevChange}
             onStatusChange={handleStatusChange}
           />

@@ -1,44 +1,28 @@
 /**
  * Plan generation algorithm for TL allocation.
- * Pure function — takes pitches and config, returns three plan variants.
+ * Pure function — takes pitches and config, returns a default plan.
  * Used by both the real TLAllocationView (with live data) and allocationMockData.ts.
  */
 import type {
   AllocationPitch,
   AllocationConfig,
-  AllocationPlan,
   PlanAssignment,
 } from '../types/allocationTypes';
 
-type PlanVariant = 'A' | 'B' | 'C';
-
-const PLAN_META: Record<PlanVariant, { label: string; description: string }> = {
-  A: { label: 'Plan A — Balanced', description: 'Weights team and TL priority votes equally' },
-  B: { label: 'Plan B — TL-Leaning', description: 'Emphasizes TL priority votes slightly; favors TL judgment at the margin' },
-  C: { label: 'Plan C — Team-Leaning', description: 'Emphasizes broader team priority votes slightly; favors collective judgment at the margin' },
-};
-
-/** team/tl weights for pitch selection scoring. */
-const VARIANT_WEIGHTS: Record<PlanVariant, { team: number; tl: number }> = {
-  A: { team: 0.50, tl: 0.50 },
-  B: { team: 0.35, tl: 0.65 },
-  C: { team: 0.65, tl: 0.35 },
-};
-
 /** Higher score = higher priority. Lower vote tier (1=best) maps to higher score. */
-function pitchPriorityScore(pitch: AllocationPitch, weights: { team: number; tl: number }): number {
+function pitchPriorityScore(pitch: AllocationPitch): number {
   const teamScore = (5 - pitch.teamPriorityScore) / 4;
   const tlScore = (5 - pitch.tlPriorityScore) / 4;
-  return weights.team * teamScore + weights.tl * tlScore;
+  return 0.50 * teamScore + 0.50 * tlScore;
 }
 
-function generatePlan(
-  variant: PlanVariant,
-  pitches: AllocationPitch[],
-  config: AllocationConfig,
-): AllocationPlan {
+/**
+ * Generate a single default allocation plan from real pitches + config.
+ * Uses balanced team/TL priority weighting (50/50).
+ * TLs can adjust the resulting plan manually in Stage 1.
+ */
+export function generateDefaultPlan(pitches: AllocationPitch[], config: AllocationConfig): PlanAssignment[] {
   const { devNames, bandwidth, nextUpCount } = config;
-  const weights = VARIANT_WEIGHTS[variant];
   const categories = Object.keys(bandwidth);
 
   // 2 projects per dev
@@ -61,7 +45,7 @@ function generatePlan(
   categories.forEach(cat => {
     const catPitches = pitches
       .filter(p => p.category === cat)
-      .sort((a, b) => pitchPriorityScore(b, weights) - pitchPriorityScore(a, weights));
+      .sort((a, b) => pitchPriorityScore(b) - pitchPriorityScore(a));
     const slots = Math.min(slotMap[cat] ?? 0, catPitches.length);
     selected.push(...catPitches.slice(0, slots));
   });
@@ -71,9 +55,7 @@ function generatePlan(
   devNames.forEach(d => { devCount[d] = 0; });
   const MAX_PER_DEV = 2;
 
-  const sortedSelected = [...selected].sort(
-    (a, b) => pitchPriorityScore(b, weights) - pitchPriorityScore(a, weights),
-  );
+  const sortedSelected = [...selected].sort((a, b) => pitchPriorityScore(b) - pitchPriorityScore(a));
   const assignments: PlanAssignment[] = sortedSelected.map(pitch => {
     const candidateDev =
       devNames
@@ -93,7 +75,7 @@ function generatePlan(
   const selectedIds = new Set(selected.map(p => p.id));
   const notSelected = pitches
     .filter(p => !selectedIds.has(p.id))
-    .sort((a, b) => pitchPriorityScore(b, weights) - pitchPriorityScore(a, weights));
+    .sort((a, b) => pitchPriorityScore(b) - pitchPriorityScore(a));
 
   notSelected.slice(0, nextUpCount).forEach(p =>
     assignments.push({ pitchId: p.id, assignedDev: null, status: 'next-up' }),
@@ -102,14 +84,7 @@ function generatePlan(
     assignments.push({ pitchId: p.id, assignedDev: null, status: 'cut' }),
   );
 
-  return { id: variant, ...PLAN_META[variant], assignments };
-}
-
-/**
- * Generate the three allocation plan variants (A, B, C) from real pitches + config.
- */
-export function generatePlans(pitches: AllocationPitch[], config: AllocationConfig): AllocationPlan[] {
-  return (['A', 'B', 'C'] as PlanVariant[]).map(v => generatePlan(v, pitches, config));
+  return assignments;
 }
 
 /**

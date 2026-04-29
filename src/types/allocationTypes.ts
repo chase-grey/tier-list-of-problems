@@ -38,14 +38,6 @@ export interface PlanAssignment {
   status: AssignmentStatus;
 }
 
-/** One of the 2–3 generated plan options TLs can flip between. */
-export interface AllocationPlan {
-  id: 'A' | 'B' | 'C';
-  label: string;
-  description: string;
-  assignments: PlanAssignment[];
-}
-
 /** Phase 2 interest: a dev TL or QM's interest ratings across the selected projects. */
 export interface Phase2Interest {
   personName: string;
