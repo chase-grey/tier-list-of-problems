@@ -11,11 +11,14 @@ import type {
 import { useSnackbar } from '../../hooks/useSnackbar';
 import { getFollowups, updateFollowup } from '../../services/api';
 
+const UXD_NAME = 'Selina Li';
+
 interface Props {
   pitches: AllocationPitch[];
   currentAssignments: PlanAssignment[];
   step2Assignments: StaffingAssignment[];
   config: AllocationConfig;
+  includeUXD: Record<string, boolean>;
   onBack?: () => void;
 }
 
@@ -47,7 +50,7 @@ function buildProjectEmailBody(
   return lines.join('\n');
 }
 
-export default function Stage4ResultsView({ pitches, currentAssignments, step2Assignments, config, onBack }: Props) {
+export default function Stage4ResultsView({ pitches, currentAssignments, step2Assignments, config, includeUXD, onBack }: Props) {
   const { showSnackbar } = useSnackbar();
   const [checkedItems, setCheckedItems] = useState<Record<string, boolean>>({});
 
@@ -133,9 +136,9 @@ export default function Stage4ResultsView({ pitches, currentAssignments, step2As
       `Team Matching Results${q}`,
       '',
       `FULL ASSIGNMENT GRID (${fullGrid.length} projects)`,
-      'Project | Dev | Dev TL | QM | PQA1',
+      'Project | Dev | Dev TL | QM | PQA1 | UXD',
       ...fullGrid.map(({ pitch, dev, sa }) =>
-        `  ${pitch.title} | ${dev ?? '—'} | ${sa.devTL ?? '—'} | ${sa.qm ?? '—'} | ${sa.pqa1 ?? '—'}`
+        `  ${pitch.title} | ${dev ?? '—'} | ${sa.devTL ?? '—'} | ${sa.qm ?? '—'} | ${sa.pqa1 ?? '—'} | ${includeUXD[pitch.id] ? UXD_NAME : '—'}`
       ),
       '',
       `UP NEXT — LIFEBOAT ORDER (${nextUp.length})`,
@@ -215,6 +218,7 @@ export default function Stage4ResultsView({ pitches, currentAssignments, step2As
             <TableCell>Dev TL</TableCell>
             <TableCell>QM</TableCell>
             <TableCell>PQA1</TableCell>
+            <TableCell>UXD</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
@@ -227,6 +231,7 @@ export default function Stage4ResultsView({ pitches, currentAssignments, step2As
               <TableCell>{sa.devTL ?? '—'}</TableCell>
               <TableCell>{sa.qm ?? '—'}</TableCell>
               <TableCell>{sa.pqa1 ?? '—'}</TableCell>
+              <TableCell>{includeUXD[pitch.id] ? UXD_NAME : '—'}</TableCell>
             </TableRow>
           ))}
         </TableBody>
@@ -235,11 +240,8 @@ export default function Stage4ResultsView({ pitches, currentAssignments, step2As
       <Divider sx={{ mb: 3 }} />
 
       {/* Lifeboat order */}
-      <Typography variant="h6" fontWeight="bold" sx={{ mb: 0.5 }}>
+      <Typography variant="h6" fontWeight="bold" sx={{ mb: 2 }}>
         Up Next — Lifeboat Order ({nextUp.length})
-      </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Add to backlog in this order (sorted by team vote priority). Split between TLs below.
       </Typography>
       <Box component="ol" sx={{ pl: 3, m: 0, mb: 4 }}>
         {nextUp.map(({ pitch }) => (

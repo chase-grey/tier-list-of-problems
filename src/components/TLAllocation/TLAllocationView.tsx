@@ -46,8 +46,15 @@ function autoAssignStep2(
   config.devTLNames.forEach(n => { devTLLoad[n] = 0; });
   config.qmNames.forEach(n => { qmLoad[n] = 0; });
 
-  const devTLInterests = phase2Interests.filter(pi => pi.role === 'dev TL');
-  const qmInterests = phase2Interests.filter(pi => pi.role === 'QM');
+  // Build interest lookup maps keyed by person name so we can sort over the full
+  // names list (not just submitters). People with no submission get tier 5 (lowest),
+  // making load the sole tiebreaker → equal distribution when nobody submits.
+  const devTLInterestMap: Record<string, Phase2Interest> = {};
+  const qmInterestMap: Record<string, Phase2Interest> = {};
+  phase2Interests.forEach(pi => {
+    if (pi.role === 'dev TL') devTLInterestMap[pi.personName] = pi;
+    else if (pi.role === 'QM') qmInterestMap[pi.personName] = pi;
+  });
 
   return sorted.map(pitch => {
     let devTL: string | null = null;
@@ -65,34 +72,27 @@ function autoAssignStep2(
       qmLoad[qm]++;
     }
 
-    // Fill unassigned devTL by interest + load
+    // Fill unassigned devTL: sort full devTL list by interest then load.
+    // Defaults to tier 5 for non-submitters so load drives equal distribution.
     if (!devTL) {
-      const best = [...devTLInterests]
-        .sort((a, b) => {
-          const tA = (a.interestByPitchId[pitch.id] ?? 5) as number;
-          const tB = (b.interestByPitchId[pitch.id] ?? 5) as number;
-          if (tA !== tB) return tA - tB;
-          return (devTLLoad[a.personName] ?? 0) - (devTLLoad[b.personName] ?? 0);
-        })[0];
-      if (best) {
-        devTL = best.personName;
-        devTLLoad[devTL] = (devTLLoad[devTL] ?? 0) + 1;
-      }
+      devTL = [...config.devTLNames].sort((a, b) => {
+        const tA = (devTLInterestMap[a]?.interestByPitchId[pitch.id] ?? 5) as number;
+        const tB = (devTLInterestMap[b]?.interestByPitchId[pitch.id] ?? 5) as number;
+        if (tA !== tB) return tA - tB;
+        return (devTLLoad[a] ?? 0) - (devTLLoad[b] ?? 0);
+      })[0] ?? null;
+      if (devTL) devTLLoad[devTL] = (devTLLoad[devTL] ?? 0) + 1;
     }
 
-    // Fill unassigned QM by interest + load
+    // Fill unassigned QM: same pattern as devTL above.
     if (!qm) {
-      const best = [...qmInterests]
-        .sort((a, b) => {
-          const tA = (a.interestByPitchId[pitch.id] ?? 5) as number;
-          const tB = (b.interestByPitchId[pitch.id] ?? 5) as number;
-          if (tA !== tB) return tA - tB;
-          return (qmLoad[a.personName] ?? 0) - (qmLoad[b.personName] ?? 0);
-        })[0];
-      if (best) {
-        qm = best.personName;
-        qmLoad[qm] = (qmLoad[qm] ?? 0) + 1;
-      }
+      qm = [...config.qmNames].sort((a, b) => {
+        const tA = (qmInterestMap[a]?.interestByPitchId[pitch.id] ?? 5) as number;
+        const tB = (qmInterestMap[b]?.interestByPitchId[pitch.id] ?? 5) as number;
+        if (tA !== tB) return tA - tB;
+        return (qmLoad[a] ?? 0) - (qmLoad[b] ?? 0);
+      })[0] ?? null;
+      if (qm) qmLoad[qm] = (qmLoad[qm] ?? 0) + 1;
     }
 
     return { pitchId: pitch.id, devTL, qm };
@@ -214,6 +214,7 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
   );
 
   const [step2Assignments, setStep2Assignments] = useState<StaffingAssignment[]>([]);
+  const [includeUXD, setIncludeUXD] = useState<Record<string, boolean>>({});
 
   const selectedPitchesRef = useRef(selectedPitches);
   selectedPitchesRef.current = selectedPitches;
@@ -309,6 +310,7 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
         currentAssignments={currentAssignments}
         step2Assignments={step2Assignments}
         config={allocationConfig}
+        includeUXD={includeUXD}
         onBack={() => setShowResults(false)}
       />
     );
@@ -335,6 +337,8 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
             onFinalize={handleFinalize}
             devByPitchId={devByPitchId}
             devNames={allocationConfig.devNames}
+            includeUXD={includeUXD}
+            onToggleUXD={(pitchId) => setIncludeUXD(prev => ({ ...prev, [pitchId]: !prev[pitchId] }))}
           />
         )}
       </Box>

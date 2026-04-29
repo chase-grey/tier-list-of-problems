@@ -31,6 +31,8 @@ interface Step2ViewProps {
   devNames: string[];
   onAssign: (pitchId: string, field: 'devTL' | 'qm' | 'pqa1', value: string | null) => void;
   onFinalize?: () => void;
+  includeUXD: Record<string, boolean>;
+  onToggleUXD: (pitchId: string) => void;
 }
 
 // ─── DevPitchInfo: inline info button for sidebar pitch lists ─────────────────
@@ -68,6 +70,7 @@ const CATEGORY_SHORT: Record<string, string> = {
 
 export default function Step2View({
   selectedPitches, assignments, phase2Interests, config, onAssign, devByPitchId, devNames,
+  includeUXD, onToggleUXD,
 }: Step2ViewProps) {
   // ── Sidebar resize (Item 5) ──────────────────────────────────────────────
   const [sidebarWidth, setSidebarWidth] = useState(() => Math.round(window.innerWidth / 3));
@@ -173,8 +176,6 @@ export default function Step2View({
   const toggleSidebarSection = (label: string) =>
     setSidebarCollapsed(prev => ({ ...prev, [label]: !prev[label] }));
 
-  // ── UXD checkboxes ──────────────────────────────────────────────────────
-  const [includeUXD, setIncludeUXD] = useState<Record<string, boolean>>({});
 
   return (
     <Box sx={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
@@ -240,7 +241,7 @@ export default function Step2View({
                           highlighted={pitch.id === highlightPitchId}
                           devName={devByPitchId[pitch.id] ?? null}
                           includeUXD={includeUXD[pitch.id] ?? false}
-                          onToggleUXD={() => setIncludeUXD(prev => ({ ...prev, [pitch.id]: !(prev[pitch.id] ?? false) }))}
+                          onToggleUXD={() => onToggleUXD(pitch.id)}
                         />
                       );
                     })}
