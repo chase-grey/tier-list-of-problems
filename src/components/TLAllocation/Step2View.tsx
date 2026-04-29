@@ -1,15 +1,13 @@
 import { lazy, Suspense, useMemo, useRef, useState, useCallback } from 'react';
 import {
   Box, Typography, Paper, Table, TableBody, TableCell, TableHead, TableRow,
-  Select, MenuItem, Divider, Tooltip, IconButton, Popover, TextField,
-  Button, Checkbox, Collapse,
+  Select, MenuItem, Divider, Tooltip, IconButton,
+  Checkbox, Collapse,
 } from '@mui/material';
 import {
   Warning as WarnIcon,
   CheckCircle as OkIcon,
   InfoOutlined as InfoIcon,
-  MailOutline as MailOutlineIcon,
-  Mail as MailIcon,
   Autorenew as AutorenewIcon,
   ExpandMore as ExpandIcon,
   ExpandLess as CollapseIcon,
@@ -175,46 +173,8 @@ export default function Step2View({
   const toggleSidebarSection = (label: string) =>
     setSidebarCollapsed(prev => ({ ...prev, [label]: !prev[label] }));
 
-  // ── UXD checkboxes (Item 9) ──────────────────────────────────────────────
+  // ── UXD checkboxes ──────────────────────────────────────────────────────
   const [includeUXD, setIncludeUXD] = useState<Record<string, boolean>>({});
-
-  // ── Email messages + popover (Item 10) ──────────────────────────────────
-  const [emailMessages, setEmailMessages] = useState<Record<string, string>>({});
-  const [emailPopover, setEmailPopover] = useState<{ anchor: HTMLElement | null; pitchId: string | null }>({
-    anchor: null, pitchId: null,
-  });
-
-  const getDefaultEmailMessage = useCallback((pitchId: string) => {
-    const pitch = pitchMap.get(pitchId);
-    if (!pitch) return '';
-    const shortTitle = pitch.title.replace(/^[^/]+\/\s*/, '');
-    const a = assignMap.get(pitchId);
-    const qmFirstName = a?.qm ? a.qm.split(' ')[0] : 'QM';
-    return `Hi everyone, this is the team for ${shortTitle}! @${qmFirstName}, please setup a kickoff meeting for this pitch in the next week.`;
-  }, [pitchMap, assignMap]);
-
-  const openEmailPopover = useCallback((anchor: HTMLElement, pitchId: string) => {
-    setEmailPopover({ anchor, pitchId });
-  }, []);
-
-  // Popover pitch data
-  const popoverPitch = emailPopover.pitchId ? pitchMap.get(emailPopover.pitchId) : null;
-  const popoverAssignment = emailPopover.pitchId ? assignMap.get(emailPopover.pitchId) : null;
-  const popoverMessage = emailPopover.pitchId
-    ? (emailMessages[emailPopover.pitchId] ?? getDefaultEmailMessage(emailPopover.pitchId))
-    : '';
-
-  const getRecipientsList = (pitchId: string) => {
-    const a = assignMap.get(pitchId);
-    const parts: string[] = [];
-    if (a?.devTL) parts.push(a.devTL.split(' ')[0]);
-    const dev = devByPitchId[pitchId];
-    if (dev) parts.push(dev.split(' ')[0]);
-    if (a?.qm) parts.push(a.qm.split(' ')[0]);
-    parts.push(config.testingCaptain);
-    if (includeUXD[pitchId]) parts.push('UXD');
-    return `To: ${parts.join(', ')}`;
-  };
 
   return (
     <Box sx={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
@@ -242,7 +202,6 @@ export default function Step2View({
                 <Table size="small" sx={{ tableLayout: 'fixed', minWidth: 820 }}>
                   <colgroup>
                     <col />{/* pitch: flex */}
-                    <col style={{ width: 72 }} />{/* Email/Message */}
                     <col style={{ width: 48 }} />{/* UXD */}
                     <col style={{ width: 72 }} />{/* dev read-only */}
                     <col style={{ width: 155 }} />{/* DevTL */}
@@ -252,7 +211,6 @@ export default function Step2View({
                   <TableHead>
                     <TableRow sx={{ '& th': { py: 0.5, fontSize: '0.72rem', color: 'text.secondary' } }}>
                       <TableCell>Pitch</TableCell>
-                      <TableCell width={72} align="center">Message</TableCell>
                       <TableCell width={48} align="center">
                         <Tooltip title="Include UXD in project kickoff">
                           <span>UXD</span>
@@ -283,8 +241,6 @@ export default function Step2View({
                           devName={devByPitchId[pitch.id] ?? null}
                           includeUXD={includeUXD[pitch.id] ?? false}
                           onToggleUXD={() => setIncludeUXD(prev => ({ ...prev, [pitch.id]: !(prev[pitch.id] ?? false) }))}
-                          onOpenEmail={openEmailPopover}
-                          emailCustomized={!!emailMessages[pitch.id]}
                         />
                       );
                     })}
@@ -505,44 +461,6 @@ export default function Step2View({
       </Box>
       )}
 
-      {/* ── Shared email popover (Item 10) ── */}
-      <Popover
-        open={Boolean(emailPopover.anchor)}
-        anchorEl={emailPopover.anchor}
-        onClose={() => setEmailPopover({ anchor: null, pitchId: null })}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
-        transformOrigin={{ vertical: 'top', horizontal: 'left' }}
-      >
-        {emailPopover.pitchId && popoverPitch && (
-          <Box sx={{ p: 2, width: 340 }}>
-            <Typography variant="subtitle2" fontWeight={700} gutterBottom>
-              Kickoff Email
-            </Typography>
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
-              {getRecipientsList(emailPopover.pitchId)}
-            </Typography>
-            <TextField
-              multiline
-              rows={4}
-              fullWidth
-              size="small"
-              value={popoverMessage}
-              onChange={e => {
-                const pid = emailPopover.pitchId!;
-                setEmailMessages(prev => ({ ...prev, [pid]: e.target.value }));
-              }}
-              sx={{ mb: 1.5 }}
-            />
-            <Button
-              size="small"
-              variant="contained"
-              onClick={() => setEmailPopover({ anchor: null, pitchId: null })}
-            >
-              Done
-            </Button>
-          </Box>
-        )}
-      </Popover>
     </Box>
   );
 }
@@ -563,13 +481,11 @@ interface Step2RowProps {
   devName: string | null;
   includeUXD: boolean;
   onToggleUXD: () => void;
-  onOpenEmail: (anchor: HTMLElement, pitchId: string) => void;
-  emailCustomized?: boolean;
 }
 
 function Step2Row({
   pitch, assignment, devTLInterests, qmInterests, devTLNames, qmNames, devNames, onAssign, onRef, highlighted,
-  devName, includeUXD, onToggleUXD, onOpenEmail, emailCustomized = false,
+  devName, includeUXD, onToggleUXD,
 }: Step2RowProps) {
   const [detailsAnchor, setDetailsAnchor] = useState<HTMLButtonElement | null>(null);
 
@@ -614,21 +530,6 @@ function Step2Row({
             />
           </Suspense>
         )}
-      </TableCell>
-      {/* Email icon */}
-      <TableCell align="center">
-        <Tooltip title={emailCustomized ? 'Message customized — click to edit' : 'Compose kickoff email'}>
-          <IconButton
-            size="small"
-            sx={{ p: 0.5 }}
-            onClick={e => onOpenEmail(e.currentTarget, pitch.id)}
-          >
-            {emailCustomized
-              ? <MailIcon sx={{ fontSize: '1rem', color: 'primary.main' }} />
-              : <MailOutlineIcon sx={{ fontSize: '1rem' }} />
-            }
-          </IconButton>
-        </Tooltip>
       </TableCell>
       {/* UXD checkbox */}
       <TableCell align="center" sx={{ p: 0 }}>
