@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
-import { Box, CircularProgress, Typography } from '@mui/material';
+import { Box, CircularProgress, Typography, Button } from '@mui/material';
 import type { AllocationPitch, AllocationConfig, AssignmentStatus, Phase2Interest, PlanAssignment, StaffingAssignment } from '../../types/allocationTypes';
 import type { Pitch } from '../../types/models';
 import {
@@ -130,6 +130,7 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
   const [planAssignments, setPlanAssignments] = useState<PlanAssignment[]>(MOCK_PLAN);
   const [phase2Interests, setPhase2Interests] = useState<Phase2Interest[]>([]);
   const [showResults, setShowResults] = useState(false);
+  const [hasResults, setHasResults] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -282,6 +283,7 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
       }
     }
     setShowResults(true);
+    setHasResults(true);
     onFinalize?.();
   };
 
@@ -343,6 +345,14 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
         )}
       </Box>
 
+      {activeStep === 1 && hasResults && !showResults && (
+        <Box sx={{ px: 2, py: 0.75, bgcolor: 'success.main', color: 'success.contrastText', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Typography variant="caption">Assignments saved.</Typography>
+          <Button size="small" variant="outlined" color="inherit" onClick={() => setShowResults(true)} sx={{ py: 0.25, fontSize: '0.75rem' }}>
+            View summary
+          </Button>
+        </Box>
+      )}
       {usingMockData && (
         <Box sx={{ px: 2, py: 0.5, bgcolor: 'warning.main', color: 'warning.contrastText' }}>
           <Typography variant="caption">
