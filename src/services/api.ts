@@ -276,16 +276,19 @@ export interface SubmitFeedbackPayload {
 
 /**
  * Submits optional feedback (rating + comments) to the FEEDBACK sheet.
+ * Uses POST so free-text comments aren't corrupted by URL encoding.
  */
 export async function submitFeedback(payload: SubmitFeedbackPayload): Promise<void> {
-  const params = new URLSearchParams({
-    route: 'feedback',
-    voterName: payload.voterName,
-    voterRole: payload.voterRole,
-    comments: payload.comments,
-    ...(payload.rating != null ? { rating: String(payload.rating) } : {}),
+  const response = await fetch(`${GAS_PROXY}?route=feedback`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({
+      voterName: payload.voterName,
+      voterRole: payload.voterRole,
+      rating: payload.rating,
+      comments: payload.comments,
+    }),
   });
-  const response = await fetch(`${GAS_PROXY}?${params.toString()}`);
   if (!response.ok) {
     const text = await response.text().catch(() => '');
     throw new ApiError(`Feedback submission failed (${response.status})${text ? ': ' + text : ''}`, response.status);

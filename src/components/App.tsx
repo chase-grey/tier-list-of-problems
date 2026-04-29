@@ -860,13 +860,7 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
               <Box sx={{ display: 'flex', alignItems: 'center', borderBottom: 1, borderColor: 'divider', flexShrink: 0 }}>
                 <Tabs
                   value={selectedCategory}
-                  onChange={(_, v: string) => {
-                    if (v === '__interest__') {
-                      handleStageChange();
-                    } else {
-                      setSelectedCategory(v);
-                    }
-                  }}
+                  onChange={(_, v: string) => setSelectedCategory(v)}
                   variant="scrollable"
                   scrollButtons="auto"
                   sx={{ flex: 1 }}
@@ -878,13 +872,6 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
                       label={<span style={{ whiteSpace: 'nowrap' }}><u>{cat[0]}</u>{cat.slice(1)}</span>}
                     />
                   ))}
-                  {canAccessInterestStage && (
-                    <Tab
-                      value="__interest__"
-                      label={<span style={{ whiteSpace: 'nowrap' }}><u>I</u>nterest</span>}
-                      disabled={!priorityStageComplete}
-                    />
-                  )}
                 </Tabs>
                 <CategoryBandwidthBar config={CATEGORY_BANDWIDTH_CONFIG} />
               </Box>

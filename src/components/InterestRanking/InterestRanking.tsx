@@ -126,11 +126,13 @@ const InterestRanking: React.FC<InterestRankingProps> = ({
     return level === undefined || level === null;
   });
 
-  // Assign interest levels based on priority tiers: 1-2→1, 3-4→2, 5-6→3, 7+/none→4
+  // Assign interest levels based on priority tiers: 1-2→1, 3-4→2, 5-6→3, 7+→4.
+  // Pitches with no priority vote (tier null/undefined) are skipped and remain unsorted.
   const handleQuickSortByPriority = () => {
     const now = Date.now();
     pitchesForInterestStage.forEach((pitch, i) => {
-      const tier = votes[pitch.id]?.tier ?? 99;
+      const tier = votes[pitch.id]?.tier;
+      if (tier == null) return;
       let level: InterestLevel;
       if (tier <= 2) level = 1;
       else if (tier <= 4) level = 2;
