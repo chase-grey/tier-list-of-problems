@@ -71,6 +71,37 @@ export async function fetchPitches(): Promise<Pitch[]> {
   return staticPitches as unknown as Pitch[];
 }
 
+/**
+ * Pushes the full pitch list to the backend PITCHES sheet so it stays in sync
+ * with pitches.json. Called fire-and-forget after pitches load — failures are
+ * logged but never surface to the user.
+ */
+export async function refreshPitchesInSheet(pitches: Pitch[]): Promise<void> {
+  const payload = {
+    pitches: pitches.map(p => ({
+      pitch_id: p.id,
+      title: p.title,
+      problem: p.details.problem,
+      ideaForSolution: p.details.ideaForSolution ?? '',
+      characteristics: p.details.characteristics ?? '',
+      whyNow: p.details.whyNow ?? '',
+      smartToolsFit: p.details.smartToolsFit ?? '',
+      epicFit: p.details.epicFit ?? '',
+      success: p.details.success ?? '',
+      maintenance: p.details.maintenance ?? '',
+      internCandidate: p.details.internCandidate ?? false,
+    })),
+  };
+  const response = await fetch(`${GAS_PROXY}?route=refresh-pitches`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    console.warn('refreshPitchesInSheet: sheet sync failed', response.status);
+  }
+}
+
 
 /**
  * Submits priority tier votes to the backend (stage 1).

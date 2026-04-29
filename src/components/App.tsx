@@ -24,7 +24,7 @@ import { useKeyboardNav } from '../hooks/useKeyboardNav';
 import { getPollingCycleId, isStage2, isTLAllocationStage, getPollingStage } from '../utils/config';
 import { buildPollingKey, cleanupPollingStorageOnCycleChange, getEffectivePollingCycleId } from '../utils/pollingStorage';
 import { getInterestLevelLabel } from '../utils/voteActions';
-import { fetchPitches } from '../services/api';
+import { fetchPitches, refreshPitchesInSheet } from '../services/api';
 import TLAllocationView, { type TLAllocationViewHandle } from './TLAllocation/TLAllocationView';
 import CategoryBandwidthBar from './VotingBoard/CategoryBandwidthBar';
 import type { CategoryBandwidthConfig } from './VotingBoard/CategoryBandwidthBar';
@@ -144,6 +144,7 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
       .then(data => {
         setLoadedPitches(data);
         setPitchStepStatus('done');
+        refreshPitchesInSheet(data).catch(() => {}); // keep sheet in sync, fire-and-forget
         if (appStage2Mode) {
           setPlanStepStatus('loading');
           fetchPlanStatuses()
