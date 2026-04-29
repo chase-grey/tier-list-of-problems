@@ -19,7 +19,7 @@ function withLock(fn) {
   try {
     lock.waitLock(30000);
   } catch (_) {
-    return contentResponse({ error: 'Server busy — please try again in a moment.' }, 503);
+    return json200({ error: 'Server busy — please try again in a moment.' });
   }
   try {
     return fn();
@@ -409,7 +409,7 @@ function savePlan(assignments) {
     const pitchTitles = getPitchTitleMap();
     const headers = ['timestamp', 'pitchId', 'pitchTitle', 'status', 'assignedDev'];
     const rows = [headers].concat(
-      assignments.map(a => [now, a.pitchId, pitchTitles[String(a.pitchId)] || '', a.status, a.assignedDev || ''])
+      assignments.map(a => [now, a.pitchId, a.pitchTitle || pitchTitles[String(a.pitchId)] || '', a.status, a.assignedDev || ''])
     );
     sh.getRange(1, 1, rows.length, 5).setValues(rows);
 
@@ -460,7 +460,7 @@ function saveFinalAssignments(assignments) {
       assignments.map(a => [
         now,
         a.pitchId,
-        pitchTitles[String(a.pitchId)] || '',
+        a.pitchTitle || pitchTitles[String(a.pitchId)] || '',
         a.status || '',
         a.assignedDev || '',
         a.devTL || '',
