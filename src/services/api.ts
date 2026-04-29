@@ -276,11 +276,14 @@ export interface SubmitFeedbackPayload {
 
 /**
  * Submits optional feedback (rating + comments) to the FEEDBACK sheet.
- * Uses POST so free-text comments aren't corrupted by URL encoding.
+ * Uses no-cors (same as submitVotes) so it works from static hosting where
+ * the /gas-proxy dev server isn't available.
  */
 export async function submitFeedback(payload: SubmitFeedbackPayload): Promise<void> {
-  const response = await fetch(`${GAS_PROXY}?route=feedback`, {
+  if (!API_BASE_URL) return;
+  await fetch(`${API_BASE_URL}?route=feedback`, {
     method: 'POST',
+    mode: 'no-cors',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
     body: JSON.stringify({
       voterName: payload.voterName,
@@ -289,10 +292,6 @@ export async function submitFeedback(payload: SubmitFeedbackPayload): Promise<vo
       comments: payload.comments,
     }),
   });
-  if (!response.ok) {
-    const text = await response.text().catch(() => '');
-    throw new ApiError(`Feedback submission failed (${response.status})${text ? ': ' + text : ''}`, response.status);
-  }
 }
 
 /**
