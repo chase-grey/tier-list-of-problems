@@ -1,0 +1,16 @@
+{
+    "servers": {
+        "codesearch": {
+            "type": "http",
+            "url": "https://codesearch-mcp.k8s.epic.com"
+        }
+    },
+    "inputs": [
+        {
+            "type": "promptString",
+            "id": "hubble-api-key",
+            "description": "Enter your Hubble API key (from noggin.epic.com/apis/hubble)",
+            "password": true
+        }
+    ]
+}

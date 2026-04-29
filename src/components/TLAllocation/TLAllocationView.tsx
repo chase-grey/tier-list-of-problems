@@ -1,15 +1,18 @@
 import { useState, useMemo, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { Box, CircularProgress, Typography, Button } from '@mui/material';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import ErrorIcon from '@mui/icons-material/Error';
 import type { AllocationPitch, AllocationConfig, AssignmentStatus, Phase2Interest, PlanAssignment, StaffingAssignment } from '../../types/allocationTypes';
 import type { Pitch } from '../../types/models';
 import {
   MOCK_CONFIG, MOCK_PITCHES, MOCK_PLAN,
 } from '../../mocks/allocationMockData';
-import { fetchAllocationConfig, fetchAllocationVoteData, fetchPhase2Interests } from '../../services/allocationApi';
+import { fetchAllocationConfig, fetchAllocationVoteData } from '../../services/allocationApi';
 import { savePlan, saveFinalAssignments } from '../../services/api';
 import { useSnackbar } from '../../hooks/useSnackbar';
 import { generateDefaultPlan, autoAssignPqa1 } from '../../utils/allocationEngine';
 import { fetchPitches } from '../../services/api';
+import staticPitchesJson from '../../assets/pitches.json';
 import Step1View from './Step1View';
 import Step2View from './Step2View';
 import Stage2ResultsView from './Stage2ResultsView';
@@ -21,10 +24,29 @@ export interface TLAllocationViewHandle {
 
 interface TLAllocationViewProps {
   activeStep: 0 | 1;
+  showResults: boolean;
+  onShowResultsChange: (v: boolean) => void;
   onFinalize?: () => void;
   onAllocationChange?: () => void;
   voterName: string;
   voterRole: string;
+}
+
+// ─── localStorage helpers ─────────────────────────────────────────────────────
+
+const LS_STEP1_KEY = 'tl-alloc-step1-assignments';
+const LS_STEP2_KEY = 'tl-alloc-step2-assignments';
+const LS_UXD_KEY   = 'tl-alloc-uxd';
+
+function lsRead<T>(key: string, fallback: T): T {
+  try {
+    const s = window.localStorage.getItem(key);
+    return s != null ? (JSON.parse(s) as T) : fallback;
+  } catch { return fallback; }
+}
+
+function lsWrite(key: string, value: unknown) {
+  try { window.localStorage.setItem(key, JSON.stringify(value)); } catch { /* ignore */ }
 }
 
 // ─── Auto-assign algorithm for Step 2 ────────────────────────────────────────
@@ -99,6 +121,26 @@ function autoAssignStep2(
   });
 }
 
+// ─── Derive Phase2Interest[] from pitch devInterest ──────────────────────────
+// Interest is stored in column G of the VOTES tab and returned as devInterest
+// per pitch by getAllocationData(). No separate Phase 2 fetch is needed.
+
+function derivePhase2Interests(pitches: AllocationPitch[], config: AllocationConfig): Phase2Interest[] {
+  const buildEntry = (name: string, role: 'dev TL' | 'QM'): Phase2Interest => {
+    const interestByPitchId: Record<string, 1 | 2 | 3 | 4 | null> = {};
+    pitches.forEach(p => {
+      if (name in p.devInterest) {
+        interestByPitchId[p.id] = p.devInterest[name] as 1 | 2 | 3 | 4 | null;
+      }
+    });
+    return { personName: name, role, interestByPitchId };
+  };
+  return [
+    ...config.devTLNames.map(n => buildEntry(n, 'dev TL')),
+    ...config.qmNames.map(n => buildEntry(n, 'QM')),
+  ];
+}
+
 // ─── Merge real pitches + vote data into AllocationPitch[] ───────────────────
 
 function enrichPitches(
@@ -118,60 +160,111 @@ function enrichPitches(
   });
 }
 
-const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProps>(function TLAllocationView({ activeStep, onFinalize, onAllocationChange }, ref) {
+const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProps>(function TLAllocationView({ activeStep, showResults, onShowResultsChange, onFinalize, onAllocationChange }, ref) {
   const { showSnackbar } = useSnackbar();
 
   // ── Data loading ──────────────────────────────────────────────────────────
-  const [loading, setLoading] = useState(true);
+  const [pitchStatus,  setPitchStatus]  = useState<'loading'|'done'|'error'>('loading');
+  const [voteStatus,   setVoteStatus]   = useState<'loading'|'done'|'error'>('loading');
+  const [configStatus, setConfigStatus] = useState<'loading'|'done'|'error'>('loading');
+  const [pitchError,  setPitchError]  = useState<string | undefined>();
+  const [voteError,   setVoteError]   = useState<string | undefined>();
+  const [configError, setConfigError] = useState<string | undefined>();
+  const [loadTrigger, setLoadTrigger] = useState(0);
+  const loading      = [pitchStatus, voteStatus, configStatus].some(s => s === 'loading');
+  const hasLoadError = [pitchStatus, voteStatus, configStatus].some(s => s === 'error');
   const [usingMockData, setUsingMockData] = useState(false);
 
   const [allocationPitches, setAllocationPitches] = useState<AllocationPitch[]>(MOCK_PITCHES);
   const [allocationConfig, setAllocationConfig] = useState<AllocationConfig>(MOCK_CONFIG);
-  const [planAssignments, setPlanAssignments] = useState<PlanAssignment[]>(MOCK_PLAN);
+
+  // Read saved state from localStorage on mount (null = no saved state yet)
+  const savedStep1 = useRef(lsRead<PlanAssignment[] | null>(LS_STEP1_KEY, null));
+  const savedStep2 = useRef(lsRead<StaffingAssignment[] | null>(LS_STEP2_KEY, null));
+  const savedUXD   = useRef(lsRead<Record<string, boolean>>(LS_UXD_KEY, {}));
+
+  const [planAssignments, setPlanAssignments] = useState<PlanAssignment[]>(
+    savedStep1.current ?? MOCK_PLAN
+  );
   const [phase2Interests, setPhase2Interests] = useState<Phase2Interest[]>([]);
-  const [showResults, setShowResults] = useState(false);
-  const [hasResults, setHasResults] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
 
-    async function loadData() {
-      try {
-        const [pitches, voteData, config, interests] = await Promise.all([
-          fetchPitches(),
-          fetchAllocationVoteData(),
-          fetchAllocationConfig(),
-          fetchPhase2Interests(),
-        ]);
+    setPitchStatus('loading'); setPitchError(undefined);
+    setVoteStatus('loading');  setVoteError(undefined);
+    setConfigStatus('loading'); setConfigError(undefined);
 
-        if (cancelled) return;
+    const pitchP = fetchPitches()
+      .then(v => { if (!cancelled) setPitchStatus('done'); return v; })
+      .catch((e): Pitch[] => { if (!cancelled) { setPitchStatus('error'); setPitchError(e?.message ?? 'Failed to load pitches'); } return []; });
 
-        const effectiveConfig = config ?? MOCK_CONFIG;
-        const enriched = enrichPitches(pitches, voteData);
-        const hasRealVotes = Object.keys(voteData).length > 0;
+    const voteP = fetchAllocationVoteData()
+      .then(v => { if (!cancelled) setVoteStatus('done'); return v; })
+      .catch(e => { if (!cancelled) { setVoteStatus('error'); setVoteError(e?.message ?? 'Failed to load vote data'); } return {} as Awaited<ReturnType<typeof fetchAllocationVoteData>>; });
 
-        // Always apply the fetched config (needed for testingCaptain, tlEmails, etc.)
-        setAllocationConfig(effectiveConfig);
-        setPhase2Interests(interests);
+    const configP = fetchAllocationConfig()
+      .then(v => { if (!cancelled) setConfigStatus('done'); return v; })
+      .catch(e => { if (!cancelled) { setConfigStatus('error'); setConfigError(e?.message ?? 'Failed to load config'); } return null; });
 
-        if (!hasRealVotes) {
-          // No real vote data yet — fall back to mocks so the UI is still populated
-          setUsingMockData(true);
-        } else {
-          setAllocationPitches(enriched);
-          setPlanAssignments(generateDefaultPlan(enriched, effectiveConfig));
-          setUsingMockData(false);
-        }
-      } catch {
-        if (!cancelled) setUsingMockData(true);
-      } finally {
-        if (!cancelled) setLoading(false);
+    Promise.all([pitchP, voteP, configP]).then(([pitches, voteData, config]) => {
+      if (cancelled) return;
+
+      const effectiveConfig = config ?? MOCK_CONFIG;
+      const hasRealVotes = Object.keys(voteData).length > 0;
+
+      setAllocationConfig(effectiveConfig);
+
+      // Sanitize saved localStorage assignments against the freshly-fetched config.
+      // If a person was removed from the roster, clear their assignment rather than
+      // leaving a stale name in a dropdown.
+      const devSet = new Set(effectiveConfig.devNames);
+      const devTLSet = new Set(effectiveConfig.devTLNames);
+      const qmSet = new Set(effectiveConfig.qmNames);
+
+      if (savedStep1.current) {
+        const sanitized1 = savedStep1.current.map(a => {
+          if (a.assignedDev != null && !devSet.has(a.assignedDev)) {
+            return { ...a, assignedDev: null, status: (a.status === 'selected' ? 'next-up' : a.status) as typeof a.status };
+          }
+          return a;
+        });
+        savedStep1.current = sanitized1;
+        setPlanAssignments(sanitized1);
       }
-    }
 
-    loadData();
+      if (savedStep2.current) {
+        const sanitized2 = savedStep2.current.map(a => ({
+          ...a,
+          devTL: a.devTL != null && !devTLSet.has(a.devTL) ? null : a.devTL,
+          qm:    a.qm    != null && !qmSet.has(a.qm)       ? null : a.qm,
+          pqa1:  a.pqa1  != null && !devSet.has(a.pqa1)    ? null : a.pqa1,
+        }));
+        savedStep2.current = sanitized2;
+        setStep2Assignments(sanitized2);
+      }
+
+      if (!hasRealVotes) {
+        setUsingMockData(true);
+        // Derive phase2Interests from mock pitch devInterest (same column G source)
+        setPhase2Interests(derivePhase2Interests(MOCK_PITCHES, effectiveConfig));
+      } else {
+        const enriched = enrichPitches(pitches, voteData);
+        setAllocationPitches(enriched);
+        // Derive phase2Interests from vote data — interest is column G in the VOTES tab,
+        // returned as devInterest per pitch by getAllocationData().
+        setPhase2Interests(derivePhase2Interests(enriched, effectiveConfig));
+        // Only auto-generate the plan if the user has no saved state — otherwise
+        // preserve their work so a page refresh doesn't wipe mid-session changes.
+        if (!savedStep1.current) {
+          setPlanAssignments(generateDefaultPlan(enriched, effectiveConfig));
+        }
+        setUsingMockData(false);
+      }
+    });
+
     return () => { cancelled = true; };
-  }, []);
+  }, [loadTrigger]);
 
   // ── Step 1 state ──────────────────────────────────────────────────────────
   const currentAssignments = planAssignments;
@@ -214,8 +307,15 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
     [allocationPitches, selectedPitchIds]
   );
 
-  const [step2Assignments, setStep2Assignments] = useState<StaffingAssignment[]>([]);
-  const [includeUXD, setIncludeUXD] = useState<Record<string, boolean>>({});
+  const [step2Assignments, setStep2Assignments] = useState<StaffingAssignment[]>(
+    savedStep2.current ?? []
+  );
+  const [includeUXD, setIncludeUXD] = useState<Record<string, boolean>>(savedUXD.current);
+
+  // Persist step1, step2, and UXD state to localStorage whenever they change.
+  useEffect(() => { lsWrite(LS_STEP1_KEY, planAssignments); }, [planAssignments]);
+  useEffect(() => { if (step2Assignments.length > 0) lsWrite(LS_STEP2_KEY, step2Assignments); }, [step2Assignments]);
+  useEffect(() => { lsWrite(LS_UXD_KEY, includeUXD); }, [includeUXD]);
 
   const selectedPitchesRef = useRef(selectedPitches);
   selectedPitchesRef.current = selectedPitches;
@@ -238,19 +338,25 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
   devByPitchIdRef.current = devByPitchId;
   const step2InitRef = useRef(false);
 
-  // Auto-initialize step2 assignments when entering step 1, waiting for data to load first.
+  // Auto-initialize step2 assignments when entering step 2, waiting for data to load first.
+  // Skip auto-assignment if the user has saved step2 state from a previous session.
   useEffect(() => {
     if (activeStep !== 1 || loading || step2InitRef.current) return;
     step2InitRef.current = true;
+    if (savedStep2.current) return; // Already restored from localStorage via useState init
     const base = autoAssignStep2(selectedPitchesRef.current, phase2Interests, allocationConfig);
     const pqa1Map = autoAssignPqa1(selectedPitchesRef.current, devByPitchIdRef.current, allocationConfig.devNames);
     setStep2Assignments(base.map(a => ({ ...a, pqa1: pqa1Map[a.pitchId] ?? null })));
   }, [activeStep, loading, phase2Interests, allocationConfig]);
 
   const handleFinalize = async () => {
+    const pitchTitleById = Object.fromEntries(
+      (staticPitchesJson as Array<{ id: string; title: string }>).map(p => [p.id, p.title])
+    );
     if (activeStep === 0) {
       const payload = currentAssignments.map(a => ({
         pitchId: a.pitchId,
+        pitchTitle: pitchTitleById[a.pitchId] ?? '',
         status: a.status,
         assignedDev: a.assignedDev,
       }));
@@ -267,6 +373,7 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
         const plan = devByPitch[sa.pitchId];
         return {
           pitchId: sa.pitchId,
+          pitchTitle: pitchTitleById[sa.pitchId] ?? '',
           status: plan?.status ?? 'selected',
           assignedDev: plan?.assignedDev ?? null,
           devTL: sa.devTL,
@@ -282,18 +389,48 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
         throw err;
       }
     }
-    setShowResults(true);
-    setHasResults(true);
+    onShowResultsChange(true);
     onFinalize?.();
   };
 
   useImperativeHandle(ref, () => ({ triggerFinalize: handleFinalize }));
 
-  if (loading) {
+  if (loading || hasLoadError) {
+    const steps = [
+      { label: 'Loading pitches',    status: pitchStatus,  error: pitchError },
+      { label: 'Loading vote data',  status: voteStatus,   error: voteError },
+      { label: 'Loading team config', status: configStatus, error: configError },
+    ];
+    const firstError = steps.find(s => s.status === 'error');
     return (
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 2 }}>
-        <CircularProgress size={24} />
-        <Typography color="text.secondary">Loading allocation data…</Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', flexDirection: 'column', gap: 2 }}>
+        <Typography variant="h6" color="text.secondary">
+          {hasLoadError ? 'Failed to load' : 'Loading…'}
+        </Typography>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, minWidth: 240 }}>
+          {steps.map(step => (
+            <Box key={step.label} sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+              {step.status === 'done'    && <CheckCircleIcon sx={{ color: 'success.main', fontSize: 20 }} />}
+              {step.status === 'error'   && <ErrorIcon sx={{ color: 'error.main', fontSize: 20 }} />}
+              {step.status === 'loading' && <CircularProgress size={18} />}
+              <Typography variant="body2" color={step.status === 'error' ? 'error' : step.status === 'done' ? 'text.secondary' : 'text.primary'}>
+                {step.label}
+              </Typography>
+            </Box>
+          ))}
+        </Box>
+        {hasLoadError && (
+          <Box sx={{ textAlign: 'center', mt: 1 }}>
+            {firstError?.error && (
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.5, maxWidth: 360 }}>
+                {firstError.error}
+              </Typography>
+            )}
+            <Button variant="outlined" size="small" onClick={() => setLoadTrigger(n => n + 1)}>
+              Retry
+            </Button>
+          </Box>
+        )}
       </Box>
     );
   }
@@ -304,7 +441,6 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
         pitches={allocationPitches}
         currentAssignments={currentAssignments}
         config={allocationConfig}
-        onBack={() => setShowResults(false)}
       />
     ) : (
       <Stage4ResultsView
@@ -313,7 +449,6 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
         step2Assignments={step2Assignments}
         config={allocationConfig}
         includeUXD={includeUXD}
-        onBack={() => setShowResults(false)}
       />
     );
   }
@@ -345,14 +480,6 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
         )}
       </Box>
 
-      {activeStep === 1 && hasResults && !showResults && (
-        <Box sx={{ px: 2, py: 0.75, bgcolor: 'success.main', color: 'success.contrastText', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Typography variant="caption">Assignments saved.</Typography>
-          <Button size="small" variant="outlined" color="inherit" onClick={() => setShowResults(true)} sx={{ py: 0.25, fontSize: '0.75rem' }}>
-            View summary
-          </Button>
-        </Box>
-      )}
       {usingMockData && (
         <Box sx={{ px: 2, py: 0.5, bgcolor: 'warning.main', color: 'warning.contrastText' }}>
           <Typography variant="caption">

@@ -10,16 +10,49 @@
 const ss = SpreadsheetApp.getActiveSpreadsheet();
 
 /**
- * Returns a map of pitchId → pitchTitle from the PITCHES sheet.
- * Returns an empty object if the sheet doesn't exist or has no data.
+ * Runs fn() inside a document-scoped lock, serialising all concurrent writes.
+ * Returns a 503 response if the lock cannot be acquired within 30 seconds.
+ * All sheet-mutating functions should call this.
+ */
+function withLock(fn) {
+  const lock = LockService.getDocumentLock();
+  try {
+    lock.waitLock(30000);
+  } catch (_) {
+    return contentResponse({ error: 'Server busy — please try again in a moment.' }, 503);
+  }
+  try {
+    return fn();
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/**
+ * Returns a map of pitchId → pitchTitle.
+ * Reads from PITCHES sheet first; falls back to VOTES sheet (which stores pitchTitle
+ * as submitted by the frontend) if PITCHES is absent or empty.
  */
 function getPitchTitleMap() {
   const sh = ss.getSheetByName('PITCHES');
-  if (!sh || sh.getLastRow() < 2) return {};
-  const rows = sh.getRange(2, 1, sh.getLastRow() - 1, 2).getValues();
+  if (sh && sh.getLastRow() >= 2) {
+    const rows = sh.getRange(2, 1, sh.getLastRow() - 1, 2).getValues();
+    const map = {};
+    for (const [id, title] of rows) {
+      if (id) map[String(id)] = title || '';
+    }
+    if (Object.keys(map).length > 0) return map;
+  }
+
+  // Fall back to VOTES sheet — each vote row includes pitchTitle in col E (index 4)
+  const vsh = ss.getSheetByName('VOTES');
+  if (!vsh || vsh.getLastRow() <= 1) return {};
+  const vrows = vsh.getRange(2, 1, vsh.getLastRow() - 1, 5).getValues();
   const map = {};
-  for (const [id, title] of rows) {
-    if (id) map[String(id)] = title || '';
+  for (const row of vrows) {
+    const id = String(row[3]);
+    const title = row[4];
+    if (id && title && !map[id]) map[id] = title;
   }
   return map;
 }
@@ -211,43 +244,45 @@ function recordVotes(body) {
     }
   }
 
-  const sh = ss.getSheetByName('VOTES');
-  const now = new Date();
+  return withLock(() => {
+    const sh = ss.getSheetByName('VOTES');
+    const now = new Date();
 
-  if (sh.getLastRow() === 0) {
-    sh.appendRow(['timestamp', 'voterName', 'voterRole', 'pitch_id', 'pitchTitle', 'tier', 'interestLevel']);
-  } else if (sh.getLastColumn() < 7) {
-    // Migrate old schema: insert pitchTitle column after pitch_id (col 4)
-    sh.insertColumnAfter(4);
-    sh.getRange(1, 5).setValue('pitchTitle');
-  }
-
-  // Delete all existing rows for this voter so resubmissions overwrite cleanly.
-  if (sh.getLastRow() > 1) {
-    const nameCol = sh.getRange(2, 2, sh.getLastRow() - 1, 1).getValues().flat();
-    const toDelete = [];
-    for (let i = 0; i < nameCol.length; i++) {
-      if (nameCol[i] === voterName) toDelete.push(i + 2);
+    if (sh.getLastRow() === 0) {
+      sh.appendRow(['timestamp', 'voterName', 'voterRole', 'pitch_id', 'pitchTitle', 'tier', 'interestLevel']);
+    } else if (sh.getLastColumn() < 7) {
+      // Migrate old schema: insert pitchTitle column after pitch_id (col 4)
+      sh.insertColumnAfter(4);
+      sh.getRange(1, 5).setValue('pitchTitle');
     }
-    for (let i = toDelete.length - 1; i >= 0; i--) {
-      sh.deleteRow(toDelete[i]);
+
+    // Delete all existing rows for this voter so resubmissions overwrite cleanly.
+    if (sh.getLastRow() > 1) {
+      const nameCol = sh.getRange(2, 2, sh.getLastRow() - 1, 1).getValues().flat();
+      const toDelete = [];
+      for (let i = 0; i < nameCol.length; i++) {
+        if (nameCol[i] === voterName) toDelete.push(i + 2);
+      }
+      for (let i = toDelete.length - 1; i >= 0; i--) {
+        sh.deleteRow(toDelete[i]);
+      }
     }
-  }
 
-  if (votes.length > 0) {
-    const rows = votes.map(v => [
-      now,
-      voterName,
-      voterRole || '',
-      v.pitch_id,
-      v.pitchTitle || '',
-      v.tier,
-      (v.interestLevel != null) ? v.interestLevel : ''
-    ]);
-    sh.getRange(sh.getLastRow() + 1, 1, rows.length, 7).setValues(rows);
-  }
+    if (votes.length > 0) {
+      const rows = votes.map(v => [
+        now,
+        voterName,
+        voterRole || '',
+        v.pitch_id,
+        v.pitchTitle || '',
+        v.tier,
+        (v.interestLevel != null) ? v.interestLevel : ''
+      ]);
+      sh.getRange(sh.getLastRow() + 1, 1, rows.length, 7).setValues(rows);
+    }
 
-  return json200({ saved: votes.length });
+    return json200({ saved: votes.length });
+  });
 }
 
 /**
@@ -365,19 +400,21 @@ function savePlan(assignments) {
     return badRequest('assignments must be a non-empty array');
   }
 
-  let sh = ss.getSheetByName('PLAN');
-  if (!sh) sh = ss.insertSheet('PLAN');
-  sh.clearContents();
+  return withLock(() => {
+    let sh = ss.getSheetByName('PLAN');
+    if (!sh) sh = ss.insertSheet('PLAN');
+    sh.clearContents();
 
-  const now = new Date();
-  const pitchTitles = getPitchTitleMap();
-  const headers = ['timestamp', 'pitchId', 'pitchTitle', 'status', 'assignedDev'];
-  const rows = [headers].concat(
-    assignments.map(a => [now, a.pitchId, pitchTitles[String(a.pitchId)] || '', a.status, a.assignedDev || ''])
-  );
-  sh.getRange(1, 1, rows.length, 5).setValues(rows);
+    const now = new Date();
+    const pitchTitles = getPitchTitleMap();
+    const headers = ['timestamp', 'pitchId', 'pitchTitle', 'status', 'assignedDev'];
+    const rows = [headers].concat(
+      assignments.map(a => [now, a.pitchId, pitchTitles[String(a.pitchId)] || '', a.status, a.assignedDev || ''])
+    );
+    sh.getRange(1, 1, rows.length, 5).setValues(rows);
 
-  return json200({ saved: assignments.length });
+    return json200({ saved: assignments.length });
+  });
 }
 
 /**
@@ -395,46 +432,48 @@ function saveFinalAssignments(assignments) {
     return badRequest('assignments must be a non-empty array');
   }
 
-  let sh = ss.getSheetByName('PLAN');
-  if (!sh) sh = ss.insertSheet('PLAN');
+  return withLock(() => {
+    let sh = ss.getSheetByName('PLAN');
+    if (!sh) sh = ss.insertSheet('PLAN');
 
-  // Preserve existing follow-up state before clearing.
-  // pitchTitle column was added in a schema update: old sheets have 9 cols, new have 10.
-  const existingFollowups = {};
-  if (sh.getLastRow() > 1) {
-    const numCols = sh.getLastColumn();
-    const hasTitle = numCols >= 10; // new schema: pitchTitle shifts followup cols right by 1
-    const pcIdx = hasTitle ? 8 : 7;
-    const keIdx = hasTitle ? 9 : 8;
-    const existing = sh.getRange(2, 1, sh.getLastRow() - 1, numCols).getValues();
-    for (const row of existing) {
-      const pid = row[1];
-      if (pid) existingFollowups[pid] = { projectCreated: row[pcIdx] === true, kickoffEmailSent: row[keIdx] === true };
+    // Preserve existing follow-up state before clearing.
+    // pitchTitle column was added in a schema update: old sheets have 9 cols, new have 10.
+    const existingFollowups = {};
+    if (sh.getLastRow() > 1) {
+      const numCols = sh.getLastColumn();
+      const hasTitle = numCols >= 10; // new schema: pitchTitle shifts followup cols right by 1
+      const pcIdx = hasTitle ? 8 : 7;
+      const keIdx = hasTitle ? 9 : 8;
+      const existing = sh.getRange(2, 1, sh.getLastRow() - 1, numCols).getValues();
+      for (const row of existing) {
+        const pid = row[1];
+        if (pid) existingFollowups[pid] = { projectCreated: row[pcIdx] === true, kickoffEmailSent: row[keIdx] === true };
+      }
     }
-  }
 
-  sh.clearContents();
+    sh.clearContents();
 
-  const now = new Date();
-  const pitchTitles = getPitchTitleMap();
-  const headers = ['timestamp', 'pitchId', 'pitchTitle', 'status', 'assignedDev', 'devTL', 'qm', 'pqa1', 'projectCreated', 'kickoffEmailSent'];
-  const rows = [headers].concat(
-    assignments.map(a => [
-      now,
-      a.pitchId,
-      pitchTitles[String(a.pitchId)] || '',
-      a.status || '',
-      a.assignedDev || '',
-      a.devTL || '',
-      a.qm || '',
-      a.pqa1 || '',
-      existingFollowups[a.pitchId]?.projectCreated || false,
-      existingFollowups[a.pitchId]?.kickoffEmailSent || false,
-    ])
-  );
-  sh.getRange(1, 1, rows.length, 10).setValues(rows);
+    const now = new Date();
+    const pitchTitles = getPitchTitleMap();
+    const headers = ['timestamp', 'pitchId', 'pitchTitle', 'status', 'assignedDev', 'devTL', 'qm', 'pqa1', 'projectCreated', 'kickoffEmailSent'];
+    const rows = [headers].concat(
+      assignments.map(a => [
+        now,
+        a.pitchId,
+        pitchTitles[String(a.pitchId)] || '',
+        a.status || '',
+        a.assignedDev || '',
+        a.devTL || '',
+        a.qm || '',
+        a.pqa1 || '',
+        existingFollowups[a.pitchId]?.projectCreated || false,
+        existingFollowups[a.pitchId]?.kickoffEmailSent || false,
+      ])
+    );
+    sh.getRange(1, 1, rows.length, 10).setValues(rows);
 
-  return json200({ saved: assignments.length });
+    return json200({ saved: assignments.length });
+  });
 }
 
 /**
@@ -484,21 +523,24 @@ function updateFollowup(params) {
   if (!pitchId || !field) return badRequest('pitchId and field required');
   if (field !== 'projectCreated' && field !== 'kickoffEmailSent') return badRequest('field must be projectCreated or kickoffEmailSent');
 
-  const sh = ss.getSheetByName('PLAN');
-  if (!sh || sh.getLastRow() <= 1) return notFound();
+  return withLock(() => {
+    const sh = ss.getSheetByName('PLAN');
+    if (!sh || sh.getLastRow() <= 1) return notFound();
 
-  const ids = sh.getRange(2, 2, sh.getLastRow() - 1, 1).getValues().flat();
-  const rowIdx = ids.indexOf(pitchId);
-  if (rowIdx === -1) return notFound();
+    const ids = sh.getRange(2, 2, sh.getLastRow() - 1, 1).getValues().flat();
+    const rowIdx = ids.indexOf(pitchId);
+    if (rowIdx === -1) return notFound();
 
-  const col = field === 'projectCreated' ? 9 : 10;
-  sh.getRange(rowIdx + 2, col).setValue(value === 'true' || value === true);
-  return json200({ updated: 1 });
+    const col = field === 'projectCreated' ? 9 : 10;
+    sh.getRange(rowIdx + 2, col).setValue(value === 'true' || value === true);
+    return json200({ updated: 1 });
+  });
 }
 
 /**
  * Return Phase 2 interest votes (dev TL / QM interest in selected projects).
- * Reads from the INTEREST_VOTES sheet; returns [] if the sheet doesn't exist yet.
+ * Reads interestLevel from the VOTES sheet (col G) for voters whose role is
+ * 'dev TL' or 'QM'. Returns [] if VOTES has no data.
  *
  * Response shape: Phase2Interest[]
  *   [{ personName, role, interestByPitchId: { [pitchId]: 1|2|3|4|null } }]
@@ -506,31 +548,33 @@ function updateFollowup(params) {
  * @return {TextOutput} JSON Phase2Interest array
  */
 function getPhase2Interests() {
-  const sh = ss.getSheetByName('INTEREST_VOTES');
+  const sh = ss.getSheetByName('VOTES');
   if (!sh || sh.getLastRow() <= 1) return json200([]);
 
-  const rows = sh.getRange(2, 1, sh.getLastRow() - 1, 6).getValues();
+  const rows = sh.getRange(2, 1, sh.getLastRow() - 1, 7).getValues();
   const byPerson = {};
 
   for (const row of rows) {
-    const voterName = row[1]; // column B
-    const role      = row[3]; // column D
-    const pitchId   = row[4]; // column E
-    const level     = row[5]; // column F (1-4 or '' for null/skipped)
+    const voterName    = row[1]; // column B
+    const voterRole    = row[2]; // column C
+    const pitchId      = row[3]; // column D
+    const interestLevel = row[6]; // column G
     if (!voterName || !pitchId) continue;
+    if (voterRole !== 'dev TL' && voterRole !== 'QM') continue;
+    if (interestLevel === '' || interestLevel === null || interestLevel === undefined) continue;
     if (!byPerson[voterName]) {
-      byPerson[voterName] = { personName: voterName, role, interestByPitchId: {} };
+      byPerson[voterName] = { personName: voterName, role: voterRole, interestByPitchId: {} };
     }
-    byPerson[voterName].interestByPitchId[pitchId] =
-      (level === '' || level === null || level === undefined) ? null : Number(level);
+    byPerson[voterName].interestByPitchId[String(pitchId)] = Number(interestLevel);
   }
 
   return json200(Object.values(byPerson));
 }
 
 /**
- * Record Phase 2 interest votes for a dev TL or QM.
- * Creates the INTEREST_VOTES sheet if it doesn't exist yet.
+ * Record Phase 2 interest votes for a dev TL or QM into the VOTES sheet.
+ * Updates the interestLevel column (G) on existing rows for this voter/pitch pair.
+ * Inserts new rows for pitches that have no existing vote row.
  *
  * Expected body: { voterName: string, role: 'dev TL'|'QM',
  *                  interests: [{ pitch_id: string, level: 1|2|3|4|null }] }
@@ -547,21 +591,46 @@ function recordInterestVote(body) {
     return badRequest('role must be "dev TL" or "QM"');
   }
 
-  let sh = ss.getSheetByName('INTEREST_VOTES');
-  if (!sh) {
-    sh = ss.insertSheet('INTEREST_VOTES');
-    sh.appendRow(['timestamp', 'voterName', 'email', 'role', 'pitch_id', 'interest_level']);
-  }
+  return withLock(() => {
+    let sh = ss.getSheetByName('VOTES');
+    if (!sh) {
+      sh = ss.insertSheet('VOTES');
+      sh.appendRow(['timestamp', 'voterName', 'voterRole', 'pitch_id', 'pitchTitle', 'tier', 'interestLevel']);
+    } else if (sh.getLastColumn() < 7) {
+      sh.insertColumnAfter(4);
+      sh.getRange(1, 5).setValue('pitchTitle');
+    }
 
-  const email = Session.getActiveUser().getEmail() || '';
-  const now = new Date();
-  const rows = interests.map(i => [now, voterName, email, role, i.pitch_id, i.level ?? '']);
+    const now = new Date();
+    const existingRows = sh.getLastRow() > 1
+      ? sh.getRange(2, 1, sh.getLastRow() - 1, 7).getValues()
+      : [];
 
-  if (rows.length) {
-    sh.getRange(sh.getLastRow() + 1, 1, rows.length, 6).setValues(rows);
-  }
+    // Map pitch_id → sheet row index (1-based) for this voter's existing rows
+    const rowByPitchId = {};
+    for (let i = 0; i < existingRows.length; i++) {
+      if (existingRows[i][1] === voterName) {
+        rowByPitchId[String(existingRows[i][3])] = i + 2;
+      }
+    }
 
-  return json200({ saved: rows.length });
+    const toInsert = [];
+    for (const interest of interests) {
+      const pitchId = String(interest.pitch_id);
+      const level = (interest.level !== null && interest.level !== undefined) ? interest.level : '';
+      if (rowByPitchId[pitchId] !== undefined) {
+        sh.getRange(rowByPitchId[pitchId], 7).setValue(level); // update interestLevel col
+      } else {
+        toInsert.push([now, voterName, role, pitchId, '', '', level]);
+      }
+    }
+
+    if (toInsert.length > 0) {
+      sh.getRange(sh.getLastRow() + 1, 1, toInsert.length, 7).setValues(toInsert);
+    }
+
+    return json200({ saved: interests.length });
+  });
 }
 
 /**

@@ -32,7 +32,7 @@ export const MOCK_CONFIG: AllocationConfig = {
     'Peter Paulson', 'Peter Wei Lin', 'Tim Paukovits',
   ],
   devTLNames: ['Chase Grey', 'Derek Strehlow', 'Nicholas Rose', 'Sheng Liu'],
-  qmNames: ['Aiden Caes', 'Anne Field', 'Damon Drury', 'Derek Skwarczynski', 'Julia Rowan', 'Mariel Zech', 'Parker Volkman'],
+  qmNames: ['Aiden Caes', 'Damon Drury', 'Derek Skwarczynski', 'Julia Rowan', 'Mariel Zech', 'Parker Volkman'],
   tlEmails: {
     'Chase Grey': 'cgrey@epic.com',
     'Derek Strehlow': 'dstrehlo@epic.com',
@@ -56,12 +56,12 @@ export const MOCK_CONFIG: AllocationConfig = {
     'Peter Wei Lin': 'pelin@epic.com',
     'Tim Paukovits': 'tpaukovi@epic.com',
     'Aiden Caes': 'Aiden@epic.com',
-    'Anne Field': 'afield@epic.com',
     'Damon Drury': 'ddrury@epic.com',
     'Derek Skwarczynski': 'dskwarcz@epic.com',
     'Julia Rowan': 'jrowan@epic.com',
     'Lauren Dyer': 'ldyer@epic.com',
     'Mariel Zech': 'Mariel@epic.com',
+    'Mark Zakhar': 'mzakhar@epic.com',
     'Parker Volkman': 'pvolkman@epic.com',
   },
   quarterLabel: 'Nov 26',
@@ -211,11 +211,9 @@ const TL_AFFINITY: Record<string, string[]> = {
 
 const QM_AFFINITY: Record<string, string[]> = {
   'Aiden Caes': ['Support AI Charting'],
-  'Anne Field': ['Create and Improve Tools and Framework'],
   'Damon Drury': ['Support AI Charting'],
   'Derek Skwarczynski': ['Create and Improve Tools and Framework', 'Address Technical Debt'],
   'Julia Rowan': ['Mobile Feature Parity'],
-  'Lauren Dyer': ['Support AI Charting'],
   'Mariel Zech': ['Create and Improve Tools and Framework'],
   'Parker Volkman': ['Address Technical Debt'],
 };

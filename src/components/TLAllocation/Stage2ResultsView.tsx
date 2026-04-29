@@ -4,19 +4,24 @@ import {
   Button, Divider, Chip, Tabs, Tab, Paper,
 } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import type { AllocationPitch, PlanAssignment, AllocationConfig } from '../../types/allocationTypes';
 import { useSnackbar } from '../../hooks/useSnackbar';
+
+const CATEGORY_ORDER: Record<string, number> = {
+  'Support AI Charting': 0,
+  'Create and Improve Tools and Framework': 1,
+  'Mobile Feature Parity': 2,
+  'Address Technical Debt': 3,
+};
 
 interface Props {
   pitches: AllocationPitch[];
   currentAssignments: PlanAssignment[];
   config: AllocationConfig;
-  onBack?: () => void;
 }
 
 
-export default function Stage2ResultsView({ pitches, currentAssignments, config, onBack }: Props) {
+export default function Stage2ResultsView({ pitches, currentAssignments, config }: Props) {
   const { showSnackbar } = useSnackbar();
   const [viewTab, setViewTab] = useState<0 | 1>(0);
 
@@ -31,8 +36,8 @@ export default function Stage2ResultsView({ pitches, currentAssignments, config,
       .map(a => ({ assignment: a, pitch: pitchById[a.pitchId] }))
       .filter(({ pitch }) => pitch != null)
       .sort((a, b) =>
-        a.pitch.category.localeCompare(b.pitch.category) ||
-        a.pitch.title.localeCompare(b.pitch.title)
+        (CATEGORY_ORDER[a.pitch.category] ?? 99) - (CATEGORY_ORDER[b.pitch.category] ?? 99) ||
+        a.pitch.teamPriorityScore - b.pitch.teamPriorityScore
       ),
     [currentAssignments, pitchById],
   );
@@ -42,7 +47,10 @@ export default function Stage2ResultsView({ pitches, currentAssignments, config,
       .filter(a => a.status === 'next-up')
       .map(a => ({ assignment: a, pitch: pitchById[a.pitchId] }))
       .filter(({ pitch }) => pitch != null)
-      .sort((a, b) => a.pitch.teamPriorityScore - b.pitch.teamPriorityScore),
+      .sort((a, b) =>
+        (CATEGORY_ORDER[a.pitch.category] ?? 99) - (CATEGORY_ORDER[b.pitch.category] ?? 99) ||
+        a.pitch.teamPriorityScore - b.pitch.teamPriorityScore
+      ),
     [currentAssignments, pitchById],
   );
 
@@ -102,11 +110,6 @@ export default function Stage2ResultsView({ pitches, currentAssignments, config,
     <Box sx={{ p: 3, overflow: 'auto', height: '100%' }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3 }}>
         <Box>
-          {onBack && (
-            <Button startIcon={<ArrowBackIcon />} onClick={onBack} sx={{ mb: 1, pl: 0 }} color="inherit">
-              Back to editing
-            </Button>
-          )}
           <Typography variant="h4" fontWeight="bold">Dev Matching Results</Typography>
           {config.quarterLabel && (
             <Typography variant="h6" color="text.secondary">Q{config.quarterLabel}</Typography>
@@ -130,14 +133,16 @@ export default function Stage2ResultsView({ pitches, currentAssignments, config,
         <Table size="small" sx={{ mb: 4, tableLayout: 'fixed' }}>
           <TableHead>
             <TableRow>
-              <TableCell sx={{ width: '45%' }}>Project</TableCell>
+              <TableCell sx={{ width: '2.5rem' }}>#</TableCell>
+              <TableCell sx={{ width: '43%' }}>Project</TableCell>
               <TableCell sx={{ width: '20%' }}>Category</TableCell>
               <TableCell>Dev</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {selected.map(({ assignment, pitch }) => (
+            {selected.map(({ assignment, pitch }, i) => (
               <TableRow key={pitch.id}>
+                <TableCell sx={{ color: 'text.secondary', fontSize: '0.75rem' }}>{i + 1}</TableCell>
                 <TableCell sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {pitch.title}
                 </TableCell>
@@ -164,7 +169,7 @@ export default function Stage2ResultsView({ pitches, currentAssignments, config,
                 <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 1 }}>
                   {dev} — {rows.length} project{rows.length !== 1 ? 's' : ''}
                 </Typography>
-                <Box component="ul" sx={{ pl: 3, m: 0 }}>
+                <Box component="ol" sx={{ pl: 3, m: 0 }}>
                   {rows.map(({ pitch }) => (
                     <Box component="li" key={pitch.id} sx={{ mb: 0.25 }}>
                       <Typography variant="body2">
@@ -200,18 +205,28 @@ export default function Stage2ResultsView({ pitches, currentAssignments, config,
       <Typography variant="h6" fontWeight="bold" sx={{ mb: 2 }}>
         Up Next — Lifeboat Order ({nextUp.length})
       </Typography>
-      <Box component="ol" sx={{ pl: 3, m: 0, mb: 4 }}>
-        {nextUp.map(({ pitch }) => (
-          <Box component="li" key={pitch.id} sx={{ mb: 0.5 }}>
-            <Typography variant="body1">
-              {pitch.title}
-              <Typography component="span" variant="body2" color="text.secondary" sx={{ ml: 1 }}>
-                [{pitch.category}]
-              </Typography>
-            </Typography>
-          </Box>
-        ))}
-      </Box>
+      <Table size="small" sx={{ mb: 4, tableLayout: 'fixed' }}>
+        <TableHead>
+          <TableRow>
+            <TableCell sx={{ width: '2.5rem' }}>#</TableCell>
+            <TableCell sx={{ width: '55%' }}>Project</TableCell>
+            <TableCell>Category</TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {nextUp.map(({ pitch }, i) => (
+            <TableRow key={pitch.id}>
+              <TableCell sx={{ color: 'text.secondary', fontSize: '0.75rem' }}>{i + 1}</TableCell>
+              <TableCell sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {pitch.title}
+              </TableCell>
+              <TableCell>
+                <Chip label={pitch.category} size="small" />
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
 
     </Box>
   );

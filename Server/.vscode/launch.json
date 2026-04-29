@@ -1,0 +1,19 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Attach: TRACK",
+            "type": "epiccode",
+            "request": "attach",
+            "environmentId": "508",
+            "processId": ""
+        },
+        {
+            "name": "Attach: Active Environment",
+            "type": "epiccode",
+            "request": "attach",
+            "environmentId": "",
+            "processId": ""
+        }
+    ]
+}

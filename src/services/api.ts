@@ -126,6 +126,7 @@ export async function submitInterestVotes(payload: SubmitInterestPayload): Promi
 
 export interface PlanAssignmentPayload {
   pitchId: string;
+  pitchTitle?: string;
   status: 'selected' | 'next-up' | 'cut';
   assignedDev: string | null;
 }
@@ -138,34 +139,33 @@ export interface FinalAssignmentPayload extends PlanAssignmentPayload {
 
 /**
  * Saves the finalized stage 2 plan (pitch decisions + dev assignments) to the PLAN sheet.
- * Uses no-cors so the POST crosses GAS's redirect without a CORS read failure;
- * the response is opaque so we return a synthetic saved count.
+ * Uses the dev-server proxy so we can follow GAS's redirect and read the response body,
+ * which allows detecting lock-contention errors returned by withLock().
  */
 export async function savePlan(assignments: PlanAssignmentPayload[]): Promise<number> {
-  if (!API_BASE_URL) throw new ApiError('API URL not configured', 0);
-  await fetch(`${API_BASE_URL}?route=save-plan`, {
+  const response = await fetch(`${GAS_PROXY}?route=save-plan`, {
     method: 'POST',
-    mode: 'no-cors',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
     body: JSON.stringify({ assignments }),
   });
-  return assignments.length;
+  const data = await response.json().catch(() => ({}));
+  if (data.error) throw new ApiError(data.error, response.status || 200);
+  return data.saved ?? assignments.length;
 }
 
 /**
  * Saves the finalized stage 4 team assignments (devTL, QM, PQA1) to the PLAN sheet,
  * merging with the stage 2 dev assignments already stored there.
- * Uses no-cors for the same reason as savePlan.
  */
 export async function saveFinalAssignments(assignments: FinalAssignmentPayload[]): Promise<number> {
-  if (!API_BASE_URL) throw new ApiError('API URL not configured', 0);
-  await fetch(`${API_BASE_URL}?route=save-final-assignments`, {
+  const response = await fetch(`${GAS_PROXY}?route=save-final-assignments`, {
     method: 'POST',
-    mode: 'no-cors',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
     body: JSON.stringify({ assignments }),
   });
-  return assignments.length;
+  const data = await response.json().catch(() => ({}));
+  if (data.error) throw new ApiError(data.error, response.status || 200);
+  return data.saved ?? assignments.length;
 }
 
 /**

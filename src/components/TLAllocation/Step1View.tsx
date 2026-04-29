@@ -1,4 +1,5 @@
 import { lazy, Suspense, useRef, useMemo, useState, useCallback } from 'react';
+import { useExclusiveSelect } from '../../hooks/useExclusiveSelect';
 import {
   Box, Typography, Paper, Table, TableBody, TableCell, TableHead, TableRow,
   Select, MenuItem, Divider, Tooltip,
@@ -16,6 +17,7 @@ import {
 } from '@mui/icons-material';
 import type { AllocationPitch, AssignmentStatus, PlanAssignment } from '../../types/allocationTypes';
 import type { AllocationConfig } from '../../types/allocationTypes';
+import { getShortName } from '../../data/teamRoster';
 import InterestChip from './InterestChip';
 import InterestDot from './InterestDot';
 
@@ -71,7 +73,7 @@ function VoteBreakdown({ votes, label }: { votes: Record<string, 0 | 1 | 2 | 3 |
       </Typography>
       {sorted.map(([name, tier]) => (
         <Box key={name} sx={{ display: 'flex', justifyContent: 'space-between', gap: 1.5 }}>
-          <Typography variant="caption">{name.split(' ')[0]}</Typography>
+          <Typography variant="caption">{getShortName(name)}</Typography>
           <Typography variant="caption" sx={{ color: (tier != null && tier > 0) ? priorityColor(tier) : 'text.disabled', fontWeight: 700 }}>
             {(tier != null && tier > 0) ? `${TIER_LABEL[tier]} (${tier})` : tier === 0 ? 'Unsorted' : 'Unranked (–)'}
           </Typography>
@@ -692,7 +694,7 @@ export default function Step1View({
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                 <Tooltip title={workloadTooltip} placement="top" disableHoverListener={!workloadWarn}>
                   <Typography variant="caption" fontWeight={600} sx={{ color: devNameColor }}>
-                    {dev.split(' ')[0]}
+                    {getShortName(dev)}
                   </Typography>
                 </Tooltip>
                 {pitchIds.length === 0 && (
@@ -756,6 +758,7 @@ interface PitchRowProps {
 
 function PitchRow({ assignment, pitch, devNames, onDevChange, onStatusChange, highlight, onRef, highlighted }: PitchRowProps) {
   const [detailsAnchor, setDetailsAnchor] = useState<HTMLButtonElement | null>(null);
+  const devSelectExclusive = useExclusiveSelect(`${pitch.id}-dev`);
 
   const textColor = highlight === 'cut' ? 'text.disabled' : 'text.primary';
 
@@ -826,6 +829,7 @@ function PitchRow({ assignment, pitch, devNames, onDevChange, onStatusChange, hi
       <TableCell sx={{ px: 0.5, py: 0.25 }}>
         {highlight === 'selected' && (
           <Select
+            {...devSelectExclusive}
             size="small"
             value={assignment.assignedDev ?? ''}
             onChange={e => onDevChange(pitch.id, e.target.value || null)}
@@ -834,7 +838,7 @@ function PitchRow({ assignment, pitch, devNames, onDevChange, onStatusChange, hi
             renderValue={val => val
               ? <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0 }}>
                   <Typography variant="caption" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
-                    {(val as string).split(' ')[0]}
+                    {getShortName(val as string)}
                   </Typography>
                   <InterestDot
                     level={pitch.devInterest[val as string] ?? null}
@@ -844,7 +848,7 @@ function PitchRow({ assignment, pitch, devNames, onDevChange, onStatusChange, hi
               : <Typography variant="caption" color="text.disabled">Assign dev…</Typography>
             }
           >
-            <MenuItem value=""><em>Unassign</em></MenuItem>
+            <MenuItem value=""><Typography variant="body2"><em>Unassign</em></Typography></MenuItem>
             {sortedDevs.map(dev => (
               <MenuItem key={dev} value={dev} sx={{ px: 2, py: 0.75 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%', minWidth: 0 }}>

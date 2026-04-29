@@ -15,7 +15,7 @@ interface KanbanContainerProps {
   onSendToBottomUnsorted?: (pitchId: string) => void;
   userRole?: string | null;
   focusedPitchId?: string | null;
-  onFocusPitch?: (id: string) => void;
+  onFocusPitch?: (id: string | null) => void;
 }
 
 /**
@@ -179,6 +179,7 @@ const KanbanContainer = ({
                     : 'rgba(0, 0, 0, 0.06)',
               },
             }}
+            onClick={() => onFocusPitch?.(null)}
             aria-label={`Kanban board with ${TOTAL} pitches to categorize`}
           >
             {/* Unsorted column - always visible so users can move cards back to unranked state */}

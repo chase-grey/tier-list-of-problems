@@ -135,13 +135,6 @@ const HelpDialog: React.FC<HelpDialogProps> = ({
               and decide which extras go on the backlog.
             </Typography>
 
-            <Typography variant="h6" gutterBottom>Plans A / B / C</Typography>
-            <Typography variant="body1" paragraph>
-              Three near-optimal starting plans are auto-generated from vote data, differing only in how
-              much weight they give to team vs. TL priority votes. Pick the one that looks closest to
-              right and customize from there.
-            </Typography>
-
             <Typography variant="h6" gutterBottom>Setting project status</Typography>
             <Typography variant="body1" paragraph>
               Each pitch has three status buttons on the right: <strong>Plan</strong> (in scope this quarter),{' '}
@@ -248,8 +241,8 @@ const HelpDialog: React.FC<HelpDialogProps> = ({
           <>
             <Typography variant="h6" gutterBottom>Goal</Typography>
             <Typography variant="body1" paragraph>
-              Assign a Dev TL and a QM to each project for the quarter. Then configure the kickoff email
-              for each team.
+              Assign a Dev TL and a QM to each project for the quarter. Also match each developer to their
+              PQA1 project. Then configure the kickoff email for each team.
             </Typography>
 
             <Typography variant="h6" gutterBottom>Auto-populated assignments</Typography>

@@ -90,7 +90,7 @@ const PitchCard = ({ pitch, vote, index, onSendToBottom, userRole, focused, onSe
           {...provided.dragHandleProps}
           elevation={snapshot.isDragging ? 6 : 1}
           onKeyDown={handleKeyDown}
-          onClick={() => onSelect?.(pitch.id)}
+          onClick={(e) => { e.stopPropagation(); onSelect?.(pitch.id); }}
           sx={{
             p: 0.75,
             mb: 0,

@@ -232,7 +232,7 @@ const InterestRanking: React.FC<InterestRankingProps> = ({
   };
 
   return (
-    <Box sx={{ flexGrow: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+    <Box sx={{ flexGrow: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }} onClick={() => onFocusPitch?.(null)}>
       <Container disableGutters maxWidth={false} sx={{ flexGrow: 1, minHeight: 0, display: 'flex', flexDirection: 'column', pt: 0.5, px: 0.5 }}>
 
         <DragDropContext onDragEnd={handleDragEnd}>

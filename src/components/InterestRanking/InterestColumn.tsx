@@ -109,7 +109,7 @@ const InterestColumn = ({
       <Paper
         sx={{
           p: 0.75,
-          mb: 1,
+          mb: 0.5,
           backgroundColor: color,
           color: (theme) => theme.palette.getContrastText(color),
           textAlign: 'center',
@@ -117,7 +117,10 @@ const InterestColumn = ({
         }}
       >
         <Typography variant="subtitle1" sx={{ fontSize: '0.9rem' }}>
-          {label} ({Array.isArray(pitches) ? pitches.length : 0})
+          <Box component="span" sx={{ textDecoration: 'underline', mr: 0.75 }}>
+            {isUnsorted ? 0 : parseInt(columnId.replace('interest-', ''))}
+          </Box>
+          {label}
         </Typography>
       </Paper>
 
@@ -128,7 +131,7 @@ const InterestColumn = ({
           size="small"
           onClick={onQuickSort}
           startIcon={<AutoAwesomeIcon fontSize="small" />}
-          sx={{ mb: 1, width: '100%', fontSize: '0.75rem' }}
+          sx={{ mb: 0.5, width: '100%', fontSize: '0.75rem' }}
         >
           Quick sort by my priority votes
         </Button>
@@ -143,6 +146,7 @@ const InterestColumn = ({
               if (el) columnRef.current = el;
             }}
             {...provided.droppableProps}
+            onClick={() => onFocusPitch?.(null)}
             sx={{
               p: 1,
               flexGrow: 1,
@@ -417,7 +421,7 @@ const InterestCardShell = ({
       {...dragHandleProps}
       style={{ ...style, height: 'auto', maxHeight: 'none' }}
       elevation={isDragging ? 6 : 1}
-      onClick={() => onFocusPitch?.(pitch.id)}
+      onClick={(e) => { e.stopPropagation(); onFocusPitch?.(pitch.id); }}
       sx={{
         p: 0.75,
         mb: 0,

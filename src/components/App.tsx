@@ -1,5 +1,5 @@
 import React, { useEffect, memo, useState, useMemo, useRef } from 'react';
-import { ThemeProvider, CssBaseline, Box, Typography, Tabs, Tab, CircularProgress, Snackbar, Alert } from '@mui/material';
+import { ThemeProvider, CssBaseline, Box, Typography, Tabs, Tab, Snackbar, Alert } from '@mui/material';
 import { darkTheme, lightTheme } from '../theme';
 import { NameGate } from './NameGate/NameGate';
 import { TopBar } from './TopBar/TopBar';
@@ -28,6 +28,7 @@ import { fetchPitches } from '../services/api';
 import TLAllocationView, { type TLAllocationViewHandle } from './TLAllocation/TLAllocationView';
 import CategoryBandwidthBar from './VotingBoard/CategoryBandwidthBar';
 import type { CategoryBandwidthConfig } from './VotingBoard/CategoryBandwidthBar';
+import { LoadingScreen, type LoadingStep } from './LoadingScreen/LoadingScreen';
 
 const CATEGORIES = [
   'Support AI Charting',
@@ -81,39 +82,89 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
   // tl-1 = Allocation 1 only (step 0), tl-2 = Allocation 2 only (step 1)
   const allocationStep: 0 | 1 = pollingStage === 'tl-2' ? 1 : 0;
   const tlViewRef = useRef<TLAllocationViewHandle>(null);
-  const [allocationFinalized, setAllocationFinalized] = useState(false);
-  const [allocationLoading, setAllocationLoading] = useState(false);
+  const [allocationSaveState, setAllocationSaveState] = useState<'idle' | 'waiting' | 'saving' | 'done'>('idle');
+  const [allocationShowResults, setAllocationShowResults] = useState(false);
+  const [allocationHasResults, setAllocationHasResults] = useState(false);
 
   const handleAllocationFinish = async () => {
-    setAllocationLoading(true);
-    try {
-      await tlViewRef.current?.triggerFinalize();
-    } catch { /* error shown by snackbar in triggerFinalize */ }
-    finally { setAllocationLoading(false); }
+    const MAX_RETRIES = 6;
+    const RETRY_DELAY_MS = 5000;
+    setAllocationSaveState('saving');
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        await tlViewRef.current?.triggerFinalize();
+        setAllocationSaveState('done');
+        return;
+      } catch (err: any) {
+        const isServerBusy = (err?.message ?? '').toLowerCase().includes('server busy');
+        if (isServerBusy && attempt < MAX_RETRIES) {
+          setAllocationSaveState('waiting');
+          await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS));
+          setAllocationSaveState('saving');
+        } else {
+          setAllocationSaveState('idle');
+          return;
+        }
+      }
+    }
+    setAllocationSaveState('idle');
   };
   const [submitState, setSubmitState] = useState<'idle' | 'submitted' | 'changed'>('idle');
-
-  // Async pitch loading state
-  const [loadedPitches, setLoadedPitches] = useState<Pitch[] | null>(null);
-  const [pitchLoadError, setPitchLoadError] = useState<string | null>(null);
-
-  useEffect(() => {
-    fetchPitches()
-      .then(data => setLoadedPitches(data))
-      .catch(err => setPitchLoadError(err?.message || 'Failed to load pitches'));
-  }, []);
 
   // Check if we're in Stage 2 mode (configured via environment variable)
   const appStage2Mode = isStage2();
 
-  // In Stage 2 (interest voting), filter to only pitches marked 'selected' in the PLAN sheet.
+  // Loading step state — one entry per async init task
+  const [pitchStepStatus, setPitchStepStatus] = useState<LoadingStep['status']>('loading');
+  const [pitchStepError, setPitchStepError] = useState<string | undefined>(undefined);
+  const [loadedPitches, setLoadedPitches] = useState<Pitch[] | null>(null);
+
+  const [planStepStatus, setPlanStepStatus] = useState<LoadingStep['status']>(appStage2Mode ? 'pending' : 'done');
+  const [planStepError, setPlanStepError] = useState<string | undefined>(undefined);
   const [planStatuses, setPlanStatuses] = useState<Record<string, string> | null>(null);
-  useEffect(() => {
-    if (!appStage2Mode) return;
-    fetchPlanStatuses()
-      .then(data => setPlanStatuses(data))
-      .catch(() => setPlanStatuses({}));
-  }, [appStage2Mode]);
+
+  const loadingSteps: LoadingStep[] = [
+    { label: 'Loading pitches', status: pitchStepStatus, error: pitchStepError },
+    ...(appStage2Mode ? [{ label: 'Loading plan assignments', status: planStepStatus, error: planStepError }] : []),
+  ];
+
+  const isLoading = loadingSteps.some(s => s.status === 'loading' || s.status === 'pending');
+  const hasLoadError = loadingSteps.some(s => s.status === 'error');
+
+  const runLoad = () => {
+    setPitchStepStatus('loading');
+    setPitchStepError(undefined);
+    if (appStage2Mode) {
+      setPlanStepStatus('pending');
+      setPlanStepError(undefined);
+      setPlanStatuses(null);
+    }
+
+    fetchPitches()
+      .then(data => {
+        setLoadedPitches(data);
+        setPitchStepStatus('done');
+        if (appStage2Mode) {
+          setPlanStepStatus('loading');
+          fetchPlanStatuses()
+            .then(statuses => {
+              setPlanStatuses(statuses);
+              setPlanStepStatus('done');
+            })
+            .catch(err => {
+              setPlanStatuses({});
+              setPlanStepStatus('error');
+              setPlanStepError(err?.message || 'Failed to load plan assignments');
+            });
+        }
+      })
+      .catch(err => {
+        setPitchStepStatus('error');
+        setPitchStepError(err?.message || 'Failed to load pitches');
+      });
+  };
+
+  useEffect(() => { runLoad(); }, []);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -418,11 +469,14 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
   // Sync pitches with votes once pitches have loaded.
   // Guard prevents syncPitches([]) from firing on first render before pitches arrive,
   // which would wipe state.votes and overwrite saved localStorage data with empty votes.
+  // In Stage 2 mode we also wait for planStatuses — without it, pitches = [] and
+  // dispatching RESET_FROM_PITCHES([]) would erase all interest votes on refresh.
   useEffect(() => {
     if (loadedPitches === null) return;
+    if (appStage2Mode && planStatuses === null) return;
     const pitchIds = pitches.map(pitch => pitch.id);
     syncPitches(pitchIds);
-  }, [pitches, loadedPitches]);
+  }, [pitches, loadedPitches, appStage2Mode, planStatuses]);
   
   // Check if export is enabled based on role and stage
   const isExportEnabled = priorityStageComplete && 
@@ -491,7 +545,12 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
     const destId = destination.droppableId;
 
     const getOrderedPitchIdsForPriorityColumn = (columnId: string): string[] => {
-      const safePitches = Array.isArray(pitches) ? pitches : [];
+      // Only include pitches from the currently visible category — the column renders
+      // a single category at a time, so destination.index is relative to that subset.
+      // Using all pitches here would mismatch the DnD index and place cards at the wrong position.
+      const safePitches = Array.isArray(pitches)
+        ? pitches.filter(p => p.category === selectedCategory)
+        : [];
 
       const filtered = safePitches.filter(pitch => {
         if (columnId === 'unsorted') {
@@ -701,21 +760,12 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
     isContributorRole(state.voterRole) && 
     state.available === null;
 
-  if (pitchLoadError) {
+  if (isLoading || hasLoadError) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', flexDirection: 'column', gap: 2 }}>
-        <Typography variant="h6" color="error">Failed to load pitches</Typography>
-        <Typography variant="body2" color="text.secondary">{pitchLoadError}</Typography>
-      </Box>
-    );
-  }
-
-  if (loadedPitches === null) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', flexDirection: 'column', gap: 2 }}>
-        <CircularProgress />
-        <Typography variant="body2" color="text.secondary">Loading pitches...</Typography>
-      </Box>
+      <LoadingScreen
+        steps={loadingSteps}
+        onRetry={hasLoadError ? runLoad : undefined}
+      />
     );
   }
 
@@ -755,8 +805,11 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
           allocationMode={isTLStage}
           allocationStep={allocationStep}
           onAllocationFinish={isTLStage && state.voterRole === 'dev TL' ? handleAllocationFinish : undefined}
-          allocationFinishEnabled={!allocationFinalized && !allocationLoading}
-          allocationFinishLoading={allocationLoading}
+          allocationSaveState={allocationSaveState}
+          allocationShowResults={allocationShowResults}
+          allocationHasResults={allocationHasResults}
+          onAllocationViewSummary={() => setAllocationShowResults(true)}
+          onAllocationBackToEdit={() => setAllocationShowResults(false)}
           votingLoading={isSubmitting}
           submitState={submitState}
         />
@@ -767,8 +820,10 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
             <TLAllocationView
               ref={tlViewRef}
               activeStep={allocationStep}
-              onFinalize={() => setAllocationFinalized(true)}
-              onAllocationChange={() => setAllocationFinalized(false)}
+              showResults={allocationShowResults}
+              onShowResultsChange={(v) => { setAllocationShowResults(v); if (v) setAllocationHasResults(true); }}
+              onFinalize={() => setAllocationSaveState('done')}
+              onAllocationChange={() => setAllocationSaveState('idle')}
               voterName={state.voterName ?? ''}
               voterRole={state.voterRole ?? ''}
             />

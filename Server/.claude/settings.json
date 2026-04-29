@@ -1,0 +1,54 @@
+{
+    "$schema": "https://json.schemastore.org/claude-code-settings.json",
+    "enabledPlugins": {
+        "epiccode@epic": true,
+        "epic-dev@epic": true
+    },
+    "hooks": {
+        "PreToolUse": [
+            {
+                "matcher": "Write|Edit",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "bash $CLAUDE_PROJECT_DIR/.claude/hooks/prevent-routine-creation.sh",
+                        "timeout": 5
+                    }
+                ]
+            },
+            {
+                "matcher": "Read|Edit|Write|NotebookEdit|Glob|Grep|Bash",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "bash $CLAUDE_PROJECT_DIR/.claude/hooks/protect-workspace-dir.sh",
+                        "timeout": 5
+                    }
+                ]
+            }
+        ]
+    },
+    "permissions": {
+        "allow": [
+            "Bash(epc exclude *)",
+            "Bash(epc include *)",
+            "Bash(epc check *)",
+            "Bash(epc status *)",
+            "Bash(epc test *)",
+            "Skill(epic-dev:chronicles-docs)",
+            "Skill(epic-dev:ecf-docs)",
+            "Bash(node search.mjs *)",
+            "Read(~/.claude/**/skills/chronicles-docs/**)",
+            "Read(~/.claude/**/skills/ecf-docs/**)",
+            "Skill(general-epic:codesearch)",
+            "Bash(bash */skills/codesearch/codesearch.sh *)"
+        ],
+        "ask": [
+            "Bash(epc publish *)",
+            "Bash(epc create *)",
+            "Bash(epc pull *)",
+            "Bash(epc tool *)"
+        ],
+        "disableBypassPermissionsMode": "disable"
+    }
+}

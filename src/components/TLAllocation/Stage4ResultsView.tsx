@@ -1,17 +1,24 @@
 import { useMemo, useState, useEffect } from 'react';
 import {
   Box, Typography, Table, TableBody, TableCell, TableHead, TableRow,
-  Button, Divider, Link, Paper, Checkbox, FormControlLabel,
+  Button, Divider, Link, Paper, Checkbox, FormControlLabel, Chip,
 } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import type {
   AllocationPitch, PlanAssignment, StaffingAssignment, AllocationConfig,
 } from '../../types/allocationTypes';
 import { useSnackbar } from '../../hooks/useSnackbar';
 import { getFollowups, updateFollowup } from '../../services/api';
+import { getShortName } from '../../data/teamRoster';
 
 const UXD_NAME = 'Selina Li';
+
+const CATEGORY_ORDER: Record<string, number> = {
+  'Support AI Charting': 0,
+  'Create and Improve Tools and Framework': 1,
+  'Mobile Feature Parity': 2,
+  'Address Technical Debt': 3,
+};
 
 interface Props {
   pitches: AllocationPitch[];
@@ -19,7 +26,6 @@ interface Props {
   step2Assignments: StaffingAssignment[];
   config: AllocationConfig;
   includeUXD: Record<string, boolean>;
-  onBack?: () => void;
 }
 
 function buildMailtoHref(to: string, cc: string, subject: string, body: string): string {
@@ -35,22 +41,26 @@ function buildProjectEmailBody(
   dev: string | null,
   sa: StaffingAssignment,
   config: AllocationConfig,
+  uxd?: string | null,
 ): string {
-  const shortTitle = pitch.title.replace(/^[^/]+\/\s*/, '');
-  const qmFirstName = sa.qm ? sa.qm.split(' ')[0] : 'QM';
+  const lastSegment = pitch.title.split('/').pop()?.trim() ?? pitch.title;
+  const qmFirstName = sa.qm ? getShortName(sa.qm) : 'QM';
   const lines: string[] = [
-    `Hi everyone, this is the team for ${shortTitle}! @${qmFirstName}, please setup a kickoff meeting for this pitch in the next week.`,
+    `Hi everyone,`,
     '',
-    `Dev TL: ${tl}`,
+    `This is the team for ${lastSegment} [QAN ${pitch.id}]! @${qmFirstName}, please setup a kickoff meeting for this pitch in the next week.`,
+    '',
     `Dev: ${dev ?? '—'}`,
     `QM: ${sa.qm ?? '—'}`,
   ];
   if (sa.pqa1) lines.push(`PQA1: ${sa.pqa1}`);
+  if (uxd) lines.push(`UXD: ${uxd}`);
   if (config.testingCaptain) lines.push(`Testing Captain: ${config.testingCaptain}`);
+  lines.push(`Dev TL: ${tl}`);
   return lines.join('\n');
 }
 
-export default function Stage4ResultsView({ pitches, currentAssignments, step2Assignments, config, includeUXD, onBack }: Props) {
+export default function Stage4ResultsView({ pitches, currentAssignments, step2Assignments, config, includeUXD }: Props) {
   const { showSnackbar } = useSnackbar();
   const [checkedItems, setCheckedItems] = useState<Record<string, boolean>>({});
 
@@ -81,8 +91,8 @@ export default function Stage4ResultsView({ pitches, currentAssignments, step2As
       .map(sa => ({ sa, pitch: pitchById[sa.pitchId], dev: devByPitchId[sa.pitchId] ?? null }))
       .filter(({ pitch }) => pitch != null)
       .sort((a, b) =>
-        (a.sa.devTL ?? '').localeCompare(b.sa.devTL ?? '') ||
-        a.pitch.title.localeCompare(b.pitch.title)
+        (CATEGORY_ORDER[a.pitch.category] ?? 99) - (CATEGORY_ORDER[b.pitch.category] ?? 99) ||
+        a.pitch.teamPriorityScore - b.pitch.teamPriorityScore
       ),
     [step2Assignments, pitchById, devByPitchId],
   );
@@ -92,7 +102,10 @@ export default function Stage4ResultsView({ pitches, currentAssignments, step2As
       .filter(a => a.status === 'next-up')
       .map(a => ({ assignment: a, pitch: pitchById[a.pitchId] }))
       .filter(({ pitch }) => pitch != null)
-      .sort((a, b) => a.pitch.teamPriorityScore - b.pitch.teamPriorityScore),
+      .sort((a, b) =>
+        (CATEGORY_ORDER[a.pitch.category] ?? 99) - (CATEGORY_ORDER[b.pitch.category] ?? 99) ||
+        a.pitch.teamPriorityScore - b.pitch.teamPriorityScore
+      ),
     [currentAssignments, pitchById],
   );
 
@@ -119,6 +132,11 @@ export default function Stage4ResultsView({ pitches, currentAssignments, step2As
     });
     return map;
   }, [fullGrid, config.devTLNames]);
+
+  const pitchIndexById = useMemo(
+    () => new Map(fullGrid.map(({ pitch }, i) => [pitch.id, i + 1])),
+    [fullGrid],
+  );
 
   const toggleCheck = (key: string, pitchId: string, field: 'projectCreated' | 'kickoffEmailSent') => {
     setCheckedItems(prev => {
@@ -191,11 +209,6 @@ export default function Stage4ResultsView({ pitches, currentAssignments, step2As
     <Box sx={{ p: 3, overflow: 'auto', height: '100%' }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3 }}>
         <Box>
-          {onBack && (
-            <Button startIcon={<ArrowBackIcon />} onClick={onBack} sx={{ mb: 1, pl: 0 }} color="inherit">
-              Back to editing
-            </Button>
-          )}
           <Typography variant="h4" fontWeight="bold">Team Matching Results</Typography>
           {config.quarterLabel && (
             <Typography variant="h6" color="text.secondary">Q{config.quarterLabel}</Typography>
@@ -213,7 +226,8 @@ export default function Stage4ResultsView({ pitches, currentAssignments, step2As
       <Table size="small" sx={{ mb: 4, tableLayout: 'fixed' }}>
         <TableHead>
           <TableRow>
-            <TableCell sx={{ width: '35%' }}>Project</TableCell>
+            <TableCell sx={{ width: '2.5rem' }}>#</TableCell>
+            <TableCell sx={{ width: '33%' }}>Project</TableCell>
             <TableCell>Dev</TableCell>
             <TableCell>Dev TL</TableCell>
             <TableCell>QM</TableCell>
@@ -222,8 +236,9 @@ export default function Stage4ResultsView({ pitches, currentAssignments, step2As
           </TableRow>
         </TableHead>
         <TableBody>
-          {fullGrid.map(({ pitch, dev, sa }) => (
+          {fullGrid.map(({ pitch, dev, sa }, i) => (
             <TableRow key={pitch.id}>
+              <TableCell sx={{ color: 'text.secondary', fontSize: '0.75rem' }}>{i + 1}</TableCell>
               <TableCell sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {pitch.title}
               </TableCell>
@@ -243,18 +258,28 @@ export default function Stage4ResultsView({ pitches, currentAssignments, step2As
       <Typography variant="h6" fontWeight="bold" sx={{ mb: 2 }}>
         Up Next — Lifeboat Order ({nextUp.length})
       </Typography>
-      <Box component="ol" sx={{ pl: 3, m: 0, mb: 4 }}>
-        {nextUp.map(({ pitch }) => (
-          <Box component="li" key={pitch.id} sx={{ mb: 0.5 }}>
-            <Typography variant="body1">
-              {pitch.title}
-              <Typography component="span" variant="body2" color="text.secondary" sx={{ ml: 1 }}>
-                [{pitch.category}]
-              </Typography>
-            </Typography>
-          </Box>
-        ))}
-      </Box>
+      <Table size="small" sx={{ mb: 4, tableLayout: 'fixed' }}>
+        <TableHead>
+          <TableRow>
+            <TableCell sx={{ width: '2.5rem' }}>#</TableCell>
+            <TableCell sx={{ width: '55%' }}>Project</TableCell>
+            <TableCell>Category</TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {nextUp.map(({ pitch }, i) => (
+            <TableRow key={pitch.id}>
+              <TableCell sx={{ color: 'text.secondary', fontSize: '0.75rem' }}>{i + 1}</TableCell>
+              <TableCell sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {pitch.title}
+              </TableCell>
+              <TableCell>
+                <Chip label={pitch.category} size="small" />
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
 
       <Divider sx={{ mb: 3 }} />
 
@@ -283,8 +308,8 @@ export default function Stage4ResultsView({ pitches, currentAssignments, step2As
               </Typography>
 
               {rows.map(({ pitch, dev, sa }) => {
-                const shortTitle = pitch.title.replace(/^[^/]+\/\s*/, '');
-                const subject = `ST SmartTools Kickoff${config.quarterLabel ? ` — Q${config.quarterLabel}` : ''} — ${shortTitle}`;
+                const lastSegment = pitch.title.split('/').pop()?.trim() ?? pitch.title;
+                const subject = lastSegment;
                 const toEmail = [
                   dev ? (emails[dev] ?? '') : '',
                   sa.qm ? (emails[sa.qm] ?? '') : '',
@@ -297,7 +322,7 @@ export default function Stage4ResultsView({ pitches, currentAssignments, step2As
                   toEmail || tlEmail,
                   toEmail ? ccEmail : '',
                   subject,
-                  buildProjectEmailBody(tl, pitch, dev, sa, config),
+                  buildProjectEmailBody(tl, pitch, dev, sa, config, includeUXD[pitch.id] ? UXD_NAME : null),
                 );
                 const allDone = !!checkedItems[`prj-${tl}-${pitch.id}`] && !!checkedItems[`email-${tl}-${pitch.id}`];
                 return (
@@ -314,7 +339,10 @@ export default function Stage4ResultsView({ pitches, currentAssignments, step2As
                     }),
                   }}>
                     <Typography variant="body2" fontWeight={600} sx={{ mb: 0.5 }}>
-                      {shortTitle}
+                      <Typography component="span" variant="body2" color="text.secondary" sx={{ mr: 0.75 }}>
+                        {pitchIndexById.get(pitch.id)}.
+                      </Typography>
+                      {lastSegment}
                     </Typography>
 
                     <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start' }}>

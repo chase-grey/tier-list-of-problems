@@ -1,4 +1,5 @@
-import { lazy, Suspense, useMemo, useRef, useState, useCallback } from 'react';
+import { lazy, Suspense, useMemo, useRef, useState, useCallback, useEffect } from 'react';
+import { useExclusiveSelect } from '../../hooks/useExclusiveSelect';
 import {
   Box, Typography, Paper, Table, TableBody, TableCell, TableHead, TableRow,
   Select, MenuItem, Divider, Tooltip, IconButton,
@@ -17,6 +18,7 @@ import {
 import type {
   AllocationPitch, Phase2Interest, StaffingAssignment, AllocationConfig, InterestLevel,
 } from '../../types/allocationTypes';
+import { getShortName } from '../../data/teamRoster';
 import InterestChip from './InterestChip';
 import InterestDot from './InterestDot';
 
@@ -139,6 +141,13 @@ export default function Step2View({
   const devTLInterests = phase2Interests.filter(p => p.role === 'dev TL');
   const qmInterests = phase2Interests.filter(p => p.role === 'QM');
 
+  // Which devs submitted ANY Phase 1 interest data (used to distinguish "no data" from "skipped this pitch")
+  const devHasAnyData = useMemo(() => {
+    const set = new Set<string>();
+    selectedPitches.forEach(p => { Object.keys(p.devInterest).forEach(d => set.add(d)); });
+    return set;
+  }, [selectedPitches]);
+
   const totalPitches = selectedPitches.length;
 
   // Per-person data completeness
@@ -236,6 +245,7 @@ export default function Step2View({
                           devTLNames={config.devTLNames}
                           qmNames={config.qmNames}
                           devNames={devNames}
+                          devHasAnyData={devHasAnyData}
                           onAssign={onAssign}
                           onRef={registerRow(pitch.id)}
                           highlighted={pitch.id === highlightPitchId}
@@ -323,14 +333,27 @@ export default function Step2View({
               const hasHigh = hasHighInterest(name);
               const dataStatus = personDataStatus[name] ?? 'full';
               const pi = interests.find(p => p.personName === name);
+              const personHasNoData = !pi || Object.keys(pi.interestByPitchId).length === 0;
 
               return (
                 <Box key={name} sx={{ mb: 1 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                    {hasHigh
-                      ? <OkIcon fontSize="small" color="success" sx={{ fontSize: '0.9rem' }} />
-                      : <WarnIcon fontSize="small" color="warning" sx={{ fontSize: '0.9rem' }} />
-                    }
+                    <Tooltip title={
+                      hasHigh
+                        ? 'Has at least one Tier 1–2 interest assignment'
+                        : dataStatus === 'none'
+                          ? 'No interest data submitted'
+                          : dataStatus === 'partial'
+                            ? 'Partial interest data — no Tier 1–2 assignments'
+                            : 'No Tier 1–2 interest assignments'
+                    }>
+                      <span>
+                        {hasHigh
+                          ? <OkIcon fontSize="small" color="success" sx={{ fontSize: '0.9rem' }} />
+                          : <WarnIcon fontSize="small" color="warning" sx={{ fontSize: '0.9rem' }} />
+                        }
+                      </span>
+                    </Tooltip>
                     <Typography variant="caption" fontWeight={600}>{name}</Typography>
                     <Typography variant="caption" color="text.secondary" sx={{ ml: 'auto' }}>
                       {assignedPitchIds.length} projects
@@ -341,7 +364,7 @@ export default function Step2View({
                     if (!p) return null;
                     const shortTitle = p.title.replace(/^[^/]+\/\s*/, '');
                     const interestLevel = pi?.interestByPitchId[pid] ?? null;
-                    const noData = pi ? !(pid in pi.interestByPitchId) : true;
+                    const noData = personHasNoData;
                     return (
                       <Box key={pid} sx={{ display: 'flex', alignItems: 'center', gap: 0.5, ml: 1.5, mt: 0.25 }}>
                         <Tooltip title={`${p.title} — click to jump`} placement="top-start">
@@ -412,10 +435,14 @@ export default function Step2View({
               return (
                 <Box key={name} sx={{ mb: 1 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                    {hasHigh
-                      ? <OkIcon fontSize="small" color="success" sx={{ fontSize: '0.9rem' }} />
-                      : <WarnIcon fontSize="small" color="warning" sx={{ fontSize: '0.9rem' }} />
-                    }
+                    <Tooltip title={hasHigh ? 'Has at least one Tier 1–2 interest assignment' : 'No Tier 1–2 interest assignments'}>
+                      <span>
+                        {hasHigh
+                          ? <OkIcon fontSize="small" color="success" sx={{ fontSize: '0.9rem' }} />
+                          : <WarnIcon fontSize="small" color="warning" sx={{ fontSize: '0.9rem' }} />
+                        }
+                      </span>
+                    </Tooltip>
                     <Typography variant="caption" fontWeight={600}>{name}</Typography>
                     <Typography variant="caption" color="text.secondary" sx={{ ml: 'auto' }}>
                       {assignedPitchIds.length} projects
@@ -426,7 +453,7 @@ export default function Step2View({
                     if (!p) return null;
                     const shortTitle = p.title.replace(/^[^/]+\/\s*/, '');
                     const interestLevel = p.devInterest[name] ?? null;
-                    const noData = !(name in p.devInterest);
+                    const noData = !devHasAnyData.has(name);
                     return (
                       <Box key={pid} sx={{ display: 'flex', alignItems: 'center', gap: 0.5, ml: 1.5, mt: 0.25 }}>
                         <Tooltip title={`${p.title} — click to jump`} placement="top-start">
@@ -476,6 +503,7 @@ interface Step2RowProps {
   devTLNames: string[];
   qmNames: string[];
   devNames: string[];
+  devHasAnyData: Set<string>;
   onAssign: (pitchId: string, field: 'devTL' | 'qm' | 'pqa1', value: string | null) => void;
   onRef?: (el: HTMLTableRowElement | null) => void;
   highlighted?: boolean;
@@ -485,8 +513,8 @@ interface Step2RowProps {
 }
 
 function Step2Row({
-  pitch, assignment, devTLInterests, qmInterests, devTLNames, qmNames, devNames, onAssign, onRef, highlighted,
-  devName, includeUXD, onToggleUXD,
+  pitch, assignment, devTLInterests, qmInterests, devTLNames, qmNames, devNames, devHasAnyData,
+  onAssign, onRef, highlighted, devName, includeUXD, onToggleUXD,
 }: Step2RowProps) {
   const [detailsAnchor, setDetailsAnchor] = useState<HTMLButtonElement | null>(null);
 
@@ -543,8 +571,8 @@ function Step2Row({
       </TableCell>
       {/* Dev read-only */}
       <TableCell align="center">
-        <Typography variant="caption" color="text.secondary">
-          {devName ? devName.split(' ')[0] : '—'}
+        <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: 'nowrap' }}>
+          {devName ? getShortName(devName) : '—'}
         </Typography>
       </TableCell>
       <TableCell sx={{ px: 0.5, py: 0.25 }}>
@@ -553,6 +581,7 @@ function Step2Row({
           allNames={devTLNames}
           options={devTLInterests}
           pitchId={pitch.id}
+          selectId={`${pitch.id}-devTL`}
           onChange={v => onAssign(pitch.id, 'devTL', v)}
         />
       </TableCell>
@@ -562,6 +591,7 @@ function Step2Row({
           allNames={qmNames}
           options={qmInterests}
           pitchId={pitch.id}
+          selectId={`${pitch.id}-qm`}
           onChange={v => onAssign(pitch.id, 'qm', v)}
         />
       </TableCell>
@@ -570,7 +600,9 @@ function Step2Row({
           value={assignment.pqa1 ?? null}
           devNames={devNames}
           devInterest={pitch.devInterest}
+          devHasAnyData={devHasAnyData}
           excludeDev={devName}
+          selectId={`${pitch.id}-pqa1`}
           onChange={v => onAssign(pitch.id, 'pqa1', v)}
         />
       </TableCell>
@@ -584,11 +616,14 @@ interface Pqa1DropdownProps {
   value: string | null;
   devNames: string[];
   devInterest: Record<string, InterestLevel>;
+  devHasAnyData: Set<string>;
   excludeDev: string | null;
+  selectId: string;
   onChange: (val: string | null) => void;
 }
 
-function Pqa1Dropdown({ value, devNames, devInterest, excludeDev, onChange }: Pqa1DropdownProps) {
+function Pqa1Dropdown({ value, devNames, devInterest, devHasAnyData, excludeDev, selectId, onChange }: Pqa1DropdownProps) {
+  const exclusive = useExclusiveSelect(selectId);
   const sorted = devNames
     .filter(d => d !== excludeDev)
     .sort((a, b) => {
@@ -599,6 +634,7 @@ function Pqa1Dropdown({ value, devNames, devInterest, excludeDev, onChange }: Pq
 
   return (
     <Select
+      {...exclusive}
       size="small"
       value={value ?? ''}
       onChange={e => onChange(e.target.value || null)}
@@ -608,23 +644,26 @@ function Pqa1Dropdown({ value, devNames, devInterest, excludeDev, onChange }: Pq
         if (!val) return <Typography variant="caption" color="text.disabled">Assign…</Typography>;
         const name = val as string;
         const level = (devInterest[name] ?? null) as (1 | 2 | 3 | 4 | null);
-        const noData = !(name in devInterest);
+        const noData = !devHasAnyData.has(name);
         return (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0 }}>
             <Typography variant="caption" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
-              {name.split(' ')[0]}
+              {getShortName(name)}
             </Typography>
             <InterestDot level={level} noData={noData} />
           </Box>
         );
       }}
     >
-      <MenuItem value=""><em>Unassign</em></MenuItem>
+      <MenuItem value=""><Typography variant="body2"><em>Unassign</em></Typography></MenuItem>
       {sorted.map(dev => (
         <MenuItem key={dev} value={dev}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
             <Typography variant="body2" sx={{ flex: 1 }}>{dev}</Typography>
-            <InterestChip level={(devInterest[dev] ?? null) as (1 | 2 | 3 | 4 | null)} />
+            <InterestChip
+              level={(devInterest[dev] ?? null) as (1 | 2 | 3 | 4 | null)}
+              noData={!devHasAnyData.has(dev)}
+            />
           </Box>
         </MenuItem>
       ))}
@@ -639,11 +678,13 @@ interface AssignmentDropdownProps {
   allNames: string[];
   options: Phase2Interest[];
   pitchId: string;
+  selectId: string;
   onChange: (val: string | null) => void;
 }
 
-function AssignmentDropdown({ value, allNames, options, pitchId, onChange }: AssignmentDropdownProps) {
+function AssignmentDropdown({ value, allNames, options, pitchId, selectId, onChange }: AssignmentDropdownProps) {
   const interestMap = new Map(options.map(o => [o.personName, o]));
+  const exclusive = useExclusiveSelect(selectId);
 
   // Interest submitters first (sorted by level), then remaining names alphabetically
   const withInterest = [...options].sort((a, b) => {
@@ -658,6 +699,7 @@ function AssignmentDropdown({ value, allNames, options, pitchId, onChange }: Ass
 
   return (
     <Select
+      {...exclusive}
       size="small"
       value={value ?? ''}
       onChange={e => onChange(e.target.value || null)}
@@ -667,26 +709,27 @@ function AssignmentDropdown({ value, allNames, options, pitchId, onChange }: Ass
         if (!val) return <Typography variant="caption" color="text.disabled">Assign…</Typography>;
         const person = interestMap.get(val as string);
         const level = (person?.interestByPitchId[pitchId] ?? null) as (1 | 2 | 3 | 4 | null);
-        const noData = !person || !(pitchId in person.interestByPitchId);
+        const noData = !person || Object.keys(person.interestByPitchId).length === 0;
         return (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0 }}>
             <Typography variant="caption" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
-              {(val as string).split(' ')[0]}
+              {getShortName(val as string)}
             </Typography>
             <InterestDot level={level} noData={noData} />
           </Box>
         );
       }}
     >
-      <MenuItem value=""><em>Unassign</em></MenuItem>
+      <MenuItem value=""><Typography variant="body2"><em>Unassign</em></Typography></MenuItem>
       {allEntries.map(name => {
         const person = interestMap.get(name);
         const level = (person?.interestByPitchId[pitchId] ?? null) as (1 | 2 | 3 | 4 | null);
+        const noData = !person || Object.keys(person.interestByPitchId).length === 0;
         return (
           <MenuItem key={name} value={name}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
               <Typography variant="body2" sx={{ flex: 1 }}>{name}</Typography>
-              <InterestChip level={level} />
+              <InterestChip level={level} noData={noData} />
             </Box>
           </MenuItem>
         );

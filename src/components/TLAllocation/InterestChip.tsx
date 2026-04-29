@@ -22,9 +22,9 @@ export default function InterestChip({ level, size = 'small', noData = false }: 
       return (
         <Tooltip title="No interest data submitted for any project" placement="top">
           <Chip
-            label="✕"
+            label="No data"
             size={size}
-            sx={{ fontSize: '0.7rem', bgcolor: 'rgba(255, 152, 0, 0.18)', color: 'warning.main', minWidth: 28 }}
+            sx={{ fontSize: '0.7rem', bgcolor: 'rgba(255, 152, 0, 0.18)', color: 'warning.main', minWidth: 72 }}
           />
         </Tooltip>
       );
@@ -32,9 +32,9 @@ export default function InterestChip({ level, size = 'small', noData = false }: 
     return (
       <Tooltip title="Skipped ranking this project" placement="top">
         <Chip
-          label="—"
+          label="Skipped"
           size={size}
-          sx={{ fontSize: '0.7rem', bgcolor: 'action.hover', color: 'text.disabled' }}
+          sx={{ fontSize: '0.7rem', bgcolor: 'action.hover', color: 'text.disabled', minWidth: 72 }}
         />
       </Tooltip>
     );

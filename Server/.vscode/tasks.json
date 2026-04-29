@@ -1,0 +1,42 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "epc: publish changed",
+            "type": "shell",
+            "command": "epc",
+            "args": [
+                "publish",
+                "--changed"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "epc: publish current",
+            "type": "shell",
+            "command": "epc",
+            "args": [
+                "publish",
+                "\"${file}\""
+            ],
+            "group": {
+                "kind": "build",
+            },
+        },
+        {
+            "label": "epc: publish all",
+            "type": "shell",
+            "command": "epc",
+            "args": [
+                "publish",
+                "--all"
+            ],
+            "group": {
+                "kind": "build",
+            },
+        }
+    ]
+}

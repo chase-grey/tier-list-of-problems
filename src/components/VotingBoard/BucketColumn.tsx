@@ -16,7 +16,7 @@ interface BucketColumnProps {
   onSendToBottom?: (pitchId: string) => void;
   userRole?: string | null;
   focusedPitchId?: string | null;
-  onFocusPitch?: (id: string) => void;
+  onFocusPitch?: (id: string | null) => void;
 }
 
 /**
@@ -97,7 +97,7 @@ const BucketColumn = ({ tier, pitches, votes, columnCount = 9, onSendToBottom, u
       <Paper 
         sx={{
           p: 0.75,
-          mb: 1,
+          mb: 0.5,
           backgroundColor: getHeaderColor(),
           color: getHeaderTextColor(),
           textAlign: 'center',
@@ -105,7 +105,10 @@ const BucketColumn = ({ tier, pitches, votes, columnCount = 9, onSendToBottom, u
         }}
       >
         <Typography variant="subtitle1" sx={{ fontSize: '0.9rem' }}>
-          {title} ({filteredPitches.length})
+          <Box component="span" sx={{ textDecoration: 'underline', mr: 0.75 }}>
+            {tier === null ? 0 : tier}
+          </Box>
+          {title}
         </Typography>
       </Paper>
       
@@ -118,11 +121,12 @@ const BucketColumn = ({ tier, pitches, votes, columnCount = 9, onSendToBottom, u
               if (el) columnRef.current = el;
             }}
             {...provided.droppableProps}
+            onClick={() => onFocusPitch?.(null)}
             sx={{
               p: 1,
               flexGrow: 1,
-              backgroundColor: snapshot.isDraggingOver 
-                ? 'action.hover' 
+              backgroundColor: snapshot.isDraggingOver
+                ? 'action.hover'
                 : 'background.paper',
               overflowY: 'auto',
               transition: 'background-color 0.2s ease',

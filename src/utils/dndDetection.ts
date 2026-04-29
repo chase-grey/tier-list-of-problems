@@ -11,12 +11,8 @@ export function isDragAndDropSupported(): boolean {
     return false; // No window means no drag-and-drop (SSR environment)
   }
 
-  // Check if the browser supports the drag events
   const div = document.createElement('div');
-  return (
-    ('draggable' in div || ('ondragstart' in div && 'ondrop' in div)) && 
-    !('ontouchstart' in window && navigator.maxTouchPoints > 0) // Not a touch-only device
-  );
+  return 'draggable' in div || ('ondragstart' in div && 'ondrop' in div);
 }
 
 /**

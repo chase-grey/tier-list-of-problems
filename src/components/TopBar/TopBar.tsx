@@ -43,8 +43,11 @@ interface TopBarProps {
   allocationMode?: boolean;
   allocationStep?: 0 | 1;
   onAllocationFinish?: () => void;
-  allocationFinishEnabled?: boolean;
-  allocationFinishLoading?: boolean;
+  allocationSaveState?: 'idle' | 'waiting' | 'saving' | 'done';
+  allocationShowResults?: boolean;
+  allocationHasResults?: boolean;
+  onAllocationViewSummary?: () => void;
+  onAllocationBackToEdit?: () => void;
   votingLoading?: boolean;
   submitState?: 'idle' | 'submitted' | 'changed';
 }
@@ -75,8 +78,11 @@ export const TopBar = ({
   allocationMode = false,
   allocationStep = 0,
   onAllocationFinish,
-  allocationFinishEnabled = true,
-  allocationFinishLoading = false,
+  allocationSaveState = 'idle',
+  allocationShowResults = false,
+  allocationHasResults = false,
+  onAllocationViewSummary,
+  onAllocationBackToEdit,
   votingLoading = false,
   submitState = 'idle',
 }: TopBarProps) => {
@@ -117,29 +123,68 @@ export const TopBar = ({
           />
         </Box>
 
-        {/* Allocation mode: Finish/Proceed button */}
-        {allocationMode && onAllocationFinish && (
-          <Button
-            variant="contained"
-            color={allocationFinishEnabled ? 'secondary' : 'success'}
-            startIcon={
-              allocationFinishLoading
-                ? <CircularProgress size={16} color="inherit" />
-                : allocationFinishEnabled ? <SendIcon /> : <CheckCircleIcon />
-            }
-            accessKey={allocationFinishEnabled && !allocationFinishLoading ? 'f' : undefined}
-            onClick={allocationFinishEnabled && !allocationFinishLoading ? onAllocationFinish : undefined}
-            tabIndex={allocationFinishEnabled && !allocationFinishLoading ? undefined : -1}
-            aria-label="Finish and save allocation"
-            sx={{
-              fontWeight: allocationFinishEnabled ? 'bold' : 'normal',
-              transition: 'all 0.2s ease',
-              boxShadow: allocationFinishEnabled ? 3 : 0,
-              pointerEvents: (allocationFinishEnabled && !allocationFinishLoading) ? 'auto' : 'none',
-            }}
-          >
-            {allocationFinishLoading ? 'Saving…' : allocationFinishEnabled ? <><u>F</u>inish</> : 'Finished ✓'}
-          </Button>
+        {/* Allocation mode: nav + finish buttons */}
+        {allocationMode && (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            {allocationShowResults && onAllocationBackToEdit && (
+              <Button
+                variant="outlined"
+                color="inherit"
+                size="small"
+                startIcon={<PrevIcon />}
+                onClick={onAllocationBackToEdit}
+              >
+                Back to editing
+              </Button>
+            )}
+            {allocationHasResults && !allocationShowResults && onAllocationViewSummary && (
+              <Button
+                variant="outlined"
+                color="success"
+                size="small"
+                onClick={onAllocationViewSummary}
+              >
+                View summary
+              </Button>
+            )}
+            {onAllocationFinish && (
+              <Tooltip
+                title={allocationSaveState === 'waiting' ? 'Sheet is busy — retrying automatically…' : ''}
+                placement="bottom"
+              >
+                <span>
+                  <Button
+                    variant="contained"
+                    color={
+                      allocationSaveState === 'done' ? 'success' :
+                      allocationSaveState === 'waiting' ? 'warning' :
+                      'secondary'
+                    }
+                    startIcon={
+                      allocationSaveState === 'saving' || allocationSaveState === 'waiting'
+                        ? <CircularProgress size={16} color="inherit" />
+                        : allocationSaveState === 'done' ? <CheckCircleIcon /> : <SendIcon />
+                    }
+                    accessKey={allocationSaveState === 'idle' ? 'f' : undefined}
+                    onClick={allocationSaveState === 'idle' ? onAllocationFinish : undefined}
+                    tabIndex={allocationSaveState === 'idle' ? undefined : -1}
+                    aria-label="Finish and save allocation"
+                    sx={{
+                      fontWeight: allocationSaveState === 'idle' ? 'bold' : 'normal',
+                      transition: 'all 0.2s ease',
+                      boxShadow: allocationSaveState === 'idle' ? 3 : 0,
+                      pointerEvents: allocationSaveState === 'idle' ? 'auto' : 'none',
+                    }}
+                  >
+                    {allocationSaveState === 'saving' ? 'Saving…' :
+                     allocationSaveState === 'waiting' ? 'Waiting…' :
+                     allocationSaveState === 'done' ? 'Finished ✓' :
+                     <><u>F</u>inish</>}
+                  </Button>
+                </span>
+              </Tooltip>
+            )}
+          </Box>
         )}
 
         {/* Voting-only: rank / interest progress and navigation */}
