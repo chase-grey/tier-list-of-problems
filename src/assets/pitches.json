@@ -846,5 +846,21 @@
       "maintenance": "",
       "internCandidate": false
     }
+  },
+  {
+    "id": "2112553",
+    "title": "ST Pitch / Create a metric for edit distance for the text assistant",
+    "category": "Support AI Charting",
+    "continuation": false,
+    "details": {
+      "problem": "The text assistant is a very open ended tool, so AI governance folks at customer sites have a hard time reviewing stats on it and understanding how well it is performing, especially for custom prompts. Today, some AI leaders are manually reviewing or using AI to review huge spreadsheets with full audit info to understand how well the tool is working.",
+      "ideaForSolution": "We could add a new metric for edit distance, showing how much the user has manually changed the response from the AI model until they've accepted it. This helps tell a more complete story to AI leaders at our customer sites.",
+      "characteristics": "",
+      "whyNow": "IB just added this metric to IB Art in DLG 2112553, so it's probably not hard to mimic what they've created.",
+      "smartToolsFit": "Support AI Charting",
+      "success": "",
+      "maintenance": "",
+      "internCandidate": false
+    }
   }
 ]
