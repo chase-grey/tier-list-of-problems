@@ -102,7 +102,7 @@ const HelpDialog: React.FC<HelpDialogProps> = ({
                     ['Enter', 'Open / close card details'],
                     ['Esc', 'Deselect / close details'],
                     ['?', 'Open this help dialog'],
-                    ['Alt + letter', 'Click button with that underlined letter'],
+                    ['Shift + Alt + letter', 'Click button with that underlined letter'],
                   ].map(([key, desc]) => (
                     <Box component="tr" key={key}>
                       <Box component="td" sx={{ pr: 3, py: 0.25, fontFamily: 'monospace', whiteSpace: 'nowrap', verticalAlign: 'top', width: '1%' }}>
@@ -220,7 +220,7 @@ const HelpDialog: React.FC<HelpDialogProps> = ({
                     ['Enter', 'Open / close card details'],
                     ['Esc', 'Deselect / close details'],
                     ['?', 'Open this help dialog'],
-                    ['Alt + letter', 'Click button with that underlined letter'],
+                    ['Shift + Alt + letter', 'Click button with that underlined letter'],
                   ].map(([key, desc]) => (
                     <Box component="tr" key={key}>
                       <Box component="td" sx={{ pr: 3, py: 0.25, fontFamily: 'monospace', whiteSpace: 'nowrap', verticalAlign: 'top', width: '1%' }}>

@@ -14,7 +14,7 @@ import FeedbackDialog from './FeedbackDialog/FeedbackDialog';
 import type { FeedbackData } from './FeedbackDialog/FeedbackDialog';
 import DevAutoPopulate from './DevAutoPopulate';
 import { useLocalStorage } from '../hooks/useLocalStorage';
-import { submitVotes, submitInterestVotes, submitFeedback, convertVotesToApiFormat, convertVotesToInterestFormat } from '../services/api';
+import { submitVotes, submitFeedback, fetchPlanStatuses, convertVotesToApiFormat } from '../services/api';
 import { isDevelopmentMode } from '../utils/testUtils';
 import type { DropResult } from '@hello-pangea/dnd';
 import type { AppState, Pitch, Tier, InterestLevel } from '../types/models';
@@ -36,7 +36,7 @@ const CATEGORIES = [
   'Address Technical Debt',
 ] as const;
 
-// Access keys for category tabs (Alt+letter on Windows)
+// Access keys for category tabs (Shift+Alt+letter on Windows)
 const CAT_KEYS: Record<string, string> = {
   'Support AI Charting': 's',
   'Create and Improve Tools and Framework': 'c',
@@ -94,14 +94,26 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
   const [submitState, setSubmitState] = useState<'idle' | 'submitted' | 'changed'>('idle');
 
   // Async pitch loading state
-  const [loadedPitches, setLoadedPitches] = useState<(Pitch & { stage2?: boolean })[] | null>(null);
+  const [loadedPitches, setLoadedPitches] = useState<Pitch[] | null>(null);
   const [pitchLoadError, setPitchLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchPitches()
-      .then(data => setLoadedPitches(data as (Pitch & { stage2?: boolean })[]))
+      .then(data => setLoadedPitches(data))
       .catch(err => setPitchLoadError(err?.message || 'Failed to load pitches'));
   }, []);
+
+  // Check if we're in Stage 2 mode (configured via environment variable)
+  const appStage2Mode = isStage2();
+
+  // In Stage 2 (interest voting), filter to only pitches marked 'selected' in the PLAN sheet.
+  const [planStatuses, setPlanStatuses] = useState<Record<string, string> | null>(null);
+  useEffect(() => {
+    if (!appStage2Mode) return;
+    fetchPlanStatuses()
+      .then(data => setPlanStatuses(data))
+      .catch(() => setPlanStatuses({}));
+  }, [appStage2Mode]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -113,20 +125,18 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
   const [showResetConfirmation, setShowResetConfirmation] = useState(false);
   // State to control feedback dialog
   const [showFeedback, setShowFeedback] = useState(false);
-  
-  // Check if we're in Stage 2 mode (configured via environment variable)
-  const appStage2Mode = isStage2();
-  
-  // Pitches from the backend - in Stage 2, filter to only pitches that passed Stage 1
+
+  // Pitches from the backend - in Stage 2, filter to only pitches marked 'selected' in PLAN sheet
   // useMemo ensures stable reference when loadedPitches is null (prevents render loop)
   const allPitches = useMemo(() => loadedPitches ?? [], [loadedPitches]);
   const pitches = useMemo(() => {
     if (appStage2Mode) {
-      // Filter to only pitches with stage2=true
-      return allPitches.filter(p => p.stage2 === true);
+      if (planStatuses === null) return []; // Still fetching plan
+      if (Object.keys(planStatuses).length === 0) return allPitches; // No plan yet, show all
+      return allPitches.filter(p => planStatuses[p.id] === 'selected');
     }
     return allPitches;
-  }, [appStage2Mode, allPitches]);
+  }, [appStage2Mode, allPitches, planStatuses]);
   
   const TOTAL = pitches.length;
 
@@ -354,13 +364,11 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
     setStage(newStage);
   };
 
-  // Alt+letter — jump directly to a category tab or the interest tab.
-  // Uses a custom listener instead of the HTML accessKey attribute because
-  // accessKey requires Alt+Shift on Windows Chrome, not plain Alt.
+  // Shift+Alt+letter — jump directly to a category tab or the interest tab.
   useEffect(() => {
     if (isTLStage) return;
     const handle = (e: KeyboardEvent) => {
-      if (!e.altKey || e.shiftKey || e.ctrlKey || e.metaKey) return;
+      if (!e.altKey || !e.shiftKey || e.ctrlKey || e.metaKey) return;
       if (showHelp || showResetConfirmation) return;
       const tag = (e.target as HTMLElement).tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
@@ -408,11 +416,14 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
     }
   }, [state.voterName, state.voterRole, voterNameStorageKey, voterRoleStorageKey]);
   
-  // Sync pitches with votes on initial load or when pitches change
+  // Sync pitches with votes once pitches have loaded.
+  // Guard prevents syncPitches([]) from firing on first render before pitches arrive,
+  // which would wipe state.votes and overwrite saved localStorage data with empty votes.
   useEffect(() => {
+    if (loadedPitches === null) return;
     const pitchIds = pitches.map(pitch => pitch.id);
     syncPitches(pitchIds);
-  }, [pitches]);
+  }, [pitches, loadedPitches]);
   
   // Check if export is enabled based on role and stage
   const isExportEnabled = priorityStageComplete && 
@@ -433,37 +444,19 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
     }
   };
 
-  // Handle name update from settings
-  const handleUpdateName = (name: string) => {
-    updateName(name);
-    showSnackbar(`Name updated to ${name}`, 'success');
-  };
-
-  // Handle role update from settings
-  const handleUpdateRole = (role: string) => {
+  // Handle name + role update from settings (role is derived from the team roster)
+  const handleUpdateNameAndRole = (name: string, role: string) => {
     const wasContributor = state.voterRole && isContributorRole(state.voterRole);
     const isNowContributor = isContributorRole(role);
-    
-    updateRole(role);
-    
-    // If switching from contributor to non-contributor, set availability to false
-    // and switch back to priority stage if on interest stage
+
+    setNameAndRole(name, role);
+
     if (wasContributor && !isNowContributor) {
       setAvailability(false);
-      if (state.stage === 'interest') {
-        setStage('priority');
-      }
-      showSnackbar(`Role updated to ${role}. Interest ranking is no longer available.`, 'info');
-    } 
-    // If switching to contributor role, they need to indicate availability
-    // We'll show the availability dialog by not setting availability (it stays null from reset)
-    else if (!wasContributor && isNowContributor) {
-      // Don't set availability - the dialog will show automatically since available is null
-      // and they are now a contributor role
-      showSnackbar(`Role updated to ${role}. Please indicate your availability.`, 'info');
-    } else {
-      showSnackbar(`Role updated to ${role}`, 'success');
+      if (state.stage === 'interest') setStage('priority');
     }
+
+    showSnackbar(`Name updated to ${name}`, 'success');
   };
 
   // Handle availability update from settings
@@ -637,13 +630,9 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
     if (!state.voterName || !state.voterRole) return;
     setIsSubmitting(true);
     try {
-      if (appStage2Mode) {
-        const interests = convertVotesToInterestFormat(state.votes);
-        await submitInterestVotes({ voterName: state.voterName, voterRole: state.voterRole, interests });
-      } else {
-        const apiVotes = convertVotesToApiFormat(state.votes);
-        await submitVotes({ voterName: state.voterName, voterRole: state.voterRole ?? undefined, votes: apiVotes });
-      }
+      const pitchTitleMap = Object.fromEntries(pitches.map(p => [p.id, p.title]));
+      const apiVotes = convertVotesToApiFormat(state.votes, pitchTitleMap);
+      await submitVotes({ voterName: state.voterName, voterRole: state.voterRole ?? undefined, votes: apiVotes });
       showSnackbar('Your votes have been submitted successfully!', 'success');
       setSubmitState('submitted');
     } catch (err: any) {
