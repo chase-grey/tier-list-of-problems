@@ -44,7 +44,6 @@ export const NameGate = ({ onNameSubmit, open }: NameGateProps) => {
             <Autocomplete
               autoFocus
               autoHighlight
-              autoSelect
               options={TEAM_ROSTER}
               getOptionLabel={(option) => option.name}
               filterOptions={(options, { inputValue }) => {
