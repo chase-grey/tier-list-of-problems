@@ -448,22 +448,6 @@
     }
   },
   {
-    "id": "8311693",
-    "title": "ST Pitch / SmartTools Write Actions for Art Terminal",
-    "category": "Mobile Feature Parity",
-    "continuation": false,
-    "details": {
-      "problem": "As a clinician, I want to use Art Terminal to complete documentation tasks hands-free &#8212; drafting an IB message, editing a note, sending a patient message &#8212; without having to manually finish each step myself. Without SmartTools implementing write actions for STB-backed documentation workflows, Art Terminal will launch as a read-only assistant that can suggest actions but never complete them.",
-      "ideaForSolution": "As a clinician, I ask Art Terminal to draft a reply to an IB message. The agent proposes the draft, I see a preview, and I approve it &#8212; the message sends without me manually touching the In Basket. The same propose &#8594; review &#8594; approve/reject pattern applies to editing a note, inserting content into a documentation workflow, or drafting a patient message.\nBehind the scenes, SmartTools builds on Ke's async AI SmartLinks work to create a standard pattern for STB-backed write actions in Factory. Rather than waiting for each app team (In Basket, OP Notes, etc.) to implement their own integrations, SmartTools may implement the most critical documentation workflows directly.",
-      "characteristics": "*  All write actions follow the propose &#8594; review &#8594; approve/reject pattern\n*  Builds on existing async AI SmartLinks infrastructure\n*  Scoped to STB-backed documentation workflows: IB message drafting/reply, note editing, patient messaging\n*  Low barrier for app teams to add new action types over time",
-      "whyNow": "Art Terminal is being actively designed now. Getting write action patterns established at the foundation prevents every app team from building one-off solutions later and ensures Art Terminal can complete real documentation work at launch.",
-      "smartToolsFit": "Support AI Charting",
-      "success": "",
-      "maintenance": "",
-      "internCandidate": false
-    }
-  },
-  {
     "id": "8311705",
     "title": "ST / Gen AI  UI / Support non-dictation agent text edits",
     "category": "Support AI Charting",
@@ -556,22 +540,6 @@
       "smartToolsFit": "Create and Improve Tools and Framework",
       "success": "",
       "maintenance": "",
-      "internCandidate": false
-    }
-  },
-  {
-    "id": "8318365",
-    "title": "ST / STBox / Allow dragging to reorder rows in a table",
-    "category": "Create and Improve Tools and Framework",
-    "continuation": false,
-    "details": {
-      "problem": "As a PRJ coordinator documenting questions in a UCD plan design, I don't have the flexibility to easily reorganize questions in a table, such as if I want to prioritize them.\nAs a developer writing a design, I want to easily revise a table in my design based on reviewer comments.\nEpic doesn't provide good ways to do this unlike Word and OneNote that make it easy to grab a row and drag it to the right position.",
-      "ideaForSolution": "Add a \"handle\" to the edge of the table that allows me to drag/drop to move the row around.",
-      "characteristics": "Something on the left side for the user to click on to drag\nOnly shown on hover to avoid visual clutter\nDoes NOT need to work with jagged tables",
-      "whyNow": "It came up during a SmartTools meeting about UCD planning process.",
-      "smartToolsFit": "Create and Improve Tools and Framework",
-      "success": "SmartTool project coordinators are happy :-)",
-      "maintenance": "None",
       "internCandidate": false
     }
   },
@@ -688,22 +656,6 @@
     }
   },
   {
-    "id": "8320398",
-    "title": "ST / STB / Shape repositioning",
-    "category": "Create and Improve Tools and Framework",
-    "continuation": false,
-    "details": {
-      "problem": "Every so often an analyst is tasked with creating a patient-facing document in Epic that looks nice or pretty. Often this is an attempt to copy an existing document or content, and the only way to accomplish the task is to use a shape that sits behind the STB's content. When this happens, they often have to position the shape via trial and error, guessing where the shape ought to be, pasting it into the STB, making a minor adjust, and then trying again. The process is terrible. Here is an\nexample of one such document:",
-      "ideaForSolution": "It would be great if clicking and dragging a floating shape just worked as you expect it to. It would be nice to allow resizing too.",
-      "characteristics": "",
-      "whyNow": "",
-      "smartToolsFit": "Create and Improve Tools and Framework",
-      "success": "",
-      "maintenance": "",
-      "internCandidate": false
-    }
-  },
-  {
     "id": "8320421",
     "title": "ST / AI Text Assistant / Better integrate AI Text Assistant into AI SmartSection UI + usability fixes",
     "category": "Support AI Charting",
@@ -780,22 +732,6 @@
       "smartToolsFit": "Mobile Feature Parity",
       "success": "",
       "maintenance": "",
-      "internCandidate": false
-    }
-  },
-  {
-    "id": "8322688",
-    "title": "ST / Editors / SmartLink / SmartTool documentation helper",
-    "category": "Create and Improve Tools and Framework",
-    "continuation": false,
-    "details": {
-      "problem": "SmartLinks, presently, have rather poor documentation. This hinders discoverability and, rather significantly, prevents us from indexing them in Cloud Search so that we can expose them to AI agents in Factory.\nAs a user, this means that I may not find the SmartLink that I want because there are not enough keywords to match against. This risks wasted time, frustration, and manual effort that shouldn't be required.\nSimilarly, as an AI agent, the same problem exists, except the result is that, instead of manual effort, I risk hallucinating.",
-      "ideaForSolution": "The lack of documentation for SmartLinks cannot be solved by just telling customers to update all their SmartLinks and app teams to do the same. That's a lot of effort that nobody will want to or be able to do.\nTherefore, we can support iterative improvement by creating a doc helper that is as easy as a single click.\nThis will encourage users, both internal and external, to write better documentation.\nWe could even consider flagging insufficient documentation?",
-      "characteristics": "A good solution will be able to both help humans and AI in finding the right SmartLink for the right purpose.\nA good solution may also be extensible to other SmartTools in the future.\nA good solution will also support future efforts to allow AI build agents.\nA good solution should also be useful for build analysis agents, too, when checking the correctness of build.",
-      "whyNow": "A lot of teams building agent flows are interested in generating text that comes from the Chart, and SmartLinks are well-placed to support this. A lot of teams also want to do automated build, and our tools are important for that.\nImproving documentation, even for SmartLinks that Epic doesn't own will make this discoverability better.",
-      "smartToolsFit": "Support AI Charting",
-      "success": "We will know we have succeeded when we start seeing higher quality documentation for SmartLinks. If we create a doc quality checker, then we could generate metrics on how good documentation is on average and see how it improves over time.",
-      "maintenance": "No major costs. I expect that we will need to have some automated tests for ensuring high quality documentation and testing for regressions.",
       "internCandidate": false
     }
   },
