@@ -47,7 +47,7 @@ export const NON_CONTRIBUTOR_ROLES = [
   'UXD',
   'TLTL',
   'TS',
-  'QM TL',
+  'TCap',
   'customer',
   'other'
 ];

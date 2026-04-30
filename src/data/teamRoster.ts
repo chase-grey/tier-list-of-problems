@@ -24,7 +24,7 @@ export const TEAM_ROSTER: TeamMember[] = [
   { name: 'Julia Rowan', role: 'QM' },
   { name: 'Katie Ferris', role: 'TS' },
   { name: 'Ke Li', role: 'dev' },
-  { name: 'Lauren Dyer', role: 'QM TL' },
+  { name: 'Lauren Dyer', role: 'TCap' },
   { name: 'Mariel Zech', role: 'QM' },
   { name: 'Mark Zakhar', role: 'TLTL' },
   { name: 'Michael Messer', role: 'dev' },
