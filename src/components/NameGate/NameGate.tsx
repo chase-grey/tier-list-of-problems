@@ -20,6 +20,8 @@ interface NameGateProps {
 
 export const NameGate = ({ onNameSubmit, open }: NameGateProps) => {
   const [selected, setSelected] = useState<TeamMember | null>(null);
+  const [inputValue, setInputValue] = useState('');
+  const [highlighted, setHighlighted] = useState<TeamMember | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,6 +54,9 @@ export const NameGate = ({ onNameSubmit, open }: NameGateProps) => {
                   o.name.split(' ').some(word => word.toLowerCase().startsWith(lower))
                 );
               }}
+              inputValue={inputValue}
+              onInputChange={(_, value) => setInputValue(value)}
+              onHighlightChange={(_, option) => setHighlighted(option as TeamMember | null)}
               value={selected}
               onChange={(_, value) => setSelected(value)}
               renderInput={(params) => (
@@ -61,6 +66,11 @@ export const NameGate = ({ onNameSubmit, open }: NameGateProps) => {
                   placeholder="Start typing your name…"
                   variant="outlined"
                   margin="dense"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Tab' && inputValue && highlighted) {
+                      setSelected(highlighted);
+                    }
+                  }}
                 />
               )}
               renderOption={(props, option) => (
