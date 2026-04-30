@@ -34,6 +34,7 @@ export const TEAM_ROSTER: TeamMember[] = [
   { name: 'Parker Volkman', role: 'QM' },
   { name: 'Peter Paulson', role: 'dev' },
   { name: 'Peter Wei Lin', role: 'dev' },
+  { name: 'Selina Li', role: 'UXD' },
   { name: 'Sheng Liu', role: 'dev TL' },
   { name: 'Tim Paukovits', role: 'dev' },
 ];
