@@ -273,8 +273,7 @@ export default function Step1View({
           );
 
           // ITEM 5: project count vs target
-          const totalSlots = config.devNames.length;
-          const targetCount = (config.bandwidth[cat] / 100) * totalSlots;
+          const targetCount = (config.bandwidth[cat] / 100) * stats.total;
           const actualPct = stats.total > 0 ? Math.round((selectedInCat.length / stats.total) * 100) : 0;
 
           return (

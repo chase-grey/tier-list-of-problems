@@ -32,7 +32,7 @@ export const MOCK_CONFIG: AllocationConfig = {
     'Peter Paulson', 'Peter Wei Lin', 'Tim Paukovits',
   ],
   devTLNames: ['Chase Grey', 'Derek Strehlow', 'Nicholas Rose', 'Sheng Liu'],
-  qmNames: ['Aiden Caes', 'Damon Drury', 'Derek Skwarczynski', 'Julia Rowan', 'Mariel Zech', 'Parker Volkman'],
+  qmNames: ['Aiden Caes', 'Damon Drury', 'Julia Rowan', 'Mariel Zech', 'Parker Volkman'],
   tlEmails: {
     'Chase Grey': 'cgrey@epic.com',
     'Derek Strehlow': 'dstrehlo@epic.com',

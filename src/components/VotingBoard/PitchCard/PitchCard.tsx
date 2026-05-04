@@ -122,106 +122,89 @@ const PitchCard = ({ pitch, vote, index, onSendToBottom, userRole, focused, onSe
           aria-expanded={Boolean(detailsAnchor)}
           aria-label={getPitchCardDescription(pitch.title, currentTier)}
         >
-          {/* Top section with title and info button */}
-          <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-            <Typography 
-              variant="subtitle2" 
-              sx={{ 
-                mr: 1,
-                minWidth: 0,
-                flexGrow: 1,
-                whiteSpace: 'normal',
-                pr: 4,
-                // Ensure text wraps to avoid overflow
-                overflowWrap: 'break-word',
-                wordBreak: 'break-word',
-                fontSize: '0.85rem' 
-              }}
-            >
-              {pitch.title}
-            </Typography>
+          {/* Title */}
+          <Typography
+            variant="subtitle2"
+            sx={{
+              minWidth: 0,
+              whiteSpace: 'normal',
+              pr: 4,
+              overflowWrap: 'break-word',
+              wordBreak: 'break-word',
+              fontSize: '0.85rem',
+            }}
+          >
+            {pitch.title}
+          </Typography>
 
-            <Box
+          {/* Info button — top right */}
+          <Tooltip title="View details">
+            <IconButton
+              size="small"
+              onClick={handleInfoButtonClick}
+              aria-label="View pitch details"
               sx={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 0.25,
-                flexShrink: 0,
-                flexDirection: 'column',
                 position: 'absolute',
                 top: 4,
-                right: 4
+                right: 4,
+                color: 'primary.main',
+                p: 0.25,
+                '&:hover': { backgroundColor: 'rgba(25, 118, 210, 0.04)' },
+                '& .MuiSvgIcon-root': { fontSize: 18 },
               }}
             >
-              <Tooltip title="View details">
-                <IconButton
-                  size="small"
-                  onClick={handleInfoButtonClick}
-                  aria-label="View pitch details"
-                  sx={{
-                    color: 'primary.main',
-                    p: 0.25,
-                    flexShrink: 0, // Prevent button from shrinking
-                    '&:hover': {
-                      backgroundColor: 'rgba(25, 118, 210, 0.04)'
-                    },
-                    '& .MuiSvgIcon-root': {
-                      fontSize: 18
-                    }
-                  }}
-                >
-                  <InfoOutlined fontSize="small" />
-                </IconButton>
-              </Tooltip>
+              <InfoOutlined fontSize="small" />
+            </IconButton>
+          </Tooltip>
 
-              {pitch.continuation && (
-                <Tooltip title="Continuation of existing development">
-                  <Box
-                    component="span"
-                    aria-label="Continuation of existing development"
-                    sx={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: 'text.secondary',
-                      p: 0.25,
-                      '& .MuiSvgIcon-root': {
-                        fontSize: 18
-                      }
-                    }}
-                  >
-                    <Autorenew fontSize="small" />
-                  </Box>
-                </Tooltip>
-              )}
+          {/* Continuation icon — vertically centered on the right */}
+          {pitch.continuation && (
+            <Tooltip title="Continuation of existing development">
+              <Box
+                component="span"
+                aria-label="Continuation of existing development"
+                sx={{
+                  position: 'absolute',
+                  top: '50%',
+                  right: 4,
+                  transform: 'translateY(-50%)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'text.secondary',
+                  p: 0.25,
+                  '& .MuiSvgIcon-root': { fontSize: 18 },
+                }}
+              >
+                <Autorenew fontSize="small" />
+              </Box>
+            </Tooltip>
+          )}
 
-              {currentTier === null && onSendToBottom && (
-                <Tooltip title="Send to bottom">
-                  <IconButton
-                    size="small"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      onSendToBottom(pitch.id);
-                    }}
-                    aria-label="Send to bottom"
-                    sx={{
-                      color: 'text.secondary',
-                      p: 0.25,
-                      flexShrink: 0,
-                      '&:hover': {
-                        backgroundColor: 'rgba(255, 255, 255, 0.04)'
-                      },
-                      '& .MuiSvgIcon-root': {
-                        fontSize: 18
-                      }
-                    }}
-                  >
-                    <South fontSize="small" />
-                  </IconButton>
-                </Tooltip>
-              )}
-            </Box>
-          </Box>
+          {/* Send to bottom — bottom right, only in the unsorted column */}
+          {currentTier === null && onSendToBottom && (
+            <Tooltip title="Send to bottom">
+              <IconButton
+                size="small"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onSendToBottom(pitch.id);
+                }}
+                aria-label="Send to bottom"
+                sx={{
+                  position: 'absolute',
+                  bottom: 4,
+                  right: 4,
+                  color: 'text.secondary',
+                  p: 0.25,
+                  '&:hover': { backgroundColor: 'rgba(255, 255, 255, 0.04)' },
+                  '& .MuiSvgIcon-root': { fontSize: 18 },
+                }}
+              >
+                <South fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          )}
 
           {detailsAnchor && (
             <React.Suspense fallback={<div />}>

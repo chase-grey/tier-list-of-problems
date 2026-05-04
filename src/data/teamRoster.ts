@@ -14,7 +14,6 @@ export const TEAM_ROSTER: TeamMember[] = [
   { name: 'Daoxing Zhang', role: 'dev' },
   { name: 'David Coll', role: 'dev' },
   { name: 'David Krajnik', role: 'dev' },
-  { name: 'Derek Skwarczynski', role: 'QM' },
   { name: 'Derek Strehlow', role: 'dev TL' },
   { name: 'Gauresh Walia', role: 'dev' },
   { name: 'Jacob Franz', role: 'dev' },
