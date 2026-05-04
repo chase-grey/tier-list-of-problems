@@ -138,7 +138,7 @@ const PitchCard = ({ pitch, vote, index, onSendToBottom, userRole, focused, onSe
           </Typography>
 
           {/* Info button — top right */}
-          <Tooltip title="View details">
+          <Tooltip title="View details (Enter)">
             <IconButton
               size="small"
               onClick={handleInfoButtonClick}
@@ -183,7 +183,7 @@ const PitchCard = ({ pitch, vote, index, onSendToBottom, userRole, focused, onSe
 
           {/* Send to bottom — bottom right, only in the unsorted column */}
           {currentTier === null && onSendToBottom && (
-            <Tooltip title="Send to bottom">
+            <Tooltip title="Send to bottom (b)">
               <IconButton
                 size="small"
                 onClick={(event) => {

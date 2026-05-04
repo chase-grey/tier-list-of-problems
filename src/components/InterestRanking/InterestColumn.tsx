@@ -561,7 +561,7 @@ const InterestCardInfoButton = ({ pitch, vote, userRole, externalOpen, onExterna
 
   return (
     <>
-      <Tooltip title="View details">
+      <Tooltip title="View details (Enter)">
         <IconButton
           ref={buttonRef}
           size="small"

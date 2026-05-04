@@ -105,7 +105,7 @@ export const TopBar = ({
             {appTitle}
           </Typography>
 
-          <Tooltip title="View Instructions">
+          <Tooltip title="View Instructions (?)">
             <IconButton color="inherit" onClick={onHelpClick} sx={{ ml: 2 }} aria-label="Help">
               <HelpIcon />
             </IconButton>
