@@ -319,7 +319,7 @@ export default function Step2View({
             <Collapse in={!sidebarCollapsed[label]}>
             {names.map(name => {
               const assignedPitchIds = assignments
-                .filter(a => a.devTL === name || a.qm === name)
+                .filter(a => (a.devTL === name || a.qm === name) && pitchMap.has(a.pitchId))
                 .map(a => a.pitchId)
                 .sort((a, b) => {
                   const pA = pitchMap.get(a);
@@ -419,7 +419,7 @@ export default function Step2View({
           <Collapse in={!sidebarCollapsed['PQA1 Reviewers']}>
             {devNames.map(name => {
               const assignedPitchIds = assignments
-                .filter(a => a.pqa1 === name)
+                .filter(a => a.pqa1 === name && pitchMap.has(a.pitchId))
                 .map(a => a.pitchId)
                 .sort((a, b) => {
                   const pA = pitchMap.get(a);
