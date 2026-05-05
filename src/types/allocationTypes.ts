@@ -23,10 +23,7 @@ export interface AllocationPitch extends Pitch {
   teamVotes: Record<string, 0 | 1 | 2 | 3 | 4>;
   /** Per-TL priority tiers (subset of teamVotes, dev TLs only). */
   tlVotes: Record<string, 0 | 1 | 2 | 3 | 4>;
-  /** For continuation pitches: the dev TL who led this project last quarter. */
-  previousTL?: string;
-  /** For continuation pitches: the QM who covered this project last quarter. */
-  previousQM?: string;
+  // previousDev, previousTL, previousQM inherited from Pitch
 }
 
 export type AssignmentStatus = 'selected' | 'next-up' | 'cut';

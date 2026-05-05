@@ -4,6 +4,9 @@ export interface Pitch {
   title: string;           // terse name on card
   category: string;        // strategic category for voting
   continuation?: boolean;
+  previousDev?: string;    // Lead dev from last quarter (continuation projects only)
+  previousTL?: string;     // Dev TL from last quarter (continuation projects only)
+  previousQM?: string;     // QM from last quarter (continuation projects only)
   stage2?: boolean;        // Whether this pitch advanced to Stage 2
   developer?: string;      // Developer assigned to this pitch (Stage 2)
   details: {

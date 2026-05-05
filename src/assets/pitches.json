@@ -93,7 +93,10 @@
       "success": "Apotti will re-enable Spell Check and keep it enabled",
       "maintenance": "Low to setup, effecivively none for ongoing maintenance.",
       "internCandidate": false
-    }
+    },
+    "previousDev": "David Krajnik",
+    "previousTL": "Derek Strehlow",
+    "previousQM": "Parker Volkman"
   },
   {
     "id": "7914897",
@@ -157,7 +160,8 @@
       "success": "A good solution would likely \"feel\" similar to MS Word, which provides a good barometer for success.",
       "maintenance": "This will likely require a bit more testing overall. However, since this is mostly just grouping together existing pieces of functionality, it will likely not be more of a cost than it reaps in benefits.",
       "internCandidate": false
-    }
+    },
+    "previousDev": "Tim Paukovits"
   },
   {
     "id": "7975409",
@@ -205,7 +209,9 @@
       "success": "We might want to develop/SU something for tracking time it takes to make these updates without any big changes. However, that is not something that has a really obvious thing to measure besides time in activity until placeholders are resolved..",
       "maintenance": "Overall reduction since it makes maintenance easier.",
       "internCandidate": true
-    }
+    },
+    "previousDev": "Jonathan Ray",
+    "previousTL": "Chase Grey"
   },
   {
     "id": "7993631",
@@ -221,7 +227,10 @@
       "success": "Not needed.",
       "maintenance": "Maintenance costs / TS time should go down when things are more intuitive from the start.",
       "internCandidate": false
-    }
+    },
+    "previousDev": "David Krajnik",
+    "previousTL": "Derek Strehlow",
+    "previousQM": "Aiden Caes"
   },
   {
     "id": "7993912",
@@ -237,7 +246,9 @@
       "success": "",
       "maintenance": "",
       "internCandidate": false
-    }
+    },
+    "previousTL": "Chase Grey",
+    "previousQM": "Mariel Zech"
   },
   {
     "id": "8033379",
@@ -317,7 +328,10 @@
       "success": "This is Epic standard to have consistent UI, especially when all apps are following the same guide",
       "maintenance": "Low",
       "internCandidate": false
-    }
+    },
+    "previousDev": "Peter Paulson",
+    "previousTL": "Derek Strehlow",
+    "previousQM": "Damon Drury"
   },
   {
     "id": "8212015",
@@ -381,7 +395,10 @@
       "success": "How many users chooses to configure such quick buttons.",
       "maintenance": "More customization options for the SmartTextBox toolbar.",
       "internCandidate": false
-    }
+    },
+    "previousDev": "Dan Demp",
+    "previousTL": "Sheng Liu",
+    "previousQM": "Mariel Zech"
   },
   {
     "id": "8212877",
@@ -413,7 +430,10 @@
       "success": "Not needed",
       "maintenance": "This project would make maintenance easier being able to more easily find prompts that need editing, allowing some editing within the new Manager activity, etc.",
       "internCandidate": false
-    }
+    },
+    "previousDev": "Daoxing Zhang",
+    "previousTL": "Derek Strehlow",
+    "previousQM": "Aiden Caes"
   },
   {
     "id": "8242499",
@@ -493,7 +513,10 @@
       "success": "",
       "maintenance": "There should be minimal changes over the existing standard costs, as we already need to handle any of the configurations this could create - we are simply shifting the user workflow from a 3rd party tool into Epic.",
       "internCandidate": false
-    }
+    },
+    "previousDev": "Tim Paukovits",
+    "previousTL": "Derek Strehlow",
+    "previousQM": "Julia Rowan"
   },
   {
     "id": "8315742",
@@ -573,7 +596,9 @@
       "success": "",
       "maintenance": "",
       "internCandidate": true
-    }
+    },
+    "previousTL": "Chase Grey",
+    "previousQM": "Parker Volkman"
   },
   {
     "id": "8319923",

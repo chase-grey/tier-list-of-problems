@@ -50,26 +50,47 @@ export function generateDefaultPlan(pitches: AllocationPitch[], config: Allocati
     selected.push(...catPitches.slice(0, slots));
   });
 
-  // Assign devs greedily: best interest tier first, fewest assignments as tie-break
+  // Assign devs: continuation projects lock to their previousDev first (unless at cap
+  // or explicitly low interest), then fill the rest greedily by interest + workload.
   const devCount: Record<string, number> = {};
   devNames.forEach(d => { devCount[d] = 0; });
   const MAX_PER_DEV = 2;
 
-  const sortedSelected = [...selected].sort((a, b) => pitchPriorityScore(b) - pitchPriorityScore(a));
-  const assignments: PlanAssignment[] = sortedSelected.map(pitch => {
-    const candidateDev =
-      devNames
-        .filter(d => devCount[d] < MAX_PER_DEV)
-        .sort((a, b) => {
-          const tA = pitch.devInterest[a] ?? 5;
-          const tB = pitch.devInterest[b] ?? 5;
-          if (tA !== tB) return (tA as number) - (tB as number);
-          return devCount[a] - devCount[b];
-        })[0] ?? null;
+  // Process continuations first so previousDev slots are reserved before open pitches compete.
+  const continuations = selected.filter(p => p.continuation && p.previousDev && devNames.includes(p.previousDev!));
+  const openPitches   = selected.filter(p => !(p.continuation && p.previousDev && devNames.includes(p.previousDev!)));
 
-    if (candidateDev) devCount[candidateDev]++;
-    return { pitchId: pitch.id, assignedDev: candidateDev, status: 'selected' };
-  });
+  const sortByPriority = (arr: AllocationPitch[]) =>
+    [...arr].sort((a, b) => pitchPriorityScore(b) - pitchPriorityScore(a));
+
+  const assignDev = (pitch: AllocationPitch): string | null => {
+    // For continuations: lock to previousDev unless at cap or explicitly low interest (tier 4)
+    if (pitch.continuation && pitch.previousDev && devNames.includes(pitch.previousDev)) {
+      const prev = pitch.previousDev;
+      const interest = pitch.devInterest[prev] ?? null;
+      const lowInterest = interest === 4;
+      if (!lowInterest && devCount[prev] < MAX_PER_DEV) {
+        devCount[prev]++;
+        return prev;
+      }
+    }
+    // Open assignment: best interest tier, fewest assignments as tiebreaker
+    const best = devNames
+      .filter(d => devCount[d] < MAX_PER_DEV)
+      .sort((a, b) => {
+        const tA = pitch.devInterest[a] ?? 5;
+        const tB = pitch.devInterest[b] ?? 5;
+        if (tA !== tB) return (tA as number) - (tB as number);
+        return devCount[a] - devCount[b];
+      })[0] ?? null;
+    if (best) devCount[best]++;
+    return best;
+  };
+
+  const assignments: PlanAssignment[] = [
+    ...sortByPriority(continuations),
+    ...sortByPriority(openPitches),
+  ].map(pitch => ({ pitchId: pitch.id, assignedDev: assignDev(pitch), status: 'selected' as const }));
 
   // Next-up: next N across all categories by score
   const selectedIds = new Set(selected.map(p => p.id));

@@ -764,6 +764,10 @@ function PitchRow({ assignment, pitch, devNames, onDevChange, onStatusChange, hi
   // Sort devs: best interest first; key absent = 5 (no data, goes last)
   const sortedDevs = [...devNames].sort((a, b) => (pitch.devInterest[a] ?? 5) - (pitch.devInterest[b] ?? 5));
 
+  // Warn when a continuation project's assigned dev differs from last quarter's dev
+  const devChanged = pitch.continuation && pitch.previousDev &&
+    assignment.assignedDev !== pitch.previousDev;
+
   return (
     <TableRow
       ref={onRef}
@@ -826,38 +830,45 @@ function PitchRow({ assignment, pitch, devNames, onDevChange, onStatusChange, hi
         </Tooltip>
       </TableCell>
       <TableCell sx={{ px: 0.5, py: 0.25 }}>
-        {highlight === 'selected' && (
-          <Select
-            {...devSelectExclusive}
-            size="small"
-            value={assignment.assignedDev ?? ''}
-            onChange={e => onDevChange(pitch.id, e.target.value || null)}
-            displayEmpty
-            sx={{ fontSize: '0.75rem', width: '100%', '& .MuiSelect-select': { py: 0.5, px: 1 } }}
-            renderValue={val => val
-              ? <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0 }}>
-                  <Typography variant="caption" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
-                    {getShortName(val as string)}
-                  </Typography>
-                  <InterestDot
-                    level={pitch.devInterest[val as string] ?? null}
-                    noData={!((val as string) in pitch.devInterest)}
-                  />
-                </Box>
-              : <Typography variant="caption" color="text.disabled">Assign dev…</Typography>
-            }
-          >
-            <MenuItem value=""><Typography variant="body2"><em>Unassign</em></Typography></MenuItem>
-            {sortedDevs.map(dev => (
-              <MenuItem key={dev} value={dev} sx={{ px: 2, py: 0.75 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%', minWidth: 0 }}>
-                  <Typography variant="body2" sx={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{dev}</Typography>
-                  <InterestChip level={pitch.devInterest[dev] ?? null} noData={!(dev in pitch.devInterest)} />
-                </Box>
-              </MenuItem>
-            ))}
-          </Select>
-        )}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+          {highlight === 'selected' && (
+            <Select
+              {...devSelectExclusive}
+              size="small"
+              value={assignment.assignedDev ?? ''}
+              onChange={e => onDevChange(pitch.id, e.target.value || null)}
+              displayEmpty
+              sx={{ fontSize: '0.75rem', width: '100%', '& .MuiSelect-select': { py: 0.5, px: 1 } }}
+              renderValue={val => val
+                ? <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0 }}>
+                    <Typography variant="caption" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                      {getShortName(val as string)}
+                    </Typography>
+                    <InterestDot
+                      level={pitch.devInterest[val as string] ?? null}
+                      noData={!((val as string) in pitch.devInterest)}
+                    />
+                  </Box>
+                : <Typography variant="caption" color="text.disabled">Assign dev…</Typography>
+              }
+            >
+              <MenuItem value=""><Typography variant="body2"><em>Unassign</em></Typography></MenuItem>
+              {sortedDevs.map(dev => (
+                <MenuItem key={dev} value={dev} sx={{ px: 2, py: 0.75 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%', minWidth: 0 }}>
+                    <Typography variant="body2" sx={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{dev}</Typography>
+                    <InterestChip level={pitch.devInterest[dev] ?? null} noData={!(dev in pitch.devInterest)} />
+                  </Box>
+                </MenuItem>
+              ))}
+            </Select>
+          )}
+          {devChanged && (
+            <Tooltip title={`Previous dev: ${pitch.previousDev} — team changed from last quarter`} placement="top">
+              <WarnIcon sx={{ fontSize: '0.95rem', color: 'warning.main', flexShrink: 0 }} />
+            </Tooltip>
+          )}
+        </Box>
       </TableCell>
       <TableCell sx={{ px: 1 }}>
         <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-end' }}>
