@@ -170,7 +170,7 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // State to control help dialog
-  const [showHelp, setShowHelp] = useState(true); // Show help dialog by default
+  const [showHelp, setShowHelp] = useState(false);
   // State to track if initial help dialog was shown
   const [initialHelpShown, setInitialHelpShown] = useState(false);
   // State to control reset confirmation dialog
