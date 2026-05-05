@@ -331,29 +331,22 @@ export default function Step2View({
                   return selectedPitches.indexOf(pA) - selectedPitches.indexOf(pB);
                 });
               const hasHigh = hasHighInterest(name);
-              const dataStatus = personDataStatus[name] ?? 'full';
               const pi = interests.find(p => p.personName === name);
               const personHasNoData = !pi || Object.keys(pi.interestByPitchId).length === 0;
 
               return (
                 <Box key={name} sx={{ mb: 1 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                    <Tooltip title={
-                      hasHigh
-                        ? 'Has at least one Tier 1–2 interest assignment'
-                        : dataStatus === 'none'
-                          ? 'No interest data submitted'
-                          : dataStatus === 'partial'
-                            ? 'Partial interest data — no Tier 1–2 assignments'
-                            : 'No Tier 1–2 interest assignments'
-                    }>
-                      <span>
-                        {hasHigh
-                          ? <OkIcon fontSize="small" color="success" sx={{ fontSize: '0.9rem' }} />
-                          : <WarnIcon fontSize="small" color="warning" sx={{ fontSize: '0.9rem' }} />
-                        }
-                      </span>
-                    </Tooltip>
+                    {hasHigh && (
+                      <Tooltip title="Has at least one Tier 1–2 interest assignment">
+                        <span><OkIcon fontSize="small" color="success" sx={{ fontSize: '0.9rem' }} /></span>
+                      </Tooltip>
+                    )}
+                    {!hasHigh && !personHasNoData && (
+                      <Tooltip title="Has interest data but no Tier 1–2 assignments">
+                        <span><WarnIcon fontSize="small" color="warning" sx={{ fontSize: '0.9rem' }} /></span>
+                      </Tooltip>
+                    )}
                     <Typography variant="caption" fontWeight={600}>{name}</Typography>
                     <Typography variant="caption" color="text.secondary" sx={{ ml: 'auto' }}>
                       {assignedPitchIds.length} projects
@@ -435,14 +428,16 @@ export default function Step2View({
               return (
                 <Box key={name} sx={{ mb: 1 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                    <Tooltip title={hasHigh ? 'Has at least one Tier 1–2 interest assignment' : 'No Tier 1–2 interest assignments'}>
-                      <span>
-                        {hasHigh
-                          ? <OkIcon fontSize="small" color="success" sx={{ fontSize: '0.9rem' }} />
-                          : <WarnIcon fontSize="small" color="warning" sx={{ fontSize: '0.9rem' }} />
-                        }
-                      </span>
-                    </Tooltip>
+                    {hasHigh && (
+                      <Tooltip title="Has at least one Tier 1–2 interest assignment">
+                        <span><OkIcon fontSize="small" color="success" sx={{ fontSize: '0.9rem' }} /></span>
+                      </Tooltip>
+                    )}
+                    {!hasHigh && devHasAnyData.has(name) && (
+                      <Tooltip title="Has interest data but no Tier 1–2 assignments">
+                        <span><WarnIcon fontSize="small" color="warning" sx={{ fontSize: '0.9rem' }} /></span>
+                      </Tooltip>
+                    )}
                     <Typography variant="caption" fontWeight={600}>{name}</Typography>
                     <Typography variant="caption" color="text.secondary" sx={{ ml: 'auto' }}>
                       {assignedPitchIds.length} projects
@@ -518,6 +513,11 @@ function Step2Row({
 }: Step2RowProps) {
   const [detailsAnchor, setDetailsAnchor] = useState<HTMLButtonElement | null>(null);
 
+  const tlChanged = pitch.continuation && pitch.previousTL &&
+    assignment.devTL !== null && assignment.devTL !== pitch.previousTL;
+  const qmChanged = pitch.continuation && pitch.previousQM &&
+    assignment.qm !== null && assignment.qm !== pitch.previousQM;
+
   return (
     <TableRow
       ref={onRef}
@@ -576,24 +576,44 @@ function Step2Row({
         </Typography>
       </TableCell>
       <TableCell sx={{ px: 0.5, py: 0.25 }}>
-        <AssignmentDropdown
-          value={assignment.devTL}
-          allNames={devTLNames}
-          options={devTLInterests}
-          pitchId={pitch.id}
-          selectId={`${pitch.id}-devTL`}
-          onChange={v => onAssign(pitch.id, 'devTL', v)}
-        />
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <AssignmentDropdown
+              value={assignment.devTL}
+              allNames={devTLNames}
+              options={devTLInterests}
+              pitchId={pitch.id}
+              selectId={`${pitch.id}-devTL`}
+              onChange={v => onAssign(pitch.id, 'devTL', v)}
+              previousPerson={pitch.previousTL}
+            />
+          </Box>
+          {tlChanged && (
+            <Tooltip title={`Previous TL: ${pitch.previousTL} — team changed from last quarter`} placement="top">
+              <WarnIcon sx={{ fontSize: '0.95rem', color: 'warning.main', flexShrink: 0 }} />
+            </Tooltip>
+          )}
+        </Box>
       </TableCell>
       <TableCell sx={{ px: 0.5, py: 0.25 }}>
-        <AssignmentDropdown
-          value={assignment.qm}
-          allNames={qmNames}
-          options={qmInterests}
-          pitchId={pitch.id}
-          selectId={`${pitch.id}-qm`}
-          onChange={v => onAssign(pitch.id, 'qm', v)}
-        />
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <AssignmentDropdown
+              value={assignment.qm}
+              allNames={qmNames}
+              options={qmInterests}
+              pitchId={pitch.id}
+              selectId={`${pitch.id}-qm`}
+              onChange={v => onAssign(pitch.id, 'qm', v)}
+              previousPerson={pitch.previousQM}
+            />
+          </Box>
+          {qmChanged && (
+            <Tooltip title={`Previous QM: ${pitch.previousQM} — team changed from last quarter`} placement="top">
+              <WarnIcon sx={{ fontSize: '0.95rem', color: 'warning.main', flexShrink: 0 }} />
+            </Tooltip>
+          )}
+        </Box>
       </TableCell>
       <TableCell sx={{ px: 0.5, py: 0.25 }}>
         <Pqa1Dropdown
@@ -680,9 +700,10 @@ interface AssignmentDropdownProps {
   pitchId: string;
   selectId: string;
   onChange: (val: string | null) => void;
+  previousPerson?: string;
 }
 
-function AssignmentDropdown({ value, allNames, options, pitchId, selectId, onChange }: AssignmentDropdownProps) {
+function AssignmentDropdown({ value, allNames, options, pitchId, selectId, onChange, previousPerson }: AssignmentDropdownProps) {
   const interestMap = new Map(options.map(o => [o.personName, o]));
   const exclusive = useExclusiveSelect(selectId);
 
@@ -729,6 +750,11 @@ function AssignmentDropdown({ value, allNames, options, pitchId, selectId, onCha
           <MenuItem key={name} value={name}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
               <Typography variant="body2" sx={{ flex: 1 }}>{name}</Typography>
+              {name === previousPerson && (
+                <Tooltip title="Was on this project last quarter" placement="left">
+                  <AutorenewIcon sx={{ fontSize: '0.85rem', color: 'text.secondary', flexShrink: 0 }} />
+                </Tooltip>
+              )}
               <InterestChip level={level} noData={noData} />
             </Box>
           </MenuItem>

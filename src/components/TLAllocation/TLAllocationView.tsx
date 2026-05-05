@@ -95,14 +95,16 @@ function autoAssignStep2(
       qmLoad[qm]++;
     }
 
-    // Fill unassigned devTL: sort full devTL list by interest then load.
-    // Defaults to tier 5 for non-submitters so load drives equal distribution.
+    // Fill unassigned devTL: load wins when one TL has 2+ more projects than another;
+    // otherwise interest (Phase 2 votes) is the primary sort with load as tiebreaker.
     if (!devTL) {
       devTL = [...config.devTLNames].sort((a, b) => {
+        const loadDiff = (devTLLoad[a] ?? 0) - (devTLLoad[b] ?? 0);
+        if (Math.abs(loadDiff) >= 2) return loadDiff;
         const tA = (devTLInterestMap[a]?.interestByPitchId[pitch.id] ?? 5) as number;
         const tB = (devTLInterestMap[b]?.interestByPitchId[pitch.id] ?? 5) as number;
         if (tA !== tB) return tA - tB;
-        return (devTLLoad[a] ?? 0) - (devTLLoad[b] ?? 0);
+        return loadDiff;
       })[0] ?? null;
       if (devTL) devTLLoad[devTL] = (devTLLoad[devTL] ?? 0) + 1;
     }
@@ -110,10 +112,12 @@ function autoAssignStep2(
     // Fill unassigned QM: same pattern as devTL above.
     if (!qm) {
       qm = [...config.qmNames].sort((a, b) => {
+        const loadDiff = (qmLoad[a] ?? 0) - (qmLoad[b] ?? 0);
+        if (Math.abs(loadDiff) >= 2) return loadDiff;
         const tA = (qmInterestMap[a]?.interestByPitchId[pitch.id] ?? 5) as number;
         const tB = (qmInterestMap[b]?.interestByPitchId[pitch.id] ?? 5) as number;
         if (tA !== tB) return tA - tB;
-        return (qmLoad[a] ?? 0) - (qmLoad[b] ?? 0);
+        return loadDiff;
       })[0] ?? null;
       if (qm) qmLoad[qm] = (qmLoad[qm] ?? 0) + 1;
     }
