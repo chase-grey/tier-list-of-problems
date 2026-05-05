@@ -6,6 +6,7 @@ export interface TeamMember {
 export const TEAM_ROSTER: TeamMember[] = [
   { name: 'Adam Still', role: 'dev' },
   { name: 'Aiden Caes', role: 'QM' },
+  { name: 'Anna Waskowsky', role: 'TLTL' },
   { name: 'Anita Weng', role: 'TS' },
   { name: 'Brandon Campos Botello', role: 'dev' },
   { name: 'Chase Grey', role: 'dev TL' },
@@ -44,8 +45,7 @@ export function getRoleForName(name: string): string | null {
 
 /**
  * Short display names, disambiguated by minimum last-name prefix when first names conflict.
- * E.g. "Peter Paulson" → "Peter P", "Peter Wei Lin" → "Peter L",
- *      "Derek Skwarczynski" → "Derek Sk", "Derek Strehlow" → "Derek St".
+ * E.g. "Peter Paulson" → "Peter P", "Peter Wei Lin" → "Peter L".
  */
 export const SHORT_NAMES: Record<string, string> = (() => {
   const byFirst: Record<string, TeamMember[]> = {};
