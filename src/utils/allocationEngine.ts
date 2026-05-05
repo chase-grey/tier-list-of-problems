@@ -131,14 +131,12 @@ export function autoAssignPqa1(
       devNames
         .filter(d => d !== assignedDev)
         .sort((a, b) => {
-          // Load first so no single dev dominates when interest data is sparse.
-          // Interest breaks ties only when loads are equal.
-          // No data → neutral (3) so explicit low interest (4) loses to unknown.
-          const loadDiff = pqa1Load[a] - pqa1Load[b];
-          if (loadDiff !== 0) return loadDiff;
+          // Combined score: interest + load. No data → neutral (3).
+          // High interest (1) can stay ahead by ~2 projects before load equalizes.
+          // Low interest (4) loses to no-data devs (3) at equal load.
           const tA = (pitch.devInterest[a] ?? 3) as number;
           const tB = (pitch.devInterest[b] ?? 3) as number;
-          return tA - tB;
+          return (tA + pqa1Load[a]) - (tB + pqa1Load[b]);
         })[0] ?? null;
 
     result[pitch.id] = candidate;
