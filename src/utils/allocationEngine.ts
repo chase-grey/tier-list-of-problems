@@ -158,13 +158,14 @@ export function autoAssignPqa1(
       devNames
         .filter(d => d !== assignedDev && pqa1Load[d] < cap)
         .sort((a, b) => {
-          // Combined score: interest + load. No data → neutral (3).
-          // Interested devs (tier 1-2) win their preferred pitches; low-interest (4)
-          // loses to no-data devs (3) at equal load. Cap prevents any dev going over
-          // fair share even when interest advantage would otherwise push them ahead.
+          // Interest is the strict primary sort; load is the tiebreaker.
+          // No data → neutral (3). This ensures tier-1 devs always beat no-data devs
+          // regardless of load, and tier-4 devs always lose to no-data devs regardless
+          // of load. The hard cap handles load-balancing — no need for combined score.
           const tA = (pitch.devInterest[a] ?? 3) as number;
           const tB = (pitch.devInterest[b] ?? 3) as number;
-          return (tA + pqa1Load[a]) - (tB + pqa1Load[b]);
+          if (tA !== tB) return tA - tB;
+          return pqa1Load[a] - pqa1Load[b];
         })[0] ?? null;
 
     result[pitch.id] = candidate;
