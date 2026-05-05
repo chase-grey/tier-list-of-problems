@@ -145,7 +145,6 @@ export const TopBar = ({
                 <Button
                   variant="outlined"
                   color="inherit"
-                  size="small"
                   startIcon={<WandIcon />}
                   onClick={onAllocationRerun}
                 >
