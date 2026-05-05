@@ -13,6 +13,12 @@ import type {
 } from '../types/allocationTypes';
 import pitchData from '../assets/pitches.json';
 import { generateDefaultPlan } from '../utils/allocationEngine';
+import { TEAM_ROSTER } from '../data/teamRoster';
+
+// Roles that count as TL voters (mirrors TL_ROLES in Code.gs getAllocationData)
+const TL_VOTER_NAMES = TEAM_ROSTER
+  .filter(m => ['dev TL', 'TLTL', 'TCap'].includes(m.role))
+  .map(m => m.name);
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
@@ -135,7 +141,7 @@ function devInterestForPitch(pitchId: string, category: string): Record<string, 
 
 // ─── Priority vote generation ──────────────────────────────────────────────────
 
-const ALL_VOTERS = [...MOCK_CONFIG.devNames, ...MOCK_CONFIG.devTLNames, ...MOCK_CONFIG.qmNames];
+const ALL_VOTERS = [...new Set([...MOCK_CONFIG.devNames, ...TL_VOTER_NAMES, ...MOCK_CONFIG.qmNames])];
 
 function priorityVotesForPitch(pitchId: string, category: string): {
   teamVotes: Record<string, 0 | 1 | 2 | 3 | 4>;
@@ -159,7 +165,7 @@ function priorityVotesForPitch(pitchId: string, category: string): {
   }
 
   const tlVotes = Object.fromEntries(
-    MOCK_CONFIG.devTLNames.map(tl => [tl, teamVotes[tl]])
+    TL_VOTER_NAMES.filter(n => n in teamVotes).map(tl => [tl, teamVotes[tl]])
   ) as Record<string, 0 | 1 | 2 | 3 | 4>;
 
   const allTiers = Object.values(teamVotes);

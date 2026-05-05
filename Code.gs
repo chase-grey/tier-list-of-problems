@@ -339,6 +339,8 @@ function getAllocationData() {
   const configJson = props.getProperty('allocation_config') || '{}';
   const config = JSON.parse(configJson);
   const devTLNames = new Set(config.devTLNames || []);
+  // Roles that count as TL voters regardless of whether they're in devTLNames
+  const TL_ROLES = new Set(['dev TL', 'TLTL', 'TCap']);
 
   const sh = ss.getSheetByName('VOTES');
   if (!sh || sh.getLastRow() <= 1) return json200({});
@@ -347,12 +349,15 @@ function getAllocationData() {
 
   const pitchVoteMap = {};
   const pitchInterestMap = {};
+  const voterRoles = {}; // track each voter's role from their most recent vote row
   for (const row of rows) {
     const voterName    = row[1]; // column B
+    const voterRole    = row[2]; // column C
     const pitchId      = row[3]; // column D
     const tier         = row[5]; // column F (after pitchTitle in col E)
     const interestLevel = row[6]; // column G
     if (!voterName || !pitchId || tier === '' || tier === null || tier === undefined) continue;
+    if (voterRole) voterRoles[voterName] = voterRole;
     const numTier = Number(tier) === 0 ? 0 : Math.max(1, Math.min(4, Math.round(Number(tier))));
     if (!pitchVoteMap[pitchId]) pitchVoteMap[pitchId] = {};
     pitchVoteMap[pitchId][voterName] = numTier;
@@ -369,7 +374,7 @@ function getAllocationData() {
     const teamVotes = voterTiers;
     const tlVotes = {};
     for (const name of Object.keys(voterTiers)) {
-      if (devTLNames.has(name)) tlVotes[name] = voterTiers[name];
+      if (devTLNames.has(name) || TL_ROLES.has(voterRoles[name])) tlVotes[name] = voterTiers[name];
     }
     const allTiers = Object.values(teamVotes).filter(t => t > 0);
     const tlTiers = Object.values(tlVotes).filter(t => t > 0);
