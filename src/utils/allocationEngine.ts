@@ -133,10 +133,11 @@ export function autoAssignPqa1(
         .sort((a, b) => {
           // Load first so no single dev dominates when interest data is sparse.
           // Interest breaks ties only when loads are equal.
+          // No data → neutral (3) so explicit low interest (4) loses to unknown.
           const loadDiff = pqa1Load[a] - pqa1Load[b];
           if (loadDiff !== 0) return loadDiff;
-          const tA = (pitch.devInterest[a] ?? 5) as number;
-          const tB = (pitch.devInterest[b] ?? 5) as number;
+          const tA = (pitch.devInterest[a] ?? 3) as number;
+          const tB = (pitch.devInterest[b] ?? 3) as number;
           return tA - tB;
         })[0] ?? null;
 
