@@ -281,7 +281,6 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
         if (a.pitchId !== pitchId) return a;
         const newStatus: AssignmentStatus =
           dev !== null && (a.status === 'next-up' || a.status === 'cut') ? 'selected' :
-          dev === null && a.status === 'selected' ? 'next-up' :
           a.status;
         return { ...a, assignedDev: dev, status: newStatus };
       })
