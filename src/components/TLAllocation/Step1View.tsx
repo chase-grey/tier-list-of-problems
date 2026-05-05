@@ -244,13 +244,15 @@ export default function Step1View({
       : null;
     const highInterestCount = assignedInterestTiers.filter(t => t <= 2).length;
 
+    const anyDevAssigned = selectedAssignments.some(a => a.assignedDev !== null);
+
     return {
       avgTeamPriority, avgTLPriority,
       catActualPct,
       allContinuations, continuationsDropped,
       devProjects,
       avgAssignedInterest, highInterestCount, assignedCount: assignedInterestTiers.length,
-      total,
+      total, anyDevAssigned,
     };
   }, [currentAssignments, pitchMap, categories, config.devNames, pitches]);
 
@@ -659,7 +661,7 @@ export default function Step1View({
           </Box>
         ) : (
           <Typography variant="caption" color="text.disabled" sx={{ display: 'block', mb: 1.5 }}>
-            No devs assigned yet
+            {stats.anyDevAssigned ? 'No interest data for assigned projects' : 'No devs assigned yet'}
           </Typography>
         )}
 
@@ -766,6 +768,7 @@ function PitchRow({ assignment, pitch, devNames, onDevChange, onStatusChange, hi
   // Warn when a planned continuation project's assigned dev differs from last quarter's dev
   const devChanged = pitch.continuation && pitch.previousDev &&
     assignment.status === 'selected' &&
+    assignment.assignedDev !== null &&
     assignment.assignedDev !== pitch.previousDev;
 
   return (
@@ -857,6 +860,11 @@ function PitchRow({ assignment, pitch, devNames, onDevChange, onStatusChange, hi
                 <MenuItem key={dev} value={dev} sx={{ px: 2, py: 0.75 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%', minWidth: 0 }}>
                     <Typography variant="body2" sx={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{dev}</Typography>
+                    {dev === pitch.previousDev && (
+                      <Tooltip title="Was on this project last quarter" placement="left">
+                        <AutorenewIcon sx={{ fontSize: '0.85rem', color: 'text.secondary', flexShrink: 0 }} />
+                      </Tooltip>
+                    )}
                     <InterestChip level={pitch.devInterest[dev] ?? null} noData={!(dev in pitch.devInterest)} />
                   </Box>
                 </MenuItem>
