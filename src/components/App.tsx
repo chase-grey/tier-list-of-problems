@@ -806,6 +806,7 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
           allocationMode={isTLStage}
           allocationStep={allocationStep}
           onAllocationFinish={isTLStage && state.voterRole === 'dev TL' ? handleAllocationFinish : undefined}
+          onAllocationRerun={isTLStage && state.voterRole === 'dev TL' ? () => tlViewRef.current?.triggerRerunAlgorithm() : undefined}
           allocationSaveState={allocationSaveState}
           allocationShowResults={allocationShowResults}
           allocationHasResults={allocationHasResults}

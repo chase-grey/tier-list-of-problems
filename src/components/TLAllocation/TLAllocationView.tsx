@@ -20,6 +20,7 @@ import Stage4ResultsView from './Stage4ResultsView';
 
 export interface TLAllocationViewHandle {
   triggerFinalize: () => Promise<void>;
+  triggerRerunAlgorithm: () => void;
 }
 
 interface TLAllocationViewProps {
@@ -393,7 +394,19 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
     onFinalize?.();
   };
 
-  useImperativeHandle(ref, () => ({ triggerFinalize: handleFinalize }));
+  const handleRerunAlgorithm = () => {
+    if (activeStep === 0) {
+      setPlanAssignments(generateDefaultPlan(allocationPitches, allocationConfig));
+      showSnackbar('Plan auto-assigned', 'info');
+    } else {
+      const base = autoAssignStep2(selectedPitches, phase2Interests, allocationConfig);
+      const pqa1Map = autoAssignPqa1(selectedPitches, devByPitchId, allocationConfig.devNames);
+      setStep2Assignments(base.map(a => ({ ...a, pqa1: pqa1Map[a.pitchId] ?? null })));
+      showSnackbar('Team assignments auto-assigned', 'info');
+    }
+  };
+
+  useImperativeHandle(ref, () => ({ triggerFinalize: handleFinalize, triggerRerunAlgorithm: handleRerunAlgorithm }));
 
   if (loading || hasLoadError) {
     const steps = [

@@ -16,6 +16,7 @@ import {
   NavigateBefore as PrevIcon,
   ThumbUp as InterestIcon,
   CheckCircle as CheckCircleIcon,
+  AutoFixHigh as WandIcon,
 } from '@mui/icons-material';
 import { SettingsMenu } from '../SettingsMenu/SettingsMenu';
 
@@ -48,6 +49,7 @@ interface TopBarProps {
   allocationHasResults?: boolean;
   onAllocationViewSummary?: () => void;
   onAllocationBackToEdit?: () => void;
+  onAllocationRerun?: () => void;
   votingLoading?: boolean;
   submitState?: 'idle' | 'submitted' | 'changed';
 }
@@ -83,6 +85,7 @@ export const TopBar = ({
   allocationHasResults = false,
   onAllocationViewSummary,
   onAllocationBackToEdit,
+  onAllocationRerun,
   votingLoading = false,
   submitState = 'idle',
 }: TopBarProps) => {
@@ -136,6 +139,19 @@ export const TopBar = ({
               >
                 Back to editing
               </Button>
+            )}
+            {!allocationShowResults && onAllocationRerun && (
+              <Tooltip title="Re-run auto-assignment algorithm">
+                <Button
+                  variant="outlined"
+                  color="inherit"
+                  size="small"
+                  startIcon={<WandIcon />}
+                  onClick={onAllocationRerun}
+                >
+                  Auto-assign
+                </Button>
+              </Tooltip>
             )}
             {allocationHasResults && !allocationShowResults && onAllocationViewSummary && (
               <Button
