@@ -121,6 +121,8 @@ export function autoAssignPqa1(
 ): Record<string, string | null> {
   const pqa1Load: Record<string, number> = {};
   devNames.forEach(d => { pqa1Load[d] = 0; });
+  // Hard cap so no dev gets more than their fair share regardless of interest advantage.
+  const cap = devNames.length > 0 ? Math.ceil(pitches.length / devNames.length) : 0;
 
   const result: Record<string, string | null> = {};
   const sorted = [...pitches].sort((a, b) => a.teamPriorityScore - b.teamPriorityScore);
@@ -129,11 +131,12 @@ export function autoAssignPqa1(
     const assignedDev = devByPitchId[pitch.id] ?? null;
     const candidate =
       devNames
-        .filter(d => d !== assignedDev)
+        .filter(d => d !== assignedDev && pqa1Load[d] < cap)
         .sort((a, b) => {
           // Combined score: interest + load. No data → neutral (3).
-          // High interest (1) can stay ahead by ~2 projects before load equalizes.
-          // Low interest (4) loses to no-data devs (3) at equal load.
+          // Interested devs (tier 1-2) win their preferred pitches; low-interest (4)
+          // loses to no-data devs (3) at equal load. Cap prevents any dev going over
+          // fair share even when interest advantage would otherwise push them ahead.
           const tA = (pitch.devInterest[a] ?? 3) as number;
           const tB = (pitch.devInterest[b] ?? 3) as number;
           return (tA + pqa1Load[a]) - (tB + pqa1Load[b]);
