@@ -15,10 +15,12 @@ export const SnackbarProvider = ({ children }: SnackbarProviderProps) => {
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState('');
   const [severity, setSeverity] = useState<AlertProps['severity']>('info');
+  const [snackbarKey, setSnackbarKey] = useState(0);
 
   const showSnackbar = (message: string, severity: AlertProps['severity'] = 'info') => {
     setMessage(message);
     setSeverity(severity);
+    setSnackbarKey(k => k + 1);
     setOpen(true);
   };
 
@@ -32,9 +34,10 @@ export const SnackbarProvider = ({ children }: SnackbarProviderProps) => {
   return (
     <SnackbarContext.Provider value={{ showSnackbar }}>
       {children}
-      <Snackbar 
-        open={open} 
-        autoHideDuration={5000} 
+      <Snackbar
+        key={snackbarKey}
+        open={open}
+        autoHideDuration={5000}
         onClose={handleClose}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >

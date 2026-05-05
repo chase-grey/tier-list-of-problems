@@ -63,6 +63,17 @@ export function generateDefaultPlan(pitches: AllocationPitch[], config: Allocati
   const sortByPriority = (arr: AllocationPitch[]) =>
     [...arr].sort((a, b) => pitchPriorityScore(b) - pitchPriorityScore(a));
 
+  // Sort open pitches by best interest any dev has (ascending = best first),
+  // then by priority score as tiebreaker. Ensures devs fill their cap with
+  // highest-interest pitches before lower-interest ones, matching PQA1 behavior.
+  const sortByInterestThenPriority = (arr: AllocationPitch[]) =>
+    [...arr].sort((a, b) => {
+      const bestA = devNames.reduce((min, d) => Math.min(min, (a.devInterest[d] ?? 5) as number), 5);
+      const bestB = devNames.reduce((min, d) => Math.min(min, (b.devInterest[d] ?? 5) as number), 5);
+      if (bestA !== bestB) return bestA - bestB;
+      return pitchPriorityScore(b) - pitchPriorityScore(a);
+    });
+
   const assignDev = (pitch: AllocationPitch): string | null => {
     // For continuations: lock to previousDev unless at cap or explicitly low interest (tier 4)
     if (pitch.continuation && pitch.previousDev && devNames.includes(pitch.previousDev)) {
@@ -89,7 +100,7 @@ export function generateDefaultPlan(pitches: AllocationPitch[], config: Allocati
 
   const assignments: PlanAssignment[] = [
     ...sortByPriority(continuations),
-    ...sortByPriority(openPitches),
+    ...sortByInterestThenPriority(openPitches),
   ].map(pitch => ({ pitchId: pitch.id, assignedDev: assignDev(pitch), status: 'selected' as const }));
 
   // Next-up: next N across all categories by score
@@ -125,7 +136,21 @@ export function autoAssignPqa1(
   const cap = devNames.length > 0 ? Math.ceil(pitches.length / devNames.length) : 0;
 
   const result: Record<string, string | null> = {};
-  const sorted = [...pitches].sort((a, b) => a.teamPriorityScore - b.teamPriorityScore);
+  // Sort by best available interest for any eligible dev (ascending = best first),
+  // so devs fill their cap with highest-interest pitches before lower-interest ones.
+  // Within the same interest tier, higher-priority pitches (lower score) go first.
+  const sorted = [...pitches].sort((a, b) => {
+    const exA = devByPitchId[a.id] ?? null;
+    const exB = devByPitchId[b.id] ?? null;
+    const bestA = devNames
+      .filter(d => d !== exA)
+      .reduce((min, d) => Math.min(min, (a.devInterest[d] ?? 3) as number), Infinity);
+    const bestB = devNames
+      .filter(d => d !== exB)
+      .reduce((min, d) => Math.min(min, (b.devInterest[d] ?? 3) as number), Infinity);
+    if (bestA !== bestB) return bestA - bestB;
+    return a.teamPriorityScore - b.teamPriorityScore;
+  });
 
   for (const pitch of sorted) {
     const assignedDev = devByPitchId[pitch.id] ?? null;
