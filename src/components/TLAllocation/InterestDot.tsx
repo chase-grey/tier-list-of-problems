@@ -17,7 +17,7 @@ export default function InterestDot({ level, noData = false }: InterestDotProps)
   const cfg = level !== null ? DOT_CONFIG[level] : null;
 
   if (!cfg) {
-    // null level: differentiate skipped (grey) vs no-data (amber) to match InterestChip
+    // noData = never submitted → gray; null level = submitted but skipped → amber
     return (
       <Tooltip title={noData ? 'No interest data submitted for any project' : 'Skipped ranking this project'} placement="top">
         <Box
@@ -26,10 +26,10 @@ export default function InterestDot({ level, noData = false }: InterestDotProps)
             height: 10,
             borderRadius: '50%',
             flexShrink: 0,
-            bgcolor: noData ? 'rgba(255, 152, 0, 0.25)' : 'transparent',
+            bgcolor: noData ? 'transparent' : 'rgba(255, 152, 0, 0.25)',
             border: '1.5px dashed',
-            borderColor: noData ? 'warning.main' : 'text.disabled',
-            opacity: noData ? 1 : 0.55,
+            borderColor: noData ? 'text.disabled' : 'warning.main',
+            opacity: noData ? 0.55 : 1,
           }}
         />
       </Tooltip>

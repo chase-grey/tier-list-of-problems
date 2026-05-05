@@ -605,10 +605,9 @@ export default function Step1View({
         ) : (
           <Box sx={{ mb: 1.5 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mb: 0.5 }}>
-              {stats.continuationsDropped.length === 0
-                ? <OkIcon fontSize="small" color="success" sx={{ fontSize: '0.9rem' }} />
-                : <WarnIcon fontSize="small" color="warning" sx={{ fontSize: '0.9rem' }} />
-              }
+              {stats.continuationsDropped.length === 0 && (
+                <OkIcon fontSize="small" color="success" sx={{ fontSize: '0.9rem' }} />
+              )}
               <Typography variant="caption">
                 {stats.allContinuations.length - stats.continuationsDropped.length}/{stats.allContinuations.length} continuations planned
               </Typography>
@@ -764,8 +763,9 @@ function PitchRow({ assignment, pitch, devNames, onDevChange, onStatusChange, hi
   // Sort devs: best interest first; key absent = 5 (no data, goes last)
   const sortedDevs = [...devNames].sort((a, b) => (pitch.devInterest[a] ?? 5) - (pitch.devInterest[b] ?? 5));
 
-  // Warn when a continuation project's assigned dev differs from last quarter's dev
+  // Warn when a planned continuation project's assigned dev differs from last quarter's dev
   const devChanged = pitch.continuation && pitch.previousDev &&
+    assignment.status === 'selected' &&
     assignment.assignedDev !== pitch.previousDev;
 
   return (
