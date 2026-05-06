@@ -320,5 +320,38 @@ export function autoAssignPqa1(
     if (candidate) pqa1Load[candidate]++;
   }
 
+  // Pairwise-swap improvement: the greedy pitch-first pass can leave a high-interest dev
+  // on one pitch while a low-interest dev (like Tim) got another because the high-interest
+  // dev's cap was used up earlier. Swapping whenever it strictly reduces total interest-
+  // score sum catches these cases, identical to the technique in generateDefaultPlan.
+  const pitchById = new Map(pitches.map(p => [p.id, p]));
+  const swapPitchIds = Object.keys(result).filter(id => !effLocked.has(id) && result[id] !== null);
+
+  let improved = true;
+  while (improved) {
+    improved = false;
+    for (let i = 0; i < swapPitchIds.length; i++) {
+      const pidA = swapPitchIds[i];
+      for (let j = i + 1; j < swapPitchIds.length; j++) {
+        const pidB = swapPitchIds[j];
+        const rA = result[pidA];
+        const rB = result[pidB];
+        if (!rA || !rB || rA === rB) continue;
+        if (lockedPersons.has(rA) || lockedPersons.has(rB)) continue;
+        // Can't swap if a dev would become PQA1 reviewer for their own pitch
+        if (rA === (devByPitchId[pidB] ?? null) || rB === (devByPitchId[pidA] ?? null)) continue;
+        const pA = pitchById.get(pidA)!;
+        const pB = pitchById.get(pidB)!;
+        const curr = pqa1Score(pA, rA) + pqa1Score(pB, rB);
+        const swap = pqa1Score(pA, rB) + pqa1Score(pB, rA);
+        if (swap < curr) {
+          result[pidA] = rB;
+          result[pidB] = rA;
+          improved = true;
+        }
+      }
+    }
+  }
+
   return result;
 }
