@@ -108,101 +108,56 @@ export function generateDefaultPlan(
     selected.push(...catPitches.slice(0, slots));
   });
 
-  // Assign devs: continuation projects lock to their previousDev first (unless at cap
-  // or explicitly low interest), then fill the rest greedily by interest + workload.
-  const devCount: Record<string, number> = {};
-  devNames.forEach(d => { devCount[d] = lockedDevCount[d] ?? 0; });
   const MAX_PER_DEV = 2;
 
-  // Process continuations first so previousDev slots are reserved before open pitches compete.
+  // Continuations prefer their previousDev; open pitches compete freely.
   const continuations = selected.filter(p => p.continuation && p.previousDev && devNames.includes(p.previousDev!));
   const openPitches   = selected.filter(p => !(p.continuation && p.previousDev && devNames.includes(p.previousDev!)));
+  const allSelected   = [...continuations, ...openPitches];
 
-  const sortByPriority = (arr: AllocationPitch[]) =>
-    [...arr].sort((a, b) => pitchPriorityScore(b) - pitchPriorityScore(a));
+  const newAssignments: PlanAssignment[] = [];
 
-  // Sort open pitches by best interest any *eligible* (non-locked) dev has.
-  const sortByInterestThenPriority = (arr: AllocationPitch[]) => {
-    const eligibleDevs = devNames.filter(d => !lockedPersons.has(d));
-    return [...arr].sort((a, b) => {
-      const bestA = eligibleDevs.reduce((min, d) => Math.min(min, (a.devInterest[d] ?? 2.5) as number), 2.5);
-      const bestB = eligibleDevs.reduce((min, d) => Math.min(min, (b.devInterest[d] ?? 2.5) as number), 2.5);
-      if (bestA !== bestB) return bestA - bestB;
-      return pitchPriorityScore(b) - pitchPriorityScore(a);
+  // Expand each dev into (MAX_PER_DEV - lockedDevCount) slots for Hungarian capacity encoding.
+  const devSlots: string[] = [];
+  devNames.forEach(d => {
+    const available = Math.max(0, MAX_PER_DEV - (lockedDevCount[d] ?? 0));
+    for (let s = 0; s < available; s++) devSlots.push(d);
+  });
+
+  if (devSlots.length === 0 || allSelected.length === 0) {
+    allSelected.forEach(p => newAssignments.push({ pitchId: p.id, assignedDev: null, status: 'selected' }));
+  } else {
+    const BIG = 100;
+    const totalCols = Math.max(devSlots.length, allSelected.length);
+    const paddedSlots: (string | null)[] = [
+      ...devSlots,
+      ...new Array(totalCols - devSlots.length).fill(null),
+    ];
+
+    const interestScore = (pitch: AllocationPitch, dev: string): number =>
+      (pitch.devInterest[dev] ?? 2.5) as number;
+
+    const costMatrix: number[][] = allSelected.map(pitch =>
+      paddedSlots.map(dev => {
+        if (dev === null) return BIG;
+        if (lockedPersons.has(dev)) return BIG;
+        // Continuations: strongly prefer previousDev unless they expressed low (tier 4) interest.
+        if (pitch.continuation && pitch.previousDev === dev && interestScore(pitch, dev) !== 4) return 0;
+        return interestScore(pitch, dev);
+      }),
+    );
+
+    const assignment = hungarianMinCost(costMatrix);
+
+    allSelected.forEach((pitch, i) => {
+      const colIdx = assignment[i];
+      const dev = colIdx >= 0 && colIdx < devSlots.length ? devSlots[colIdx] : null;
+      newAssignments.push({
+        pitchId: pitch.id,
+        assignedDev: costMatrix[i][colIdx] >= BIG ? null : dev,
+        status: 'selected',
+      });
     });
-  };
-
-  const assignDev = (pitch: AllocationPitch): string | null => {
-    // For continuations: lock to previousDev unless at cap, locked person, or low interest (tier 4)
-    if (pitch.continuation && pitch.previousDev && devNames.includes(pitch.previousDev)) {
-      const prev = pitch.previousDev;
-      const interest = pitch.devInterest[prev] ?? null;
-      const lowInterest = interest === 4;
-      if (!lowInterest && !lockedPersons.has(prev) && devCount[prev] < MAX_PER_DEV) {
-        devCount[prev]++;
-        return prev;
-      }
-    }
-    // Open assignment: best interest tier, then pitch author, then fewest assignments
-    const best = devNames
-      .filter(d => !lockedPersons.has(d) && devCount[d] < MAX_PER_DEV)
-      .sort((a, b) => {
-        const tA = pitch.devInterest[a] ?? 2.5;
-        const tB = pitch.devInterest[b] ?? 2.5;
-        if (tA !== tB) return (tA as number) - (tB as number);
-        const aAuthor = pitch.author === a ? -1 : 0;
-        const bAuthor = pitch.author === b ? -1 : 0;
-        if (aAuthor !== bAuthor) return aAuthor - bAuthor;
-        return devCount[a] - devCount[b];
-      })[0] ?? null;
-    if (best) devCount[best]++;
-    return best;
-  };
-
-  const newAssignments: PlanAssignment[] = [
-    ...sortByPriority(continuations),
-    ...sortByInterestThenPriority(openPitches),
-  ].map(pitch => ({ pitchId: pitch.id, assignedDev: assignDev(pitch), status: 'selected' as const }));
-
-  // Pairwise-swap improvement on unlocked rows: greedy can leave the last dev
-  // with a tier-4 pitch even though a swap would lower the total interest-tier
-  // sum. Iterate until no swap strictly improves the sum. Continuations locked
-  // to their previousDev (non-tier-4) and locked persons are kept put.
-  const tierOf = (pitch: AllocationPitch | undefined, dev: string | null): number =>
-    pitch && dev ? ((pitch.devInterest[dev] ?? 2.5) as number) : 2.5;
-  const isContinuationLock = (a: PlanAssignment): boolean => {
-    if (a.status !== 'selected' || !a.assignedDev) return false;
-    const p = pitchById.get(a.pitchId);
-    if (!p || !p.continuation || !p.previousDev) return false;
-    return p.previousDev === a.assignedDev && tierOf(p, a.assignedDev) !== 4;
-  };
-
-  let improved = true;
-  while (improved) {
-    improved = false;
-    for (let i = 0; i < newAssignments.length; i++) {
-      const a = newAssignments[i];
-      if (a.status !== 'selected' || !a.assignedDev) continue;
-      if (isContinuationLock(a)) continue;
-      if (lockedPersons.has(a.assignedDev)) continue;
-      for (let j = i + 1; j < newAssignments.length; j++) {
-        const b = newAssignments[j];
-        if (b.status !== 'selected' || !b.assignedDev) continue;
-        if (a.assignedDev === b.assignedDev) continue;
-        if (isContinuationLock(b)) continue;
-        if (lockedPersons.has(b.assignedDev)) continue;
-        const pi = pitchById.get(a.pitchId);
-        const pj = pitchById.get(b.pitchId);
-        const curr = tierOf(pi, a.assignedDev) + tierOf(pj, b.assignedDev);
-        const swap = tierOf(pi, b.assignedDev) + tierOf(pj, a.assignedDev);
-        if (swap < curr) {
-          const tmp = a.assignedDev;
-          a.assignedDev = b.assignedDev;
-          b.assignedDev = tmp;
-          improved = true;
-        }
-      }
-    }
   }
 
   // Combine: locked rows preserve their status+dev, then new selected rows.
