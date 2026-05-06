@@ -1,4 +1,4 @@
-import { lazy, Suspense, useRef, useMemo, useState, useCallback } from 'react';
+import { lazy, Suspense, useRef, useMemo, useState, useCallback, useEffect } from 'react';
 import { useExclusiveSelect } from '../../hooks/useExclusiveSelect';
 import {
   Box, Typography, Paper, Table, TableBody, TableCell, TableHead, TableRow,
@@ -14,12 +14,18 @@ import {
   Autorenew as AutorenewIcon,
   ChevronLeft as ChevronLeftIcon,
   ChevronRight as ChevronRightIcon,
+  SwapHoriz as SwapIcon,
+  Star as StarIcon,
+  Lock as LockIcon,
+  LockOpen as LockOpenIcon,
 } from '@mui/icons-material';
 import type { AllocationPitch, AssignmentStatus, PlanAssignment } from '../../types/allocationTypes';
 import type { AllocationConfig } from '../../types/allocationTypes';
 import { getShortName } from '../../data/teamRoster';
 import InterestChip from './InterestChip';
 import InterestDot from './InterestDot';
+import InterestAlignmentPanel, { tierToPct } from './InterestAlignmentPanel';
+import { useSnackbar } from '../../hooks/useSnackbar';
 
 const DetailsBubble = lazy(() => import('../VotingBoard/PitchCard/DetailsBubble'));
 
@@ -29,6 +35,10 @@ interface Step1ViewProps {
   config: AllocationConfig;
   onDevChange: (pitchId: string, dev: string | null) => void;
   onStatusChange: (pitchId: string, newStatus: AssignmentStatus) => void;
+  lockedPitchIds: string[];
+  lockedPersonNames: string[];
+  onTogglePitchLock: (pitchId: string) => void;
+  onTogglePersonLock: (name: string) => void;
 }
 
 const CATEGORY_SHORT: Record<string, string> = {
@@ -57,6 +67,19 @@ function interestLabel(avg: number): string {
   if (avg <= 2.5) return 'High';
   if (avg <= 3.5) return 'Medium';
   return 'Low';
+}
+
+/** One-decimal format that drops the trailing `.0` so 7.0 reads as "7". */
+function fmtIdeal(v: number): string {
+  const s = v.toFixed(1);
+  return s.endsWith('.0') ? s.slice(0, -2) : s;
+}
+
+function workloadCountColor(count: number, ideal: number): string {
+  const diff = Math.abs(count - ideal);
+  if (diff <= 0.9) return 'text.secondary';
+  if (diff <= 1.9) return 'warning.main';
+  return 'error.main';
 }
 
 // ─── VoteBreakdown: tooltip content showing per-voter priority tiers ──────────
@@ -112,7 +135,44 @@ function DevPitchInfo({ pitch }: { pitch: AllocationPitch }) {
 export default function Step1View({
   pitches, currentAssignments, config,
   onDevChange, onStatusChange,
+  lockedPitchIds, lockedPersonNames, onTogglePitchLock, onTogglePersonLock,
 }: Step1ViewProps) {
+  const lockedPitchSet = useMemo(() => new Set(lockedPitchIds), [lockedPitchIds]);
+  const lockedPersonSet = useMemo(() => new Set(lockedPersonNames), [lockedPersonNames]);
+  const { showSnackbar } = useSnackbar();
+
+  // Reject manual updates that would touch a locked row or move a locked person.
+  // The visible lock icons + this guard let users see what's frozen and why.
+  const tryDevChange = useCallback((pitchId: string, dev: string | null): boolean => {
+    if (lockedPitchSet.has(pitchId)) {
+      showSnackbar('This row is locked. Unlock it to change.', 'warning');
+      return false;
+    }
+    const a = currentAssignments.find(x => x.pitchId === pitchId);
+    if (a?.assignedDev && lockedPersonSet.has(a.assignedDev)) {
+      showSnackbar(`${getShortName(a.assignedDev)} is locked. Unlock them to reassign their pitches.`, 'warning');
+      return false;
+    }
+    if (dev && lockedPersonSet.has(dev)) {
+      showSnackbar(`${getShortName(dev)} is locked. Unlock them to give them a new pitch.`, 'warning');
+      return false;
+    }
+    onDevChange(pitchId, dev);
+    return true;
+  }, [lockedPitchSet, lockedPersonSet, currentAssignments, onDevChange, showSnackbar]);
+
+  const tryStatusChange = useCallback((pitchId: string, newStatus: AssignmentStatus) => {
+    if (lockedPitchSet.has(pitchId)) {
+      showSnackbar('This row is locked. Unlock it to change.', 'warning');
+      return;
+    }
+    const a = currentAssignments.find(x => x.pitchId === pitchId);
+    if (a?.assignedDev && lockedPersonSet.has(a.assignedDev) && newStatus !== 'selected') {
+      showSnackbar(`${getShortName(a.assignedDev)} is locked. Unlock them before unassigning.`, 'warning');
+      return;
+    }
+    onStatusChange(pitchId, newStatus);
+  }, [lockedPitchSet, lockedPersonSet, currentAssignments, onStatusChange, showSnackbar]);
   const [sidebarWidth, setSidebarWidth] = useState(() => Math.round(window.innerWidth / 3));
   const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 1400);
   const sidebarRef = useRef<HTMLDivElement>(null);
@@ -157,7 +217,136 @@ export default function Step1View({
     }, 320);
   }, [currentAssignments, pitchMap]);
 
+  // ── Person focus (click in workload summary → scroll sidebar + flash) ────────
+  const personRefs = useRef<Map<string, HTMLElement>>(new Map());
+  const [highlightPersonName, setHighlightPersonName] = useState<string | null>(null);
+  const handleFocusPerson = useCallback((name: string) => {
+    personRefs.current.get(name)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    setHighlightPersonName(name);
+    setTimeout(() => setHighlightPersonName(null), 1500);
+  }, []);
+
+  const [personCollapsed, setPersonCollapsed] = useState<Record<string, boolean>>({});
+  const togglePerson = (name: string) =>
+    setPersonCollapsed(prev => ({ ...prev, [name]: !prev[name] }));
+
+  // ── Sidebar drag/drop ───────────────────────────────────────────────────────
+  // Direct-DOM updates during drag — no React re-renders on every dragover,
+  // and a custom ghost that bypasses the browser's translucent default image.
+  const sidebarDragRef = useRef<{ pitchId: string; fromDev: string } | null>(null);
+  const sidebarDropElRef = useRef<HTMLElement | null>(null);
+  const sidebarSourceElRef = useRef<HTMLElement | null>(null);
+  const sidebarGhostRef = useRef<HTMLDivElement | null>(null);
+  const sidebarGhostFrameRef = useRef<number | null>(null);
+
+  const handleSidebarMove = useCallback((toDev: string) => {
+    const drag = sidebarDragRef.current;
+    if (!drag || drag.fromDev === toDev) return;
+    tryDevChange(drag.pitchId, toDev);
+  }, [tryDevChange]);
+
+  // dragover fires very fast; coalesce ghost moves to one per animation frame.
+  const handleDocDragOver = useCallback((ev: DragEvent) => {
+    if (!sidebarGhostRef.current || sidebarGhostFrameRef.current != null) return;
+    const x = ev.clientX, y = ev.clientY;
+    sidebarGhostFrameRef.current = requestAnimationFrame(() => {
+      sidebarGhostFrameRef.current = null;
+      const g = sidebarGhostRef.current;
+      if (g) g.style.transform = `translate3d(${x + 12}px, ${y + 16}px, 0)`;
+    });
+  }, []);
+
+  const clearDropHighlight = useCallback(() => {
+    const el = sidebarDropElRef.current;
+    if (!el) return;
+    el.style.backgroundColor = '';
+    el.style.outline = '';
+    el.style.outlineOffset = '';
+    el.style.transition = '';
+    sidebarDropElRef.current = null;
+  }, []);
+
+  const setDropHighlight = useCallback((el: HTMLElement) => {
+    if (sidebarDropElRef.current === el) return;
+    clearDropHighlight();
+    el.style.transition = 'background-color 0.1s ease, outline 0.1s ease';
+    el.style.backgroundColor = 'rgba(25, 118, 210, 0.22)';
+    el.style.outline = '1px dashed rgba(25, 118, 210, 0.7)';
+    el.style.outlineOffset = '-1px';
+    sidebarDropElRef.current = el;
+  }, [clearDropHighlight]);
+
+  const cleanupSidebarDrag = useCallback(() => {
+    document.removeEventListener('dragover', handleDocDragOver);
+    if (sidebarGhostFrameRef.current != null) {
+      cancelAnimationFrame(sidebarGhostFrameRef.current);
+      sidebarGhostFrameRef.current = null;
+    }
+    if (sidebarGhostRef.current) {
+      sidebarGhostRef.current.remove();
+      sidebarGhostRef.current = null;
+    }
+    if (sidebarSourceElRef.current) {
+      sidebarSourceElRef.current.style.opacity = '';
+      sidebarSourceElRef.current.style.transition = '';
+      sidebarSourceElRef.current = null;
+    }
+    clearDropHighlight();
+    sidebarDragRef.current = null;
+  }, [handleDocDragOver, clearDropHighlight]);
+
+  const startSidebarDrag = useCallback((e: React.DragEvent<HTMLElement>, pitchId: string, fromDev: string, label: string) => {
+    sidebarDragRef.current = { pitchId, fromDev };
+    e.dataTransfer.effectAllowed = 'move';
+    try { e.dataTransfer.setData('text/plain', pitchId); } catch { /* ignore */ }
+
+    // 1×1 transparent GIF hides the browser's washed-out default drag image.
+    const transparent = new Image();
+    transparent.src = 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
+    e.dataTransfer.setDragImage(transparent, 0, 0);
+
+    const ghost = document.createElement('div');
+    ghost.textContent = label;
+    ghost.style.cssText = `
+      position: fixed; top: 0; left: 0;
+      transform: translate3d(${e.clientX + 12}px, ${e.clientY + 16}px, 0);
+      padding: 8px 14px;
+      background: #2c2c2c; color: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      border-radius: 6px;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+      font: 500 13px 'Roboto', 'Helvetica', 'Arial', sans-serif;
+      white-space: nowrap; pointer-events: none;
+      z-index: 10000; user-select: none;
+      max-width: 320px; overflow: hidden; text-overflow: ellipsis;
+      will-change: transform;
+    `;
+    document.body.appendChild(ghost);
+    sidebarGhostRef.current = ghost;
+    document.addEventListener('dragover', handleDocDragOver);
+
+    const src = e.currentTarget;
+    src.style.transition = 'opacity 0.1s';
+    src.style.opacity = '0.4';
+    sidebarSourceElRef.current = src;
+  }, [handleDocDragOver]);
+
+  useEffect(() => () => cleanupSidebarDrag(), [cleanupSidebarDrag]);
+
   const categories = Object.keys(config.bandwidth);
+
+  const unavailableDevSet = useMemo(
+    () => new Set(config.unavailableNames ?? []),
+    [config.unavailableNames],
+  );
+  const availableDevNames = useMemo(
+    () => config.devNames.filter(d => !unavailableDevSet.has(d)),
+    [config.devNames, unavailableDevSet],
+  );
+  const unavailableDevNames = useMemo(
+    () => config.devNames.filter(d => unavailableDevSet.has(d)),
+    [config.devNames, unavailableDevSet],
+  );
 
   // ── Draggable sidebar (DOM-direct, no re-render on every mousemove) ──────────
   const handleDragStart = (e: React.MouseEvent) => {
@@ -225,18 +414,36 @@ export default function Step1View({
     // Continuation projects
     const allContinuations = pitches.filter(p => p.continuation);
     const selectedIds = new Set(selectedAssignments.map(a => a.pitchId));
-    const continuationsDropped = allContinuations.filter(p => !selectedIds.has(p.id));
+    const continuationsDropped = allContinuations
+      .filter(p => !selectedIds.has(p.id))
+      .sort((a, b) => Math.min(a.teamPriorityScore, a.tlPriorityScore) - Math.min(b.teamPriorityScore, b.tlPriorityScore));
 
-    // Dev workload
-    const devProjects: Record<string, string[]> = {};
-    config.devNames.forEach(d => { devProjects[d] = []; });
-    selectedAssignments.forEach(a => {
-      if (a.assignedDev) devProjects[a.assignedDev].push(a.pitchId);
+    // Continuation dev consistency: planned continuations where the dev changed from last quarter
+    const continuationsSelected = allContinuations.filter(p => selectedIds.has(p.id));
+    const continuationsDevChanged = continuationsSelected.filter(p => {
+      if (!p.previousDev) return false;
+      const a = selectedAssignments.find(ca => ca.pitchId === p.id);
+      return a?.assignedDev !== null && a?.assignedDev !== p.previousDev;
     });
+
+    // Dev workload (available devs only)
+    const devProjects: Record<string, string[]> = {};
+    availableDevNames.forEach(d => { devProjects[d] = []; });
+    selectedAssignments.forEach(a => {
+      if (a.assignedDev && !unavailableDevSet.has(a.assignedDev)) devProjects[a.assignedDev].push(a.pitchId);
+    });
+
+    // Dev workload balance
+    const devCounts = availableDevNames.map(d => (devProjects[d] ?? []).length);
+    const devSpread = devCounts.length ? Math.max(...devCounts) - Math.min(...devCounts) : 0;
+    const devBalanceScore = Math.max(0, 100 - devSpread * 25);
+    const devIdeal = availableDevNames.length > 0
+      ? devCounts.reduce((s, c) => s + c, 0) / availableDevNames.length
+      : 0;
 
     // Interest alignment: for selected+assigned pitches, what is the assigned dev's interest?
     const assignedInterestTiers = selectedAssignments
-      .filter(a => a.assignedDev)
+      .filter(a => a.assignedDev && !unavailableDevSet.has(a.assignedDev))
       .map(a => pitchMap.get(a.pitchId)?.devInterest[a.assignedDev!] ?? null)
       .filter((t): t is 1 | 2 | 3 | 4 => t !== null);
     const avgAssignedInterest = assignedInterestTiers.length
@@ -246,15 +453,40 @@ export default function Step1View({
 
     const anyDevAssigned = selectedAssignments.some(a => a.assignedDev !== null);
 
+    // Only count pitches where the author is an available dev (eligible for this role)
+    const authoredPitchCount = selectedAssignments.filter(a => {
+      const p = pitchMap.get(a.pitchId);
+      return p?.author != null && availableDevNames.includes(p.author);
+    }).length;
+    const authorMatchedCount = selectedAssignments.filter(a => {
+      const p = pitchMap.get(a.pitchId);
+      return p?.author != null && availableDevNames.includes(p.author) && a.assignedDev === p.author;
+    }).length;
+    // Warning: author is an available dev, has tier-1 interest, but isn't the assigned dev
+    const authorWarningItems = selectedAssignments
+      .filter(a => {
+        const p = pitchMap.get(a.pitchId);
+        return p?.author != null &&
+          availableDevNames.includes(p.author) &&
+          (p.devInterest[p.author] ?? null) === 1 &&
+          a.assignedDev !== p.author;
+      })
+      .map(a => {
+        const p = pitchMap.get(a.pitchId)!;
+        return { label: p.title.replace(/^[^/]+\/\s*/, ''), pitchId: a.pitchId };
+      });
+
     return {
       avgTeamPriority, avgTLPriority,
       catActualPct,
       allContinuations, continuationsDropped,
-      devProjects,
+      continuationsSelected, continuationsDevChanged,
+      devProjects, devBalanceScore, devIdeal,
       avgAssignedInterest, highInterestCount, assignedCount: assignedInterestTiers.length,
       total, anyDevAssigned,
+      authoredPitchCount, authorMatchedCount, authorWarningItems,
     };
-  }, [currentAssignments, pitchMap, categories, config.devNames, pitches]);
+  }, [currentAssignments, pitchMap, categories, availableDevNames, unavailableDevSet, pitches]);
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -264,15 +496,17 @@ export default function Step1View({
       <Box sx={{ flex: 1, overflow: 'auto', p: 2, minWidth: 0 }}>
         {/* Category sections */}
         {categories.map(cat => {
-          const selectedInCat = currentAssignments.filter(
-            a => a.status === 'selected' && pitchMap.get(a.pitchId)?.category === cat
-          );
-          const nextUpInCat = currentAssignments.filter(
-            a => a.status === 'next-up' && pitchMap.get(a.pitchId)?.category === cat
-          );
-          const cutInCat = currentAssignments.filter(
-            a => a.status === 'cut' && pitchMap.get(a.pitchId)?.category === cat
-          );
+          const byPriority = (a: PlanAssignment, b: PlanAssignment) =>
+            (pitchMap.get(a.pitchId)?.teamPriorityScore ?? 5) - (pitchMap.get(b.pitchId)?.teamPriorityScore ?? 5);
+          const selectedInCat = currentAssignments
+            .filter(a => a.status === 'selected' && pitchMap.get(a.pitchId)?.category === cat)
+            .sort(byPriority);
+          const nextUpInCat = currentAssignments
+            .filter(a => a.status === 'next-up' && pitchMap.get(a.pitchId)?.category === cat)
+            .sort(byPriority);
+          const cutInCat = currentAssignments
+            .filter(a => a.status === 'cut' && pitchMap.get(a.pitchId)?.category === cat)
+            .sort(byPriority);
 
           // ITEM 5: project count vs target
           const targetCount = (config.bandwidth[cat] / 100) * stats.total;
@@ -363,12 +597,15 @@ export default function Step1View({
                                   key={a.pitchId}
                                   assignment={a}
                                   pitch={pitchMap.get(a.pitchId)!}
-                                  devNames={config.devNames}
-                                  onDevChange={onDevChange}
-                                  onStatusChange={onStatusChange}
+                                  devNames={availableDevNames}
+                                  onDevChange={tryDevChange}
+                                  onStatusChange={tryStatusChange}
+                                  lockedPersonSet={lockedPersonSet}
                                   highlight="selected"
                                   onRef={registerRow(a.pitchId)}
                                   highlighted={a.pitchId === highlightPitchId}
+                                  locked={lockedPitchSet.has(a.pitchId)}
+                                  onToggleLock={() => onTogglePitchLock(a.pitchId)}
                                 />
                               ))}
                             </TableBody>
@@ -408,12 +645,15 @@ export default function Step1View({
                                   key={a.pitchId}
                                   assignment={a}
                                   pitch={pitchMap.get(a.pitchId)!}
-                                  devNames={config.devNames}
-                                  onDevChange={onDevChange}
-                                  onStatusChange={onStatusChange}
+                                  devNames={availableDevNames}
+                                  onDevChange={tryDevChange}
+                                  onStatusChange={tryStatusChange}
+                                  lockedPersonSet={lockedPersonSet}
                                   highlight="next-up"
                                   onRef={registerRow(a.pitchId)}
                                   highlighted={a.pitchId === highlightPitchId}
+                                  locked={lockedPitchSet.has(a.pitchId)}
+                                  onToggleLock={() => onTogglePitchLock(a.pitchId)}
                                 />
                               ))}
                             </TableBody>
@@ -453,12 +693,15 @@ export default function Step1View({
                                   key={a.pitchId}
                                   assignment={a}
                                   pitch={pitchMap.get(a.pitchId)!}
-                                  devNames={config.devNames}
-                                  onDevChange={onDevChange}
-                                  onStatusChange={onStatusChange}
+                                  devNames={availableDevNames}
+                                  onDevChange={tryDevChange}
+                                  onStatusChange={tryStatusChange}
+                                  lockedPersonSet={lockedPersonSet}
                                   highlight="cut"
                                   onRef={registerRow(a.pitchId)}
                                   highlighted={a.pitchId === highlightPitchId}
+                                  locked={lockedPitchSet.has(a.pitchId)}
+                                  onToggleLock={() => onTogglePitchLock(a.pitchId)}
                                 />
                               ))}
                             </TableBody>
@@ -606,7 +849,8 @@ export default function Step1View({
           </Typography>
         ) : (
           <Box sx={{ mb: 1.5 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mb: 0.5 }}>
+            {/* Planned count + dropped list */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mb: 0.25 }}>
               {stats.continuationsDropped.length === 0 && (
                 <OkIcon fontSize="small" color="success" sx={{ fontSize: '0.9rem' }} />
               )}
@@ -614,24 +858,64 @@ export default function Step1View({
                 {stats.allContinuations.length - stats.continuationsDropped.length}/{stats.allContinuations.length} continuations planned
               </Typography>
             </Box>
-            {stats.continuationsDropped.map(p => (
-              <Box
-                key={p.id}
-                sx={{ overflow: 'hidden', width: '100%', cursor: 'pointer' }}
-                onClick={() => handleFocusPitch(p.id)}
-              >
-                <Tooltip title={`${p.title} — click to jump to this project`}>
-                  <Typography
-                    variant="caption"
-                    color="warning.main"
-                    sx={{ display: 'block', ml: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%',
-                          '&:hover': { textDecoration: 'underline' } }}
-                  >
-                    ✕ {p.title.replace(/^[^/]+\/\s*/, '')}
-                  </Typography>
-                </Tooltip>
+            {stats.continuationsDropped.map(p => {
+              const highPriorityCut = p.teamPriorityScore <= 2.5 || p.tlPriorityScore <= 2.5;
+              const tooltipText = highPriorityCut
+                ? `${p.title} — cut despite high priority (team: ${p.teamPriorityScore.toFixed(1)}, TL: ${p.tlPriorityScore.toFixed(1)}) — click to jump`
+                : `${p.title} — cut (low priority) — click to jump`;
+              return (
+                <Box
+                  key={p.id}
+                  sx={{ overflow: 'hidden', width: '100%', cursor: 'pointer' }}
+                  onClick={() => handleFocusPitch(p.id)}
+                >
+                  <Tooltip title={tooltipText}>
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        display: 'block', ml: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%',
+                        color: highPriorityCut ? 'warning.main' : 'text.disabled',
+                        '&:hover': { textDecoration: 'underline' },
+                      }}
+                    >
+                      ✕ {p.title.replace(/^[^/]+\/\s*/, '')}
+                    </Typography>
+                  </Tooltip>
+                </Box>
+              );
+            })}
+            {/* Same-dev count + changed list (only shown when any selected continuation has previousDev set) */}
+            {stats.continuationsSelected.some(p => p.previousDev) && (<>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mt: 0.5, mb: 0.25 }}>
+                {stats.continuationsDevChanged.length === 0 && (
+                  <OkIcon fontSize="small" color="success" sx={{ fontSize: '0.9rem' }} />
+                )}
+                <Typography variant="caption">
+                  {stats.continuationsSelected.filter(p => p.previousDev).length - stats.continuationsDevChanged.length}/{stats.continuationsSelected.filter(p => p.previousDev).length} have same dev as before
+                </Typography>
               </Box>
-            ))}
+              {stats.continuationsDevChanged.map(p => (
+                <Tooltip
+                  key={p.id}
+                  title={`Dev changed: ${p.previousDev} → ${currentAssignments.find(a => a.pitchId === p.id)?.assignedDev ?? 'unassigned'} — click to jump`}
+                  placement="left"
+                >
+                  <Box
+                    sx={{ display: 'flex', alignItems: 'center', gap: 0.5, ml: 1.5, mt: 0.25, cursor: 'pointer', overflow: 'hidden' }}
+                    onClick={() => handleFocusPitch(p.id)}
+                  >
+                    <SwapIcon sx={{ fontSize: '0.85rem', color: 'info.main', flexShrink: 0 }} />
+                    <Typography
+                      variant="caption"
+                      sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                            '&:hover': { textDecoration: 'underline' } }}
+                    >
+                      {p.title.replace(/^[^/]+\/\s*/, '')}
+                    </Typography>
+                  </Box>
+                </Tooltip>
+              ))}
+            </>)}
           </Box>
         )}
 
@@ -641,37 +925,81 @@ export default function Step1View({
         <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5, textTransform: 'uppercase', letterSpacing: 0.5 }}>
           Interest Alignment
         </Typography>
-        {stats.avgAssignedInterest !== null ? (
-          <Box sx={{ mb: 1.5 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.25 }}>
-              <Typography variant="caption">Avg assigned interest</Typography>
-              <Typography variant="caption" fontWeight={700} sx={{ color: priorityColor(stats.avgAssignedInterest) }}>
-                {stats.avgAssignedInterest.toFixed(2)} · {interestLabel(stats.avgAssignedInterest)}
-              </Typography>
+        <InterestAlignmentPanel
+          overall={{
+            label: 'Avg assigned interest',
+            pct: stats.avgAssignedInterest !== null ? tierToPct(stats.avgAssignedInterest) : null,
+            tier12: stats.highInterestCount,
+            total: stats.assignedCount,
+          }}
+          authoredPitchCount={stats.authoredPitchCount}
+          authorMatchedCount={stats.authorMatchedCount}
+          authorWarningItems={stats.authorWarningItems}
+          onFocusPitch={handleFocusPitch}
+          emptyMessage={stats.anyDevAssigned ? 'No interest data for assigned projects' : 'No devs assigned yet'}
+        />
+
+        <Divider sx={{ my: 1.25 }} />
+
+        {/* ── Section: Workload Balance ── */}
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+          Workload Balance
+        </Typography>
+        {(() => {
+          const flagged = availableDevNames.filter(d =>
+            workloadCountColor((stats.devProjects[d] ?? []).length, stats.devIdeal) !== 'text.secondary'
+          );
+          return (
+            <Box sx={{ mb: 1.5 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mb: 0.5 }}>
+                {flagged.length === 0
+                  ? <Tooltip title="All developers are within the target workload">
+                      <span><OkIcon fontSize="small" color="success" sx={{ fontSize: '0.9rem' }} /></span>
+                    </Tooltip>
+                  : <Tooltip title={`${flagged.length} ${flagged.length === 1 ? 'developer has' : 'developers have'} significantly more or fewer projects than the ${fmtIdeal(stats.devIdeal)} average`}>
+                      <span><WarnIcon fontSize="small" color="warning" sx={{ fontSize: '0.9rem' }} /></span>
+                    </Tooltip>
+                }
+                <Typography variant="caption">
+                  {flagged.length === 0
+                    ? 'All balanced'
+                    : `${flagged.length} ${flagged.length === 1 ? 'dev' : 'devs'} out of target`}
+                </Typography>
+              </Box>
+              {flagged.map(dev => {
+                const count = (stats.devProjects[dev] ?? []).length;
+                return (
+                  <Tooltip key={dev} title="Click to jump to this dev in the list below" placement="left">
+                    <Box
+                      sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', ml: 1.5, mb: 0.2, cursor: 'pointer' }}
+                      onClick={() => handleFocusPerson(dev)}
+                    >
+                      <Typography variant="caption" sx={{ '&:hover': { textDecoration: 'underline' } }}>
+                        {getShortName(dev)}
+                      </Typography>
+                      <Typography variant="caption" fontWeight={600} sx={{ color: workloadCountColor(count, stats.devIdeal) }}>
+                        {count}
+                      </Typography>
+                    </Box>
+                  </Tooltip>
+                );
+              })}
             </Box>
-            <LinearProgress
-              variant="determinate"
-              value={priorityBarPct(stats.avgAssignedInterest)}
-              sx={{ height: 6, borderRadius: 1, bgcolor: 'action.hover', mb: 0.5,
-                '& .MuiLinearProgress-bar': { bgcolor: priorityColor(stats.avgAssignedInterest) } }}
-            />
-            <Typography variant="caption" color="text.secondary">
-              {stats.highInterestCount}/{stats.assignedCount} assignments are tier 1–2
-            </Typography>
-          </Box>
-        ) : (
-          <Typography variant="caption" color="text.disabled" sx={{ display: 'block', mb: 1.5 }}>
-            {stats.anyDevAssigned ? 'No interest data for assigned projects' : 'No devs assigned yet'}
-          </Typography>
-        )}
+          );
+        })()}
 
         <Divider sx={{ my: 1.25 }} />
 
         {/* ── Section: Developer Assignments ── */}
-        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.75, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-          Developer Assignments
-        </Typography>
-        {config.devNames.map(dev => {
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', mb: 0.5 }}>
+          <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: 0.5 }}>
+            Developer Assignments
+          </Typography>
+          <Typography variant="caption" color="text.disabled">
+            Avg {fmtIdeal(stats.devIdeal)} / dev
+          </Typography>
+        </Box>
+        {availableDevNames.map(dev => {
           const pitchIds = [...(stats.devProjects[dev] ?? [])].sort((a, b) => {
             const pA = pitchMap.get(a);
             const pB = pitchMap.get(b);
@@ -681,34 +1009,93 @@ export default function Step1View({
             if (catA !== catB) return catA - catB;
             return pA.teamPriorityScore - pB.teamPriorityScore;
           });
-          const dataStatus = devDataStatus[dev];
-          const workloadWarn = pitchIds.length === 0 || pitchIds.length >= 3;
-          const devNameColor = workloadWarn ? 'warning.main' : 'text.primary';
-          const workloadTooltip = pitchIds.length === 0
-            ? '0 projects assigned'
-            : pitchIds.length >= 3
-              ? '3+ projects — high workload'
-              : '';
+          const devColor = workloadCountColor(pitchIds.length, stats.devIdeal);
+          const isOff = devColor !== 'text.secondary';
           return (
-            <Box key={dev} sx={{ mb: 1 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                <Tooltip title={workloadTooltip} placement="top" disableHoverListener={!workloadWarn}>
-                  <Typography variant="caption" fontWeight={600} sx={{ color: devNameColor }}>
+            <Box
+              key={dev}
+              ref={(el: HTMLDivElement | null) => { if (el) personRefs.current.set(dev, el); else personRefs.current.delete(dev); }}
+              onDragOver={(e) => {
+                const drag = sidebarDragRef.current;
+                if (!drag || drag.fromDev === dev) return;
+                if (lockedPersonSet.has(dev)) return; // can't drop on a locked target
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                setDropHighlight(e.currentTarget as HTMLElement);
+              }}
+              onDragLeave={(e) => {
+                if ((e.currentTarget as HTMLElement).contains(e.relatedTarget as Node)) return;
+                if (sidebarDropElRef.current === e.currentTarget) clearDropHighlight();
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                handleSidebarMove(dev);
+                cleanupSidebarDrag();
+              }}
+              sx={{
+                mb: 1, borderRadius: 0.5, p: 0.5,
+                bgcolor: highlightPersonName === dev ? 'rgba(25, 118, 210, 0.22)' : undefined,
+                transition: highlightPersonName === dev ? 'none' : 'background-color 1.2s ease',
+              }}
+            >
+              <Box
+                sx={{ display: 'flex', alignItems: 'center', gap: 0.5, cursor: 'pointer', userSelect: 'none' }}
+                onClick={() => togglePerson(dev)}
+              >
+                {personCollapsed[dev]
+                  ? <ExpandIcon sx={{ fontSize: '0.9rem', color: 'text.secondary', flexShrink: 0 }} />
+                  : <CollapseIcon sx={{ fontSize: '0.9rem', color: 'text.secondary', flexShrink: 0 }} />
+                }
+                <Tooltip
+                  title={isOff ? `${pitchIds.length} projects (target ~${fmtIdeal(stats.devIdeal)})` : ''}
+                  placement="top"
+                  disableHoverListener={!isOff}
+                >
+                  <Typography variant="caption" fontWeight={600} sx={{ color: isOff ? devColor : 'text.primary' }}>
                     {getShortName(dev)}
                   </Typography>
                 </Tooltip>
-                {pitchIds.length === 0 && (
-                  <Typography variant="caption" color="text.disabled" sx={{ ml: 0.5 }}>
-                    unassigned
-                  </Typography>
-                )}
+                <Tooltip title={lockedPersonSet.has(dev) ? `Locked — auto-assign won't add or remove ${getShortName(dev)}'s pitches. Click to unlock.` : `Lock ${getShortName(dev)} so auto-assign keeps their pitches as-is`}>
+                  <IconButton
+                    size="small"
+                    sx={{ p: 0.2, flexShrink: 0 }}
+                    onClick={(e) => { e.stopPropagation(); onTogglePersonLock(dev); }}
+                  >
+                    {lockedPersonSet.has(dev)
+                      ? <LockIcon sx={{ fontSize: '0.85rem', color: 'primary.main' }} />
+                      : <LockOpenIcon sx={{ fontSize: '0.85rem', color: 'text.disabled' }} />
+                    }
+                  </IconButton>
+                </Tooltip>
+                <Typography variant="caption" color="text.secondary" sx={{ ml: 'auto' }}>
+                  {pitchIds.length}/{fmtIdeal(stats.devIdeal)}
+                </Typography>
               </Box>
+              <Collapse in={!personCollapsed[dev]}>
               {pitchIds.map(pid => {
                 const p = pitchMap.get(pid);
                 if (!p) return null;
                 const shortTitle = p.title.replace(/^[^/]+\/\s*/, '');
+                const pitchLocked = lockedPitchSet.has(pid);
+                const dragBlocked = pitchLocked || lockedPersonSet.has(dev);
                 return (
-                  <Box key={pid} sx={{ display: 'flex', alignItems: 'center', gap: 0.5, ml: 1.5, mt: 0.25 }}>
+                  <Box
+                    key={pid}
+                    data-pitch-id={pid}
+                    draggable={!dragBlocked}
+                    onDragStart={dragBlocked ? undefined : (e) => startSidebarDrag(e, pid, dev, shortTitle)}
+                    onDragEnd={dragBlocked ? undefined : cleanupSidebarDrag}
+                    sx={{
+                      display: 'flex', alignItems: 'center', gap: 0.5, ml: 1.5, mt: 0.25,
+                      cursor: dragBlocked ? 'default' : 'grab', userSelect: 'none',
+                      '&:active': { cursor: dragBlocked ? 'default' : 'grabbing' },
+                    }}
+                  >
+                    {pitchLocked && (
+                      <Tooltip title="This project is locked">
+                        <LockIcon sx={{ fontSize: '0.75rem', color: 'primary.main', flexShrink: 0 }} />
+                      </Tooltip>
+                    )}
                     <Tooltip title={`${p.title} — click to jump`} placement="top-start">
                       <Typography
                         variant="caption"
@@ -721,9 +1108,18 @@ export default function Step1View({
                       </Typography>
                     </Tooltip>
                     <DevPitchInfo pitch={p} />
-                    {p.continuation && (
-                      <Tooltip title="Continuation project">
-                        <AutorenewIcon sx={{ fontSize: '0.75rem', color: 'text.disabled', flexShrink: 0 }} />
+                    {p.continuation && (() => {
+                      const interestLevel = p.devInterest[dev] ?? null;
+                      const gold = p.previousDev === dev && (interestLevel === 1 || interestLevel === 2);
+                      return (
+                        <Tooltip title={gold ? 'Continuation project — was on this team before and has high interest' : 'Continuation project'}>
+                          <AutorenewIcon sx={{ fontSize: '0.75rem', color: gold ? 'success.main' : 'text.disabled', flexShrink: 0 }} />
+                        </Tooltip>
+                      );
+                    })()}
+                    {p.author === dev && (
+                      <Tooltip title="Wrote this pitch">
+                        <StarIcon sx={{ fontSize: '0.75rem', color: (p.devInterest[dev] ?? null) === 1 ? 'success.main' : 'text.disabled', flexShrink: 0 }} />
                       </Tooltip>
                     )}
                     <Box sx={{ flex: 1 }} />
@@ -734,9 +1130,26 @@ export default function Step1View({
                   </Box>
                 );
               })}
+              </Collapse>
             </Box>
           );
         })}
+
+        {unavailableDevNames.length > 0 && (
+          <>
+            <Divider sx={{ my: 1 }} />
+            <Typography variant="caption" color="text.disabled" sx={{ display: 'block', mb: 0.5, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+              Not Available
+            </Typography>
+            {unavailableDevNames.map(dev => (
+              <Box key={dev} sx={{ mb: 0.5, px: 0.5, opacity: 0.5 }}>
+                <Typography variant="caption" color="text.disabled" fontWeight={600}>
+                  {getShortName(dev)}
+                </Typography>
+              </Box>
+            ))}
+          </>
+        )}
       </Box>
       )}
     </Box>
@@ -754,9 +1167,12 @@ interface PitchRowProps {
   highlight: 'selected' | 'next-up' | 'cut';
   onRef?: (el: HTMLTableRowElement | null) => void;
   highlighted?: boolean;
+  locked: boolean;
+  onToggleLock: () => void;
+  lockedPersonSet: ReadonlySet<string>;
 }
 
-function PitchRow({ assignment, pitch, devNames, onDevChange, onStatusChange, highlight, onRef, highlighted }: PitchRowProps) {
+function PitchRow({ assignment, pitch, devNames, onDevChange, onStatusChange, highlight, onRef, highlighted, locked, onToggleLock, lockedPersonSet }: PitchRowProps) {
   const [detailsAnchor, setDetailsAnchor] = useState<HTMLButtonElement | null>(null);
   const devSelectExclusive = useExclusiveSelect(`${pitch.id}-dev`);
 
@@ -771,6 +1187,13 @@ function PitchRow({ assignment, pitch, devNames, onDevChange, onStatusChange, hi
     assignment.assignedDev !== null &&
     assignment.assignedDev !== pitch.previousDev;
 
+  // Warn when the pitch author is a dev, has tier-1 interest, but isn't assigned — only for planned pitches
+  const authorWarning = highlight === 'selected' &&
+    pitch.author &&
+    devNames.includes(pitch.author) &&
+    (pitch.devInterest[pitch.author] ?? null) === 1 &&
+    assignment.assignedDev !== pitch.author;
+
   return (
     <TableRow
       ref={onRef}
@@ -782,6 +1205,14 @@ function PitchRow({ assignment, pitch, devNames, onDevChange, onStatusChange, hi
     >
       <TableCell sx={{ maxWidth: 200 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
+          <Tooltip title={locked ? 'Locked — auto-assign will not change this row. Click to unlock.' : 'Lock this row so auto-assign keeps it as-is'}>
+            <IconButton size="small" sx={{ p: 0.25, flexShrink: 0 }} onClick={onToggleLock}>
+              {locked
+                ? <LockIcon sx={{ fontSize: '0.9rem', color: 'primary.main' }} />
+                : <LockOpenIcon sx={{ fontSize: '0.9rem', color: 'text.disabled' }} />
+              }
+            </IconButton>
+          </Tooltip>
           <Tooltip title={pitch.title} placement="top-start">
             <Typography variant="caption" color={textColor} sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {pitch.title.replace(/^[^/]+\/\s*/, '')}
@@ -847,6 +1278,11 @@ function PitchRow({ assignment, pitch, devNames, onDevChange, onStatusChange, hi
                     <Typography variant="caption" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
                       {getShortName(val as string)}
                     </Typography>
+                    {lockedPersonSet.has(val as string) && (
+                      <Tooltip title={`${getShortName(val as string)} is locked`}>
+                        <LockIcon sx={{ fontSize: '0.85rem', color: 'primary.main', flexShrink: 0 }} />
+                      </Tooltip>
+                    )}
                     <InterestDot
                       level={pitch.devInterest[val as string] ?? null}
                       noData={!((val as string) in pitch.devInterest)}
@@ -865,11 +1301,21 @@ function PitchRow({ assignment, pitch, devNames, onDevChange, onStatusChange, hi
                         <AutorenewIcon sx={{ fontSize: '0.85rem', color: 'text.secondary', flexShrink: 0 }} />
                       </Tooltip>
                     )}
+                    {dev === pitch.author && (
+                      <Tooltip title="Wrote this pitch" placement="left">
+                        <StarIcon sx={{ fontSize: '0.85rem', color: 'text.secondary', flexShrink: 0 }} />
+                      </Tooltip>
+                    )}
                     <InterestChip level={pitch.devInterest[dev] ?? null} noData={!(dev in pitch.devInterest)} />
                   </Box>
                 </MenuItem>
               ))}
             </Select>
+          )}
+          {authorWarning && (
+            <Tooltip title={`${pitch.author} wrote this pitch with highest interest but isn't assigned`} placement="top">
+              <WarnIcon sx={{ fontSize: '0.95rem', color: 'warning.main', flexShrink: 0 }} />
+            </Tooltip>
           )}
           {devChanged && (
             <Tooltip title={`Previous dev: ${pitch.previousDev} — team changed from last quarter`} placement="top">
