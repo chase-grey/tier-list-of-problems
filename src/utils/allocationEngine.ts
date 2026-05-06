@@ -49,8 +49,13 @@ export function generateDefaultPlan(
   });
 
   const { bandwidth, nextUpCount } = config;
-  const unavailableSet = new Set(config.unavailableNames ?? []);
-  const devNames = config.devNames.filter(d => !unavailableSet.has(d));
+  // Stage 2 dev pool excludes both fully-unavailable people AND devs who said
+  // they're only available as PQA1 reviewers (committed to another project).
+  const unavailableForDevSet = new Set([
+    ...(config.unavailableNames ?? []),
+    ...(config.unavailableForDevNames ?? []),
+  ]);
+  const devNames = config.devNames.filter(d => !unavailableForDevSet.has(d));
   const categories = Object.keys(bandwidth);
   const pitchById = new Map(pitches.map(p => [p.id, p]));
 
@@ -227,6 +232,54 @@ export function generateDefaultPlan(
 }
 
 /**
+/**
+ * Min-cost bipartite matching via the Hungarian algorithm (O(n²m)).
+ * cost is an n×m matrix with n ≤ m; returns assignment[i] = column index for row i.
+ */
+function hungarianMinCost(cost: number[][]): number[] {
+  const n = cost.length;
+  if (n === 0) return [];
+  const m = cost[0].length;
+  const INF = 1e15;
+  const u = new Array(n + 1).fill(0);
+  const v = new Array(m + 1).fill(0);
+  const p = new Array(m + 1).fill(0); // p[j] = 1-indexed row currently assigned to col j
+  const way = new Array(m + 1).fill(0);
+
+  for (let i = 1; i <= n; i++) {
+    p[0] = i;
+    let j0 = 0;
+    const minVal = new Array(m + 1).fill(INF);
+    const used = new Array(m + 1).fill(false);
+    do {
+      used[j0] = true;
+      const i0 = p[j0];
+      let delta = INF;
+      let j1 = -1;
+      for (let j = 1; j <= m; j++) {
+        if (!used[j]) {
+          const cur = cost[i0 - 1][j - 1] - u[i0] - v[j];
+          if (cur < minVal[j]) { minVal[j] = cur; way[j] = j0; }
+          if (minVal[j] < delta) { delta = minVal[j]; j1 = j; }
+        }
+      }
+      for (let j = 0; j <= m; j++) {
+        if (used[j]) { u[p[j]] += delta; v[j] -= delta; }
+        else minVal[j] -= delta;
+      }
+      j0 = j1!;
+    } while (p[j0] !== 0);
+    do { const j1 = way[j0]; p[j0] = p[j1]; j0 = j1; } while (j0);
+  }
+
+  const assignment = new Array(n).fill(-1);
+  for (let j = 1; j <= m; j++) {
+    if (p[j] > 0) assignment[p[j] - 1] = j - 1;
+  }
+  return assignment;
+}
+
+/**
  * Auto-assign a PQA1 reviewer for each pitch using round-1 developer interest.
  * The assigned dev is excluded from candidacy. Ties broken by current PQA1 load.
  * Higher-priority pitches (lower teamPriorityScore) are assigned first.
@@ -286,72 +339,50 @@ export function autoAssignPqa1(
     return v === null ? 5 : (v as number);      // explicit null (skipped) → 5; rated → use tier
   };
 
-  // Sort unlocked pitches by best available interest for any eligible (non-locked) dev.
   const unlockedPitches = pitches.filter(p => !effLocked.has(p.id));
-  const sorted = [...unlockedPitches].sort((a, b) => {
-    const exA = devByPitchId[a.id] ?? null;
-    const exB = devByPitchId[b.id] ?? null;
-    const bestA = devNames
-      .filter(d => d !== exA && !lockedPersons.has(d))
-      .reduce((min, d) => Math.min(min, pqa1Score(a, d)), Infinity);
-    const bestB = devNames
-      .filter(d => d !== exB && !lockedPersons.has(d))
-      .reduce((min, d) => Math.min(min, pqa1Score(b, d)), Infinity);
-    if (bestA !== bestB) return bestA - bestB;
-    return a.teamPriorityScore - b.teamPriorityScore;
+
+  if (unlockedPitches.length === 0) return result;
+
+  // Expand each dev into (cap - lockedLoad) individual slots so the Hungarian
+  // algorithm respects per-dev capacity without needing a separate flow layer.
+  const BIG = 100; // cost sentinel for infeasible assignments
+  const devSlots: string[] = [];
+  devNames.forEach(d => {
+    const available = Math.max(0, cap - (pqa1Load[d] ?? 0));
+    for (let s = 0; s < available; s++) devSlots.push(d);
   });
 
-  for (const pitch of sorted) {
+  if (devSlots.length === 0) {
+    unlockedPitches.forEach(p => { result[p.id] = null; });
+    return result;
+  }
+
+  // Pad with dummy null-dev columns if slots are scarcer than pitches so every
+  // pitch row gets exactly one column in the square (n×n) matching.
+  const totalCols = Math.max(devSlots.length, unlockedPitches.length);
+  const paddedSlots: (string | null)[] = [
+    ...devSlots,
+    ...new Array(totalCols - devSlots.length).fill(null),
+  ];
+
+  // Build cost matrix: rows = unlocked pitches, cols = dev slots (+ null padding).
+  const costMatrix: number[][] = unlockedPitches.map(pitch => {
     const assignedDev = devByPitchId[pitch.id] ?? null;
-    const candidate =
-      devNames
-        .filter(d => d !== assignedDev && !lockedPersons.has(d) && pqa1Load[d] < cap)
-        .sort((a, b) => {
-          const tA = pqa1Score(pitch, a);
-          const tB = pqa1Score(pitch, b);
-          if (tA !== tB) return tA - tB;
-          const aAuthor = pitch.author === a ? -1 : 0;
-          const bAuthor = pitch.author === b ? -1 : 0;
-          if (aAuthor !== bAuthor) return aAuthor - bAuthor;
-          return pqa1Load[a] - pqa1Load[b];
-        })[0] ?? null;
+    return paddedSlots.map(dev => {
+      if (dev === null) return BIG;         // dummy slot → will assign null
+      if (dev === assignedDev) return BIG;  // can't review own pitch
+      if (lockedPersons.has(dev)) return BIG;
+      return pqa1Score(pitch, dev);
+    });
+  });
 
-    result[pitch.id] = candidate;
-    if (candidate) pqa1Load[candidate]++;
-  }
+  const assignment = hungarianMinCost(costMatrix);
 
-  // Pairwise-swap improvement: the greedy pitch-first pass can leave a high-interest dev
-  // on one pitch while a low-interest dev (like Tim) got another because the high-interest
-  // dev's cap was used up earlier. Swapping whenever it strictly reduces total interest-
-  // score sum catches these cases, identical to the technique in generateDefaultPlan.
-  const pitchById = new Map(pitches.map(p => [p.id, p]));
-  const swapPitchIds = Object.keys(result).filter(id => !effLocked.has(id) && result[id] !== null);
-
-  let improved = true;
-  while (improved) {
-    improved = false;
-    for (let i = 0; i < swapPitchIds.length; i++) {
-      const pidA = swapPitchIds[i];
-      for (let j = i + 1; j < swapPitchIds.length; j++) {
-        const pidB = swapPitchIds[j];
-        const rA = result[pidA];
-        const rB = result[pidB];
-        if (!rA || !rB || rA === rB) continue;
-        if (lockedPersons.has(rA) || lockedPersons.has(rB)) continue;
-        // Can't swap if a dev would become PQA1 reviewer for their own pitch
-        if (rA === (devByPitchId[pidB] ?? null) || rB === (devByPitchId[pidA] ?? null)) continue;
-        const pA = pitchById.get(pidA)!;
-        const pB = pitchById.get(pidB)!;
-        const curr = pqa1Score(pA, rA) + pqa1Score(pB, rB);
-        const swap = pqa1Score(pA, rB) + pqa1Score(pB, rA);
-        if (swap < curr) {
-          result[pidA] = rB;
-          result[pidB] = rA;
-          improved = true;
-        }
-      }
-    }
-  }
+  unlockedPitches.forEach((pitch, i) => {
+    const colIdx = assignment[i];
+    const dev = colIdx >= 0 && colIdx < devSlots.length ? devSlots[colIdx] : null;
+    result[pitch.id] = costMatrix[i][colIdx] >= BIG ? null : dev;
+  });
 
   return result;
 }
