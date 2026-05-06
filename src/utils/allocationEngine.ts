@@ -125,8 +125,8 @@ export function generateDefaultPlan(
   const sortByInterestThenPriority = (arr: AllocationPitch[]) => {
     const eligibleDevs = devNames.filter(d => !lockedPersons.has(d));
     return [...arr].sort((a, b) => {
-      const bestA = eligibleDevs.reduce((min, d) => Math.min(min, (a.devInterest[d] ?? 5) as number), 5);
-      const bestB = eligibleDevs.reduce((min, d) => Math.min(min, (b.devInterest[d] ?? 5) as number), 5);
+      const bestA = eligibleDevs.reduce((min, d) => Math.min(min, (a.devInterest[d] ?? 2.5) as number), 2.5);
+      const bestB = eligibleDevs.reduce((min, d) => Math.min(min, (b.devInterest[d] ?? 2.5) as number), 2.5);
       if (bestA !== bestB) return bestA - bestB;
       return pitchPriorityScore(b) - pitchPriorityScore(a);
     });
@@ -147,8 +147,8 @@ export function generateDefaultPlan(
     const best = devNames
       .filter(d => !lockedPersons.has(d) && devCount[d] < MAX_PER_DEV)
       .sort((a, b) => {
-        const tA = pitch.devInterest[a] ?? 5;
-        const tB = pitch.devInterest[b] ?? 5;
+        const tA = pitch.devInterest[a] ?? 2.5;
+        const tB = pitch.devInterest[b] ?? 2.5;
         if (tA !== tB) return (tA as number) - (tB as number);
         const aAuthor = pitch.author === a ? -1 : 0;
         const bAuthor = pitch.author === b ? -1 : 0;
@@ -169,7 +169,7 @@ export function generateDefaultPlan(
   // sum. Iterate until no swap strictly improves the sum. Continuations locked
   // to their previousDev (non-tier-4) and locked persons are kept put.
   const tierOf = (pitch: AllocationPitch | undefined, dev: string | null): number =>
-    pitch && dev ? ((pitch.devInterest[dev] ?? 5) as number) : 5;
+    pitch && dev ? ((pitch.devInterest[dev] ?? 2.5) as number) : 2.5;
   const isContinuationLock = (a: PlanAssignment): boolean => {
     if (a.status !== 'selected' || !a.assignedDev) return false;
     const p = pitchById.get(a.pitchId);
@@ -323,20 +323,12 @@ export function autoAssignPqa1(
   // Hard cap so no dev gets more than their fair share regardless of interest advantage.
   const cap = devNames.length > 0 ? Math.ceil(pitches.length / devNames.length) : 0;
 
-  // Devs who submitted at least one interest rating across the pitch set. For these devs,
-  // an absent key means they skipped that specific pitch (score 5). For devs with no data
-  // at all, an absent key just means no information — use neutral score 3 so they can
-  // still receive assignments.
-  const devsWithAnyData = new Set(
-    devNames.filter(d => pitches.some(p => d in p.devInterest)),
-  );
-
+  // Absent key = unrated (no opinion expressed) → neutral 2.5, preferred over medium interest (3).
+  // Only an explicit null means "actively skipped" → 5.
   const pqa1Score = (pitch: AllocationPitch, dev: string): number => {
-    if (!(dev in pitch.devInterest)) {
-      return devsWithAnyData.has(dev) ? 5 : 2.5; // partial-data dev skipped → 5; no data → prefer over tier 3
-    }
+    if (!(dev in pitch.devInterest)) return 2.5;
     const v = pitch.devInterest[dev];
-    return v === null ? 5 : (v as number);      // explicit null (skipped) → 5; rated → use tier
+    return v === null ? 5 : (v as number);
   };
 
   const unlockedPitches = pitches.filter(p => !effLocked.has(p.id));
