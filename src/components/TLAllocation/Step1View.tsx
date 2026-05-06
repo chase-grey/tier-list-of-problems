@@ -736,7 +736,7 @@ export default function Step1View({
             onClick={() => setSidebarOpen(o => !o)}
             sx={{
               position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-              width: 18, height: 18, p: 0, zIndex: 1,
+              width: 18, height: 48, p: 0, zIndex: 1,
               bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider',
               borderRadius: '3px',
               '&:hover': { bgcolor: 'primary.light' },
