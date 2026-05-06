@@ -333,7 +333,7 @@ export function autoAssignPqa1(
 
   const pqa1Score = (pitch: AllocationPitch, dev: string): number => {
     if (!(dev in pitch.devInterest)) {
-      return devsWithAnyData.has(dev) ? 5 : 3; // partial-data dev skipped → 5; no data → neutral 3
+      return devsWithAnyData.has(dev) ? 5 : 2.5; // partial-data dev skipped → 5; no data → prefer over tier 3
     }
     const v = pitch.devInterest[dev];
     return v === null ? 5 : (v as number);      // explicit null (skipped) → 5; rated → use tier
