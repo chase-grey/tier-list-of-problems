@@ -783,12 +783,16 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
     showSnackbar(`Auto-populated with ${name} and ${complete ? 'complete' : 'partial'} votes!`, 'success');
   };
   
-  // Show availability dialog for specific roles after name is set
-  // Only ask QMs, devs, QM TLs, and dev TLs
-  const showAvailabilityDialog = state.voterName !== null && 
+  // Show availability dialog only for the roles that set it in this stage:
+  //   Stage 1 — devs only (canRankInterestStage1)
+  //   Stage 3 — dev TLs and QMs only (canRankInterestStage2)
+  const showAvailabilityDialog = state.voterName !== null &&
     state.voterRole !== null &&
-    isContributorRole(state.voterRole) && 
-    state.available === null;
+    state.available === null &&
+    (appStage2Mode
+      ? canRankInterestStage2(state.voterRole)
+      : canRankInterestStage1(state.voterRole)
+    );
 
   if (isLoading || hasLoadError) {
     return (
