@@ -270,6 +270,15 @@ export function autoAssignPqa1(
   // Hard cap so no dev gets more than their fair share regardless of interest advantage.
   const cap = devNames.length > 0 ? Math.ceil(pitches.length / devNames.length) : 0;
 
+  // Distinguish between "no data submitted" (key absent → neutral 3) and "explicitly
+  // skipped" (key present, value null → 5, worse than any real tier). This prevents
+  // assigning PQA1 on pitches a dev deliberately passed on when rated ones are available.
+  const pqa1Score = (pitch: AllocationPitch, dev: string): number => {
+    if (!(dev in pitch.devInterest)) return 3; // no data: neutral
+    const v = pitch.devInterest[dev];
+    return v === null ? 5 : (v as number);    // skipped: penalise; rated: use tier
+  };
+
   // Sort unlocked pitches by best available interest for any eligible (non-locked) dev.
   const unlockedPitches = pitches.filter(p => !effLocked.has(p.id));
   const sorted = [...unlockedPitches].sort((a, b) => {
@@ -277,10 +286,10 @@ export function autoAssignPqa1(
     const exB = devByPitchId[b.id] ?? null;
     const bestA = devNames
       .filter(d => d !== exA && !lockedPersons.has(d))
-      .reduce((min, d) => Math.min(min, (a.devInterest[d] ?? 3) as number), Infinity);
+      .reduce((min, d) => Math.min(min, pqa1Score(a, d)), Infinity);
     const bestB = devNames
       .filter(d => d !== exB && !lockedPersons.has(d))
-      .reduce((min, d) => Math.min(min, (b.devInterest[d] ?? 3) as number), Infinity);
+      .reduce((min, d) => Math.min(min, pqa1Score(b, d)), Infinity);
     if (bestA !== bestB) return bestA - bestB;
     return a.teamPriorityScore - b.teamPriorityScore;
   });
@@ -291,8 +300,8 @@ export function autoAssignPqa1(
       devNames
         .filter(d => d !== assignedDev && !lockedPersons.has(d) && pqa1Load[d] < cap)
         .sort((a, b) => {
-          const tA = (pitch.devInterest[a] ?? 3) as number;
-          const tB = (pitch.devInterest[b] ?? 3) as number;
+          const tA = pqa1Score(pitch, a);
+          const tB = pqa1Score(pitch, b);
           if (tA !== tB) return tA - tB;
           const aAuthor = pitch.author === a ? -1 : 0;
           const bAuthor = pitch.author === b ? -1 : 0;
