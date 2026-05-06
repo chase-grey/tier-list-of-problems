@@ -14,6 +14,12 @@ export type AllocationVoteData = {
   devInterest: Record<string, number | null>;
 };
 
+export type AllocationVoteResponse = {
+  pitchData: Record<string, AllocationVoteData>;
+  /** Names of team members who explicitly indicated they are NOT available next quarter. */
+  unavailableNames: string[];
+};
+
 async function gasGet<T>(route: string): Promise<T> {
   const response = await fetch(`${API_BASE_URL}?route=${route}`);
   if (!response.ok) {
@@ -45,23 +51,37 @@ export async function fetchAllocationConfig(): Promise<AllocationConfig | null> 
   try {
     const data = await gasGet<AllocationConfig | { error: string }>('config');
     if ('error' in data) return null;
-    return data as AllocationConfig;
+    const cfg = data as Partial<AllocationConfig>;
+    // Reject configs missing the roster arrays — downstream code (auto-assign,
+    // derivePhase2Interests, sidebar render) blindly calls .map on them and
+    // crashes the tree on a malformed response. Treat as no-config so callers
+    // fall back to MOCK_CONFIG instead of breaking.
+    if (!Array.isArray(cfg.devNames) || !Array.isArray(cfg.devTLNames) || !Array.isArray(cfg.qmNames)) {
+      console.warn('Malformed allocation config from backend (missing roster arrays):', data);
+      return null;
+    }
+    return cfg as AllocationConfig;
   } catch {
     return null;
   }
 }
 
 /**
- * Fetch per-pitch, per-voter priority tier data aggregated from the VOTES sheet.
- * Returns a map of pitchId → vote aggregates.
- * Returns {} on error so callers can fall back gracefully.
+ * Fetch per-pitch, per-voter priority tier data aggregated from the VOTES sheet,
+ * plus the list of team members who indicated they are NOT available next quarter.
+ * Returns empty data on error so callers can fall back gracefully.
  */
-export async function fetchAllocationVoteData(): Promise<Record<string, AllocationVoteData>> {
-  if (!API_BASE_URL) return {};
+export async function fetchAllocationVoteData(): Promise<AllocationVoteResponse> {
+  if (!API_BASE_URL) return { pitchData: {}, unavailableNames: [] };
   try {
-    return await gasGet<Record<string, AllocationVoteData>>('allocation-data');
+    const raw = await gasGet<AllocationVoteResponse | Record<string, AllocationVoteData>>('allocation-data');
+    // Handle old backend response shape ({ [pitchId]: AllocationVoteData }) gracefully.
+    if ('pitchData' in raw && typeof raw.pitchData === 'object') {
+      return raw as AllocationVoteResponse;
+    }
+    return { pitchData: raw as Record<string, AllocationVoteData>, unavailableNames: [] };
   } catch {
-    return {};
+    return { pitchData: {}, unavailableNames: [] };
   }
 }
 

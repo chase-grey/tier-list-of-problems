@@ -71,6 +71,7 @@ export const MOCK_CONFIG: AllocationConfig = {
     'Parker Volkman': 'pvolkman@epic.com',
   },
   quarterLabel: 'Nov 26',
+  unavailableNames: ['Ke Li'],
 };
 
 // ─── Score generation ─────────────────────────────────────────────────────────

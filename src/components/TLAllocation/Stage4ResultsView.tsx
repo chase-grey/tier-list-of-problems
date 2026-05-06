@@ -1,9 +1,10 @@
 import { useMemo, useState, useEffect } from 'react';
 import {
   Box, Typography, Table, TableBody, TableCell, TableHead, TableRow,
-  Button, Divider, Link, Paper, Checkbox, FormControlLabel, Chip,
+  Button, Divider, Link, Paper, Checkbox, FormControlLabel, Chip, Tooltip,
 } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import { Star as StarIcon, CheckCircle as OkIcon, Warning as WarnIcon } from '@mui/icons-material';
 import type {
   AllocationPitch, PlanAssignment, StaffingAssignment, AllocationConfig,
 } from '../../types/allocationTypes';
@@ -138,6 +139,20 @@ export default function Stage4ResultsView({ pitches, currentAssignments, step2As
     [fullGrid],
   );
 
+  const authorshipItems = useMemo(() => {
+    const items: { pitch: AllocationPitch; assignedAs: string; interest: number | null }[] = [];
+    fullGrid.forEach(({ pitch, dev, sa }) => {
+      if (!pitch.author) return;
+      const author = pitch.author;
+      if (dev === author)
+        items.push({ pitch, assignedAs: 'Dev', interest: pitch.devInterest[author] ?? null });
+      if (sa.pqa1 === author)
+        items.push({ pitch, assignedAs: 'PQA1', interest: pitch.devInterest[author] ?? null });
+    });
+    return items;
+  }, [fullGrid]);
+  const authorNotTier1Items = authorshipItems.filter(item => item.interest !== 1);
+
   const toggleCheck = (key: string, pitchId: string, field: 'projectCreated' | 'kickoffEmailSent') => {
     setCheckedItems(prev => {
       const next = { ...prev, [key]: !prev[key] };
@@ -220,9 +235,30 @@ export default function Stage4ResultsView({ pitches, currentAssignments, step2As
       </Box>
 
       {/* Full assignment grid */}
-      <Typography variant="h6" fontWeight="bold" sx={{ mb: 1 }}>
-        Full Assignment Grid ({fullGrid.length} projects)
-      </Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+        <Typography variant="h6" fontWeight="bold">Full Assignment Grid ({fullGrid.length} projects)</Typography>
+        {authorshipItems.length > 0 && (
+          <Tooltip
+            title={authorNotTier1Items.length === 0
+              ? 'All pitch authors rated their own pitch tier 1'
+              : authorNotTier1Items.map(({ pitch, assignedAs }) =>
+                  `${pitch.author} (${assignedAs}): ${pitch.title.replace(/^[^/]+\/\s*/, '')} — interest tier ${pitch.devInterest[pitch.author!] ?? 'no data'}`
+                ).join('\n')
+            }
+            slotProps={{ tooltip: { sx: { whiteSpace: 'pre-line' } } }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, cursor: 'default' }}>
+              {authorNotTier1Items.length === 0
+                ? <OkIcon sx={{ fontSize: '0.9rem', color: 'success.main' }} />
+                : <WarnIcon sx={{ fontSize: '0.9rem', color: 'warning.main' }} />
+              }
+              <Typography variant="caption" color="text.secondary">
+                {authorshipItems.length} on {authorshipItems.length === 1 ? 'a pitch' : 'pitches'} they wrote
+              </Typography>
+            </Box>
+          </Tooltip>
+        )}
+      </Box>
       <Table size="small" sx={{ mb: 4, tableLayout: 'fixed' }}>
         <TableHead>
           <TableRow>
@@ -239,8 +275,10 @@ export default function Stage4ResultsView({ pitches, currentAssignments, step2As
           {fullGrid.map(({ pitch, dev, sa }, i) => (
             <TableRow key={pitch.id}>
               <TableCell sx={{ color: 'text.secondary', fontSize: '0.75rem' }}>{i + 1}</TableCell>
-              <TableCell sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {pitch.title}
+              <TableCell sx={{ overflow: 'hidden' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  <Typography variant="body2" noWrap>{pitch.title}</Typography>
+                </Box>
               </TableCell>
               <TableCell>{dev ?? '—'}</TableCell>
               <TableCell>{sa.devTL ?? '—'}</TableCell>
@@ -338,12 +376,19 @@ export default function Stage4ResultsView({ pitches, currentAssignments, step2As
                       mx: -1,
                     }),
                   }}>
-                    <Typography variant="body2" fontWeight={600} sx={{ mb: 0.5 }}>
-                      <Typography component="span" variant="body2" color="text.secondary" sx={{ mr: 0.75 }}>
-                        {pitchIndexById.get(pitch.id)}.
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
+                      <Typography variant="body2" fontWeight={600}>
+                        <Typography component="span" variant="body2" color="text.secondary" sx={{ mr: 0.75 }}>
+                          {pitchIndexById.get(pitch.id)}.
+                        </Typography>
+                        {lastSegment}
                       </Typography>
-                      {lastSegment}
-                    </Typography>
+                      {pitch.author === tl && (
+                        <Tooltip title="Wrote this pitch">
+                          <StarIcon sx={{ fontSize: '0.9rem', color: 'text.disabled', flexShrink: 0 }} />
+                        </Tooltip>
+                      )}
+                    </Box>
 
                     <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start' }}>
                       <Box sx={{ display: 'flex', alignItems: 'flex-start', flex: 1 }}>

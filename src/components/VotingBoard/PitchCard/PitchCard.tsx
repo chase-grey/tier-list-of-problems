@@ -99,7 +99,8 @@ const PitchCard = ({ pitch, vote, index, onSendToBottom, userRole, focused, onSe
             transition: snapshot.isDragging ? 'none' : 'background-color 0.2s ease, box-shadow 0.2s ease',
             cursor: 'grab',
             '&:hover': {
-              backgroundColor: 'background.paper',
+              backgroundColor: (theme) =>
+                theme.palette.mode === 'light' ? 'rgba(0, 0, 0, 0.06)' : 'background.paper',
               boxShadow: 3,
             },
             '&:active': {

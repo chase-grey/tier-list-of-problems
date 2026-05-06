@@ -68,4 +68,6 @@ export interface AllocationConfig {
   memberEmails?: Record<string, string>;
   /** Quarter label used in email subjects, e.g. "4" or "Next Quarter". Defaults to "Next Quarter". */
   quarterLabel?: string;
+  /** Names of team members who indicated they are NOT available next quarter. */
+  unavailableNames?: string[];
 }

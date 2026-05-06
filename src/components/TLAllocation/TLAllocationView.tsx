@@ -38,6 +38,11 @@ interface TLAllocationViewProps {
 const LS_STEP1_KEY = 'tl-alloc-step1-assignments';
 const LS_STEP2_KEY = 'tl-alloc-step2-assignments';
 const LS_UXD_KEY   = 'tl-alloc-uxd';
+const LS_STEP1_LOCKS_KEY = 'tl-alloc-step1-locks';
+const LS_STEP2_LOCKS_KEY = 'tl-alloc-step2-locks';
+
+interface LockSet { pitchIds: string[]; personNames: string[]; }
+const EMPTY_LOCKS: LockSet = { pitchIds: [], personNames: [] };
 
 function lsRead<T>(key: string, fallback: T): T {
   try {
@@ -56,18 +61,43 @@ function autoAssignStep2(
   pitches: AllocationPitch[],
   phase2Interests: Phase2Interest[],
   config: AllocationConfig,
+  options: {
+    lockedPitchIds?: ReadonlySet<string>;
+    lockedPersonNames?: ReadonlySet<string>;
+    currentAssignments?: StaffingAssignment[];
+  } = {},
 ): StaffingAssignment[] {
-  // Sort: continuations first
-  const sorted = [...pitches].sort((a, b) => {
-    if (a.continuation && !b.continuation) return -1;
-    if (!a.continuation && b.continuation) return 1;
-    return 0;
+  const lockedPitchIds = options.lockedPitchIds ?? new Set<string>();
+  const lockedPersons = options.lockedPersonNames ?? new Set<string>();
+  const currentAssignments = options.currentAssignments ?? [];
+  const currentByPitch = new Map(currentAssignments.map(a => [a.pitchId, a]));
+
+  // Person-locks freeze any pitch where they currently hold either role, so
+  // re-running can't rotate them off.
+  const effLocked = new Set(lockedPitchIds);
+  currentAssignments.forEach(a => {
+    if ((a.devTL && lockedPersons.has(a.devTL)) || (a.qm && lockedPersons.has(a.qm))) {
+      effLocked.add(a.pitchId);
+    }
   });
+
+  const unavailableSet = new Set(config.unavailableNames ?? []);
+  const devTLNames = config.devTLNames.filter(n => !unavailableSet.has(n));
+  const qmNames = config.qmNames.filter(n => !unavailableSet.has(n));
 
   const devTLLoad: Record<string, number> = {};
   const qmLoad: Record<string, number> = {};
-  config.devTLNames.forEach(n => { devTLLoad[n] = 0; });
-  config.qmNames.forEach(n => { qmLoad[n] = 0; });
+  devTLNames.forEach(n => { devTLLoad[n] = 0; });
+  qmNames.forEach(n => { qmLoad[n] = 0; });
+
+  // Pre-count locked rows so unlocked candidates compete against the right
+  // baseline load.
+  effLocked.forEach(id => {
+    const a = currentByPitch.get(id);
+    if (!a) return;
+    if (a.devTL && a.devTL in devTLLoad) devTLLoad[a.devTL]++;
+    if (a.qm && a.qm in qmLoad) qmLoad[a.qm]++;
+  });
 
   // Build interest lookup maps keyed by person name so we can sort over the full
   // names list (not just submitters). People with no submission get tier 5 (lowest),
@@ -79,51 +109,78 @@ function autoAssignStep2(
     else if (pi.role === 'QM') qmInterestMap[pi.personName] = pi;
   });
 
-  return sorted.map(pitch => {
+  // Continuations first; locked pitches deferred to the merge step.
+  const unlockedPitches = pitches.filter(p => !effLocked.has(p.id));
+  const sorted = [...unlockedPitches].sort((a, b) => {
+    if (a.continuation && !b.continuation) return -1;
+    if (!a.continuation && b.continuation) return 1;
+    return 0;
+  });
+
+  const newAssignments: StaffingAssignment[] = sorted.map(pitch => {
     let devTL: string | null = null;
     let qm: string | null = null;
 
-    // Continuation: try to keep previousTL
-    if (pitch.continuation && pitch.previousTL && config.devTLNames.includes(pitch.previousTL)) {
+    // Continuation: try to keep previousTL (unless they're locked elsewhere).
+    if (pitch.continuation && pitch.previousTL && devTLNames.includes(pitch.previousTL) && !lockedPersons.has(pitch.previousTL)) {
       devTL = pitch.previousTL;
       devTLLoad[devTL]++;
     }
 
     // Continuation: try to keep previousQM
-    if (pitch.continuation && pitch.previousQM && config.qmNames.includes(pitch.previousQM)) {
+    if (pitch.continuation && pitch.previousQM && qmNames.includes(pitch.previousQM) && !lockedPersons.has(pitch.previousQM)) {
       qm = pitch.previousQM;
       qmLoad[qm]++;
     }
 
-    // Fill unassigned devTL: load wins when one TL has 2+ more projects than another;
-    // otherwise interest (Phase 2 votes) is the primary sort with load as tiebreaker.
+    // Fill unassigned devTL: load is the primary sort, so the spread between any
+    // two TLs stays within 1 across the whole quarter. Interest (Phase 2 votes)
+    // and authorship break ties only when loads are equal.
     if (!devTL) {
-      devTL = [...config.devTLNames].sort((a, b) => {
-        const loadDiff = (devTLLoad[a] ?? 0) - (devTLLoad[b] ?? 0);
-        if (Math.abs(loadDiff) >= 2) return loadDiff;
-        const tA = (devTLInterestMap[a]?.interestByPitchId[pitch.id] ?? 5) as number;
-        const tB = (devTLInterestMap[b]?.interestByPitchId[pitch.id] ?? 5) as number;
-        if (tA !== tB) return tA - tB;
-        return loadDiff;
-      })[0] ?? null;
+      devTL = devTLNames
+        .filter(n => !lockedPersons.has(n))
+        .sort((a, b) => {
+          const loadDiff = (devTLLoad[a] ?? 0) - (devTLLoad[b] ?? 0);
+          if (loadDiff !== 0) return loadDiff;
+          const tA = (devTLInterestMap[a]?.interestByPitchId[pitch.id] ?? 5) as number;
+          const tB = (devTLInterestMap[b]?.interestByPitchId[pitch.id] ?? 5) as number;
+          if (tA !== tB) return tA - tB;
+          const aAuthor = pitch.author === a ? -1 : 0;
+          const bAuthor = pitch.author === b ? -1 : 0;
+          return aAuthor - bAuthor;
+        })[0] ?? null;
       if (devTL) devTLLoad[devTL] = (devTLLoad[devTL] ?? 0) + 1;
     }
 
     // Fill unassigned QM: same pattern as devTL above.
     if (!qm) {
-      qm = [...config.qmNames].sort((a, b) => {
-        const loadDiff = (qmLoad[a] ?? 0) - (qmLoad[b] ?? 0);
-        if (Math.abs(loadDiff) >= 2) return loadDiff;
-        const tA = (qmInterestMap[a]?.interestByPitchId[pitch.id] ?? 5) as number;
-        const tB = (qmInterestMap[b]?.interestByPitchId[pitch.id] ?? 5) as number;
-        if (tA !== tB) return tA - tB;
-        return loadDiff;
-      })[0] ?? null;
+      qm = qmNames
+        .filter(n => !lockedPersons.has(n))
+        .sort((a, b) => {
+          const loadDiff = (qmLoad[a] ?? 0) - (qmLoad[b] ?? 0);
+          if (loadDiff !== 0) return loadDiff;
+          const tA = (qmInterestMap[a]?.interestByPitchId[pitch.id] ?? 5) as number;
+          const tB = (qmInterestMap[b]?.interestByPitchId[pitch.id] ?? 5) as number;
+          if (tA !== tB) return tA - tB;
+          const aAuthor = pitch.author === a ? -1 : 0;
+          const bAuthor = pitch.author === b ? -1 : 0;
+          return aAuthor - bAuthor;
+        })[0] ?? null;
       if (qm) qmLoad[qm] = (qmLoad[qm] ?? 0) + 1;
     }
 
     return { pitchId: pitch.id, devTL, qm };
   });
+
+  // Combine: locked rows preserve their TL/QM (and pqa1, if set), then new rows.
+  const result: StaffingAssignment[] = [];
+  effLocked.forEach(id => {
+    const a = currentByPitch.get(id);
+    if (a) result.push({ ...a });
+  });
+  result.push(...newAssignments);
+
+  return result;
 }
 
 // ─── Derive Phase2Interest[] from pitch devInterest ──────────────────────────
@@ -193,6 +250,26 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
   );
   const [phase2Interests, setPhase2Interests] = useState<Phase2Interest[]>([]);
 
+  // Lock state per stage. A locked pitch keeps its current row across re-runs;
+  // a locked person can't be assigned new work. Persisted in localStorage so
+  // locks survive page reloads.
+  const [step1Locks, setStep1Locks] = useState<LockSet>(() => lsRead(LS_STEP1_LOCKS_KEY, EMPTY_LOCKS));
+  const [step2Locks, setStep2Locks] = useState<LockSet>(() => lsRead(LS_STEP2_LOCKS_KEY, EMPTY_LOCKS));
+  useEffect(() => { lsWrite(LS_STEP1_LOCKS_KEY, step1Locks); }, [step1Locks]);
+  useEffect(() => { lsWrite(LS_STEP2_LOCKS_KEY, step2Locks); }, [step2Locks]);
+
+  const toggleInArray = (arr: string[], item: string): string[] =>
+    arr.includes(item) ? arr.filter(x => x !== item) : [...arr, item];
+
+  const toggleStep1PitchLock = (pitchId: string) =>
+    setStep1Locks(prev => ({ ...prev, pitchIds: toggleInArray(prev.pitchIds, pitchId) }));
+  const toggleStep1PersonLock = (name: string) =>
+    setStep1Locks(prev => ({ ...prev, personNames: toggleInArray(prev.personNames, name) }));
+  const toggleStep2PitchLock = (pitchId: string) =>
+    setStep2Locks(prev => ({ ...prev, pitchIds: toggleInArray(prev.pitchIds, pitchId) }));
+  const toggleStep2PersonLock = (name: string) =>
+    setStep2Locks(prev => ({ ...prev, personNames: toggleInArray(prev.personNames, name) }));
+
   useEffect(() => {
     let cancelled = false;
 
@@ -206,17 +283,24 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
 
     const voteP = fetchAllocationVoteData()
       .then(v => { if (!cancelled) setVoteStatus('done'); return v; })
-      .catch(e => { if (!cancelled) { setVoteStatus('error'); setVoteError(e?.message ?? 'Failed to load vote data'); } return {} as Awaited<ReturnType<typeof fetchAllocationVoteData>>; });
+      .catch(e => { if (!cancelled) { setVoteStatus('error'); setVoteError(e?.message ?? 'Failed to load vote data'); } return { pitchData: {}, unavailableNames: [] } as Awaited<ReturnType<typeof fetchAllocationVoteData>>; });
 
     const configP = fetchAllocationConfig()
       .then(v => { if (!cancelled) setConfigStatus('done'); return v; })
       .catch(e => { if (!cancelled) { setConfigStatus('error'); setConfigError(e?.message ?? 'Failed to load config'); } return null; });
 
-    Promise.all([pitchP, voteP, configP]).then(([pitches, voteData, config]) => {
+    Promise.all([pitchP, voteP, configP]).then(([pitches, voteResponse, config]) => {
       if (cancelled) return;
 
-      const effectiveConfig = config ?? MOCK_CONFIG;
+      const { pitchData: voteData, unavailableNames } = voteResponse;
       const hasRealVotes = Object.keys(voteData).length > 0;
+
+      // Merge unavailableNames from vote data into config (vote data is the authoritative
+      // source since it's derived from what voters actually submitted).
+      const effectiveConfig: AllocationConfig = {
+        ...(config ?? MOCK_CONFIG),
+        ...(unavailableNames.length > 0 ? { unavailableNames } : {}),
+      };
 
       setAllocationConfig(effectiveConfig);
 
@@ -349,7 +433,9 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
     step2InitRef.current = true;
     if (savedStep2.current) return; // Already restored from localStorage via useState init
     const base = autoAssignStep2(selectedPitchesRef.current, phase2Interests, allocationConfig);
-    const pqa1Map = autoAssignPqa1(selectedPitchesRef.current, devByPitchIdRef.current, allocationConfig.devNames);
+    const unavailSet = new Set(allocationConfig.unavailableNames ?? []);
+    const availDevNames = allocationConfig.devNames.filter(d => !unavailSet.has(d));
+    const pqa1Map = autoAssignPqa1(selectedPitchesRef.current, devByPitchIdRef.current, availDevNames);
     setStep2Assignments(base.map(a => ({ ...a, pqa1: pqa1Map[a.pitchId] ?? null })));
   }, [activeStep, loading, phase2Interests, allocationConfig]);
 
@@ -399,11 +485,28 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
 
   const handleRerunAlgorithm = () => {
     if (activeStep === 0) {
-      setPlanAssignments(generateDefaultPlan(allocationPitches, allocationConfig));
+      setPlanAssignments(generateDefaultPlan(allocationPitches, allocationConfig, {
+        lockedPitchIds: new Set(step1Locks.pitchIds),
+        lockedPersonNames: new Set(step1Locks.personNames),
+        currentPlan: planAssignments,
+      }));
       showSnackbar('Plan auto-assigned', 'info');
     } else {
-      const base = autoAssignStep2(selectedPitches, phase2Interests, allocationConfig);
-      const pqa1Map = autoAssignPqa1(selectedPitches, devByPitchId, allocationConfig.devNames);
+      const lockedPitchSet = new Set(step2Locks.pitchIds);
+      const lockedPersonSet = new Set(step2Locks.personNames);
+      const base = autoAssignStep2(selectedPitches, phase2Interests, allocationConfig, {
+        lockedPitchIds: lockedPitchSet,
+        lockedPersonNames: lockedPersonSet,
+        currentAssignments: step2Assignments,
+      });
+      const unavailSet2 = new Set(allocationConfig.unavailableNames ?? []);
+      const availDevNames2 = allocationConfig.devNames.filter(d => !unavailSet2.has(d));
+      const currentPqa1ByPitch = Object.fromEntries(step2Assignments.map(a => [a.pitchId, a.pqa1 ?? null]));
+      const pqa1Map = autoAssignPqa1(selectedPitches, devByPitchId, availDevNames2, {
+        lockedPitchIds: lockedPitchSet,
+        lockedPersonNames: lockedPersonSet,
+        currentPqa1ByPitch,
+      });
       setStep2Assignments(base.map(a => ({ ...a, pqa1: pqa1Map[a.pitchId] ?? null })));
       showSnackbar('Team assignments auto-assigned', 'info');
     }
@@ -479,6 +582,10 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
             config={allocationConfig}
             onDevChange={handleDevChange}
             onStatusChange={handleStatusChange}
+            lockedPitchIds={step1Locks.pitchIds}
+            lockedPersonNames={step1Locks.personNames}
+            onTogglePitchLock={toggleStep1PitchLock}
+            onTogglePersonLock={toggleStep1PersonLock}
           />
         ) : (
           <Step2View
@@ -492,6 +599,10 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
             devNames={allocationConfig.devNames}
             includeUXD={includeUXD}
             onToggleUXD={(pitchId) => setIncludeUXD(prev => ({ ...prev, [pitchId]: !prev[pitchId] }))}
+            lockedPitchIds={step2Locks.pitchIds}
+            lockedPersonNames={step2Locks.personNames}
+            onTogglePitchLock={toggleStep2PitchLock}
+            onTogglePersonLock={toggleStep2PersonLock}
           />
         )}
       </Box>

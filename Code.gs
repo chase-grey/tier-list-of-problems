@@ -232,7 +232,7 @@ function validateNonce(nonce) {
  * @return {TextOutput} JSON response indicating success
  */
 function recordVotes(body) {
-  const {voterName, voterRole, votes} = body;
+  const {voterName, voterRole, votes, available} = body;
   if (!voterName || !votes || !Array.isArray(votes)) {
     return badRequest("Invalid request format");
   }
@@ -244,16 +244,22 @@ function recordVotes(body) {
     }
   }
 
+  // available: true = available, false = not available, undefined = not submitted (treat as available)
+  const availableValue = available === false ? false : true;
+
   return withLock(() => {
     const sh = ss.getSheetByName('VOTES');
     const now = new Date();
 
     if (sh.getLastRow() === 0) {
-      sh.appendRow(['timestamp', 'voterName', 'voterRole', 'pitch_id', 'pitchTitle', 'tier', 'interestLevel']);
+      sh.appendRow(['timestamp', 'voterName', 'voterRole', 'pitch_id', 'pitchTitle', 'tier', 'interestLevel', 'available']);
     } else if (sh.getLastColumn() < 7) {
       // Migrate old schema: insert pitchTitle column after pitch_id (col 4)
       sh.insertColumnAfter(4);
       sh.getRange(1, 5).setValue('pitchTitle');
+    } else if (sh.getLastColumn() < 8) {
+      // Migrate: add available column (col 8)
+      sh.getRange(1, 8).setValue('available');
     }
 
     // Delete all existing rows for this voter so resubmissions overwrite cleanly.
@@ -276,9 +282,10 @@ function recordVotes(body) {
         v.pitch_id,
         v.pitchTitle || '',
         v.tier,
-        (v.interestLevel != null) ? v.interestLevel : ''
+        (v.interestLevel != null) ? v.interestLevel : '',
+        availableValue,
       ]);
-      sh.getRange(sh.getLastRow() + 1, 1, rows.length, 7).setValues(rows);
+      sh.getRange(sh.getLastRow() + 1, 1, rows.length, 8).setValues(rows);
     }
 
     return json200({ saved: votes.length });
@@ -343,21 +350,26 @@ function getAllocationData() {
   const TL_ROLES = new Set(['dev TL', 'TLTL', 'TCap']);
 
   const sh = ss.getSheetByName('VOTES');
-  if (!sh || sh.getLastRow() <= 1) return json200({});
+  if (!sh || sh.getLastRow() <= 1) return json200({ pitchData: {}, unavailableNames: [] });
 
-  const rows = sh.getRange(2, 1, sh.getLastRow() - 1, 7).getValues();
+  const numCols = Math.max(sh.getLastColumn(), 8);
+  const rows = sh.getRange(2, 1, sh.getLastRow() - 1, numCols).getValues();
 
   const pitchVoteMap = {};
   const pitchInterestMap = {};
   const voterRoles = {}; // track each voter's role from their most recent vote row
+  const unavailableSet = new Set(); // voters who explicitly said they are NOT available
   for (const row of rows) {
     const voterName    = row[1]; // column B
     const voterRole    = row[2]; // column C
     const pitchId      = row[3]; // column D
     const tier         = row[5]; // column F (after pitchTitle in col E)
     const interestLevel = row[6]; // column G
+    const available    = row[7]; // column H (added for availability tracking)
     if (!voterName || !pitchId || tier === '' || tier === null || tier === undefined) continue;
     if (voterRole) voterRoles[voterName] = voterRole;
+    // available === false means explicitly not available; undefined/true/'' = available
+    if (available === false) unavailableSet.add(voterName);
     const numTier = Number(tier) === 0 ? 0 : Math.max(1, Math.min(4, Math.round(Number(tier))));
     if (!pitchVoteMap[pitchId]) pitchVoteMap[pitchId] = {};
     pitchVoteMap[pitchId][voterName] = numTier;
@@ -368,7 +380,7 @@ function getAllocationData() {
   }
 
   // Compute aggregates per pitch
-  const result = {};
+  const pitchData = {};
   for (const pitchId of Object.keys(pitchVoteMap)) {
     const voterTiers = pitchVoteMap[pitchId];
     const teamVotes = voterTiers;
@@ -385,10 +397,10 @@ function getAllocationData() {
       ? tlTiers.reduce((s, t) => s + t, 0) / tlTiers.length
       : teamPriorityScore;
     const devInterest = pitchInterestMap[pitchId] || {};
-    result[pitchId] = { teamVotes, tlVotes, teamPriorityScore, tlPriorityScore, devInterest };
+    pitchData[pitchId] = { teamVotes, tlVotes, teamPriorityScore, tlPriorityScore, devInterest };
   }
 
-  return json200(result);
+  return json200({ pitchData, unavailableNames: [...unavailableSet] });
 }
 
 /**

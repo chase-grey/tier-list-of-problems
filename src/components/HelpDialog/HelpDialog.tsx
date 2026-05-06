@@ -162,6 +162,13 @@ const HelpDialog: React.FC<HelpDialogProps> = ({
               <li><Typography variant="body1"><strong>Developer Assignments</strong> — per-dev project list. Click a project name to jump to it.</Typography></li>
             </Box>
 
+            <Typography variant="h6" gutterBottom>Auto-assign</Typography>
+            <Typography variant="body1" paragraph>
+              The <strong>Auto-assign</strong> button (top left, next to the title) re-runs the algorithm
+              to fill in dev assignments. Lock rows or people first to keep specific decisions intact;
+              everything unlocked gets reshuffled. Keyboard shortcut: <strong>Shift+Alt+A</strong>.
+            </Typography>
+
             <Divider sx={{ my: 2 }} />
             <Typography variant="h6" gutterBottom>When you're done</Typography>
             <Typography variant="body1" paragraph>
@@ -276,6 +283,13 @@ const HelpDialog: React.FC<HelpDialogProps> = ({
               Each pitch has a default kickoff email message. Click the <strong>✉</strong> icon to
               view and customize the message. Recipients include the Dev TL, Developer, QM,
               Testing Captain, and UXD (if checked).
+            </Typography>
+
+            <Typography variant="h6" gutterBottom>Auto-assign</Typography>
+            <Typography variant="body1" paragraph>
+              The <strong>Auto-assign</strong> button (top left, next to the title) re-runs the algorithm
+              to fill Dev TL, QM, and PQA1 assignments. Lock rows or people first to keep specific
+              decisions intact; everything unlocked gets reshuffled. Keyboard shortcut: <strong>Shift+Alt+A</strong>.
             </Typography>
 
             <Divider sx={{ my: 2 }} />

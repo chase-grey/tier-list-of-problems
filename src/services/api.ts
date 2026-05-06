@@ -56,6 +56,8 @@ export interface ResultItem {
 export interface SubmitVotesPayload {
   voterName: string;
   voterRole?: string;
+  /** Whether the voter is available to work on projects next quarter. */
+  available?: boolean;
   votes: Array<{
     pitch_id: string;
     tier?: number;
@@ -120,7 +122,7 @@ export async function submitVotes(payload: Omit<SubmitVotesPayload, 'nonce'>): P
     method: 'POST',
     mode: 'no-cors',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ voterName: payload.voterName, voterRole: payload.voterRole, votes: payload.votes }),
+    body: JSON.stringify({ voterName: payload.voterName, voterRole: payload.voterRole, available: payload.available, votes: payload.votes }),
   });
   return payload.votes.length;
 }

@@ -110,6 +110,12 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
     setAllocationSaveState('idle');
   };
   const [submitState, setSubmitState] = useState<'idle' | 'submitted' | 'changed'>('idle');
+  // Snapshot of votes (as sorted JSON) at the time of last successful submission.
+  // Used to detect when the user has undone all changes and restore the green "Finished" state.
+  const submittedVotesSnapshot = useRef<string | null>(null);
+
+  // (The submit-state-tracking useEffect lives below, after `state` is declared
+  //  by useVoteManagement — running it here hits TDZ on every render.)
 
   // Check if we're in Stage 2 mode (configured via environment variable)
   const appStage2Mode = isStage2();
@@ -226,7 +232,13 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
     // In Stage 2 mode, always use 'interest' stage; in Stage 1, use 'priority'
     stage: appStage2Mode ? 'interest' as const : 'priority' as const,
     // Ensure voterRole exists if voterName exists
-    voterRole: savedState.voterRole || (savedState.voterName ? null : initialState.voterRole)
+    voterRole: savedState.voterRole || (savedState.voterName ? null : initialState.voterRole),
+    // Never persist availability across sessions — re-ask on every page load.
+    // If a voter previously set themselves as "not available" (accidentally or in a prior
+    // quarter) and that state is still in localStorage, they'd be silently blocked from
+    // interest ranking with no indication why. Resetting to null forces the dialog to
+    // re-appear each session; clicking Continue with the default switch takes one click.
+    available: null as null,
   };
   
   // Use our centralized vote management hook
@@ -250,6 +262,18 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
       window.localStorage.setItem(appStateStorageKey, JSON.stringify(state));
     } catch { /* ignore quota/security errors */ }
   }, [state, appStateStorageKey]);
+
+  // After a successful submission we snapshot the votes and watch for any change
+  // to flip the Finish button back from "submitted" to "changed".
+  useEffect(() => {
+    if (submittedVotesSnapshot.current === null) return;
+    const current = JSON.stringify(
+      convertVotesToApiFormat(state.votes)
+        .map(v => ({ p: v.pitch_id, t: v.tier, i: v.interestLevel ?? null }))
+        .sort((a, b) => a.p.localeCompare(b.p)),
+    );
+    setSubmitState(current === submittedVotesSnapshot.current ? 'submitted' : 'changed');
+  }, [state.votes]);
 
   // Only pass pitches visible on screen to the keyboard nav hook.
   // In priority stage the board only renders the selected category — passing all
@@ -691,8 +715,13 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
     try {
       const pitchTitleMap = Object.fromEntries(pitches.map(p => [p.id, p.title]));
       const apiVotes = convertVotesToApiFormat(state.votes, pitchTitleMap);
-      await submitVotes({ voterName: state.voterName, voterRole: state.voterRole ?? undefined, votes: apiVotes });
+      await submitVotes({ voterName: state.voterName, voterRole: state.voterRole ?? undefined, available: state.available ?? undefined, votes: apiVotes });
       showSnackbar('Your votes have been submitted successfully!', 'success');
+      submittedVotesSnapshot.current = JSON.stringify(
+        apiVotes
+          .map(v => ({ p: v.pitch_id, t: v.tier, i: v.interestLevel ?? null }))
+          .sort((a, b) => a.p.localeCompare(b.p)),
+      );
       setSubmitState('submitted');
     } catch (err: any) {
       showSnackbar(err?.message || 'Submission failed — please try again', 'error');

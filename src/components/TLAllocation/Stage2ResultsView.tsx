@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react';
 import {
   Box, Typography, Table, TableBody, TableCell, TableHead, TableRow,
-  Button, Divider, Chip, Tabs, Tab, Paper,
+  Button, Divider, Chip, Tabs, Tab, Paper, Tooltip,
 } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import { Star as StarIcon, CheckCircle as OkIcon, Warning as WarnIcon } from '@mui/icons-material';
 import type { AllocationPitch, PlanAssignment, AllocationConfig } from '../../types/allocationTypes';
 import { useSnackbar } from '../../hooks/useSnackbar';
 
@@ -68,6 +69,16 @@ export default function Stage2ResultsView({ pitches, currentAssignments, config 
     return { byDev: map, unassigned };
   }, [selected, config.devNames]);
 
+  const authorshipItems = useMemo(() =>
+    selected.flatMap(({ pitch, assignment }) => {
+      if (!pitch.author || assignment.assignedDev !== pitch.author) return [];
+      const interest = pitch.devInterest[pitch.author] ?? null;
+      return [{ pitch, interest }];
+    }),
+    [selected],
+  );
+  const authorNotTier1Items = authorshipItems.filter(item => item.interest !== 1);
+
   const handleCopy = () => {
     const q = config.quarterLabel ? ` — Q${config.quarterLabel}` : '';
     const lines: string[] = [
@@ -120,9 +131,30 @@ export default function Stage2ResultsView({ pitches, currentAssignments, config 
         </Button>
       </Box>
 
-      <Typography variant="h6" fontWeight="bold" sx={{ mb: 1 }}>
-        Selected Projects ({selected.length})
-      </Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+        <Typography variant="h6" fontWeight="bold">Selected Projects ({selected.length})</Typography>
+        {authorshipItems.length > 0 && (
+          <Tooltip
+            title={authorNotTier1Items.length === 0
+              ? 'All pitch authors rated their own pitch tier 1'
+              : authorNotTier1Items.map(({ pitch }) =>
+                  `${pitch.author}: ${pitch.title.replace(/^[^/]+\/\s*/, '')} — interest tier ${pitch.devInterest[pitch.author!] ?? 'no data'}`
+                ).join('\n')
+            }
+            slotProps={{ tooltip: { sx: { whiteSpace: 'pre-line' } } }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, cursor: 'default' }}>
+              {authorNotTier1Items.length === 0
+                ? <OkIcon sx={{ fontSize: '0.9rem', color: 'success.main' }} />
+                : <WarnIcon sx={{ fontSize: '0.9rem', color: 'warning.main' }} />
+              }
+              <Typography variant="caption" color="text.secondary">
+                {authorshipItems.length} on {authorshipItems.length === 1 ? 'a pitch' : 'pitches'} they wrote
+              </Typography>
+            </Box>
+          </Tooltip>
+        )}
+      </Box>
 
       <Tabs value={viewTab} onChange={(_, v) => setViewTab(v)} sx={{ mb: 2 }}>
         <Tab label="Team Plan" />
@@ -143,8 +175,8 @@ export default function Stage2ResultsView({ pitches, currentAssignments, config 
             {selected.map(({ assignment, pitch }, i) => (
               <TableRow key={pitch.id}>
                 <TableCell sx={{ color: 'text.secondary', fontSize: '0.75rem' }}>{i + 1}</TableCell>
-                <TableCell sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {pitch.title}
+                <TableCell sx={{ overflow: 'hidden' }}>
+                  <Typography variant="body2" noWrap>{pitch.title}</Typography>
                 </TableCell>
                 <TableCell>
                   <Chip label={pitch.category} size="small" />
@@ -172,12 +204,19 @@ export default function Stage2ResultsView({ pitches, currentAssignments, config 
                 <Box component="ol" sx={{ pl: 3, m: 0 }}>
                   {rows.map(({ pitch }) => (
                     <Box component="li" key={pitch.id} sx={{ mb: 0.25 }}>
-                      <Typography variant="body2">
-                        {pitch.title}
-                        <Typography component="span" color="text.secondary" variant="body2" sx={{ ml: 1 }}>
-                          [{pitch.category}]
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        <Typography variant="body2">
+                          {pitch.title}
+                          <Typography component="span" color="text.secondary" variant="body2" sx={{ ml: 1 }}>
+                            [{pitch.category}]
+                          </Typography>
                         </Typography>
-                      </Typography>
+                        {pitch.author === dev && (
+                          <Tooltip title="Wrote this pitch">
+                            <StarIcon sx={{ fontSize: '0.9rem', color: 'text.disabled', flexShrink: 0 }} />
+                          </Tooltip>
+                        )}
+                      </Box>
                     </Box>
                   ))}
                 </Box>

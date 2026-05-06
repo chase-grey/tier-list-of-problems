@@ -6,19 +6,17 @@ import {
   Box,
   IconButton,
   Tooltip,
-  CircularProgress,
 } from '@mui/material';
 import {
-  Send as SendIcon,
   HelpOutline as HelpIcon,
   FormatListNumbered as RankedIcon,
   NavigateNext as NextIcon,
   NavigateBefore as PrevIcon,
   ThumbUp as InterestIcon,
-  CheckCircle as CheckCircleIcon,
   AutoFixHigh as WandIcon,
 } from '@mui/icons-material';
 import { SettingsMenu } from '../SettingsMenu/SettingsMenu';
+import { FinishButton } from './FinishButton';
 
 
 interface TopBarProps {
@@ -108,6 +106,22 @@ export const TopBar = ({
             {appTitle}
           </Typography>
 
+          {allocationMode && !allocationShowResults && onAllocationRerun && (
+            <Tooltip title="Re-run auto-assignment algorithm (Shift+Alt+A)">
+              <Button
+                variant="outlined"
+                color="inherit"
+                size="small"
+                startIcon={<WandIcon />}
+                accessKey="a"
+                onClick={onAllocationRerun}
+                sx={{ ml: 2 }}
+              >
+                <u>A</u>uto-assign
+              </Button>
+            </Tooltip>
+          )}
+
           <Tooltip title="View Instructions (?)">
             <IconButton color="inherit" onClick={onHelpClick} sx={{ ml: 2 }} aria-label="Help">
               <HelpIcon />
@@ -140,18 +154,6 @@ export const TopBar = ({
                 Back to editing
               </Button>
             )}
-            {!allocationShowResults && onAllocationRerun && (
-              <Tooltip title="Re-run auto-assignment algorithm">
-                <Button
-                  variant="outlined"
-                  color="inherit"
-                  startIcon={<WandIcon />}
-                  onClick={onAllocationRerun}
-                >
-                  Auto-assign
-                </Button>
-              </Tooltip>
-            )}
             {allocationHasResults && !allocationShowResults && onAllocationViewSummary && (
               <Button
                 variant="outlined"
@@ -163,41 +165,16 @@ export const TopBar = ({
               </Button>
             )}
             {onAllocationFinish && (
-              <Tooltip
-                title={allocationSaveState === 'waiting' ? 'Sheet is busy — retrying automatically…' : ''}
-                placement="bottom"
-              >
-                <span>
-                  <Button
-                    variant="contained"
-                    color={
-                      allocationSaveState === 'done' ? 'success' :
-                      allocationSaveState === 'waiting' ? 'warning' :
-                      'secondary'
-                    }
-                    startIcon={
-                      allocationSaveState === 'saving' || allocationSaveState === 'waiting'
-                        ? <CircularProgress size={16} color="inherit" />
-                        : allocationSaveState === 'done' ? <CheckCircleIcon /> : <SendIcon />
-                    }
-                    accessKey={allocationSaveState === 'idle' ? 'f' : undefined}
-                    onClick={allocationSaveState === 'idle' ? onAllocationFinish : undefined}
-                    tabIndex={allocationSaveState === 'idle' ? undefined : -1}
-                    aria-label="Finish and save allocation"
-                    sx={{
-                      fontWeight: allocationSaveState === 'idle' ? 'bold' : 'normal',
-                      transition: 'all 0.2s ease',
-                      boxShadow: allocationSaveState === 'idle' ? 3 : 0,
-                      pointerEvents: allocationSaveState === 'idle' ? 'auto' : 'none',
-                    }}
-                  >
-                    {allocationSaveState === 'saving' ? 'Saving…' :
-                     allocationSaveState === 'waiting' ? 'Waiting…' :
-                     allocationSaveState === 'done' ? 'Finished ✓' :
-                     <><u>F</u>inish</>}
-                  </Button>
-                </span>
-              </Tooltip>
+              <FinishButton
+                saveState={
+                  allocationSaveState === 'done' ? 'done' :
+                  allocationSaveState === 'waiting' ? 'waiting' :
+                  allocationSaveState === 'saving' ? 'loading' :
+                  'idle'
+                }
+                onClick={onAllocationFinish}
+                ariaLabel="Finish and save allocation"
+              />
             )}
           </Box>
         )}
@@ -268,28 +245,16 @@ export const TopBar = ({
               </Tooltip>
             )}
 
-            <Button
-              variant="contained"
-              color={submitState === 'submitted' ? 'success' : 'secondary'}
-              startIcon={
-                votingLoading
-                  ? <CircularProgress size={16} color="inherit" />
-                  : submitState === 'submitted' ? <CheckCircleIcon /> : <SendIcon />
+            <FinishButton
+              saveState={
+                submitState === 'submitted' ? 'done' :
+                votingLoading ? 'loading' :
+                'idle'
               }
+              onClick={onFinish}
               disabled={!isExportEnabled && submitState !== 'submitted'}
-              accessKey={submitState !== 'submitted' && !votingLoading ? 'f' : undefined}
-              onClick={submitState !== 'submitted' && !votingLoading ? onFinish : undefined}
-              tabIndex={submitState !== 'submitted' && !votingLoading ? undefined : -1}
-              aria-label="Finish and submit results"
-              sx={{
-                fontWeight: (isExportEnabled && submitState !== 'submitted') ? 'bold' : 'normal',
-                transition: 'all 0.2s ease',
-                boxShadow: (isExportEnabled && submitState !== 'submitted') ? 3 : 0,
-                pointerEvents: (submitState === 'submitted' || votingLoading) ? 'none' : 'auto',
-              }}
-            >
-              {votingLoading ? 'Saving…' : submitState === 'submitted' ? 'Finished ✓' : <><u>F</u>inish</>}
-            </Button>
+              ariaLabel="Finish and submit results"
+            />
           </>
         )}
       </Toolbar>
