@@ -660,7 +660,10 @@
     "id": "8319928",
     "title": "ST / Nov 26 / Help Me Create SmartTools (SmartPhrases/SmartTexts)",
     "category": "Support AI Charting",
-    "continuation": false,
+    "continuation": true,
+    "previousDev": "Gauresh Walia",
+    "previousTL": "Chase Grey",
+    "previousQM": "Parker Volkman",
     "author": "Gauresh Walia",
     "details": {
       "problem": "Using SmartTools can make a user's workflow more efficient, but the overhead cost of creating these Tools themselves often prevents users from getting to use them.\nUsers would like a tool that helps them create SmartTools that they can use to optimize their workflows.",
