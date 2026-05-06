@@ -270,13 +270,20 @@ export function autoAssignPqa1(
   // Hard cap so no dev gets more than their fair share regardless of interest advantage.
   const cap = devNames.length > 0 ? Math.ceil(pitches.length / devNames.length) : 0;
 
-  // Distinguish between "no data submitted" (key absent → neutral 3) and "explicitly
-  // skipped" (key present, value null → 5, worse than any real tier). This prevents
-  // assigning PQA1 on pitches a dev deliberately passed on when rated ones are available.
+  // Devs who submitted at least one interest rating across the pitch set. For these devs,
+  // an absent key means they skipped that specific pitch (score 5). For devs with no data
+  // at all, an absent key just means no information — use neutral score 3 so they can
+  // still receive assignments.
+  const devsWithAnyData = new Set(
+    devNames.filter(d => pitches.some(p => d in p.devInterest)),
+  );
+
   const pqa1Score = (pitch: AllocationPitch, dev: string): number => {
-    if (!(dev in pitch.devInterest)) return 3; // no data: neutral
+    if (!(dev in pitch.devInterest)) {
+      return devsWithAnyData.has(dev) ? 5 : 3; // partial-data dev skipped → 5; no data → neutral 3
+    }
     const v = pitch.devInterest[dev];
-    return v === null ? 5 : (v as number);    // skipped: penalise; rated: use tier
+    return v === null ? 5 : (v as number);      // explicit null (skipped) → 5; rated → use tier
   };
 
   // Sort unlocked pitches by best available interest for any eligible (non-locked) dev.
