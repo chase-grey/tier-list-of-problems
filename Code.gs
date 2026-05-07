@@ -359,30 +359,51 @@ function recordVotes(body) {
     //   - For each pitch in the payload: update the existing row if present,
     //     otherwise append a new row.
     //   - For the voter's other rows (pitches not in this submission):
-    //     refresh the availability + capacity columns (H-M) so the voter's
-    //     latest answers stay consistent across all their rows, but leave
-    //     tier/interestLevel untouched.
-    const buildRow = (v) => [
-      now,
-      voterName,
-      voterRole || '',
-      v.pitch_id,
-      v.pitchTitle || '',
-      v.tier,
-      (v.interestLevel != null) ? v.interestLevel : '',
-      availableValue,
-      availableForPQA1Value,
-      devCapacityValue,
-      pqa1CapacityValue,
-      capacityValue,
-      availabilityCommentValue,
+    //     refresh the availability + capacity columns (H-M) only where the
+    //     payload provided a non-empty value. Stage 3 dev TLs/QMs who already
+    //     have availability data on file may resubmit interest without going
+    //     through the dialog (since we suppress it for known-voted users); we
+    //     don't want that to wipe their stored availability.
+    //
+    // "Provided" means the payload sent a real value, not undefined/blank.
+    // For booleans: explicit true/false. For capacity tiers: a valid string.
+    // For comment: a non-empty string. (Blank comment intentionally is
+    // treated as "no change" — there's no UI to clear a comment standalone.)
+    const provideAvailable = (available === true || available === false);
+    const provideAvailableForPQA1 = (availableForPQA1 === true || availableForPQA1 === false);
+    const provideDevCapacity = !!devCapacityValue;
+    const providePqa1Capacity = !!pqa1CapacityValue;
+    const provideCapacity = !!capacityValue;
+    const provideComment = availabilityCommentValue !== '';
+
+    const mergeAvail = (existingRow) => [
+      provideAvailable           ? availableValue           : (existingRow ? existingRow[7]  : ''),
+      provideAvailableForPQA1    ? availableForPQA1Value    : (existingRow ? existingRow[8]  : ''),
+      provideDevCapacity         ? devCapacityValue         : (existingRow ? existingRow[9]  : ''),
+      providePqa1Capacity        ? pqa1CapacityValue        : (existingRow ? existingRow[10] : ''),
+      provideCapacity            ? capacityValue            : (existingRow ? existingRow[11] : ''),
+      provideComment             ? availabilityCommentValue : (existingRow ? existingRow[12] : ''),
     ];
+
+    const buildRow = (v, existingRow) => {
+      const avail = mergeAvail(existingRow);
+      return [
+        now,
+        voterName,
+        voterRole || (existingRow ? existingRow[2] : '') || '',
+        v.pitch_id,
+        v.pitchTitle || (existingRow ? existingRow[4] : '') || '',
+        v.tier,
+        (v.interestLevel != null) ? v.interestLevel : '',
+        avail[0], avail[1], avail[2], avail[3], avail[4], avail[5],
+      ];
+    };
 
     if (sh.getLastRow() <= 1) {
       // First submission for this voter (or empty sheet). Just append.
       if (votes.length > 0) {
         sh.getRange(sh.getLastRow() + 1, 1, votes.length, 13)
-          .setValues(votes.map(buildRow));
+          .setValues(votes.map(v => buildRow(v, null)));
       }
       return json200({ saved: votes.length });
     }
@@ -393,32 +414,33 @@ function recordVotes(body) {
     const matchedPitchIds = {};
 
     // Pass 1: walk existing rows, in-place update each one belonging to this
-    // voter. Rows in the payload get a full row write; rows not in the payload
-    // only get availability/capacity columns refreshed.
+    // voter. Rows in the payload get a full row write (merging avail/cap with
+    // existing values where the payload didn't provide them); rows not in the
+    // payload only get the provided avail/cap columns refreshed.
     for (let i = 0; i < existing.length; i++) {
       if (existing[i][1] !== voterName) continue;
       const sheetRow = i + 2;
       const pitchId = String(existing[i][3]);
       if (payloadById[pitchId]) {
-        sh.getRange(sheetRow, 1, 1, 13).setValues([buildRow(payloadById[pitchId])]);
+        sh.getRange(sheetRow, 1, 1, 13).setValues([buildRow(payloadById[pitchId], existing[i])]);
         matchedPitchIds[pitchId] = true;
       } else {
-        // Refresh cols H–M (8..13). Leave tier/interestLevel and pitchTitle alone.
-        sh.getRange(sheetRow, 8, 1, 6).setValues([[
-          availableValue,
-          availableForPQA1Value,
-          devCapacityValue,
-          pqa1CapacityValue,
-          capacityValue,
-          availabilityCommentValue,
-        ]]);
+        // Only update cols where the payload provided a value. Leave existing
+        // values for the rest. setValue is per-cell here — it's a few extra
+        // API calls but keeps the merge logic simple and avoids a full row read.
+        if (provideAvailable)         sh.getRange(sheetRow, 8).setValue(availableValue);
+        if (provideAvailableForPQA1)  sh.getRange(sheetRow, 9).setValue(availableForPQA1Value);
+        if (provideDevCapacity)       sh.getRange(sheetRow, 10).setValue(devCapacityValue);
+        if (providePqa1Capacity)      sh.getRange(sheetRow, 11).setValue(pqa1CapacityValue);
+        if (provideCapacity)          sh.getRange(sheetRow, 12).setValue(capacityValue);
+        if (provideComment)           sh.getRange(sheetRow, 13).setValue(availabilityCommentValue);
       }
     }
 
     // Pass 2: append rows for any payload pitches that didn't match an existing row.
     const toAppend = [];
     for (const v of votes) {
-      if (!matchedPitchIds[String(v.pitch_id)]) toAppend.push(buildRow(v));
+      if (!matchedPitchIds[String(v.pitch_id)]) toAppend.push(buildRow(v, null));
     }
     if (toAppend.length > 0) {
       sh.getRange(sh.getLastRow() + 1, 1, toAppend.length, 13).setValues(toAppend);

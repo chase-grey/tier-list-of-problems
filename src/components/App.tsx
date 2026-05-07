@@ -962,9 +962,13 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
   //   Stage 1 — devs only (canRankInterestStage1)
   //   Stage 3 — dev TLs and QMs (canRankInterestStage2), plus devs taking
   //             the late-entry path (no prior interest votes on backend).
+  // Suppress when the backend already has interest votes for the voter — they've
+  // been through this flow before, no need to re-prompt. The submission path
+  // preserves any existing availability fields when the payload omits them.
   const showAvailabilityDialog = state.voterName !== null &&
     state.voterRole !== null &&
     state.available === null &&
+    hasInterestVotesOnBackend !== true &&
     (appStage2Mode
       ? (canRankInterestStage2(state.voterRole) || lateDevInterestEligible)
       : canRankInterestStage1(state.voterRole)
