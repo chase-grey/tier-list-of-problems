@@ -8,6 +8,8 @@ import {
 } from '@mui/material';
 import type { Pitch, Vote } from '../../types/models';
 
+const TIER_LABEL: Record<number, string> = { 1: 'Highest', 2: 'High', 3: 'Medium', 4: 'Low' };
+
 interface InterestDetailsBubbleProps {
   pitch: Pitch;
   vote: Vote | undefined;
@@ -26,22 +28,9 @@ const InterestDetailsBubble = ({ pitch, vote, anchorEl, onClose, userRole }: Int
   const open = Boolean(anchorEl);
   const id = open ? `details-popover-${pitch.id}` : undefined;
 
-  // Get priority tier label
-  const getPriorityLabel = (tier?: number | null) => {
-    if (!tier) return 'Not Set';
-    
-    switch (tier) {
-      case 1: return 'Highest Priority';
-      case 2: return 'Very High Priority';
-      case 3: return 'High Priority';
-      case 4: return 'Moderate Priority';
-      case 5: return 'Low-Moderate Priority';
-      case 6: return 'Low Priority';
-      case 7: return 'Very Low Priority';
-      case 8: return 'Not a Priority';
-      default: return `Tier ${tier}`;
-    }
-  };
+  const priorityLabel = vote?.tier != null && vote.tier > 0
+    ? `${TIER_LABEL[vote.tier] ?? `Tier ${vote.tier}`} (${vote.tier})`
+    : vote?.tier === 0 ? 'Unsorted' : null;
   
   const renderDetailSection = (label: string, content?: string | boolean) => {
     const cleaned = typeof content === 'string'
@@ -133,16 +122,13 @@ const InterestDetailsBubble = ({ pitch, vote, anchorEl, onClose, userRole }: Int
         {/* Add priority tier information at the top */}
         <Box sx={{ mt: 2, mb: 1 }}>
           <Typography variant="subtitle2" color="text.secondary">
-            Priority Ranking
+            Your Priority Ranking
           </Typography>
-          
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1, mb: 1 }}>
-            <Chip 
-              label={`Tier ${vote?.tier || 'N/A'}: ${getPriorityLabel(vote?.tier)}`}
-              color="primary"
-              size="small"
-              variant="outlined"
-            />
+            {priorityLabel != null
+              ? <Chip label={priorityLabel} color="primary" size="small" variant="outlined" />
+              : <Typography variant="body2" color="text.disabled">Not ranked (votes not in this browser)</Typography>
+            }
           </Box>
         </Box>
         
