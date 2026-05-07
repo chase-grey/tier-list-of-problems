@@ -11,12 +11,43 @@ const API_BASE_URL = ((import.meta as any).env?.VITE_API_URL) || '';
 
 const USE_MOCK_API = false;
 
-// All GAS calls go through the Vite dev server proxy at /gas-proxy, which
-// forwards to GAS server-side and follows the 302 redirect that browsers can't.
-const GAS_PROXY = '/gas-proxy';
+// In dev, calls go through the Vite middleware at /gas-proxy so we can read
+// POST response bodies (GAS's 302 redirect breaks CORS for direct browser POSTs).
+// In production (static GitHub Pages build) the middleware doesn't exist, so we
+// hit GAS directly — the same pattern allocationApi.ts uses successfully.
+const IS_DEV_PROXY = import.meta.env.DEV;
+const GAS_BASE = IS_DEV_PROXY ? '/gas-proxy' : API_BASE_URL;
+const GAS_PROXY = GAS_BASE;
 
 function getApiUrl(route: string): string {
-  return `${GAS_PROXY}?route=${route}`;
+  return `${GAS_BASE}?route=${route}`;
+}
+
+/**
+ * POST a JSON payload to a GAS route. In dev we use the Vite proxy and can read
+ * the response body (so callers can detect e.g. lock-contention errors). In
+ * production builds we go directly to GAS with `no-cors` because the redirect
+ * to googleusercontent.com strips CORS headers — the request still executes,
+ * but the response is opaque, so callers receive `synthetic` instead.
+ */
+async function gasJsonPost<T>(route: string, payload: unknown, synthetic: T): Promise<T> {
+  if (IS_DEV_PROXY) {
+    const response = await fetch(`${GAS_BASE}?route=${route}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (data && data.error) throw new ApiError(data.error, response.status || 200);
+    return (data ?? synthetic) as T;
+  }
+  await fetch(`${API_BASE_URL}?route=${route}`, {
+    method: 'POST',
+    mode: 'no-cors',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(payload),
+  });
+  return synthetic;
 }
 
 /**
@@ -113,13 +144,10 @@ export async function refreshPitchesInSheet(pitches: Pitch[]): Promise<void> {
       internCandidate: p.details.internCandidate ?? false,
     })),
   };
-  const response = await fetch(`${GAS_PROXY}?route=refresh-pitches`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify(payload),
-  });
-  if (!response.ok) {
-    console.warn('refreshPitchesInSheet: sheet sync failed', response.status);
+  try {
+    await gasJsonPost('refresh-pitches', payload, { saved: pitches.length });
+  } catch (err) {
+    console.warn('refreshPitchesInSheet: sheet sync failed', err);
   }
 }
 
@@ -205,13 +233,11 @@ export interface FinalAssignmentPayload extends PlanAssignmentPayload {
  * which allows detecting lock-contention errors returned by withLock().
  */
 export async function savePlan(assignments: PlanAssignmentPayload[], submittedBy: string): Promise<number> {
-  const response = await fetch(`${GAS_PROXY}?route=save-plan`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ assignments, submittedBy }),
-  });
-  const data = await response.json().catch(() => ({}));
-  if (data.error) throw new ApiError(data.error, response.status || 200);
+  const data = await gasJsonPost<{ saved?: number }>(
+    'save-plan',
+    { assignments, submittedBy },
+    { saved: assignments.length },
+  );
   return data.saved ?? assignments.length;
 }
 
@@ -220,13 +246,11 @@ export async function savePlan(assignments: PlanAssignmentPayload[], submittedBy
  * merging with the stage 2 dev assignments already stored there.
  */
 export async function saveFinalAssignments(assignments: FinalAssignmentPayload[], submittedBy: string): Promise<number> {
-  const response = await fetch(`${GAS_PROXY}?route=save-final-assignments`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ assignments, submittedBy }),
-  });
-  const data = await response.json().catch(() => ({}));
-  if (data.error) throw new ApiError(data.error, response.status || 200);
+  const data = await gasJsonPost<{ saved?: number }>(
+    'save-final-assignments',
+    { assignments, submittedBy },
+    { saved: assignments.length },
+  );
   return data.saved ?? assignments.length;
 }
 
