@@ -6,7 +6,7 @@ import {
   Checkbox, Collapse, LinearProgress, Button,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import AddPitchDialog from './AddPitchDialog';
+import AddPitchDialog, { type AdhocTeamAssignment } from './AddPitchDialog';
 import {
   Warning as WarnIcon,
   CheckCircle as OkIcon,
@@ -56,7 +56,7 @@ interface Step2ViewProps {
   /** Persists a TL capacity override and updates local state to match. */
   onCapacityOverride: (payload: CapacityOverridePayload) => Promise<void>;
   /** Called when the user adds an ad-hoc project not in the original pitch list. */
-  onAddPitch?: (title: string, category: string) => void;
+  onAddPitch?: (title: string, category: string, committed: boolean, team: AdhocTeamAssignment) => void;
 }
 
 const CAPACITY_LABEL: Record<NonNullable<PersonCapacity['devCapacity']>, string> = {
@@ -182,7 +182,14 @@ export default function Step2View({
   lockedPitchIds, lockedPersonNames, onTogglePitchLock, onTogglePersonLock,
   voterName, onCapacityOverride, onAddPitch,
 }: Step2ViewProps) {
-  const lockedPitchSet = useMemo(() => new Set(lockedPitchIds), [lockedPitchIds]);
+  const committedPitchSet = useMemo(
+    () => new Set(selectedPitches.filter(p => p.committed).map(p => p.id)),
+    [selectedPitches],
+  );
+  const lockedPitchSet = useMemo(
+    () => new Set([...lockedPitchIds, ...committedPitchSet]),
+    [lockedPitchIds, committedPitchSet],
+  );
   const lockedPersonSet = useMemo(() => new Set(lockedPersonNames), [lockedPersonNames]);
   const { showSnackbar } = useSnackbar();
 
@@ -200,6 +207,10 @@ export default function Step2View({
 
   // Reject manual updates that would touch a locked row or move a locked person.
   const tryAssign = useCallback((pitchId: string, field: 'devTL' | 'qm' | 'pqa1', value: string | null): boolean => {
+    if (committedPitchSet.has(pitchId)) {
+      showSnackbar('This is a committed project — it cannot be changed from this view.', 'warning');
+      return false;
+    }
     if (lockedPitchSet.has(pitchId)) {
       showSnackbar('This row is locked. Unlock it to change.', 'warning');
       return false;
@@ -216,15 +227,19 @@ export default function Step2View({
     }
     onAssign(pitchId, field, value);
     return true;
-  }, [lockedPitchSet, lockedPersonSet, assignmentByPitch, onAssign, showSnackbar]);
+  }, [committedPitchSet, lockedPitchSet, lockedPersonSet, assignmentByPitch, onAssign, showSnackbar]);
 
   const tryToggleUXD = useCallback((pitchId: string) => {
+    if (committedPitchSet.has(pitchId)) {
+      showSnackbar('This is a committed project — it cannot be changed from this view.', 'warning');
+      return;
+    }
     if (lockedPitchSet.has(pitchId)) {
       showSnackbar('This row is locked. Unlock it to change.', 'warning');
       return;
     }
     onToggleUXD(pitchId);
-  }, [lockedPitchSet, onToggleUXD, showSnackbar]);
+  }, [committedPitchSet, lockedPitchSet, onToggleUXD, showSnackbar]);
   // ── Sidebar resize (Item 5) ──────────────────────────────────────────────
   const [sidebarWidth, setSidebarWidth] = useState(() => Math.round(window.innerWidth / 3));
   const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 1400);
@@ -439,7 +454,11 @@ export default function Step2View({
       if (!map[p.category]) map[p.category] = [];
       map[p.category].push(p);
     });
-    Object.values(map).forEach(arr => arr.sort((a, b) => a.teamPriorityScore - b.teamPriorityScore));
+    // Committed projects sort first ("highest priority"), then by team priority score.
+    Object.values(map).forEach(arr => arr.sort((a, b) => {
+      if (!!a.committed !== !!b.committed) return a.committed ? -1 : 1;
+      return a.teamPriorityScore - b.teamPriorityScore;
+    }));
     return map;
   }, [selectedPitches]);
 
@@ -669,6 +688,9 @@ export default function Step2View({
           <AddPitchDialog
             open={addDialogOpen}
             categories={categories}
+            devNames={config.devNames}
+            devTLNames={config.devTLNames}
+            qmNames={config.qmNames}
             onAdd={onAddPitch}
             onClose={() => setAddDialogOpen(false)}
           />
@@ -738,6 +760,7 @@ export default function Step2View({
                           locked={lockedPitchSet.has(pitch.id)}
                           onToggleLock={() => onTogglePitchLock(pitch.id)}
                           lockedPersonSet={lockedPersonSet}
+                          committed={committedPitchSet.has(pitch.id)}
                         />
                       );
                     })}
@@ -1281,12 +1304,13 @@ interface Step2RowProps {
   locked: boolean;
   onToggleLock: () => void;
   lockedPersonSet: ReadonlySet<string>;
+  committed?: boolean;
 }
 
 function Step2Row({
   pitch, assignment, devTLInterests, qmInterests, devTLNames, qmNames, devNames, devHasAnyData,
   onAssign, onRef, highlighted, devName, includeUXD, onToggleUXD,
-  locked, onToggleLock, lockedPersonSet,
+  locked, onToggleLock, lockedPersonSet, committed,
 }: Step2RowProps) {
   const [detailsAnchor, setDetailsAnchor] = useState<HTMLButtonElement | null>(null);
 
@@ -1318,14 +1342,29 @@ function Step2Row({
     >
       <TableCell>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
-          <Tooltip title={locked ? 'Locked — auto-assign will not change this row. Click to unlock.' : 'Lock this row so auto-assign keeps it as-is'}>
-            <IconButton size="small" sx={{ p: 0.25, flexShrink: 0 }} onClick={onToggleLock}>
-              {locked
-                ? <LockIcon sx={{ fontSize: '0.9rem', color: 'primary.main' }} />
-                : <LockOpenIcon sx={{ fontSize: '0.9rem', color: 'text.disabled' }} />
-              }
-            </IconButton>
-          </Tooltip>
+          {committed ? (
+            <Tooltip title="Committed — already allocated for next quarter; cannot be changed from this view">
+              <Box
+                component="span"
+                sx={{
+                  display: 'inline-flex', alignItems: 'center', height: 16, px: 0.75, mr: 0.25,
+                  borderRadius: 8, fontSize: '0.6rem', fontWeight: 700,
+                  bgcolor: 'success.main', color: 'success.contrastText',
+                }}
+              >
+                COMMITTED
+              </Box>
+            </Tooltip>
+          ) : (
+            <Tooltip title={locked ? 'Locked — auto-assign will not change this row. Click to unlock.' : 'Lock this row so auto-assign keeps it as-is'}>
+              <IconButton size="small" sx={{ p: 0.25, flexShrink: 0 }} onClick={onToggleLock}>
+                {locked
+                  ? <LockIcon sx={{ fontSize: '0.9rem', color: 'primary.main' }} />
+                  : <LockOpenIcon sx={{ fontSize: '0.9rem', color: 'text.disabled' }} />
+                }
+              </IconButton>
+            </Tooltip>
+          )}
           <Tooltip title={pitch.title} placement="top-start">
             <Typography variant="caption" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {pitch.title.replace(/^[^/]+\/\s*/, '')}
@@ -1362,6 +1401,7 @@ function Step2Row({
       <TableCell align="center" sx={{ p: 0 }}>
         <Checkbox
           size="small"
+          disabled={committed}
           checked={includeUXD}
           onChange={onToggleUXD}
           sx={{ p: 0.5 }}
@@ -1386,6 +1426,7 @@ function Step2Row({
               previousPerson={pitch.previousTL}
               author={author}
               lockedPersonSet={lockedPersonSet}
+              disabled={committed}
             />
           </Box>
           {devTLAuthorWarning && (
@@ -1413,6 +1454,7 @@ function Step2Row({
               previousPerson={pitch.previousQM}
               author={author}
               lockedPersonSet={lockedPersonSet}
+              disabled={committed}
             />
           </Box>
           {qmAuthorWarning && (
@@ -1440,6 +1482,7 @@ function Step2Row({
               onChange={v => onAssign(pitch.id, 'pqa1', v)}
               author={author}
               lockedPersonSet={lockedPersonSet}
+              disabled={committed}
             />
           </Box>
           {pqa1AuthorWarning && (
@@ -1465,9 +1508,10 @@ interface Pqa1DropdownProps {
   onChange: (val: string | null) => void;
   author?: string | null;
   lockedPersonSet: ReadonlySet<string>;
+  disabled?: boolean;
 }
 
-function Pqa1Dropdown({ value, devNames, devInterest, devHasAnyData, excludeDev, selectId, onChange, author, lockedPersonSet }: Pqa1DropdownProps) {
+function Pqa1Dropdown({ value, devNames, devInterest, devHasAnyData, excludeDev, selectId, onChange, author, lockedPersonSet, disabled }: Pqa1DropdownProps) {
   const exclusive = useExclusiveSelect(selectId);
   const sorted = devNames
     .filter(d => d !== excludeDev)
@@ -1481,6 +1525,7 @@ function Pqa1Dropdown({ value, devNames, devInterest, devHasAnyData, excludeDev,
     <Select
       {...exclusive}
       size="small"
+      disabled={disabled}
       value={value ?? ''}
       onChange={e => onChange(e.target.value || null)}
       displayEmpty
@@ -1542,9 +1587,10 @@ interface AssignmentDropdownProps {
   previousPerson?: string;
   author?: string | null;
   lockedPersonSet: ReadonlySet<string>;
+  disabled?: boolean;
 }
 
-function AssignmentDropdown({ value, allNames, options, pitchId, selectId, onChange, previousPerson, author, lockedPersonSet }: AssignmentDropdownProps) {
+function AssignmentDropdown({ value, allNames, options, pitchId, selectId, onChange, previousPerson, author, lockedPersonSet, disabled }: AssignmentDropdownProps) {
   const interestMap = new Map(options.map(o => [o.personName, o]));
   const exclusive = useExclusiveSelect(selectId);
 
@@ -1563,6 +1609,7 @@ function AssignmentDropdown({ value, allNames, options, pitchId, selectId, onCha
     <Select
       {...exclusive}
       size="small"
+      disabled={disabled}
       value={value ?? ''}
       onChange={e => onChange(e.target.value || null)}
       displayEmpty

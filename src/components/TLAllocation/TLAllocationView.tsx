@@ -10,6 +10,7 @@ import {
 import { fetchAllocationConfig, fetchAllocationVoteData, setCapacityOverride } from '../../services/allocationApi';
 import type { CapacityOverridePayload } from '../../services/allocationApi';
 import { savePlan, saveFinalAssignments } from '../../services/api';
+import type { AdhocTeamAssignment } from './AddPitchDialog';
 import { useSnackbar } from '../../hooks/useSnackbar';
 import { generateDefaultPlan, autoAssignPqa1, capForPerson } from '../../utils/allocationEngine';
 import { fetchPitches } from '../../services/api';
@@ -481,6 +482,9 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
   const selectedPitchesRef = useRef(selectedPitches);
   selectedPitchesRef.current = selectedPitches;
 
+  const step2AssignmentsRef = useRef(step2Assignments);
+  step2AssignmentsRef.current = step2Assignments;
+
   const handleStep2Assign = (pitchId: string, field: 'devTL' | 'qm' | 'pqa1', value: string | null) => {
     onAllocationChange?.();
     setStep2Assignments(prev => {
@@ -490,13 +494,14 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
     });
   };
 
-  const handleAddAdhocPitch = (title: string, category: string) => {
+  const handleAddAdhocPitch = (title: string, category: string, committed: boolean, team: AdhocTeamAssignment) => {
     const id = `adhoc-${Date.now()}`;
     const pitch: AllocationPitch = {
       id,
       title,
       category,
       continuation: false,
+      committed,
       author: null,
       details: { problem: '' },
       teamVotes: {},
@@ -506,9 +511,26 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
       devInterest: {},
     };
     setAdhocPitches(prev => [...prev, pitch]);
-    setPlanAssignments(prev => [...prev, { pitchId: id, assignedDev: null, status: 'selected' }]);
-    if (activeStep === 1) {
-      setStep2Assignments(prev => [...prev, { pitchId: id, devTL: null, qm: null, pqa1: null }]);
+    setPlanAssignments(prev => [...prev, { pitchId: id, assignedDev: team.dev, status: 'selected' }]);
+    // Always add to step2Assignments so pre-filled team data survives step2 init.
+    setStep2Assignments(prev => [...prev, { pitchId: id, devTL: team.devTL, qm: team.qm, pqa1: team.pqa1 }]);
+    if (committed) {
+      setStep1Locks(prev => ({ ...prev, pitchIds: [...prev.pitchIds, id] }));
+      setStep2Locks(prev => ({ ...prev, pitchIds: [...prev.pitchIds, id] }));
+    }
+    const hasTeam = team.dev || team.devTL || team.qm || team.pqa1;
+    if (hasTeam) {
+      saveFinalAssignments([{
+        pitchId: id,
+        pitchTitle: title,
+        status: 'selected',
+        assignedDev: team.dev,
+        devTL: team.devTL,
+        qm: team.qm,
+        pqa1: team.pqa1,
+      }], voterName).catch((err: any) => {
+        showSnackbar(`Project added locally — failed to save to sheet: ${err?.message ?? 'unknown error'}`, 'warning');
+      });
     }
   };
 
@@ -543,18 +565,23 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
       return level === undefined || level === 1 || level === 2;
     };
 
+    // Pitches already in step2Assignments (e.g. adhoc adds from step 1) keep their
+    // pre-filled team data — only initialize pitches that don't have an entry yet.
+    const existingIds = new Set(step2AssignmentsRef.current.map(a => a.pitchId));
     const continuationLocks: string[] = [];
-    const initialStep2 = selectedPitchesRef.current.map(p => {
-      if (p.continuation) {
-        const devTL = p.previousTL && devTLSet.has(p.previousTL) && isWilling(p.previousTL, p.id) ? p.previousTL : null;
-        const qm   = p.previousQM  && qmSet.has(p.previousQM)   && isWilling(p.previousQM,  p.id) ? p.previousQM  : null;
-        if (devTL && qm) continuationLocks.push(p.id);
-        return { pitchId: p.id, devTL, qm, pqa1: null };
-      }
-      return { pitchId: p.id, devTL: null, qm: null, pqa1: null };
-    });
+    const toInit = selectedPitchesRef.current
+      .filter(p => !existingIds.has(p.id))
+      .map(p => {
+        if (p.continuation) {
+          const devTL = p.previousTL && devTLSet.has(p.previousTL) && isWilling(p.previousTL, p.id) ? p.previousTL : null;
+          const qm   = p.previousQM  && qmSet.has(p.previousQM)   && isWilling(p.previousQM,  p.id) ? p.previousQM  : null;
+          if (devTL && qm) continuationLocks.push(p.id);
+          return { pitchId: p.id, devTL, qm, pqa1: null };
+        }
+        return { pitchId: p.id, devTL: null, qm: null, pqa1: null };
+      });
 
-    setStep2Assignments(initialStep2);
+    setStep2Assignments(prev => [...prev, ...toInit]);
     if (continuationLocks.length > 0) {
       setStep2Locks(prev => ({
         ...prev,

@@ -142,6 +142,7 @@ export async function refreshPitchesInSheet(pitches: Pitch[]): Promise<void> {
       success: p.details.success ?? '',
       maintenance: p.details.maintenance ?? '',
       internCandidate: p.details.internCandidate ?? false,
+      committed: p.committed ?? false,
     })),
   };
   try {

@@ -4,6 +4,12 @@ export interface Pitch {
   title: string;           // terse name on card
   category: string;        // strategic category for voting
   continuation?: boolean;
+  /**
+   * Pre-allocated for next quarter — work is already committed (e.g. carryover
+   * from a customer escalation, leadership directive). Skips priority + interest
+   * voting and surfaces in TL allocation as a locked, read-only row.
+   */
+  committed?: boolean;
   author?: string | null;  // Person who wrote the pitch (used as assignment tiebreaker)
   previousDev?: string;    // Lead dev from last quarter (continuation projects only)
   previousTL?: string;     // Dev TL from last quarter (continuation projects only)

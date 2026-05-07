@@ -6,7 +6,7 @@ import {
   LinearProgress, Chip, Collapse, IconButton, Button,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import AddPitchDialog from './AddPitchDialog';
+import AddPitchDialog, { type AdhocTeamAssignment } from './AddPitchDialog';
 import {
   ExpandMore as ExpandIcon,
   ExpandLess as CollapseIcon,
@@ -50,7 +50,7 @@ interface Step1ViewProps {
   /** Persists a TL capacity override and updates local state to match. */
   onCapacityOverride: (payload: CapacityOverridePayload) => Promise<void>;
   /** Called when the user adds an ad-hoc project not in the original pitch list. */
-  onAddPitch?: (title: string, category: string) => void;
+  onAddPitch?: (title: string, category: string, committed: boolean, team: AdhocTeamAssignment) => void;
 }
 
 const CATEGORY_SHORT: Record<string, string> = {
@@ -174,7 +174,14 @@ export default function Step1View({
   lockedPitchIds, lockedPersonNames, onTogglePitchLock, onTogglePersonLock,
   voterName, onCapacityOverride, onAddPitch,
 }: Step1ViewProps) {
-  const lockedPitchSet = useMemo(() => new Set(lockedPitchIds), [lockedPitchIds]);
+  const committedPitchSet = useMemo(
+    () => new Set(pitches.filter(p => p.committed).map(p => p.id)),
+    [pitches],
+  );
+  const lockedPitchSet = useMemo(
+    () => new Set([...lockedPitchIds, ...committedPitchSet]),
+    [lockedPitchIds, committedPitchSet],
+  );
   const lockedPersonSet = useMemo(() => new Set(lockedPersonNames), [lockedPersonNames]);
   const { showSnackbar } = useSnackbar();
 
@@ -189,6 +196,10 @@ export default function Step1View({
   // Reject manual updates that would touch a locked row or move a locked person.
   // The visible lock icons + this guard let users see what's frozen and why.
   const tryDevChange = useCallback((pitchId: string, dev: string | null): boolean => {
+    if (committedPitchSet.has(pitchId)) {
+      showSnackbar('This is a committed project — it cannot be changed from this view.', 'warning');
+      return false;
+    }
     if (lockedPitchSet.has(pitchId)) {
       showSnackbar('This row is locked. Unlock it to change.', 'warning');
       return false;
@@ -204,9 +215,13 @@ export default function Step1View({
     }
     onDevChange(pitchId, dev);
     return true;
-  }, [lockedPitchSet, lockedPersonSet, currentAssignments, onDevChange, showSnackbar]);
+  }, [committedPitchSet, lockedPitchSet, lockedPersonSet, currentAssignments, onDevChange, showSnackbar]);
 
   const tryStatusChange = useCallback((pitchId: string, newStatus: AssignmentStatus) => {
+    if (committedPitchSet.has(pitchId)) {
+      showSnackbar('This is a committed project — it stays planned.', 'warning');
+      return;
+    }
     if (lockedPitchSet.has(pitchId)) {
       showSnackbar('This row is locked. Unlock it to change.', 'warning');
       return;
@@ -217,7 +232,7 @@ export default function Step1View({
       return;
     }
     onStatusChange(pitchId, newStatus);
-  }, [lockedPitchSet, lockedPersonSet, currentAssignments, onStatusChange, showSnackbar]);
+  }, [committedPitchSet, lockedPitchSet, lockedPersonSet, currentAssignments, onStatusChange, showSnackbar]);
   const [sidebarWidth, setSidebarWidth] = useState(() => Math.round(window.innerWidth / 3));
   const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 1400);
   const sidebarRef = useRef<HTMLDivElement>(null);
@@ -546,14 +561,22 @@ export default function Step1View({
           <AddPitchDialog
             open={addDialogOpen}
             categories={categories}
+            devNames={config.devNames}
+            devTLNames={config.devTLNames}
+            qmNames={config.qmNames}
             onAdd={onAddPitch}
             onClose={() => setAddDialogOpen(false)}
           />
         )}
         {/* Category sections */}
         {categories.map(cat => {
-          const byPriority = (a: PlanAssignment, b: PlanAssignment) =>
-            (pitchMap.get(a.pitchId)?.teamPriorityScore ?? 5) - (pitchMap.get(b.pitchId)?.teamPriorityScore ?? 5);
+          const byPriority = (a: PlanAssignment, b: PlanAssignment) => {
+            // Committed pitches sort first ("highest priority"), then by team priority score.
+            const aCommitted = committedPitchSet.has(a.pitchId);
+            const bCommitted = committedPitchSet.has(b.pitchId);
+            if (aCommitted !== bCommitted) return aCommitted ? -1 : 1;
+            return (pitchMap.get(a.pitchId)?.teamPriorityScore ?? 5) - (pitchMap.get(b.pitchId)?.teamPriorityScore ?? 5);
+          };
           const selectedInCat = currentAssignments
             .filter(a => a.status === 'selected' && pitchMap.get(a.pitchId)?.category === cat)
             .sort(byPriority);
@@ -662,6 +685,7 @@ export default function Step1View({
                                   highlighted={a.pitchId === highlightPitchId}
                                   locked={lockedPitchSet.has(a.pitchId)}
                                   onToggleLock={() => onTogglePitchLock(a.pitchId)}
+                                  committed={committedPitchSet.has(a.pitchId)}
                                 />
                               ))}
                             </TableBody>
@@ -710,6 +734,7 @@ export default function Step1View({
                                   highlighted={a.pitchId === highlightPitchId}
                                   locked={lockedPitchSet.has(a.pitchId)}
                                   onToggleLock={() => onTogglePitchLock(a.pitchId)}
+                                  committed={committedPitchSet.has(a.pitchId)}
                                 />
                               ))}
                             </TableBody>
@@ -758,6 +783,7 @@ export default function Step1View({
                                   highlighted={a.pitchId === highlightPitchId}
                                   locked={lockedPitchSet.has(a.pitchId)}
                                   onToggleLock={() => onTogglePitchLock(a.pitchId)}
+                                  committed={committedPitchSet.has(a.pitchId)}
                                 />
                               ))}
                             </TableBody>
@@ -1304,9 +1330,10 @@ interface PitchRowProps {
   locked: boolean;
   onToggleLock: () => void;
   lockedPersonSet: ReadonlySet<string>;
+  committed?: boolean;
 }
 
-function PitchRow({ assignment, pitch, devNames, onDevChange, onStatusChange, highlight, onRef, highlighted, locked, onToggleLock, lockedPersonSet }: PitchRowProps) {
+function PitchRow({ assignment, pitch, devNames, onDevChange, onStatusChange, highlight, onRef, highlighted, locked, onToggleLock, lockedPersonSet, committed }: PitchRowProps) {
   const [detailsAnchor, setDetailsAnchor] = useState<HTMLButtonElement | null>(null);
   const devSelectExclusive = useExclusiveSelect(`${pitch.id}-dev`);
 
@@ -1339,14 +1366,25 @@ function PitchRow({ assignment, pitch, devNames, onDevChange, onStatusChange, hi
     >
       <TableCell sx={{ maxWidth: 200 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
-          <Tooltip title={locked ? 'Locked — auto-assign will not change this row. Click to unlock.' : 'Lock this row so auto-assign keeps it as-is'}>
-            <IconButton size="small" sx={{ p: 0.25, flexShrink: 0 }} onClick={onToggleLock}>
-              {locked
-                ? <LockIcon sx={{ fontSize: '0.9rem', color: 'primary.main' }} />
-                : <LockOpenIcon sx={{ fontSize: '0.9rem', color: 'text.disabled' }} />
-              }
-            </IconButton>
-          </Tooltip>
+          {committed ? (
+            <Tooltip title="Committed — already allocated for next quarter; cannot be changed from this view">
+              <Chip
+                label="COMMITTED"
+                size="small"
+                color="success"
+                sx={{ height: 16, fontSize: '0.6rem', fontWeight: 700, mr: 0.25, '& .MuiChip-label': { px: 0.75 } }}
+              />
+            </Tooltip>
+          ) : (
+            <Tooltip title={locked ? 'Locked — auto-assign will not change this row. Click to unlock.' : 'Lock this row so auto-assign keeps it as-is'}>
+              <IconButton size="small" sx={{ p: 0.25, flexShrink: 0 }} onClick={onToggleLock}>
+                {locked
+                  ? <LockIcon sx={{ fontSize: '0.9rem', color: 'primary.main' }} />
+                  : <LockOpenIcon sx={{ fontSize: '0.9rem', color: 'text.disabled' }} />
+                }
+              </IconButton>
+            </Tooltip>
+          )}
           <Tooltip title={pitch.title} placement="top-start">
             <Typography variant="caption" color={textColor} sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {pitch.title.replace(/^[^/]+\/\s*/, '')}
@@ -1403,6 +1441,7 @@ function PitchRow({ assignment, pitch, devNames, onDevChange, onStatusChange, hi
             <Select
               {...devSelectExclusive}
               size="small"
+              disabled={committed}
               value={assignment.assignedDev ?? ''}
               onChange={e => onDevChange(pitch.id, e.target.value || null)}
               displayEmpty
@@ -1466,30 +1505,34 @@ function PitchRow({ assignment, pitch, devNames, onDevChange, onStatusChange, hi
       <TableCell sx={{ px: 1 }}>
         <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-end' }}>
           {/* ITEM 7: descriptive tooltips on status chips */}
-          <Tooltip title="Include in this quarter's projects">
+          <Tooltip title={committed ? 'Committed projects are always planned' : "Include in this quarter's projects"}>
             <Chip label="Plan" size="small"
-              onClick={() => onStatusChange(pitch.id, 'selected')}
+              onClick={committed ? undefined : () => onStatusChange(pitch.id, 'selected')}
               color={highlight === 'selected' ? 'primary' : 'default'}
               variant={highlight === 'selected' ? 'filled' : 'outlined'}
-              sx={{ cursor: 'pointer', fontSize: '0.65rem', minWidth: 36 }}
+              sx={{ cursor: committed ? 'default' : 'pointer', fontSize: '0.65rem', minWidth: 36, opacity: committed ? 0.85 : 1 }}
             />
           </Tooltip>
-          <Tooltip title="Queue as a potential project — will create a record with blank staffing">
-            <Chip label="Up Next" size="small"
-              onClick={() => onStatusChange(pitch.id, 'next-up')}
-              color={highlight === 'next-up' ? 'info' : 'default'}
-              variant={highlight === 'next-up' ? 'filled' : 'outlined'}
-              sx={{ cursor: 'pointer', fontSize: '0.65rem', minWidth: 44 }}
-            />
-          </Tooltip>
-          <Tooltip title="Cut from this quarter">
-            <Chip label="Not Now" size="small"
-              onClick={() => onStatusChange(pitch.id, 'cut')}
-              color="default"
-              variant={highlight === 'cut' ? 'filled' : 'outlined'}
-              sx={{ cursor: 'pointer', fontSize: '0.65rem', minWidth: 52, color: highlight === 'cut' ? undefined : 'text.disabled' }}
-            />
-          </Tooltip>
+          {!committed && (
+            <Tooltip title="Queue as a potential project — will create a record with blank staffing">
+              <Chip label="Up Next" size="small"
+                onClick={() => onStatusChange(pitch.id, 'next-up')}
+                color={highlight === 'next-up' ? 'info' : 'default'}
+                variant={highlight === 'next-up' ? 'filled' : 'outlined'}
+                sx={{ cursor: 'pointer', fontSize: '0.65rem', minWidth: 44 }}
+              />
+            </Tooltip>
+          )}
+          {!committed && (
+            <Tooltip title="Cut from this quarter">
+              <Chip label="Not Now" size="small"
+                onClick={() => onStatusChange(pitch.id, 'cut')}
+                color="default"
+                variant={highlight === 'cut' ? 'filled' : 'outlined'}
+                sx={{ cursor: 'pointer', fontSize: '0.65rem', minWidth: 52, color: highlight === 'cut' ? undefined : 'text.disabled' }}
+              />
+            </Tooltip>
+          )}
         </Box>
       </TableCell>
     </TableRow>

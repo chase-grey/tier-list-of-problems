@@ -203,13 +203,17 @@ function doPost(e) {
 function getPitches() {
   const sh = ss.getSheetByName('PITCHES');
   const rows = sh.getDataRange().getValues().slice(1); // skip header
+  // Column order matches refreshPitches headers:
+  //   0:pitch_id 1:title 2:problem 3:ideaForSolution 4:whyNow 5:smartToolsFit
+  //   6:epicFit  7:maintenance 8:internCandidate 9:characteristics 10:success
+  //   11:committed
   const data = rows.map(r => ({
     pitch_id: r[0],
     title: r[1],
     problem: r[2],
     idea: r[3],
-    characteristics: r[4],
-    // Add other fields as needed
+    characteristics: r[9],
+    committed: r[11] === true || r[11] === 'true' || r[11] === 'TRUE',
   }));
   return json200(data);
 }
@@ -1256,7 +1260,12 @@ function createEmcRecords(body) {
  * Creates the sheet if it does not exist. Clears all existing data before writing.
  *
  * Expected body: { pitches: { pitch_id, title, problem, ideaForSolution, whyNow,
- *   smartToolsFit, epicFit, maintenance, internCandidate, characteristics, success }[] }
+ *   smartToolsFit, epicFit, maintenance, internCandidate, characteristics, success,
+ *   committed }[] }
+ *
+ * The `committed` column flags pitches that are pre-allocated for next quarter —
+ * they skip priority/interest voting and surface as locked rows in TL allocation.
+ * Admins can flip a pitch to/from committed by editing this column directly.
  *
  * @param {Object} body - Parsed request body
  * @return {TextOutput} JSON { updated: number }
@@ -1266,7 +1275,7 @@ function refreshPitches(body) {
   const sh = ss.getSheetByName('PITCHES') || ss.insertSheet('PITCHES');
   sh.clearContents();
 
-  const headers = ['pitch_id', 'title', 'problem', 'ideaForSolution', 'whyNow', 'smartToolsFit', 'epicFit', 'maintenance', 'internCandidate', 'characteristics', 'success'];
+  const headers = ['pitch_id', 'title', 'problem', 'ideaForSolution', 'whyNow', 'smartToolsFit', 'epicFit', 'maintenance', 'internCandidate', 'characteristics', 'success', 'committed'];
   const rows = [headers].concat(pitches.map(p => headers.map(k => p[k] != null ? p[k] : '')));
   sh.getRange(1, 1, rows.length, headers.length).setValues(rows);
 

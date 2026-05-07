@@ -36,10 +36,12 @@ export default function Stage2ResultsView({ pitches, currentAssignments, config 
       .filter(a => a.status === 'selected')
       .map(a => ({ assignment: a, pitch: pitchById[a.pitchId] }))
       .filter(({ pitch }) => pitch != null)
-      .sort((a, b) =>
-        (CATEGORY_ORDER[a.pitch.category] ?? 99) - (CATEGORY_ORDER[b.pitch.category] ?? 99) ||
-        a.pitch.teamPriorityScore - b.pitch.teamPriorityScore
-      ),
+      .sort((a, b) => {
+        // Committed projects float to the top, then category, then team priority.
+        if (!!a.pitch.committed !== !!b.pitch.committed) return a.pitch.committed ? -1 : 1;
+        return (CATEGORY_ORDER[a.pitch.category] ?? 99) - (CATEGORY_ORDER[b.pitch.category] ?? 99) ||
+          a.pitch.teamPriorityScore - b.pitch.teamPriorityScore;
+      }),
     [currentAssignments, pitchById],
   );
 
@@ -176,7 +178,12 @@ export default function Stage2ResultsView({ pitches, currentAssignments, config 
               <TableRow key={pitch.id}>
                 <TableCell sx={{ color: 'text.secondary', fontSize: '0.75rem' }}>{i + 1}</TableCell>
                 <TableCell sx={{ overflow: 'hidden' }}>
-                  <Typography variant="body2" noWrap>{pitch.title}</Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, minWidth: 0 }}>
+                    {pitch.committed && (
+                      <Chip label="COMMITTED" size="small" color="success" sx={{ height: 18, fontSize: '0.6rem', fontWeight: 700, '& .MuiChip-label': { px: 0.75 } }} />
+                    )}
+                    <Typography variant="body2" noWrap sx={{ minWidth: 0 }}>{pitch.title}</Typography>
+                  </Box>
                 </TableCell>
                 <TableCell>
                   <Chip label={pitch.category} size="small" />
