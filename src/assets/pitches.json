@@ -864,6 +864,26 @@
     }
   },
   {
+    "id": "7557419",
+    "title": "ST / Generative AI / Text Actions / Check for logical contradictions",
+    "category": "Support AI Charting",
+    "continuation": true,
+    "author": "Chase Grey",
+    "details": {
+      "problem": "From talking to various customers, there can be logical contradictions in what gets documented in the patient's chart. As one example, a user copies forward a note that says \"all lab results normal\" but then adds in documentation for a new abnormal lab result.\nThese types of contradictions have also been observed in ambient generated notes coming from DAX.",
+      "ideaForSolution": "We develop a new prompt that can take in text and return any logical contradictions that exist in that text.\nThis can then be plugged into other AI workflows, such as native ambient. Native ambient devs have already expressed interest in building on this idea.\nWe could also consider releasing this as a prompt in the text assistant. Users could then highlight a note, right click, run this prompt, and see any contradictions in it displayed at the bottom.\nWe could look at integrating this type of contradiction check into the background, similar to ideas we're exploring for catching stigmatizing language in the background.",
+      "characteristics": "",
+      "whyNow": "",
+      "smartToolsFit": "",
+      "success": "",
+      "maintenance": "",
+      "internCandidate": false
+    },
+    "previousDev": "Brandon Campos Botello",
+    "previousTL": "Chase Grey",
+    "previousQM": "Parker Volkman"
+  },
+  {
     "id": "8333289",
     "title": "ST Pitch / Create a metric for edit distance for the text assistant",
     "category": "Support AI Charting",
