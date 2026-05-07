@@ -101,6 +101,64 @@ export async function fetchAllocationConfig(): Promise<AllocationConfig | null> 
 }
 
 /**
+ * Lightweight fetch of just the upcoming-quarter label from the backend's
+ * `allocation_config` Script Property. Doesn't require the roster arrays
+ * to be present, so it works for App.tsx (which only needs the label for
+ * the AvailabilityDialog title and the SettingsMenu row) even when the
+ * full allocation config isn't fully set up yet.
+ *
+ * Returns null when the backend returns no config / no label, or on error.
+ */
+export async function fetchQuarterLabel(): Promise<string | null> {
+  if (!API_BASE_URL) return null;
+  try {
+    const data = await gasGet<{ quarterLabel?: string; error?: string }>('config');
+    if (!data || 'error' in data) return null;
+    if (typeof data.quarterLabel === 'string' && data.quarterLabel.trim()) {
+      return data.quarterLabel.trim();
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Result shape for the get-voter-availability GAS endpoint. Returned with
+ * `found: false` when the voter has no row on VOTES (and no override), in
+ * which case the AvailabilityDialog should still prompt.
+ */
+export type VoterAvailability = {
+  found: boolean;
+  available?: boolean | null;
+  availableForPQA1?: boolean | null;
+  devCapacity?: 'above-avg' | 'avg' | 'fewer' | 'none' | null;
+  pqa1Capacity?: 'above-avg' | 'avg' | 'fewer' | 'none' | null;
+  capacity?: 'above-avg' | 'avg' | 'fewer' | 'none' | null;
+  availabilityComment?: string;
+};
+
+/**
+ * Fetch the persisted availability + capacity record for one voter so we
+ * can skip the AvailabilityDialog for people who've already submitted.
+ * Reads from VOTES (their own answer) overlaid with CAPACITY_OVERRIDES
+ * (TL override wins) — the same merge `getAllocationData` performs.
+ *
+ * Returns `{ found: false }` on missing voter, missing API URL, or error.
+ */
+export async function fetchVoterAvailability(voterName: string): Promise<VoterAvailability> {
+  if (!API_BASE_URL || !voterName) return { found: false };
+  try {
+    const params = new URLSearchParams({ route: 'get-voter-availability', voterName });
+    const response = await fetch(`${API_BASE_URL}?${params.toString()}`);
+    if (!response.ok) return { found: false };
+    return await response.json();
+  } catch {
+    return { found: false };
+  }
+}
+
+/**
  * Fetch per-pitch, per-voter priority tier data aggregated from the VOTES sheet,
  * plus the list of team members who indicated they are NOT available next quarter.
  * Returns empty data on error so callers can fall back gracefully.

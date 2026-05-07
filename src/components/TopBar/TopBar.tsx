@@ -130,7 +130,7 @@ export const TopBar = ({
     >
       <Toolbar sx={{ minHeight: '48px !important', py: 0 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', flexGrow: 1 }}>
-          <Typography variant="subtitle1" component="div">
+          <Typography variant="subtitle1" component="span">
             {appTitle}
           </Typography>
 
@@ -143,7 +143,7 @@ export const TopBar = ({
                 startIcon={<WandIcon />}
                 accessKey="a"
                 onClick={onAllocationRerun}
-                sx={{ ml: 2 }}
+                sx={{ ml: 1 }}
               >
                 <u>A</u>uto-assign
               </Button>
@@ -151,7 +151,7 @@ export const TopBar = ({
           )}
 
           <Tooltip title="View Instructions (?)">
-            <IconButton color="inherit" onClick={onHelpClick} sx={{ ml: 2 }} aria-label="Help">
+            <IconButton color="inherit" onClick={onHelpClick} aria-label="Help" sx={{ ml: 1 }}>
               <HelpIcon />
             </IconButton>
           </Tooltip>

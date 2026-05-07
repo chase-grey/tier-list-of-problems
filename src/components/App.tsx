@@ -128,13 +128,15 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
   // Quarter label, fetched once from the backend's allocation_config Script
   // Property and surfaced in the AvailabilityDialog title and the SettingsMenu
   // row ("Availability for Nov '26"). Falls back to "Next Quarter" until the
-  // fetch resolves (or if the backend hasn't been configured).
+  // fetch resolves (or if the backend hasn't been configured). Uses the
+  // lenient fetchQuarterLabel — fetchAllocationConfig is strict about roster
+  // arrays and would return null for partial configs.
   const [quarterLabel, setQuarterLabel] = useState<string | undefined>(undefined);
   useEffect(() => {
     let cancelled = false;
-    import('../services/allocationApi').then(({ fetchAllocationConfig }) => {
-      fetchAllocationConfig().then(cfg => {
-        if (!cancelled && cfg?.quarterLabel) setQuarterLabel(cfg.quarterLabel);
+    import('../services/allocationApi').then(({ fetchQuarterLabel }) => {
+      fetchQuarterLabel().then(label => {
+        if (!cancelled && label) setQuarterLabel(label);
       }).catch(() => { /* fall back to default */ });
     });
     return () => { cancelled = true; };
@@ -288,6 +290,53 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
       window.localStorage.setItem(appStateStorageKey, JSON.stringify(state));
     } catch { /* ignore quota/security errors */ }
   }, [state, appStateStorageKey]);
+
+  // Pre-check the backend before showing the AvailabilityDialog: if this voter
+  // already has availability + capacity values stored on VOTES (or a TL has
+  // overridden their entry), populate state from it and skip the popup. Runs
+  // once per session for contributor roles whose stage matches:
+  //   Stage 1 (priority) for devs; Stage 3 (interest) for QM / dev TL.
+  // Falls through to the popup on any failure or when the voter has no row.
+  const availabilityPrecheckRef = useRef(false);
+  useEffect(() => {
+    if (availabilityPrecheckRef.current) return;
+    if (!state.voterName || !state.voterRole) return;
+    // Only fetch when state.available is null — i.e. we don't already have an
+    // answer for this session. Otherwise we'd overwrite a freshly-submitted
+    // dialog answer with the (now stale) backend value.
+    if (state.available !== null) return;
+    const needsAvailability = appStage2Mode
+      ? canRankInterestStage2(state.voterRole)
+      : canRankInterestStage1(state.voterRole);
+    if (!needsAvailability) return;
+
+    availabilityPrecheckRef.current = true;
+    let cancelled = false;
+    import('../services/allocationApi').then(({ fetchVoterAvailability }) => {
+      fetchVoterAvailability(state.voterName!).then(data => {
+        if (cancelled || !data.found) return;
+        // Only populate when we actually got availability data — `found:true`
+        // with all fields null/empty means the row exists but has no answer
+        // (e.g. legacy rows pre-cleanup), in which case we still want the popup.
+        const hasFlag = data.available === true || data.available === false
+          || data.availableForPQA1 === true || data.availableForPQA1 === false;
+        const hasTier = !!(data.devCapacity || data.pqa1Capacity || data.capacity);
+        if (!hasFlag && !hasTier) return;
+
+        setAvailability(
+          data.available ?? false,
+          data.availableForPQA1 ?? null,
+          {
+            devCapacity: (data.devCapacity ?? null),
+            pqa1Capacity: (data.pqa1Capacity ?? null),
+            capacity: (data.capacity ?? null),
+            availabilityComment: data.availabilityComment ?? '',
+          },
+        );
+      }).catch(() => { /* fall through to popup */ });
+    });
+    return () => { cancelled = true; };
+  }, [state.voterName, state.voterRole, state.available, appStage2Mode, setAvailability]);
 
   // After a successful submission we snapshot the votes and watch for any change
   // to flip the Finish button back from "submitted" to "changed".

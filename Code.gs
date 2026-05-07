@@ -125,6 +125,14 @@ function doGet(e) {
         });
         return jsonpWrap(e.parameter.callback, overrideResult);
       }
+      // Pre-check before the AvailabilityDialog: returns the stored
+      // availability + capacity values for this voter (voter answer overlaid
+      // with TL override). The frontend uses this to skip the dialog when
+      // we already have an answer.
+      case 'get-voter-availability': {
+        const name = e.parameter.voterName || e.parameter.name || '';
+        return getVoterAvailability(String(name));
+      }
       default:
         return notFound();
     }
@@ -684,6 +692,76 @@ function recordCapacityOverride(body) {
     sh.getRange(sh.getLastRow() + 1, 1, 1, 7).setValues([newRow]);
     return json200({ saved: 1 });
   });
+}
+
+/**
+ * Lookup one voter's persisted availability + capacity values, merging their
+ * own answer (from VOTES col H..M) with any TL override (from CAPACITY_OVERRIDES;
+ * override wins). Used by the frontend to pre-check before showing the
+ * AvailabilityDialog — if we already have an answer, skip the popup.
+ *
+ * Response shape:
+ *   { found: false }                                    — voter has no row + no override
+ *   { found: true, available, availableForPQA1,         — at least one field present
+ *                  devCapacity, pqa1Capacity,
+ *                  capacity, availabilityComment }
+ *
+ * Empty / missing fields come back as null/'' so the frontend can treat
+ * "voter exists but no availability data" as "still need to prompt".
+ */
+function getVoterAvailability(name) {
+  if (!name) return json200({ found: false });
+
+  let voterFields = null;
+  const sh = ss.getSheetByName('VOTES');
+  if (sh && sh.getLastRow() > 1) {
+    const numCols = Math.max(sh.getLastColumn(), 13);
+    const rows = sh.getRange(2, 1, sh.getLastRow() - 1, numCols).getValues();
+    // Latest non-empty value wins (rows for the same voter should agree, but
+    // we tolerate partial migrations the same way getAllocationData does).
+    for (const row of rows) {
+      if (row[1] !== name) continue;
+      if (!voterFields) voterFields = {
+        available: null, availableForPQA1: null,
+        devCapacity: null, pqa1Capacity: null, capacity: null,
+        availabilityComment: '',
+      };
+      if (row[7] === true || row[7] === false) voterFields.available = row[7];
+      if (row[8] === true || row[8] === false) voterFields.availableForPQA1 = row[8];
+      if (row[9] !== '' && row[9] != null) voterFields.devCapacity = String(row[9]);
+      if (row[10] !== '' && row[10] != null) voterFields.pqa1Capacity = String(row[10]);
+      if (row[11] !== '' && row[11] != null) voterFields.capacity = String(row[11]);
+      if (row[12] !== '' && row[12] != null) voterFields.availabilityComment = String(row[12]);
+    }
+  }
+
+  // TL override wins over voter answer where present.
+  const overrides = readCapacityOverrides();
+  const o = overrides[name];
+  if (o) {
+    if (!voterFields) voterFields = {
+      available: null, availableForPQA1: null,
+      devCapacity: null, pqa1Capacity: null, capacity: null,
+      availabilityComment: '',
+    };
+    if (o.devCapacity) {
+      voterFields.devCapacity = o.devCapacity;
+      voterFields.available = o.devCapacity !== 'none';
+    }
+    if (o.pqa1Capacity) {
+      voterFields.pqa1Capacity = o.pqa1Capacity;
+      voterFields.availableForPQA1 = o.pqa1Capacity !== 'none';
+    }
+    if (o.capacity) {
+      voterFields.capacity = o.capacity;
+      voterFields.available = o.capacity !== 'none';
+    }
+    if (o.comment) voterFields.availabilityComment = o.comment;
+  }
+
+  if (!voterFields) return json200({ found: false });
+  voterFields.found = true;
+  return json200(voterFields);
 }
 
 /**
