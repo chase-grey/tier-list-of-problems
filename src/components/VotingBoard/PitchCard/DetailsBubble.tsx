@@ -32,7 +32,7 @@ const DetailsBubble = ({ pitch, anchorEl, onClose, userRole, anchorOrigin, trans
     const cleaned = typeof content === 'string'
       ? content.replace(/^\*+\s*|\s*\*+$/g, '').trim()
       : content;
-    if (cleaned === undefined || cleaned === '' || cleaned === null) return null;
+    if (cleaned === undefined || cleaned === '' || cleaned === null || cleaned === false) return null;
 
     return (
       <>
