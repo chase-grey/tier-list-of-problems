@@ -383,7 +383,11 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
             availabilityComment: data.availabilityComment ?? '',
           },
         );
-      }).catch(() => { /* fall through to popup */ });
+      }).catch(() => {
+        // Fetch failed — flip to `false` so the dialog falls open instead of
+        // staying hidden behind the loading sentinel.
+        if (!cancelled) setHasInterestVotesOnBackend(false);
+      });
     });
     return () => { cancelled = true; };
   }, [state.voterName, state.voterRole, state.available, appStage2Mode, setAvailability]);
@@ -972,13 +976,18 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
   //   Stage 1 — devs only (canRankInterestStage1)
   //   Stage 3 — dev TLs and QMs (canRankInterestStage2), plus devs taking
   //             the late-entry path (no prior interest votes on backend).
-  // Suppress when the backend already has interest votes for the voter — they've
-  // been through this flow before, no need to re-prompt. The submission path
+  // Suppress when the backend already has data for the voter — they've been
+  // through this flow before, no need to re-prompt. The submission path
   // preserves any existing availability fields when the payload omits them.
+  // Note the strict `=== false`: while the precheck is still in flight
+  // (initial value `null`) we hide the dialog rather than flash it open and
+  // close it once the response arrives. The .catch in the precheck sets the
+  // flag to `false` on error so a backend failure still falls back to the
+  // dialog instead of leaving it permanently hidden.
   const showAvailabilityDialog = state.voterName !== null &&
     state.voterRole !== null &&
     state.available === null &&
-    hasInterestVotesOnBackend !== true &&
+    hasInterestVotesOnBackend === false &&
     (appStage2Mode
       ? (canRankInterestStage2(state.voterRole) || lateDevInterestEligible)
       : canRankInterestStage1(state.voterRole)
