@@ -496,13 +496,14 @@ export default function Step1View({
       if (a.assignedDev && !unavailableDevSet.has(a.assignedDev)) devProjects[a.assignedDev].push(a.pitchId);
     });
 
-    // Dev workload balance
+    // Dev workload balance. Stage 2 always targets 2 projects per dev — that
+    // matches the auto-assign DEV_BASELINE in allocationEngine, so the badge
+    // colors flag anyone above/below 2 instead of below the running average
+    // (which drifts as more pitches get assigned).
     const devCounts = availableDevNames.map(d => (devProjects[d] ?? []).length);
     const devSpread = devCounts.length ? Math.max(...devCounts) - Math.min(...devCounts) : 0;
     const devBalanceScore = Math.max(0, 100 - devSpread * 25);
-    const devIdeal = availableDevNames.length > 0
-      ? devCounts.reduce((s, c) => s + c, 0) / availableDevNames.length
-      : 0;
+    const devIdeal = 2;
 
     // Interest alignment: for selected+assigned pitches, what is the assigned dev's interest?
     const assignedInterestTiers = selectedAssignments
@@ -1043,7 +1044,7 @@ export default function Step1View({
                   ? <Tooltip title="All developers are within the target workload">
                       <span><OkIcon fontSize="small" color="success" sx={{ fontSize: '0.9rem' }} /></span>
                     </Tooltip>
-                  : <Tooltip title={`${flagged.length} ${flagged.length === 1 ? 'developer has' : 'developers have'} significantly more or fewer projects than the ${fmtIdeal(stats.devIdeal)} average`}>
+                  : <Tooltip title={`${flagged.length} ${flagged.length === 1 ? 'developer has' : 'developers have'} significantly more or fewer projects than the ${fmtIdeal(stats.devIdeal)} target`}>
                       <span><WarnIcon fontSize="small" color="warning" sx={{ fontSize: '0.9rem' }} /></span>
                     </Tooltip>
                 }
@@ -1083,7 +1084,7 @@ export default function Step1View({
             Developer Assignments
           </Typography>
           <Typography variant="caption" color="text.disabled">
-            Avg {fmtIdeal(stats.devIdeal)} / dev
+            Target {fmtIdeal(stats.devIdeal)} / dev
           </Typography>
         </Box>
         {availableDevNames.map(dev => {
