@@ -769,6 +769,7 @@ function getVoterAvailability(name) {
   if (!name) return json200({ found: false });
 
   let voterFields = null;
+  let hasInterestVotes = false;
   const sh = ss.getSheetByName('VOTES');
   if (sh && sh.getLastRow() > 1) {
     const numCols = Math.max(sh.getLastColumn(), 13);
@@ -788,6 +789,9 @@ function getVoterAvailability(name) {
       if (row[10] !== '' && row[10] != null) voterFields.pqa1Capacity = String(row[10]);
       if (row[11] !== '' && row[11] != null) voterFields.capacity = String(row[11]);
       if (row[12] !== '' && row[12] != null) voterFields.availabilityComment = String(row[12]);
+      // interestLevel lives in column G (index 6). Any non-empty value means
+      // this voter has already submitted interest data for this pitch.
+      if (row[6] !== '' && row[6] !== null && row[6] !== undefined) hasInterestVotes = true;
     }
   }
 
@@ -815,8 +819,9 @@ function getVoterAvailability(name) {
     if (o.comment) voterFields.availabilityComment = o.comment;
   }
 
-  if (!voterFields) return json200({ found: false });
+  if (!voterFields) return json200({ found: false, hasInterestVotes: hasInterestVotes });
   voterFields.found = true;
+  voterFields.hasInterestVotes = hasInterestVotes;
   return json200(voterFields);
 }
 

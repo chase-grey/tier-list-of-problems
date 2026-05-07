@@ -170,6 +170,13 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
   const [planStepError, setPlanStepError] = useState<string | undefined>(undefined);
   const [planStatuses, setPlanStatuses] = useState<Record<string, string> | null>(null);
 
+  // Whether the current voter already has any interestLevel rows on the backend.
+  // Set by the boot pre-check below. Only consulted in Stage 3 to decide whether
+  // to let a dev who missed Stage 1 submit interest data now (true → block; false → allow).
+  // null while we're still waiting on the pre-check or for non-contributor roles
+  // we never fetched for.
+  const [hasInterestVotesOnBackend, setHasInterestVotesOnBackend] = useState<boolean | null>(null);
+
   const loadingSteps: LoadingStep[] = [
     { label: 'Loading pitches', status: pitchStepStatus, error: pitchStepError },
     ...(appStage2Mode ? [{ label: 'Loading plan assignments', status: planStepStatus, error: planStepError }] : []),
@@ -320,20 +327,34 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
   useEffect(() => {
     if (availabilityPrecheckRef.current) return;
     if (!state.voterName || !state.voterRole) return;
-    // Only fetch when state.available is null — i.e. we don't already have an
-    // answer for this session. Otherwise we'd overwrite a freshly-submitted
-    // dialog answer with the (now stale) backend value.
-    if (state.available !== null) return;
-    const needsAvailability = appStage2Mode
+
+    // Roles whose Stage matches the current polling stage need the standard
+    // availability pre-check. Devs in Stage 3 also need a fetch (even though
+    // they don't normally rank interest then) so we can tell whether they
+    // already submitted in Stage 1 — devs with no prior interest data get a
+    // late-entry path into the interest UI.
+    const standardRoleForStage = appStage2Mode
       ? canRankInterestStage2(state.voterRole)
       : canRankInterestStage1(state.voterRole);
-    if (!needsAvailability) return;
+    const lateDevInStage3 = appStage2Mode && isDevRole(state.voterRole);
+    if (!standardRoleForStage && !lateDevInStage3) return;
 
     availabilityPrecheckRef.current = true;
     let cancelled = false;
     import('../services/allocationApi').then(({ fetchVoterAvailability }) => {
       fetchVoterAvailability(state.voterName!).then(data => {
-        if (cancelled || !data.found) return;
+        if (cancelled) return;
+
+        // hasInterestVotes is reported even when found=false (e.g. cleanup
+        // utilities can wipe availability fields but leave votes), so capture
+        // it unconditionally.
+        setHasInterestVotesOnBackend(!!data.hasInterestVotes);
+
+        if (!data.found) return;
+        // Don't overwrite a freshly-submitted dialog answer with the stale
+        // backend value. We still wanted the fetch above for hasInterestVotes.
+        if (state.available !== null) return;
+
         // Only populate when we actually got availability data — `found:true`
         // with all fields null/empty means the row exists but has no answer
         // (e.g. legacy rows pre-cleanup), in which case we still want the popup.
@@ -476,10 +497,18 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
   const isAvailableForInterest = isDevRole(state.voterRole)
     ? state.available === true || state.availableForPQA1 === true
     : state.available === true;
+  // Late-entry path: a dev who didn't submit in Stage 1 can still submit
+  // interest data during Stage 3, but only until they have any interest
+  // rows on the backend. Once they vote here we drop them back to the
+  // wait-for-update screen on next load.
+  const lateDevInterestEligible = appStage2Mode &&
+    isDevRole(state.voterRole) &&
+    hasInterestVotesOnBackend === false;
+
   const canAccessInterestStage = state.voterRole !== null &&
     isAvailableForInterest &&
     (appStage2Mode
-      ? canRankInterestStage2(state.voterRole)  // Stage 2: QM and dev TL only
+      ? (canRankInterestStage2(state.voterRole) || lateDevInterestEligible)
       : canRankInterestStage1(state.voterRole)  // Stage 1: devs only
     );
 
@@ -931,12 +960,13 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
   
   // Show availability dialog only for the roles that set it in this stage:
   //   Stage 1 — devs only (canRankInterestStage1)
-  //   Stage 3 — dev TLs and QMs only (canRankInterestStage2)
+  //   Stage 3 — dev TLs and QMs (canRankInterestStage2), plus devs taking
+  //             the late-entry path (no prior interest votes on backend).
   const showAvailabilityDialog = state.voterName !== null &&
     state.voterRole !== null &&
     state.available === null &&
     (appStage2Mode
-      ? canRankInterestStage2(state.voterRole)
+      ? (canRankInterestStage2(state.voterRole) || lateDevInterestEligible)
       : canRankInterestStage1(state.voterRole)
     );
 
@@ -1034,12 +1064,18 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
                 Stage 2: Interest Ranking
               </Typography>
               <Typography variant="body1" color="text.secondary" textAlign="center" sx={{ maxWidth: 500 }}>
-                This stage is only available to QM and dev TL roles who have indicated they are available for next quarter.
-                {state.voterRole && !canRankInterestStage2(state.voterRole) && (
-                  <><br /><br />Your current role ({state.voterRole}) does not have access to this stage.</>
-                )}
-                {state.voterRole && canRankInterestStage2(state.voterRole) && state.available !== true && (
-                  <><br /><br />Please indicate that you are available for next quarter to access interest ranking.</>
+                {isDevRole(state.voterRole) && hasInterestVotesOnBackend ? (
+                  <>Your interest data is already on file — thanks! Check back soon for updates on the selected projects for next quarter.</>
+                ) : (
+                  <>
+                    This stage is only available to QM and dev TL roles who have indicated they are available for next quarter.
+                    {state.voterRole && !canRankInterestStage2(state.voterRole) && !isDevRole(state.voterRole) && (
+                      <><br /><br />Your current role ({state.voterRole}) does not have access to this stage.</>
+                    )}
+                    {state.voterRole && canRankInterestStage2(state.voterRole) && state.available !== true && (
+                      <><br /><br />Please indicate that you are available for next quarter to access interest ranking.</>
+                    )}
+                  </>
                 )}
               </Typography>
             </Box>

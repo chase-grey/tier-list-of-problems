@@ -136,6 +136,13 @@ export type VoterAvailability = {
   pqa1Capacity?: 'above-avg' | 'avg' | 'fewer' | 'none' | null;
   capacity?: 'above-avg' | 'avg' | 'fewer' | 'none' | null;
   availabilityComment?: string;
+  /**
+   * True when the voter has at least one row with a non-empty interestLevel.
+   * Used in Stage 3 to gate the "let late-arriving devs submit interest"
+   * affordance — if true, the dev already voted in Stage 1 and shouldn't be
+   * re-prompted; if false, they get the interest ranking UI like a TL.
+   */
+  hasInterestVotes?: boolean;
 };
 
 /**
