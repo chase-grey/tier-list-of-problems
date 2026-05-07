@@ -34,15 +34,15 @@ const POLLING_CYCLE_CACHE_KEY = 'polling.cachedCycleId';
 
 export const getPollingCycleId = (): string => {
   if (typeof window !== 'undefined') {
+    if (import.meta.env.DEV) {
+      try {
+        const override = window.localStorage.getItem('polling.debugCycleId');
+        if (override) return override;
+      } catch { /* ignore */ }
+    }
     try {
       const cached = window.localStorage.getItem(POLLING_CYCLE_CACHE_KEY);
       if (cached) return cached;
-    } catch { /* ignore */ }
-  }
-  if (import.meta.env.DEV && typeof window !== 'undefined') {
-    try {
-      const override = window.localStorage.getItem('polling.debugCycleId');
-      if (override) return override;
     } catch { /* ignore */ }
   }
 
@@ -60,6 +60,17 @@ export type PollingStage = 1 | 2 | 'tl-1' | 'tl-2';
 
 export const getPollingStage = (): PollingStage => {
   if (typeof window !== 'undefined') {
+    // In dev mode the debug override wins over the backend-cached stage so that
+    // local testing isn't locked to whatever stage the live app is currently in.
+    if (import.meta.env.DEV) {
+      try {
+        const override = window.localStorage.getItem('polling.debugStage');
+        if (override === '1') return 1;
+        if (override === '2') return 2;
+        if (override === 'tl-1') return 'tl-1';
+        if (override === 'tl-2') return 'tl-2';
+      } catch { /* ignore */ }
+    }
     try {
       const cached = window.localStorage.getItem(POLLING_STAGE_CACHE_KEY);
       if (cached === '1') return 1;
@@ -68,21 +79,12 @@ export const getPollingStage = (): PollingStage => {
       if (cached === 'tl-2') return 'tl-2';
     } catch { /* ignore */ }
   }
-  if (import.meta.env.DEV && typeof window !== 'undefined') {
-    try {
-      const override = window.localStorage.getItem('polling.debugStage');
-      if (override === '1') return 1;
-      if (override === '2') return 2;
-      if (override === 'tl-1') return 'tl-1';
-      if (override === 'tl-2') return 'tl-2';
-    } catch { /* ignore */ }
-  }
 
   const stage = import.meta.env.VITE_POLLING_STAGE;
   if (stage === '2') return 2;
   if (stage === 'tl-1') return 'tl-1';
   if (stage === 'tl-2') return 'tl-2';
-  return 1; // Default to stage 1
+  return 1;
 };
 
 /** Update the localStorage caches and reload if either changed. Used by the
