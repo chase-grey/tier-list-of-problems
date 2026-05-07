@@ -3,8 +3,10 @@ import { useExclusiveSelect } from '../../hooks/useExclusiveSelect';
 import {
   Box, Typography, Paper, Table, TableBody, TableCell, TableHead, TableRow,
   Select, MenuItem, Divider, Tooltip, IconButton,
-  Checkbox, Collapse, LinearProgress,
+  Checkbox, Collapse, LinearProgress, Button,
 } from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
+import AddPitchDialog from './AddPitchDialog';
 import {
   Warning as WarnIcon,
   CheckCircle as OkIcon,
@@ -53,6 +55,8 @@ interface Step2ViewProps {
   voterName: string;
   /** Persists a TL capacity override and updates local state to match. */
   onCapacityOverride: (payload: CapacityOverridePayload) => Promise<void>;
+  /** Called when the user adds an ad-hoc project not in the original pitch list. */
+  onAddPitch?: (title: string, category: string) => void;
 }
 
 const CAPACITY_LABEL: Record<NonNullable<PersonCapacity['devCapacity']>, string> = {
@@ -176,7 +180,7 @@ export default function Step2View({
   selectedPitches, assignments, phase2Interests, config, onAssign, devByPitchId, devNames,
   includeUXD, onToggleUXD,
   lockedPitchIds, lockedPersonNames, onTogglePitchLock, onTogglePersonLock,
-  voterName, onCapacityOverride,
+  voterName, onCapacityOverride, onAddPitch,
 }: Step2ViewProps) {
   const lockedPitchSet = useMemo(() => new Set(lockedPitchIds), [lockedPitchIds]);
   const lockedPersonSet = useMemo(() => new Set(lockedPersonNames), [lockedPersonNames]);
@@ -440,6 +444,7 @@ export default function Step2View({
   }, [selectedPitches]);
 
   const [categoryCollapsed, setCategoryCollapsed] = useState<Record<string, boolean>>({});
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
 
   const unavailableSet = useMemo(() => new Set(config.unavailableNames ?? []), [config.unavailableNames]);
   const unavailablePqa1Set = useMemo(
@@ -660,6 +665,14 @@ export default function Step2View({
     <Box sx={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
       {/* ── Left: assignment table (category buckets) ── */}
       <Box sx={{ flex: 1, overflow: 'auto', p: 2, minWidth: 0 }}>
+        {onAddPitch && (
+          <AddPitchDialog
+            open={addDialogOpen}
+            categories={categories}
+            onAdd={onAddPitch}
+            onClose={() => setAddDialogOpen(false)}
+          />
+        )}
         {categories.map(cat => {
           const catPitches = pitchesByCategory[cat] ?? [];
           if (catPitches.length === 0) return null;
@@ -734,6 +747,16 @@ export default function Step2View({
             </Paper>
           );
         })}
+        {onAddPitch && (
+          <Button
+            startIcon={<AddIcon />}
+            size="small"
+            onClick={() => setAddDialogOpen(true)}
+            sx={{ mt: 1, mb: 2 }}
+          >
+            Add project
+          </Button>
+        )}
       </Box>
 
       {/* ── Drag handle + sidebar toggle ── */}

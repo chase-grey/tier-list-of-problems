@@ -3,8 +3,10 @@ import { useExclusiveSelect } from '../../hooks/useExclusiveSelect';
 import {
   Box, Typography, Paper, Table, TableBody, TableCell, TableHead, TableRow,
   Select, MenuItem, Divider, Tooltip,
-  LinearProgress, Chip, Collapse, IconButton,
+  LinearProgress, Chip, Collapse, IconButton, Button,
 } from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
+import AddPitchDialog from './AddPitchDialog';
 import {
   ExpandMore as ExpandIcon,
   ExpandLess as CollapseIcon,
@@ -47,6 +49,8 @@ interface Step1ViewProps {
   voterName: string;
   /** Persists a TL capacity override and updates local state to match. */
   onCapacityOverride: (payload: CapacityOverridePayload) => Promise<void>;
+  /** Called when the user adds an ad-hoc project not in the original pitch list. */
+  onAddPitch?: (title: string, category: string) => void;
 }
 
 const CATEGORY_SHORT: Record<string, string> = {
@@ -168,7 +172,7 @@ export default function Step1View({
   pitches, currentAssignments, config,
   onDevChange, onStatusChange,
   lockedPitchIds, lockedPersonNames, onTogglePitchLock, onTogglePersonLock,
-  voterName, onCapacityOverride,
+  voterName, onCapacityOverride, onAddPitch,
 }: Step1ViewProps) {
   const lockedPitchSet = useMemo(() => new Set(lockedPitchIds), [lockedPitchIds]);
   const lockedPersonSet = useMemo(() => new Set(lockedPersonNames), [lockedPersonNames]);
@@ -180,6 +184,7 @@ export default function Step1View({
     [config.capacityByName],
   );
   const [capacityDialogTarget, setCapacityDialogTarget] = useState<string | null>(null);
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
 
   // Reject manual updates that would touch a locked row or move a locked person.
   // The visible lock icons + this guard let users see what's frozen and why.
@@ -537,6 +542,14 @@ export default function Step1View({
     <Box sx={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
       {/* ── Left: project list ── */}
       <Box sx={{ flex: 1, overflow: 'auto', p: 2, minWidth: 0 }}>
+        {onAddPitch && (
+          <AddPitchDialog
+            open={addDialogOpen}
+            categories={categories}
+            onAdd={onAddPitch}
+            onClose={() => setAddDialogOpen(false)}
+          />
+        )}
         {/* Category sections */}
         {categories.map(cat => {
           const byPriority = (a: PlanAssignment, b: PlanAssignment) =>
@@ -758,6 +771,16 @@ export default function Step1View({
             </Paper>
           );
         })}
+        {onAddPitch && (
+          <Button
+            startIcon={<AddIcon />}
+            size="small"
+            onClick={() => setAddDialogOpen(true)}
+            sx={{ mt: 1, mb: 2 }}
+          >
+            Add project
+          </Button>
+        )}
       </Box>
 
       {/* ── Drag handle + sidebar toggle ── */}

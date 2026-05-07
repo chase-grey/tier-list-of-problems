@@ -41,6 +41,7 @@ const LS_STEP2_KEY = 'tl-alloc-step2-assignments';
 const LS_UXD_KEY   = 'tl-alloc-uxd';
 const LS_STEP1_LOCKS_KEY = 'tl-alloc-step1-locks';
 const LS_STEP2_LOCKS_KEY = 'tl-alloc-step2-locks';
+const LS_ADHOC_KEY = 'tl-alloc-adhoc-pitches';
 
 interface LockSet { pitchIds: string[]; personNames: string[]; }
 const EMPTY_LOCKS: LockSet = { pitchIds: [], personNames: [] };
@@ -266,6 +267,13 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
 
   const [allocationPitches, setAllocationPitches] = useState<AllocationPitch[]>(MOCK_PITCHES);
   const [allocationConfig, setAllocationConfig] = useState<AllocationConfig>(MOCK_CONFIG);
+  const [adhocPitches, setAdhocPitches] = useState<AllocationPitch[]>(
+    () => lsRead<AllocationPitch[]>(LS_ADHOC_KEY, [])
+  );
+  const allPitches = useMemo(
+    () => [...allocationPitches, ...adhocPitches],
+    [allocationPitches, adhocPitches],
+  );
 
   // Read saved state from localStorage on mount (null = no saved state yet)
   const savedStep1 = useRef(lsRead<PlanAssignment[] | null>(LS_STEP1_KEY, null));
@@ -455,8 +463,8 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
     [currentAssignments]
   );
   const selectedPitches = useMemo(
-    () => allocationPitches.filter(p => selectedPitchIds.has(p.id)),
-    [allocationPitches, selectedPitchIds]
+    () => allPitches.filter(p => selectedPitchIds.has(p.id)),
+    [allPitches, selectedPitchIds]
   );
 
   const [step2Assignments, setStep2Assignments] = useState<StaffingAssignment[]>(
@@ -468,6 +476,7 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
   useEffect(() => { lsWrite(LS_STEP1_KEY, planAssignments); }, [planAssignments]);
   useEffect(() => { if (step2Assignments.length > 0) lsWrite(LS_STEP2_KEY, step2Assignments); }, [step2Assignments]);
   useEffect(() => { lsWrite(LS_UXD_KEY, includeUXD); }, [includeUXD]);
+  useEffect(() => { lsWrite(LS_ADHOC_KEY, adhocPitches); }, [adhocPitches]);
 
   const selectedPitchesRef = useRef(selectedPitches);
   selectedPitchesRef.current = selectedPitches;
@@ -479,6 +488,28 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
       if (exists) return prev.map(a => a.pitchId === pitchId ? { ...a, [field]: value } : a);
       return [...prev, { pitchId, devTL: null, qm: null, [field]: value }];
     });
+  };
+
+  const handleAddAdhocPitch = (title: string, category: string) => {
+    const id = `adhoc-${Date.now()}`;
+    const pitch: AllocationPitch = {
+      id,
+      title,
+      category,
+      continuation: false,
+      author: null,
+      details: { problem: '' },
+      teamVotes: {},
+      tlVotes: {},
+      teamPriorityScore: 0,
+      tlPriorityScore: 0,
+      devInterest: {},
+    };
+    setAdhocPitches(prev => [...prev, pitch]);
+    setPlanAssignments(prev => [...prev, { pitchId: id, assignedDev: null, status: 'selected' }]);
+    if (activeStep === 1) {
+      setStep2Assignments(prev => [...prev, { pitchId: id, devTL: null, qm: null, pqa1: null }]);
+    }
   };
 
   const devByPitchId = useMemo<Record<string, string | null>>(
@@ -533,9 +564,10 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
   }, [activeStep, loading, phase2Interests, allocationConfig]);
 
   const handleFinalize = async () => {
-    const pitchTitleById = Object.fromEntries(
-      (staticPitchesJson as Array<{ id: string; title: string }>).map(p => [p.id, p.title])
-    );
+    const pitchTitleById = {
+      ...Object.fromEntries((staticPitchesJson as Array<{ id: string; title: string }>).map(p => [p.id, p.title])),
+      ...Object.fromEntries(adhocPitches.map(p => [p.id, p.title])),
+    };
     if (activeStep === 0) {
       const payload = currentAssignments.map(a => ({
         pitchId: a.pitchId,
@@ -711,13 +743,13 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
   if (showResults) {
     return activeStep === 0 ? (
       <Stage2ResultsView
-        pitches={allocationPitches}
+        pitches={allPitches}
         currentAssignments={currentAssignments}
         config={allocationConfig}
       />
     ) : (
       <Stage4ResultsView
-        pitches={allocationPitches}
+        pitches={allPitches}
         currentAssignments={currentAssignments}
         step2Assignments={step2Assignments}
         config={allocationConfig}
@@ -731,7 +763,7 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
       <Box sx={{ flex: 1, overflow: 'hidden' }}>
         {activeStep === 0 ? (
           <Step1View
-            pitches={allocationPitches}
+            pitches={allPitches}
             currentAssignments={currentAssignments}
             config={allocationConfig}
             onDevChange={handleDevChange}
@@ -742,6 +774,7 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
             onTogglePersonLock={toggleStep1PersonLock}
             voterName={voterName}
             onCapacityOverride={handleCapacityOverride}
+            onAddPitch={handleAddAdhocPitch}
           />
         ) : (
           <Step2View
@@ -761,6 +794,7 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
             onTogglePersonLock={toggleStep2PersonLock}
             voterName={voterName}
             onCapacityOverride={handleCapacityOverride}
+            onAddPitch={handleAddAdhocPitch}
           />
         )}
       </Box>
