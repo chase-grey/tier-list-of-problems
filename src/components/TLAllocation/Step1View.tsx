@@ -376,8 +376,11 @@ export default function Step1View({
   const categories = Object.keys(config.bandwidth);
 
   const unavailableDevSet = useMemo(
-    () => new Set(config.unavailableNames ?? []),
-    [config.unavailableNames],
+    () => new Set([
+      ...(config.unavailableNames ?? []),
+      ...(config.unavailableForDevNames ?? []),
+    ]),
+    [config.unavailableNames, config.unavailableForDevNames],
   );
   const availableDevNames = useMemo(
     () => config.devNames.filter(d => !unavailableDevSet.has(d)),

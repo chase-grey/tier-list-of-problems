@@ -442,12 +442,19 @@ export default function Step2View({
   const [categoryCollapsed, setCategoryCollapsed] = useState<Record<string, boolean>>({});
 
   const unavailableSet = useMemo(() => new Set(config.unavailableNames ?? []), [config.unavailableNames]);
+  const unavailablePqa1Set = useMemo(
+    () => new Set([
+      ...(config.unavailableNames ?? []),
+      ...(config.unavailableForPqa1Names ?? []),
+    ]),
+    [config.unavailableNames, config.unavailableForPqa1Names],
+  );
   const availableDevTLNames = useMemo(() => config.devTLNames.filter(n => !unavailableSet.has(n)), [config.devTLNames, unavailableSet]);
   const unavailableDevTLNames = useMemo(() => config.devTLNames.filter(n => unavailableSet.has(n)), [config.devTLNames, unavailableSet]);
   const availableQmNames = useMemo(() => config.qmNames.filter(n => !unavailableSet.has(n)), [config.qmNames, unavailableSet]);
   const unavailableQmNames = useMemo(() => config.qmNames.filter(n => unavailableSet.has(n)), [config.qmNames, unavailableSet]);
-  const availableDevNames = useMemo(() => devNames.filter(n => !unavailableSet.has(n)), [devNames, unavailableSet]);
-  const unavailableDevNamesForPqa1 = useMemo(() => devNames.filter(n => unavailableSet.has(n)), [devNames, unavailableSet]);
+  const availableDevNames = useMemo(() => devNames.filter(n => !unavailablePqa1Set.has(n)), [devNames, unavailablePqa1Set]);
+  const unavailableDevNamesForPqa1 = useMemo(() => devNames.filter(n => unavailablePqa1Set.has(n)), [devNames, unavailablePqa1Set]);
 
   const devTLInterests = phase2Interests.filter(p => p.role === 'dev TL');
   const qmInterests = phase2Interests.filter(p => p.role === 'QM');
