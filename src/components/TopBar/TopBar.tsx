@@ -23,6 +23,8 @@ interface TopBarProps {
   voterName: string | null;
   voterRole: string | null;
   available: boolean | null;
+  /** Devs only: separate "available as PQA1" flag (Stage 4 pool). */
+  availableForPQA1?: boolean | null;
   totalPitchCount: number;
   rankCount: number;
   interestCount: number;
@@ -37,7 +39,7 @@ interface TopBarProps {
   themeMode: 'dark' | 'light';
   onToggleTheme: () => void;
   onUpdateNameAndRole: (name: string, role: string) => void;
-  onUpdateAvailability: (available: boolean) => void;
+  onUpdateAvailability: (available: boolean, availableForPQA1?: boolean | null) => void;
   appStage2Mode?: boolean;
   allocationMode?: boolean;
   allocationStep?: 0 | 1;
@@ -55,10 +57,11 @@ interface TopBarProps {
 /**
  * Application header with progress stats and export functionality
  */
-export const TopBar = ({ 
+export const TopBar = ({
   voterName,
   voterRole,
   available,
+  availableForPQA1 = null,
   totalPitchCount, 
   rankCount, 
   interestCount,
@@ -88,8 +91,8 @@ export const TopBar = ({
   submitState = 'idle',
 }: TopBarProps) => {
   const appTitle = allocationMode
-    ? (allocationStep === 0 ? 'Stage 2: Dev Matching' : 'Stage 4: Team Matching')
-    : appStage2Mode ? 'Stage 3: Interest Voting' : 'Stage 1: Priority Voting';
+    ? (allocationStep === 0 ? 'Dev Matching' : 'Team Matching')
+    : appStage2Mode ? 'Interest Voting' : 'Priority Voting';
   return (
     <AppBar
       position="sticky"
@@ -134,6 +137,7 @@ export const TopBar = ({
             voterName={voterName}
             voterRole={voterRole}
             available={available}
+            availableForPQA1={availableForPQA1}
             onUpdateNameAndRole={onUpdateNameAndRole}
             onUpdateAvailability={onUpdateAvailability}
             onResetClick={onResetClick}
