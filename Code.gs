@@ -1,7 +1,7 @@
 /**
  * Problem-Polling App Backend
  * Using Google Apps Script + Google Sheets
- * 
+ *
  * This script implements a REST API for the problem-polling application
  * Version 1.0 (2025-07-06)
  */
@@ -113,6 +113,18 @@ function doGet(e) {
         const interestResult = recordInterestVote({ voterName: e.parameter.voterName, role: e.parameter.role, interests });
         return jsonpWrap(e.parameter.callback, interestResult);
       }
+      // Capacity-override submission via GET+JSONP for the same reason as 'vote'.
+      case 'set-capacity-override': {
+        const overrideResult = recordCapacityOverride({
+          name: e.parameter.name,
+          devCapacity: e.parameter.devCapacity,
+          pqa1Capacity: e.parameter.pqa1Capacity,
+          capacity: e.parameter.capacity,
+          comment: e.parameter.comment,
+          setBy: e.parameter.setBy,
+        });
+        return jsonpWrap(e.parameter.callback, overrideResult);
+      }
       default:
         return notFound();
     }
@@ -139,9 +151,9 @@ function doPost(e) {
       case 'interest-vote':
         return recordInterestVote(payload);
       case 'save-plan':
-        return savePlan(payload.assignments || []);
+        return savePlan(payload.assignments || [], payload.submittedBy || '');
       case 'save-final-assignments':
-        return saveFinalAssignments(payload.assignments || []);
+        return saveFinalAssignments(payload.assignments || [], payload.submittedBy || '');
       case 'feedback':
         return recordFeedback(payload);
       case 'send-kickoff-email':
@@ -150,6 +162,8 @@ function doPost(e) {
         return createEmcRecords(JSON.parse(e.postData.contents));
       case 'refresh-pitches':
         return refreshPitches(payload);
+      case 'set-capacity-override':
+        return recordCapacityOverride(payload);
       default:
         return notFound();
     }
@@ -214,16 +228,27 @@ function validateNonce(nonce) {
   if (!nonce) {
     throw new Error("Missing CSRF token");
   }
-  
+
   const cache = CacheService.getScriptCache();
   const token = cache.get(nonce);
-  
+
   if (!token) {
     throw new Error("Invalid or expired CSRF token");
   }
-  
+
   // Remove the token to prevent reuse
   cache.remove(nonce);
+}
+
+/**
+ * Coerce a capacity-tier value from the payload to one of the four allowed
+ * strings or '' (the convention this file uses for "not provided").
+ */
+function coerceCapacityTier(value) {
+  if (value === 'above-avg' || value === 'avg' || value === 'fewer' || value === 'none') {
+    return value;
+  }
+  return '';
 }
 
 /**
@@ -232,7 +257,17 @@ function validateNonce(nonce) {
  * @return {TextOutput} JSON response indicating success
  */
 function recordVotes(body) {
-  const {voterName, voterRole, votes, available} = body;
+  const {
+    voterName,
+    voterRole,
+    votes,
+    available,
+    availableForPQA1,
+    devCapacity,
+    pqa1Capacity,
+    capacity,
+    availabilityComment,
+  } = body;
   if (!voterName || !votes || !Array.isArray(votes)) {
     return badRequest("Invalid request format");
   }
@@ -244,15 +279,36 @@ function recordVotes(body) {
     }
   }
 
-  // available: true = available, false = not available, undefined = not submitted (treat as available)
-  const availableValue = available === false ? false : true;
+  // available: true = available, false = not available, undefined = not provided.
+  // Non-contributor roles (UXD, TLTL, etc.) never see the dialog and so submit
+  // with `available` undefined — store '' so we don't mis-classify them as
+  // available. Devs / QM / dev TL who explicitly answered get true / false.
+  const availableValue =
+    available === true ? true :
+    available === false ? false :
+    '';
+  // availableForPQA1: dev-only flag. Non-devs don't answer this — store '' so
+  // it's distinguishable from an explicit false. Devs answer both yes/no.
+  const availableForPQA1Value =
+    availableForPQA1 === true ? true :
+    availableForPQA1 === false ? false :
+    '';
+  // Capacity tier values are 'above-avg' | 'avg' | 'fewer' | 'none' or '' (unset).
+  const devCapacityValue = coerceCapacityTier(devCapacity);
+  const pqa1CapacityValue = coerceCapacityTier(pqa1Capacity);
+  const capacityValue = coerceCapacityTier(capacity);
+  const availabilityCommentValue = (availabilityComment != null) ? String(availabilityComment) : '';
 
   return withLock(() => {
     const sh = ss.getSheetByName('VOTES');
     const now = new Date();
 
     if (sh.getLastRow() === 0) {
-      sh.appendRow(['timestamp', 'voterName', 'voterRole', 'pitch_id', 'pitchTitle', 'tier', 'interestLevel', 'available']);
+      sh.appendRow([
+        'timestamp', 'voterName', 'voterRole', 'pitch_id', 'pitchTitle',
+        'tier', 'interestLevel', 'available', 'availableForPQA1',
+        'devCapacity', 'pqa1Capacity', 'capacity', 'availabilityComment',
+      ]);
     } else if (sh.getLastColumn() < 7) {
       // Migrate old schema: insert pitchTitle column after pitch_id (col 4)
       sh.insertColumnAfter(4);
@@ -260,6 +316,17 @@ function recordVotes(body) {
     } else if (sh.getLastColumn() < 8) {
       // Migrate: add available column (col 8)
       sh.getRange(1, 8).setValue('available');
+    } else if (sh.getLastColumn() < 9) {
+      // Migrate: add availableForPQA1 column (col 9). Only devs answer it; older
+      // rows leave it blank, which getAllocationData treats as "unset".
+      sh.getRange(1, 9).setValue('availableForPQA1');
+    } else if (sh.getLastColumn() < 13) {
+      // Migrate: add the four capacity columns (J–M). Older rows leave them
+      // blank, which getAllocationData treats as "unset".
+      sh.getRange(1, 10).setValue('devCapacity');
+      sh.getRange(1, 11).setValue('pqa1Capacity');
+      sh.getRange(1, 12).setValue('capacity');
+      sh.getRange(1, 13).setValue('availabilityComment');
     }
 
     // Delete all existing rows for this voter so resubmissions overwrite cleanly.
@@ -284,8 +351,13 @@ function recordVotes(body) {
         v.tier,
         (v.interestLevel != null) ? v.interestLevel : '',
         availableValue,
+        availableForPQA1Value,
+        devCapacityValue,
+        pqa1CapacityValue,
+        capacityValue,
+        availabilityCommentValue,
       ]);
-      sh.getRange(sh.getLastRow() + 1, 1, rows.length, 8).setValues(rows);
+      sh.getRange(sh.getLastRow() + 1, 1, rows.length, 13).setValues(rows);
     }
 
     return json200({ saved: votes.length });
@@ -335,8 +407,11 @@ function getConfig() {
  * Dev TL voters are identified via devTLNames in the allocation_config Script Property.
  *
  * Response shape:
- *   { [pitchId]: { teamVotes: {name: 0|1|2|3|4}, tlVotes: {name: 0|1|2|3|4},
- *                  teamPriorityScore: number, tlPriorityScore: number } }
+ *   { pitchData: { [pitchId]: { teamVotes, tlVotes, teamPriorityScore, tlPriorityScore, devInterest } },
+ *     unavailableNames: string[],
+ *     unavailableForDevNames: string[],
+ *     unavailableForPqa1Names: string[],
+ *     capacityByName: { [name]: { devCapacity?, pqa1Capacity?, capacity?, comment?, source } } }
  *
  * @return {TextOutput} JSON vote data keyed by pitch ID
  */
@@ -350,26 +425,63 @@ function getAllocationData() {
   const TL_ROLES = new Set(['dev TL', 'TLTL', 'TCap']);
 
   const sh = ss.getSheetByName('VOTES');
-  if (!sh || sh.getLastRow() <= 1) return json200({ pitchData: {}, unavailableNames: [] });
+  if (!sh || sh.getLastRow() <= 1) {
+    // Even when VOTES is empty we still want to surface any TL-set overrides.
+    const overridesOnly = readCapacityOverrides();
+    const merged = {};
+    Object.keys(overridesOnly).forEach(name => {
+      merged[name] = Object.assign({}, overridesOnly[name], { source: 'tl-override' });
+    });
+    const lists = classifyCapacityLists(merged);
+    return json200({
+      pitchData: {},
+      unavailableNames: lists.unavailableNames,
+      unavailableForDevNames: lists.unavailableForDevNames,
+      unavailableForPqa1Names: lists.unavailableForPqa1Names,
+      capacityByName: merged,
+    });
+  }
 
-  const numCols = Math.max(sh.getLastColumn(), 8);
+  // Read at least 13 cols so columns I (availableForPQA1) and J–M (capacity
+  // tiers + comment) are included. Older sheets without those columns yield
+  // undefined for those positions, which we treat the same as "unset".
+  const numCols = Math.max(sh.getLastColumn(), 13);
   const rows = sh.getRange(2, 1, sh.getLastRow() - 1, numCols).getValues();
 
   const pitchVoteMap = {};
   const pitchInterestMap = {};
   const voterRoles = {}; // track each voter's role from their most recent vote row
-  const unavailableSet = new Set(); // voters who explicitly said they are NOT available
+  // Track per-voter availability flags + capacity tiers across rows. All rows
+  // for the same voter should agree (they're submitted together) but we just
+  // keep the latest non-empty value seen so partial migrations don't lose data.
+  const voterAvail = {};       // name -> true | false | undefined
+  const voterAvailPqa1 = {};   // name -> true | false | undefined
+  const voterCapacity = {};    // name -> PersonCapacity (without source)
   for (const row of rows) {
-    const voterName    = row[1]; // column B
-    const voterRole    = row[2]; // column C
-    const pitchId      = row[3]; // column D
-    const tier         = row[5]; // column F (after pitchTitle in col E)
-    const interestLevel = row[6]; // column G
-    const available    = row[7]; // column H (added for availability tracking)
-    if (!voterName || !pitchId || tier === '' || tier === null || tier === undefined) continue;
+    const voterName        = row[1];  // column B
+    const voterRole        = row[2];  // column C
+    const pitchId          = row[3];  // column D
+    const tier             = row[5];  // column F (after pitchTitle in col E)
+    const interestLevel    = row[6];  // column G
+    const available        = row[7];  // column H
+    const availableForPqa1 = row[8];  // column I (devs only)
+    const devCapacity      = row[9];  // column J
+    const pqa1Capacity     = row[10]; // column K
+    const capacity         = row[11]; // column L
+    const availabilityCmt  = row[12]; // column M
+    if (!voterName) continue;
     if (voterRole) voterRoles[voterName] = voterRole;
-    // available === false means explicitly not available; undefined/true/'' = available
-    if (available === false) unavailableSet.add(voterName);
+    // Capture availability flags from any row, even if this row has no tier.
+    if (available === true || available === false) voterAvail[voterName] = available;
+    if (availableForPqa1 === true || availableForPqa1 === false) voterAvailPqa1[voterName] = availableForPqa1;
+    // Capture capacity-tier values; latest non-empty wins.
+    if (!voterCapacity[voterName]) voterCapacity[voterName] = {};
+    const capRec = voterCapacity[voterName];
+    if (devCapacity !== '' && devCapacity !== null && devCapacity !== undefined) capRec.devCapacity = devCapacity;
+    if (pqa1Capacity !== '' && pqa1Capacity !== null && pqa1Capacity !== undefined) capRec.pqa1Capacity = pqa1Capacity;
+    if (capacity !== '' && capacity !== null && capacity !== undefined) capRec.capacity = capacity;
+    if (availabilityCmt !== '' && availabilityCmt !== null && availabilityCmt !== undefined) capRec.comment = String(availabilityCmt);
+    if (!pitchId || tier === '' || tier === null || tier === undefined) continue;
     const numTier = Number(tier) === 0 ? 0 : Math.max(1, Math.min(4, Math.round(Number(tier))));
     if (!pitchVoteMap[pitchId]) pitchVoteMap[pitchId] = {};
     pitchVoteMap[pitchId][voterName] = numTier;
@@ -378,6 +490,61 @@ function getAllocationData() {
       pitchInterestMap[pitchId][voterName] = Number(interestLevel);
     }
   }
+
+  // Build voter-derived capacity map and prune voters with no captured fields.
+  const voterCapacityByName = {};
+  Object.keys(voterCapacity).forEach(name => {
+    const rec = voterCapacity[name];
+    if (rec.devCapacity || rec.pqa1Capacity || rec.capacity || rec.comment) {
+      voterCapacityByName[name] = Object.assign({}, rec, { source: 'voter' });
+    }
+  });
+
+  // Overlay TL overrides on top of the voter-derived map. Override wins,
+  // and the source field flips to 'tl-override' for any name with a row
+  // in the override sheet.
+  const overrides = readCapacityOverrides();
+  const capacityByName = Object.assign({}, voterCapacityByName);
+  Object.keys(overrides).forEach(name => {
+    capacityByName[name] = Object.assign({}, overrides[name], { source: 'tl-override' });
+  });
+
+  // Derive the legacy boolean lists from the merged effective capacities so
+  // old callers keep working after a TL override flips someone. The semantics
+  // mirror the previous boolean-flag classification:
+  //   none on everything   → unavailableNames
+  //   devCapacity=none and pqa1Capacity is anything but 'none' (incl. unset) → unavailableForDevNames
+  //   pqa1Capacity=none and devCapacity is anything but 'none' (incl. unset) → unavailableForPqa1Names
+  //
+  // We also fall back to the old availability-flag classification for voters
+  // that have flag data but no capacity-tier data, so legacy submissions keep
+  // surfacing on the unavailability lists until they re-submit under the new
+  // schema.
+  const unavailableSet = new Set();
+  const unavailableForDevSet = new Set();
+  const unavailableForPqa1Set = new Set();
+
+  const capacityClassified = classifyCapacityLists(capacityByName);
+  capacityClassified.unavailableNames.forEach(n => unavailableSet.add(n));
+  capacityClassified.unavailableForDevNames.forEach(n => unavailableForDevSet.add(n));
+  capacityClassified.unavailableForPqa1Names.forEach(n => unavailableForPqa1Set.add(n));
+
+  // Legacy boolean fallback for voters who never set capacity tiers. Skip
+  // anyone already classified via capacity tiers so an override can override
+  // a stale flag-only classification.
+  const allFlagVoters = new Set([...Object.keys(voterAvail), ...Object.keys(voterAvailPqa1)]);
+  allFlagVoters.forEach(name => {
+    if (capacityByName[name]) return; // capacity tiers (voter or override) already speak for this person
+    const avail = voterAvail[name];
+    const pqa1 = voterAvailPqa1[name];
+    if (avail === false && pqa1 !== true) {
+      unavailableSet.add(name);
+    } else if (avail === false && pqa1 === true) {
+      unavailableForDevSet.add(name);
+    } else if (avail === true && pqa1 === false) {
+      unavailableForPqa1Set.add(name);
+    }
+  });
 
   // Compute aggregates per pitch
   const pitchData = {};
@@ -400,7 +567,123 @@ function getAllocationData() {
     pitchData[pitchId] = { teamVotes, tlVotes, teamPriorityScore, tlPriorityScore, devInterest };
   }
 
-  return json200({ pitchData, unavailableNames: [...unavailableSet] });
+  return json200({
+    pitchData,
+    unavailableNames: [...unavailableSet],
+    unavailableForDevNames: [...unavailableForDevSet],
+    unavailableForPqa1Names: [...unavailableForPqa1Set],
+    capacityByName,
+  });
+}
+
+/**
+ * Classify a merged capacityByName map into the three legacy unavailability
+ * lists. Treats `none`-on-everything as fully unavailable, `none` for one
+ * pool only as unavailable for that pool. People with no `none` markers are
+ * not surfaced on any list — they're just at reduced/normal capacity.
+ *
+ * @param {Object<string, {devCapacity?, pqa1Capacity?, capacity?}>} capacityByName
+ * @return {{unavailableNames: string[], unavailableForDevNames: string[], unavailableForPqa1Names: string[]}}
+ */
+function classifyCapacityLists(capacityByName) {
+  const unavailableNames = [];
+  const unavailableForDevNames = [];
+  const unavailableForPqa1Names = [];
+  Object.keys(capacityByName).forEach(name => {
+    const cap = capacityByName[name] || {};
+    const dev = cap.devCapacity;
+    const pqa = cap.pqa1Capacity;
+    const overall = cap.capacity;
+    // Fully unavailable: explicit overall=none, or both dev and pqa1 = none.
+    if (overall === 'none' || (dev === 'none' && pqa === 'none')) {
+      unavailableNames.push(name);
+      return;
+    }
+    if (dev === 'none' && pqa !== 'none') {
+      unavailableForDevNames.push(name);
+      return;
+    }
+    if (pqa === 'none' && dev !== 'none') {
+      unavailableForPqa1Names.push(name);
+      return;
+    }
+  });
+  return { unavailableNames, unavailableForDevNames, unavailableForPqa1Names };
+}
+
+/**
+ * Read the CAPACITY_OVERRIDES sheet into a map keyed by name.
+ * Returns {} if the sheet doesn't exist or has only a header row.
+ *
+ * @return {Object<string, {devCapacity?, pqa1Capacity?, capacity?, comment?, setBy?, timestamp?}>}
+ */
+function readCapacityOverrides() {
+  const sh = ss.getSheetByName('CAPACITY_OVERRIDES');
+  if (!sh || sh.getLastRow() <= 1) return {};
+  const numCols = Math.max(sh.getLastColumn(), 7);
+  const rows = sh.getRange(2, 1, sh.getLastRow() - 1, numCols).getValues();
+  const out = {};
+  for (const row of rows) {
+    const name = row[0];
+    if (!name) continue;
+    const rec = {};
+    if (row[1] !== '' && row[1] !== null && row[1] !== undefined) rec.devCapacity = String(row[1]);
+    if (row[2] !== '' && row[2] !== null && row[2] !== undefined) rec.pqa1Capacity = String(row[2]);
+    if (row[3] !== '' && row[3] !== null && row[3] !== undefined) rec.capacity = String(row[3]);
+    if (row[4] !== '' && row[4] !== null && row[4] !== undefined) rec.comment = String(row[4]);
+    if (row[5] !== '' && row[5] !== null && row[5] !== undefined) rec.setBy = String(row[5]);
+    if (row[6] instanceof Date) rec.timestamp = row[6].toISOString();
+    out[String(name)] = rec;
+  }
+  return out;
+}
+
+/**
+ * Record (or replace) a TL-set capacity override for a single person.
+ * Creates the CAPACITY_OVERRIDES sheet on first use.
+ *
+ * @param {Object} body - { name, devCapacity?, pqa1Capacity?, capacity?, comment?, setBy }
+ * @return {TextOutput} JSON { saved: 1 }
+ */
+function recordCapacityOverride(body) {
+  const { name, setBy } = body || {};
+  if (!name || !setBy) {
+    return badRequest('name and setBy are required');
+  }
+
+  // Pass capacity fields through — empty/undefined ⇒ stored as ''. We don't
+  // restrict to the four canonical tier strings here so a TL can clear a
+  // field by sending '' explicitly.
+  const devCapacity = (body.devCapacity != null) ? String(body.devCapacity) : '';
+  const pqa1Capacity = (body.pqa1Capacity != null) ? String(body.pqa1Capacity) : '';
+  const capacity = (body.capacity != null) ? String(body.capacity) : '';
+  const comment = (body.comment != null) ? String(body.comment) : '';
+
+  return withLock(() => {
+    let sh = ss.getSheetByName('CAPACITY_OVERRIDES');
+    if (!sh) {
+      sh = ss.insertSheet('CAPACITY_OVERRIDES');
+      sh.appendRow(['name', 'devCapacity', 'pqa1Capacity', 'capacity', 'comment', 'setBy', 'timestamp']);
+    } else if (sh.getLastRow() === 0) {
+      sh.appendRow(['name', 'devCapacity', 'pqa1Capacity', 'capacity', 'comment', 'setBy', 'timestamp']);
+    }
+
+    const now = new Date();
+    const newRow = [name, devCapacity, pqa1Capacity, capacity, comment, setBy, now];
+
+    // Find existing row for this name and overwrite, else append.
+    if (sh.getLastRow() > 1) {
+      const names = sh.getRange(2, 1, sh.getLastRow() - 1, 1).getValues().flat();
+      const idx = names.indexOf(name);
+      if (idx !== -1) {
+        sh.getRange(idx + 2, 1, 1, 7).setValues([newRow]);
+        return json200({ saved: 1 });
+      }
+    }
+
+    sh.getRange(sh.getLastRow() + 1, 1, 1, 7).setValues([newRow]);
+    return json200({ saved: 1 });
+  });
 }
 
 /**
@@ -412,7 +695,7 @@ function getAllocationData() {
  * @param {Array} assignments
  * @return {TextOutput} JSON { saved: number }
  */
-function savePlan(assignments) {
+function savePlan(assignments, submittedBy) {
   if (!Array.isArray(assignments) || assignments.length === 0) {
     return badRequest('assignments must be a non-empty array');
   }
@@ -424,11 +707,11 @@ function savePlan(assignments) {
 
     const now = new Date();
     const pitchTitles = getPitchTitleMap();
-    const headers = ['timestamp', 'pitchId', 'pitchTitle', 'status', 'assignedDev'];
+    const headers = ['timestamp', 'submittedBy', 'pitchId', 'pitchTitle', 'status', 'assignedDev'];
     const rows = [headers].concat(
-      assignments.map(a => [now, a.pitchId, a.pitchTitle || pitchTitles[String(a.pitchId)] || '', a.status, a.assignedDev || ''])
+      assignments.map(a => [now, submittedBy || '', a.pitchId, a.pitchTitle || pitchTitles[String(a.pitchId)] || '', a.status, a.assignedDev || ''])
     );
-    sh.getRange(1, 1, rows.length, 5).setValues(rows);
+    sh.getRange(1, 1, rows.length, 6).setValues(rows);
 
     return json200({ saved: assignments.length });
   });
@@ -444,7 +727,7 @@ function savePlan(assignments) {
  * @param {Array} assignments
  * @return {TextOutput} JSON { saved: number }
  */
-function saveFinalAssignments(assignments) {
+function saveFinalAssignments(assignments, submittedBy) {
   if (!Array.isArray(assignments) || assignments.length === 0) {
     return badRequest('assignments must be a non-empty array');
   }
@@ -454,16 +737,18 @@ function saveFinalAssignments(assignments) {
     if (!sh) sh = ss.insertSheet('PLAN');
 
     // Preserve existing follow-up state before clearing.
-    // pitchTitle column was added in a schema update: old sheets have 9 cols, new have 10.
+    // Schema history: 9-col (no title) → 10-col (added pitchTitle) → 11-col (added submittedBy).
     const existingFollowups = {};
     if (sh.getLastRow() > 1) {
       const numCols = sh.getLastColumn();
-      const hasTitle = numCols >= 10; // new schema: pitchTitle shifts followup cols right by 1
-      const pcIdx = hasTitle ? 8 : 7;
-      const keIdx = hasTitle ? 9 : 8;
+      const hasSubmittedBy = numCols >= 11;
+      const hasTitle = numCols >= 10;
+      const pidIdx = hasSubmittedBy ? 2 : 1;
+      const pcIdx  = hasSubmittedBy ? 9 : (hasTitle ? 8 : 7);
+      const keIdx  = hasSubmittedBy ? 10 : (hasTitle ? 9 : 8);
       const existing = sh.getRange(2, 1, sh.getLastRow() - 1, numCols).getValues();
       for (const row of existing) {
-        const pid = row[1];
+        const pid = row[pidIdx];
         if (pid) existingFollowups[pid] = { projectCreated: row[pcIdx] === true, kickoffEmailSent: row[keIdx] === true };
       }
     }
@@ -472,10 +757,11 @@ function saveFinalAssignments(assignments) {
 
     const now = new Date();
     const pitchTitles = getPitchTitleMap();
-    const headers = ['timestamp', 'pitchId', 'pitchTitle', 'status', 'assignedDev', 'devTL', 'qm', 'pqa1', 'projectCreated', 'kickoffEmailSent'];
+    const headers = ['timestamp', 'submittedBy', 'pitchId', 'pitchTitle', 'status', 'assignedDev', 'devTL', 'qm', 'pqa1', 'projectCreated', 'kickoffEmailSent'];
     const rows = [headers].concat(
       assignments.map(a => [
         now,
+        submittedBy || '',
         a.pitchId,
         a.pitchTitle || pitchTitles[String(a.pitchId)] || '',
         a.status || '',
@@ -487,7 +773,7 @@ function saveFinalAssignments(assignments) {
         existingFollowups[a.pitchId]?.kickoffEmailSent || false,
       ])
     );
-    sh.getRange(1, 1, rows.length, 10).setValues(rows);
+    sh.getRange(1, 1, rows.length, 11).setValues(rows);
 
     return json200({ saved: assignments.length });
   });
@@ -500,7 +786,10 @@ function saveFinalAssignments(assignments) {
 function getPlanStatuses() {
   const sh = ss.getSheetByName('PLAN');
   if (!sh || sh.getLastRow() <= 1) return json200({ statuses: {} });
-  const data = sh.getRange(2, 2, sh.getLastRow() - 1, 3).getValues(); // cols: pitchId, pitchTitle, status
+  // New schema has submittedBy at col B; pitchId is at col C (3). Old schema has pitchId at col B (2).
+  const hasSubmittedBy = sh.getRange(1, 2).getValue() === 'submittedBy';
+  const startCol = hasSubmittedBy ? 3 : 2;
+  const data = sh.getRange(2, startCol, sh.getLastRow() - 1, 3).getValues(); // pitchId, pitchTitle, status
   const statuses = {};
   for (const row of data) {
     const pitchId = String(row[0]);
@@ -518,14 +807,21 @@ function getFollowups() {
   const sh = ss.getSheetByName('PLAN');
   if (!sh || sh.getLastRow() <= 1) return json200({ followups: {} });
 
-  const data = sh.getRange(2, 1, sh.getLastRow() - 1, 10).getValues();
+  const numCols = sh.getLastColumn();
+  const hasSubmittedBy = sh.getRange(1, 2).getValue() === 'submittedBy';
+  const hasTitle = hasSubmittedBy || numCols >= 10;
+  const pidIdx = hasSubmittedBy ? 2 : 1;
+  const pcIdx  = hasSubmittedBy ? 9 : (hasTitle ? 8 : 7);
+  const keIdx  = hasSubmittedBy ? 10 : (hasTitle ? 9 : 8);
+
+  const data = sh.getRange(2, 1, sh.getLastRow() - 1, numCols).getValues();
   const followups = {};
   for (const row of data) {
-    const pitchId = row[1];
+    const pitchId = row[pidIdx];
     if (!pitchId) continue;
     followups[pitchId] = {
-      projectCreated: row[8] === true,
-      kickoffEmailSent: row[9] === true,
+      projectCreated: row[pcIdx] === true,
+      kickoffEmailSent: row[keIdx] === true,
     };
   }
   return json200({ followups });
@@ -544,11 +840,13 @@ function updateFollowup(params) {
     const sh = ss.getSheetByName('PLAN');
     if (!sh || sh.getLastRow() <= 1) return notFound();
 
-    const ids = sh.getRange(2, 2, sh.getLastRow() - 1, 1).getValues().flat();
+    const hasSubmittedBy = sh.getRange(1, 2).getValue() === 'submittedBy';
+    const pitchIdCol = hasSubmittedBy ? 3 : 2;
+    const ids = sh.getRange(2, pitchIdCol, sh.getLastRow() - 1, 1).getValues().flat();
     const rowIdx = ids.indexOf(pitchId);
     if (rowIdx === -1) return notFound();
 
-    const col = field === 'projectCreated' ? 9 : 10;
+    const col = field === 'projectCreated' ? (hasSubmittedBy ? 10 : 9) : (hasSubmittedBy ? 11 : 10);
     sh.getRange(rowIdx + 2, col).setValue(value === 'true' || value === true);
     return json200({ updated: 1 });
   });
@@ -768,6 +1066,301 @@ function refreshPitches(body) {
 }
 
 /**
+ * One-shot migration utility for the new dev-vs-PQA1 availability split.
+ *
+ * Run from the Apps Script editor (Run > migrateVotesSchemaForPQA1) any time —
+ * idempotent. It will:
+ *   1. Add the column-I header `availableForPQA1` if it's missing.
+ *   2. Report how many rows there are, how many devs voted under the old
+ *      single-question schema, and how many already have a PQA1 answer.
+ *
+ * It deliberately does NOT backfill values — leaving column I blank for
+ * legacy rows is the correct behavior. The new getAllocationData() reader
+ * treats blank as "unset", so a legacy `available=false` voter still ends
+ * up in `unavailableNames` (fully unavailable), and a legacy `available=true`
+ * voter ends up in no list (fully available). When those voters re-submit
+ * via the new two-question dialog, their column-I value gets populated.
+ *
+ * Returns an object so the run log shows the stats.
+ */
+function migrateVotesSchemaForPQA1() {
+  const sh = ss.getSheetByName('VOTES');
+  if (!sh) {
+    Logger.log('No VOTES sheet — nothing to migrate.');
+    return { migrated: false, reason: 'no VOTES sheet' };
+  }
+
+  let columnAdded = false;
+  if (sh.getLastColumn() < 9) {
+    sh.getRange(1, 9).setValue('availableForPQA1');
+    columnAdded = true;
+  } else {
+    // Make sure header is correct even if column already existed.
+    const existing = sh.getRange(1, 9).getValue();
+    if (existing !== 'availableForPQA1') {
+      sh.getRange(1, 9).setValue('availableForPQA1');
+      columnAdded = true;
+    }
+  }
+
+  // Stats for the run log.
+  let totalRows = 0;
+  let devVoters = 0;
+  let devVotersWithPqa1 = 0;
+  let devVotersWithoutPqa1 = 0;
+  let nonDevVoters = 0;
+
+  if (sh.getLastRow() > 1) {
+    const numCols = Math.max(sh.getLastColumn(), 9);
+    const rows = sh.getRange(2, 1, sh.getLastRow() - 1, numCols).getValues();
+    totalRows = rows.length;
+
+    // Per-voter aggregation: take the role + flags from any row for that voter.
+    const perVoter = {};
+    rows.forEach(row => {
+      const name = row[1];
+      const role = row[2];
+      const pqa1 = row[8];
+      if (!name) return;
+      if (!perVoter[name]) perVoter[name] = { role: '', hasPqa1: false };
+      if (role) perVoter[name].role = role;
+      if (pqa1 === true || pqa1 === false) perVoter[name].hasPqa1 = true;
+    });
+
+    Object.values(perVoter).forEach(({ role, hasPqa1 }) => {
+      if (String(role).toLowerCase() === 'dev') {
+        devVoters++;
+        if (hasPqa1) devVotersWithPqa1++;
+        else devVotersWithoutPqa1++;
+      } else if (role) {
+        nonDevVoters++;
+      }
+    });
+  }
+
+  const result = {
+    migrated: columnAdded,
+    headerColumn: 'I (availableForPQA1)',
+    totalRows: totalRows,
+    devVoters: devVoters,
+    devVotersWithPqa1Answer: devVotersWithPqa1,
+    devVotersNeedingResubmit: devVotersWithoutPqa1,
+    nonDevVoters: nonDevVoters,
+  };
+  Logger.log(JSON.stringify(result, null, 2));
+  return result;
+}
+
+/**
+ * One-shot backfill for known availability answers — handles devs (which split
+ * `available` for dev assignment vs `availableForPQA1`) AND non-devs like
+ * dev TLs / QMs (which have only the single `available` flag).
+ *
+ * Run from the Apps Script editor (Run > backfillKnownDevAvailability) any
+ * time — idempotent. For each named person, sets columns H (`available`) and
+ * I (`availableForPQA1`) on every row of theirs in VOTES.
+ *
+ * For non-devs, set `availableForPQA1: ''` so column I stays blank — that
+ * matches what the new `recordVotes` writes for non-devs going forward.
+ *
+ * Update the `KNOWN_AVAILABILITY` map below as people submit.
+ */
+function backfillKnownDevAvailability() {
+  const KNOWN_AVAILABILITY = {
+    // Devs already on the new dialog (both flags answered)
+    'Ke Li':                 { available: false, availableForPQA1: true },
+    'Tim Paukovits':         { available: true,  availableForPQA1: true },
+    'Peter Paulson':         { available: true,  availableForPQA1: true },
+    'Dan Demp':              { available: true,  availableForPQA1: true },
+    'Brandon Campos Botello':{ available: true,  availableForPQA1: true },
+    'Gauresh Walia':         { available: true,  availableForPQA1: true },
+    // Dev TLs / QMs (single flag — leave column I blank)
+    'Nicholas Rose':         { available: true,  availableForPQA1: '' },
+  };
+
+  const sh = ss.getSheetByName('VOTES');
+  if (!sh || sh.getLastRow() <= 1) {
+    const msg = 'VOTES sheet missing or empty — nothing to backfill.';
+    Logger.log(msg);
+    return { updatedRows: 0, note: msg };
+  }
+
+  // Ensure column I exists before we try to write to it.
+  if (sh.getLastColumn() < 9) {
+    sh.getRange(1, 9).setValue('availableForPQA1');
+  }
+
+  const numRows = sh.getLastRow() - 1;
+  const names = sh.getRange(2, 2, numRows, 1).getValues();      // col B
+  const flagBlock = sh.getRange(2, 8, numRows, 2).getValues();  // cols H, I
+
+  const perPersonRowCount = {};
+  let updatedRows = 0;
+  for (let i = 0; i < numRows; i++) {
+    const name = names[i][0];
+    const target = KNOWN_AVAILABILITY[name];
+    if (!target) continue;
+    flagBlock[i] = [target.available, target.availableForPQA1];
+    perPersonRowCount[name] = (perPersonRowCount[name] || 0) + 1;
+    updatedRows++;
+  }
+
+  if (updatedRows > 0) {
+    sh.getRange(2, 8, numRows, 2).setValues(flagBlock);
+  }
+
+  const known = Object.keys(KNOWN_AVAILABILITY);
+  const result = {
+    updatedRows: updatedRows,
+    perPersonRowCount: perPersonRowCount,
+    knownButNotFoundInSheet: known.filter(n => !perPersonRowCount[n]),
+    note: 'Anyone not in this map (e.g. Josh Lapicola, who has not re-submitted under the new dialog) is left untouched and will be re-prompted on their next session.',
+  };
+  Logger.log(JSON.stringify(result, null, 2));
+  return result;
+}
+
+/**
+ * One-shot migration utility for the new capacity-tier model.
+ *
+ * Run from the Apps Script editor (Run > migrateVotesSchemaForCapacity) any
+ * time — idempotent. It will:
+ *   1. Add the column-J/K/L/M headers (`devCapacity`, `pqa1Capacity`,
+ *      `capacity`, `availabilityComment`) to VOTES if they're missing.
+ *   2. Ensure the CAPACITY_OVERRIDES sheet exists with its header row.
+ *   3. Report how many existing voter rows have any capacity-tier data so
+ *      the operator can see whether voters have re-submitted under the new
+ *      schema yet.
+ *
+ * It deliberately does NOT backfill values — leaving the new columns blank
+ * for legacy rows is the correct behavior. The new getAllocationData() reader
+ * treats blank as "unset" and falls back to the old availability flags.
+ */
+/**
+ * One-shot cleanup for the case where a non-contributor's row got an
+ * `available=true` written to it because the old `recordVotes` defaulted
+ * `undefined` to `true`. Run once after deploying the fixed `recordVotes`.
+ *
+ * For every VOTES row whose voter role is in the non-contributor list (UXD,
+ * TLTL, TS, TCap, customer, other), this clears columns H–M (available,
+ * availableForPQA1, devCapacity, pqa1Capacity, capacity, availabilityComment).
+ * Their priority votes (cols A–G) stay intact — only the availability fields
+ * are nulled, since non-contributors aren't asked about availability and
+ * those flags were polluting `unavailableNames` calculations.
+ *
+ * Idempotent. Logs how many rows were touched per role.
+ */
+function clearNonContributorAvailability() {
+  const NON_CONTRIBUTOR_ROLES = new Set(['UXD', 'TLTL', 'TS', 'TCap', 'customer', 'other']);
+  const sh = ss.getSheetByName('VOTES');
+  if (!sh || sh.getLastRow() <= 1) {
+    const msg = 'VOTES sheet missing or empty — nothing to clean up.';
+    Logger.log(msg);
+    return { clearedRows: 0, note: msg };
+  }
+
+  const numRows = sh.getLastRow() - 1;
+  const numCols = Math.max(sh.getLastColumn(), 13);
+  const rows = sh.getRange(2, 1, numRows, numCols).getValues();
+  // Cols H..M are indices 7..12 (zero-based) — the 6 availability columns.
+  const blanks = ['', '', '', '', '', ''];
+
+  const perRole = {};
+  let clearedRows = 0;
+  for (let i = 0; i < numRows; i++) {
+    const role = String(rows[i][2] || '');
+    if (NON_CONTRIBUTOR_ROLES.has(role)) {
+      sh.getRange(i + 2, 8, 1, 6).setValues([blanks]);
+      perRole[role] = (perRole[role] || 0) + 1;
+      clearedRows++;
+    }
+  }
+
+  const result = {
+    clearedRows: clearedRows,
+    perRoleRowCount: perRole,
+    note: 'Cleared columns H–M (availability + capacity fields) for any row whose role is a non-contributor. Priority votes preserved.',
+  };
+  Logger.log(JSON.stringify(result, null, 2));
+  return result;
+}
+
+function migrateVotesSchemaForCapacity() {
+  const sh = ss.getSheetByName('VOTES');
+  if (!sh) {
+    Logger.log('No VOTES sheet — nothing to migrate.');
+    return { migrated: false, reason: 'no VOTES sheet' };
+  }
+
+  // Headers we want at columns J, K, L, M (10..13).
+  const desired = [
+    [10, 'devCapacity'],
+    [11, 'pqa1Capacity'],
+    [12, 'capacity'],
+    [13, 'availabilityComment'],
+  ];
+
+  let headersAdded = 0;
+  for (const [col, name] of desired) {
+    const existing = sh.getRange(1, col).getValue();
+    if (existing !== name) {
+      sh.getRange(1, col).setValue(name);
+      headersAdded++;
+    }
+  }
+
+  // Ensure the CAPACITY_OVERRIDES sheet exists with its header row.
+  let overridesCreated = false;
+  let overridesSheet = ss.getSheetByName('CAPACITY_OVERRIDES');
+  if (!overridesSheet) {
+    overridesSheet = ss.insertSheet('CAPACITY_OVERRIDES');
+    overridesSheet.appendRow(['name', 'devCapacity', 'pqa1Capacity', 'capacity', 'comment', 'setBy', 'timestamp']);
+    overridesCreated = true;
+  } else if (overridesSheet.getLastRow() === 0) {
+    overridesSheet.appendRow(['name', 'devCapacity', 'pqa1Capacity', 'capacity', 'comment', 'setBy', 'timestamp']);
+    overridesCreated = true;
+  }
+
+  // Stats for the run log: how many distinct voters have any capacity tier set?
+  let totalRows = 0;
+  let votersWithCapacity = 0;
+  let totalVoters = 0;
+  if (sh.getLastRow() > 1) {
+    const numCols = Math.max(sh.getLastColumn(), 13);
+    const rows = sh.getRange(2, 1, sh.getLastRow() - 1, numCols).getValues();
+    totalRows = rows.length;
+
+    const perVoter = {};
+    rows.forEach(row => {
+      const name = row[1];
+      if (!name) return;
+      if (!perVoter[name]) perVoter[name] = { hasCapacity: false };
+      const dev = row[9];
+      const pqa = row[10];
+      const cap = row[11];
+      if ((dev !== '' && dev != null) || (pqa !== '' && pqa != null) || (cap !== '' && cap != null)) {
+        perVoter[name].hasCapacity = true;
+      }
+    });
+
+    totalVoters = Object.keys(perVoter).length;
+    votersWithCapacity = Object.values(perVoter).filter(v => v.hasCapacity).length;
+  }
+
+  const result = {
+    headersAdded: headersAdded,
+    overridesSheetCreated: overridesCreated,
+    columns: 'J (devCapacity), K (pqa1Capacity), L (capacity), M (availabilityComment)',
+    totalRows: totalRows,
+    totalVoters: totalVoters,
+    votersWithCapacityData: votersWithCapacity,
+    votersNeedingResubmit: totalVoters - votersWithCapacity,
+  };
+  Logger.log(JSON.stringify(result, null, 2));
+  return result;
+}
+
+/**
  * Wrap a TextOutput response in a JSONP callback for cross-origin script-tag requests.
  * If no callback name is provided, returns the original response unchanged.
  * Callback name is sanitized to prevent XSS.
@@ -800,11 +1393,11 @@ function badRequest(message, detail) {
   const response = {
     error: message || "BAD_REQUEST"
   };
-  
+
   if (detail) {
     response.detail = detail;
   }
-  
+
   return ContentService.createTextOutput(JSON.stringify(response))
     .setMimeType(ContentService.MimeType.JSON);
 }

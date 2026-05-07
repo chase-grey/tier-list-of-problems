@@ -483,7 +483,7 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
         assignedDev: a.assignedDev,
       }));
       try {
-        await savePlan(payload);
+        await savePlan(payload, voterName);
         showSnackbar('Plan saved — dev assignments recorded in the sheet', 'success');
       } catch (err: any) {
         showSnackbar(`Failed to save plan: ${err?.message ?? 'unknown error'}`, 'error');
@@ -504,7 +504,7 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
         };
       });
       try {
-        await saveFinalAssignments(payload);
+        await saveFinalAssignments(payload, voterName);
         showSnackbar('Team assignments saved to the sheet', 'success');
       } catch (err: any) {
         showSnackbar(`Failed to save assignments: ${err?.message ?? 'unknown error'}`, 'error');

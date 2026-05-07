@@ -17,6 +17,7 @@ import {
 } from '@mui/icons-material';
 import { SettingsMenu } from '../SettingsMenu/SettingsMenu';
 import { FinishButton } from './FinishButton';
+import type { Capacity } from '../../types/models';
 
 
 interface TopBarProps {
@@ -25,6 +26,16 @@ interface TopBarProps {
   available: boolean | null;
   /** Devs only: separate "available as PQA1" flag (Stage 4 pool). */
   availableForPQA1?: boolean | null;
+  /** Devs only: capacity tier for Stage 2 dev assignment. */
+  devCapacity?: Capacity | null;
+  /** Devs only: capacity tier for Stage 4 PQA1 assignment. */
+  pqa1Capacity?: Capacity | null;
+  /** QM / dev TL only: single capacity tier for project assignment. */
+  capacity?: Capacity | null;
+  /** Required free-text comment when any capacity tier is non-`'avg'`. */
+  availabilityComment?: string;
+  /** Human-readable label for the upcoming quarter, e.g. "Nov '26". */
+  quarterLabel?: string;
   totalPitchCount: number;
   rankCount: number;
   interestCount: number;
@@ -39,7 +50,16 @@ interface TopBarProps {
   themeMode: 'dark' | 'light';
   onToggleTheme: () => void;
   onUpdateNameAndRole: (name: string, role: string) => void;
-  onUpdateAvailability: (available: boolean, availableForPQA1?: boolean | null) => void;
+  onUpdateAvailability: (
+    available: boolean,
+    availableForPQA1?: boolean | null,
+    extras?: {
+      devCapacity?: Capacity | null;
+      pqa1Capacity?: Capacity | null;
+      capacity?: Capacity | null;
+      availabilityComment?: string;
+    },
+  ) => void;
   appStage2Mode?: boolean;
   allocationMode?: boolean;
   allocationStep?: 0 | 1;
@@ -62,7 +82,12 @@ export const TopBar = ({
   voterRole,
   available,
   availableForPQA1 = null,
-  totalPitchCount, 
+  devCapacity = null,
+  pqa1Capacity = null,
+  capacity = null,
+  availabilityComment = '',
+  quarterLabel,
+  totalPitchCount,
   rankCount, 
   interestCount,
   onFinish, 
@@ -138,9 +163,15 @@ export const TopBar = ({
             voterRole={voterRole}
             available={available}
             availableForPQA1={availableForPQA1}
+            devCapacity={devCapacity}
+            pqa1Capacity={pqa1Capacity}
+            capacity={capacity}
+            availabilityComment={availabilityComment}
+            quarterLabel={quarterLabel}
             onUpdateNameAndRole={onUpdateNameAndRole}
             onUpdateAvailability={onUpdateAvailability}
             onResetClick={onResetClick}
+            allocationMode={allocationMode}
           />
         </Box>
 

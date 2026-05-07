@@ -56,8 +56,27 @@ export interface ResultItem {
 export interface SubmitVotesPayload {
   voterName: string;
   voterRole?: string;
-  /** Whether the voter is available to work on projects next quarter. */
+  /**
+   * Whether the voter is available to work on projects next quarter.
+   * For devs this means "available for dev assignment in Stage 2"; for QM/dev TL
+   * it's their single availability flag.
+   */
   available?: boolean;
+  /**
+   * Devs only: whether they're available to be assigned as a PQA1 reviewer
+   * in Stage 4. A dev committed to another project may answer false to
+   * `available` but true here; a dev on leave answers false to both.
+   * Undefined for non-devs.
+   */
+  availableForPQA1?: boolean;
+  /** Devs only — granular capacity tier for Stage 2 dev assignment. */
+  devCapacity?: 'above-avg' | 'avg' | 'fewer' | 'none';
+  /** Devs only — granular capacity tier for Stage 4 PQA1 assignment. */
+  pqa1Capacity?: 'above-avg' | 'avg' | 'fewer' | 'none';
+  /** QM / dev TL only — single capacity tier for project assignment. */
+  capacity?: 'above-avg' | 'avg' | 'fewer' | 'none';
+  /** Required when any capacity field is non-`'avg'`. Surfaced to TLs in Stage 2/4. */
+  availabilityComment?: string;
   votes: Array<{
     pitch_id: string;
     tier?: number;
@@ -122,7 +141,17 @@ export async function submitVotes(payload: Omit<SubmitVotesPayload, 'nonce'>): P
     method: 'POST',
     mode: 'no-cors',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ voterName: payload.voterName, voterRole: payload.voterRole, available: payload.available, votes: payload.votes }),
+    body: JSON.stringify({
+      voterName: payload.voterName,
+      voterRole: payload.voterRole,
+      available: payload.available,
+      availableForPQA1: payload.availableForPQA1,
+      devCapacity: payload.devCapacity,
+      pqa1Capacity: payload.pqa1Capacity,
+      capacity: payload.capacity,
+      availabilityComment: payload.availabilityComment,
+      votes: payload.votes,
+    }),
   });
   return payload.votes.length;
 }
@@ -175,11 +204,11 @@ export interface FinalAssignmentPayload extends PlanAssignmentPayload {
  * Uses the dev-server proxy so we can follow GAS's redirect and read the response body,
  * which allows detecting lock-contention errors returned by withLock().
  */
-export async function savePlan(assignments: PlanAssignmentPayload[]): Promise<number> {
+export async function savePlan(assignments: PlanAssignmentPayload[], submittedBy: string): Promise<number> {
   const response = await fetch(`${GAS_PROXY}?route=save-plan`, {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ assignments }),
+    body: JSON.stringify({ assignments, submittedBy }),
   });
   const data = await response.json().catch(() => ({}));
   if (data.error) throw new ApiError(data.error, response.status || 200);
@@ -190,11 +219,11 @@ export async function savePlan(assignments: PlanAssignmentPayload[]): Promise<nu
  * Saves the finalized stage 4 team assignments (devTL, QM, PQA1) to the PLAN sheet,
  * merging with the stage 2 dev assignments already stored there.
  */
-export async function saveFinalAssignments(assignments: FinalAssignmentPayload[]): Promise<number> {
+export async function saveFinalAssignments(assignments: FinalAssignmentPayload[], submittedBy: string): Promise<number> {
   const response = await fetch(`${GAS_PROXY}?route=save-final-assignments`, {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ assignments }),
+    body: JSON.stringify({ assignments, submittedBy }),
   });
   const data = await response.json().catch(() => ({}));
   if (data.error) throw new ApiError(data.error, response.status || 200);
