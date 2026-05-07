@@ -1191,17 +1191,15 @@ export default function Step1View({
                         <LockIcon sx={{ fontSize: '0.75rem', color: 'primary.main', flexShrink: 0 }} />
                       </Tooltip>
                     )}
-                    <Tooltip title={`${p.title} — click to jump`} placement="top-start">
-                      <Typography
-                        variant="caption"
-                        color="text.secondary"
-                        onClick={() => handleFocusPitch(pid)}
-                        sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'pointer',
-                              '&:hover': { textDecoration: 'underline' } }}
-                      >
-                        {shortTitle}
-                      </Typography>
-                    </Tooltip>
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      onClick={() => handleFocusPitch(pid)}
+                      sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'pointer',
+                            '&:hover': { textDecoration: 'underline' } }}
+                    >
+                      {shortTitle}
+                    </Typography>
                     <DevPitchInfo pitch={p} />
                     {p.continuation && (() => {
                       const interestLevel = p.devInterest[dev] ?? null;

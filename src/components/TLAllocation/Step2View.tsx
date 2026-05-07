@@ -1051,17 +1051,15 @@ export default function Step2View({
                             <LockIcon sx={{ fontSize: '0.75rem', color: 'primary.main', flexShrink: 0 }} />
                           </Tooltip>
                         )}
-                        <Tooltip title={`${p.title} — click to jump`} placement="top-start">
-                          <Typography
-                            variant="caption"
-                            color="text.secondary"
-                            onClick={() => handleFocusPitch(pid)}
-                            sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'pointer',
-                                  '&:hover': { textDecoration: 'underline' } }}
-                          >
-                            {shortTitle}
-                          </Typography>
-                        </Tooltip>
+                        <Typography
+                          variant="caption"
+                          color="text.secondary"
+                          onClick={() => handleFocusPitch(pid)}
+                          sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'pointer',
+                                '&:hover': { textDecoration: 'underline' } }}
+                        >
+                          {shortTitle}
+                        </Typography>
                         <DevPitchInfo pitch={p} />
                         {p.continuation && (() => {
                           const wasHere = role === 'devTL' ? p.previousTL === name : p.previousQM === name;
@@ -1216,17 +1214,15 @@ export default function Step2View({
                             <LockIcon sx={{ fontSize: '0.75rem', color: 'primary.main', flexShrink: 0 }} />
                           </Tooltip>
                         )}
-                        <Tooltip title={`${p.title} — click to jump`} placement="top-start">
-                          <Typography
-                            variant="caption"
-                            color="text.secondary"
-                            onClick={() => handleFocusPitch(pid)}
-                            sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'pointer',
-                                  '&:hover': { textDecoration: 'underline' } }}
-                          >
-                            {shortTitle}
-                          </Typography>
-                        </Tooltip>
+                        <Typography
+                          variant="caption"
+                          color="text.secondary"
+                          onClick={() => handleFocusPitch(pid)}
+                          sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'pointer',
+                                '&:hover': { textDecoration: 'underline' } }}
+                        >
+                          {shortTitle}
+                        </Typography>
                         <DevPitchInfo pitch={p} />
                         {p.continuation && (() => {
                           const gold = p.previousPQA1 === name && (interestLevel === 1 || interestLevel === 2);
