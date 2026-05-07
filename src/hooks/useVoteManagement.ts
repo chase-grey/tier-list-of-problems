@@ -132,40 +132,43 @@ export const useVoteManagement = (initialState: AppState) => {
         };
       
       case 'RESET_FROM_PITCHES': {
-        // Sync votes with current pitch IDs
+        // Ensure every pitch in action.pitchIds has a vote entry with a unique
+        // timestamp. Preserve entries for pitches NOT in the current list — in
+        // Stage 3 (interest ranking) the displayed pitches are filtered to the
+        // ones that made it into the plan, but the voter's Stage 1 priority
+        // tiers for cut/next-up pitches must still travel with the submission
+        // so the backend doesn't lose them when it rewrites the voter's rows.
         const now = new Date().getTime();
         const usedTimestamps = new Set<number>();
         let maxTimestamp = now;
 
-        const syncedVotes = Object.fromEntries(
-          action.pitchIds.map((id) => {
-            const existing = state.votes[id];
-            let timestamp = existing?.timestamp;
+        // Seed used-timestamp set with all existing entries so we don't collide.
+        Object.values(state.votes).forEach(v => {
+          if (v && typeof v.timestamp === 'number') {
+            usedTimestamps.add(v.timestamp);
+            if (v.timestamp > maxTimestamp) maxTimestamp = v.timestamp;
+          }
+        });
 
-            if (timestamp === undefined || timestamp === null) {
-              timestamp = maxTimestamp + 1;
-            }
+        const updated: typeof state.votes = { ...state.votes };
+        for (const id of action.pitchIds) {
+          const existing = updated[id];
+          if (existing && typeof existing.timestamp === 'number') continue;
 
-            while (usedTimestamps.has(timestamp)) {
-              timestamp += 1;
-            }
+          let timestamp = maxTimestamp + 1;
+          while (usedTimestamps.has(timestamp)) timestamp += 1;
+          usedTimestamps.add(timestamp);
+          maxTimestamp = timestamp;
 
-            usedTimestamps.add(timestamp);
-            if (timestamp > maxTimestamp) maxTimestamp = timestamp;
+          updated[id] = {
+            ...(existing ?? { pitchId: id, tier: undefined! }),
+            timestamp,
+          };
+        }
 
-            return [
-              id,
-              {
-                ...(existing ?? { pitchId: id, tier: undefined! }),
-                timestamp
-              }
-            ];
-          })
-        );
-        
         return {
           ...state,
-          votes: syncedVotes,
+          votes: updated,
         };
       }
         

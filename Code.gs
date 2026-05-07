@@ -352,35 +352,76 @@ function recordVotes(body) {
       sh.getRange(1, 13).setValue('availabilityComment');
     }
 
-    // Delete all existing rows for this voter so resubmissions overwrite cleanly.
-    if (sh.getLastRow() > 1) {
-      const nameCol = sh.getRange(2, 2, sh.getLastRow() - 1, 1).getValues().flat();
-      const toDelete = [];
-      for (let i = 0; i < nameCol.length; i++) {
-        if (nameCol[i] === voterName) toDelete.push(i + 2);
+    // Per-pitch upsert (NOT bulk delete-and-reinsert). Stage 3's frontend
+    // pitches list is filtered to pitches that made the plan, so a Stage 3
+    // submission carries only those — wiping all the voter's rows would
+    // discard the Stage 1 priority data for cut/next-up pitches. Instead:
+    //   - For each pitch in the payload: update the existing row if present,
+    //     otherwise append a new row.
+    //   - For the voter's other rows (pitches not in this submission):
+    //     refresh the availability + capacity columns (H-M) so the voter's
+    //     latest answers stay consistent across all their rows, but leave
+    //     tier/interestLevel untouched.
+    const buildRow = (v) => [
+      now,
+      voterName,
+      voterRole || '',
+      v.pitch_id,
+      v.pitchTitle || '',
+      v.tier,
+      (v.interestLevel != null) ? v.interestLevel : '',
+      availableValue,
+      availableForPQA1Value,
+      devCapacityValue,
+      pqa1CapacityValue,
+      capacityValue,
+      availabilityCommentValue,
+    ];
+
+    if (sh.getLastRow() <= 1) {
+      // First submission for this voter (or empty sheet). Just append.
+      if (votes.length > 0) {
+        sh.getRange(sh.getLastRow() + 1, 1, votes.length, 13)
+          .setValues(votes.map(buildRow));
       }
-      for (let i = toDelete.length - 1; i >= 0; i--) {
-        sh.deleteRow(toDelete[i]);
+      return json200({ saved: votes.length });
+    }
+
+    const existing = sh.getRange(2, 1, sh.getLastRow() - 1, 13).getValues();
+    const payloadById = {};
+    for (const v of votes) payloadById[String(v.pitch_id)] = v;
+    const matchedPitchIds = {};
+
+    // Pass 1: walk existing rows, in-place update each one belonging to this
+    // voter. Rows in the payload get a full row write; rows not in the payload
+    // only get availability/capacity columns refreshed.
+    for (let i = 0; i < existing.length; i++) {
+      if (existing[i][1] !== voterName) continue;
+      const sheetRow = i + 2;
+      const pitchId = String(existing[i][3]);
+      if (payloadById[pitchId]) {
+        sh.getRange(sheetRow, 1, 1, 13).setValues([buildRow(payloadById[pitchId])]);
+        matchedPitchIds[pitchId] = true;
+      } else {
+        // Refresh cols H–M (8..13). Leave tier/interestLevel and pitchTitle alone.
+        sh.getRange(sheetRow, 8, 1, 6).setValues([[
+          availableValue,
+          availableForPQA1Value,
+          devCapacityValue,
+          pqa1CapacityValue,
+          capacityValue,
+          availabilityCommentValue,
+        ]]);
       }
     }
 
-    if (votes.length > 0) {
-      const rows = votes.map(v => [
-        now,
-        voterName,
-        voterRole || '',
-        v.pitch_id,
-        v.pitchTitle || '',
-        v.tier,
-        (v.interestLevel != null) ? v.interestLevel : '',
-        availableValue,
-        availableForPQA1Value,
-        devCapacityValue,
-        pqa1CapacityValue,
-        capacityValue,
-        availabilityCommentValue,
-      ]);
-      sh.getRange(sh.getLastRow() + 1, 1, rows.length, 13).setValues(rows);
+    // Pass 2: append rows for any payload pitches that didn't match an existing row.
+    const toAppend = [];
+    for (const v of votes) {
+      if (!matchedPitchIds[String(v.pitch_id)]) toAppend.push(buildRow(v));
+    }
+    if (toAppend.length > 0) {
+      sh.getRange(sh.getLastRow() + 1, 1, toAppend.length, 13).setValues(toAppend);
     }
 
     return json200({ saved: votes.length });
