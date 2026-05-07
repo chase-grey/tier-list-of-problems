@@ -18,6 +18,14 @@ const SET_ALL_OPTIONS: { label: string; level: InterestLevel; color: string }[] 
   { label: 'Not Interested',      level: 4, color: '#ce93d8' },
 ];
 
+// Display order for category group headers in the unsorted column.
+const CATEGORY_ORDER = [
+  'Support AI Charting',
+  'Create and Improve Tools and Framework',
+  'Mobile Feature Parity',
+  'Address Technical Debt',
+];
+
 // Short display names for category group headers
 const CATEGORY_SHORT: Record<string, string> = {
   'Support AI Charting': 'AI Charting',
@@ -71,7 +79,13 @@ const InterestColumn = ({
   // Draggable indices are global (0, 1, 2...) regardless of headers.
   const groupedItems = React.useMemo(() => {
     if (!isUnsorted || !Array.isArray(pitches)) return null;
-    const categoryOrder = [...new Set(pitches.map(p => p.category))];
+    const seen = new Set(pitches.map(p => p.category));
+    // Use the canonical CATEGORY_ORDER first, then append any unknown categories
+    // last (in first-seen order) so we never silently drop pitches if the data
+    // has a category we haven't catalogued.
+    const known = CATEGORY_ORDER.filter(c => seen.has(c));
+    const unknown = [...seen].filter(c => !CATEGORY_ORDER.includes(c));
+    const categoryOrder = [...known, ...unknown];
     const items: Array<
       | { type: 'header'; category: string; count: number }
       | { type: 'pitch'; pitch: Pitch; globalIndex: number }
