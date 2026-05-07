@@ -379,10 +379,11 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
         // Derive phase2Interests from vote data — interest is column G in the VOTES tab,
         // returned as devInterest per pitch by getAllocationData().
         setPhase2Interests(derivePhase2Interests(enriched, effectiveConfig));
-        // Restore saved state, or start blank (all next-up, no dev assigned).
-        // Auto-assign is only triggered explicitly via the "Auto-assign" button.
+        // Restore saved state, or derive default status grouping from priority/bandwidth.
+        // Dev assignments stay blank — auto-assign is triggered explicitly.
         if (!savedStep1.current) {
-          setPlanAssignments(enriched.map(p => ({ pitchId: p.id, assignedDev: null, status: 'next-up' as const })));
+          const defaultPlan = generateDefaultPlan(enriched, effectiveConfig);
+          setPlanAssignments(defaultPlan.map(a => ({ ...a, assignedDev: null })));
         }
         setUsingMockData(false);
       }
