@@ -27,11 +27,39 @@ import {
   Person as PersonIcon,
   EventAvailable as AvailableIcon,
   RestartAlt as ResetIcon,
+  AdminPanelSettings as AdminIcon,
 } from '@mui/icons-material';
 import { isContributorRole, isDevRole } from '../../types/models';
 import type { Capacity } from '../../types/models';
 import { TEAM_ROSTER, type TeamMember } from '../../data/teamRoster';
 import { CapacitySelector } from '../AvailabilityDialog/AvailabilityDialog';
+import { setPollingStateRemote } from '../../services/allocationApi';
+import { getPollingStage, getPollingCycleId, applyPollingState, type PollingStage } from '../../utils/config';
+
+/** Voter who can see the Polling Admin menu item. Hardcoded to keep the
+ *  surface area small; update here if the admin changes. */
+const ADMIN_VOTER_NAME = 'Chase Grey';
+
+/** Stage progression: 1 → tl-1 → 2 → tl-2 → (no further advance — must roll quarter). */
+const STAGE_ORDER: PollingStage[] = [1, 'tl-1', 2, 'tl-2'];
+
+const stageDisplayLabel = (s: PollingStage): string => {
+  switch (s) {
+    case 1:      return 'Stage 1: Priority Voting';
+    case 'tl-1': return 'Stage 2: Dev Matching';
+    case 2:      return 'Stage 3: Interest Voting';
+    case 'tl-2': return 'Stage 4: Team Matching';
+  }
+};
+
+const stageWireValue = (s: PollingStage): string =>
+  s === 1 ? '1' : s === 2 ? '2' : s;
+
+const nextStage = (s: PollingStage): PollingStage | null => {
+  const idx = STAGE_ORDER.indexOf(s);
+  if (idx < 0 || idx === STAGE_ORDER.length - 1) return null;
+  return STAGE_ORDER[idx + 1];
+};
 
 interface SettingsMenuProps {
   themeMode: 'dark' | 'light';
@@ -96,6 +124,58 @@ export const SettingsMenu: React.FC<SettingsMenuProps> = ({
 
   const [availabilityOpen, setAvailabilityOpen] = useState(false);
   const isDev = isDevRole(voterRole);
+
+  // Polling Admin dialog state — only meaningful for the admin user.
+  const [pollingAdminOpen, setPollingAdminOpen] = useState(false);
+  const [pollingSaving, setPollingSaving] = useState(false);
+  const [pollingError, setPollingError] = useState<string | null>(null);
+  const [newCycleInput, setNewCycleInput] = useState('');
+  const currentStage = getPollingStage();
+  const currentCycleId = getPollingCycleId();
+  const advanceTarget = nextStage(currentStage);
+
+  const handlePollingAdminOpen = () => {
+    setPollingAdminOpen(true);
+    setNewCycleInput('');
+    setPollingError(null);
+    handleClose();
+  };
+
+  const handleAdvanceStage = async () => {
+    if (!advanceTarget) return;
+    setPollingSaving(true);
+    setPollingError(null);
+    try {
+      await setPollingStateRemote({ stage: stageWireValue(advanceTarget), setBy: ADMIN_VOTER_NAME });
+      const changed = applyPollingState({ stage: stageWireValue(advanceTarget) });
+      if (changed) window.location.reload();
+      else setPollingAdminOpen(false);
+    } catch (err: any) {
+      setPollingError(err?.message ?? 'Failed to advance stage');
+    } finally {
+      setPollingSaving(false);
+    }
+  };
+
+  const handleRollQuarter = async () => {
+    const next = newCycleInput.trim();
+    if (!next) {
+      setPollingError('Enter the new cycle ID (e.g. "Feb27")');
+      return;
+    }
+    setPollingSaving(true);
+    setPollingError(null);
+    try {
+      await setPollingStateRemote({ stage: '1', cycleId: next, setBy: ADMIN_VOTER_NAME });
+      const changed = applyPollingState({ stage: '1', cycleId: next });
+      if (changed) window.location.reload();
+      else setPollingAdminOpen(false);
+    } catch (err: any) {
+      setPollingError(err?.message ?? 'Failed to roll quarter');
+    } finally {
+      setPollingSaving(false);
+    }
+  };
 
   // A user is "standard" when every applicable tier is 'avg' (or unset, which we treat as 'avg').
   const computeIsStandard = (): boolean => {
@@ -281,6 +361,19 @@ export const SettingsMenu: React.FC<SettingsMenuProps> = ({
           </MenuItem>
         )}
 
+        {/* Polling-state admin — only for the designated admin user. */}
+        {voterName === ADMIN_VOTER_NAME && (
+          <MenuItem onClick={handlePollingAdminOpen}>
+            <ListItemIcon>
+              <AdminIcon />
+            </ListItemIcon>
+            <ListItemText
+              primary="Polling Admin"
+              secondary={`${stageDisplayLabel(currentStage)} · ${currentCycleId || '—'}`}
+            />
+          </MenuItem>
+        )}
+
         <Divider />
 
         {/* Reset All */}
@@ -419,6 +512,88 @@ export const SettingsMenu: React.FC<SettingsMenuProps> = ({
           <Button onClick={handleEditNameClose}>Cancel</Button>
           <Button onClick={handleEditNameSave} variant="contained" disabled={!tempMember}>
             Save
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Polling Admin dialog — Chase Grey only. Two actions: advance to the
+          next stage, or roll over to a new quarter (resets stage to 1). Both
+          POST to the backend and reload so config.ts picks up the new cache. */}
+      <Dialog
+        open={pollingAdminOpen}
+        onClose={() => !pollingSaving && setPollingAdminOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Polling Admin</DialogTitle>
+        <DialogContent>
+          <Box sx={{ my: 1 }}>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+              Current state — applies to every user once they reload.
+            </Typography>
+            <Typography variant="body1" sx={{ mb: 0.5 }}>
+              <strong>{stageDisplayLabel(currentStage)}</strong>
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+              Cycle: <strong>{currentCycleId || '— (using build-time default)'}</strong>
+            </Typography>
+
+            <Typography variant="subtitle2" sx={{ mb: 1 }}>Advance Stage</Typography>
+            {advanceTarget ? (
+              <>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                  Next: {stageDisplayLabel(advanceTarget)}
+                </Typography>
+                <Button
+                  variant="contained"
+                  onClick={handleAdvanceStage}
+                  disabled={pollingSaving}
+                  sx={{ mb: 3 }}
+                >
+                  Advance to {stageDisplayLabel(advanceTarget).split(':')[0]}
+                </Button>
+              </>
+            ) : (
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                You're at the final stage of this cycle. Roll to the next quarter to start over.
+              </Typography>
+            )}
+
+            <Divider sx={{ my: 2 }} />
+
+            <Typography variant="subtitle2" sx={{ mb: 1 }}>Roll to Next Quarter</Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+              Sets stage back to 1 and updates the cycle ID for everyone. Use a short label like <code>Feb27</code>.
+            </Typography>
+            <TextField
+              label="New cycle ID"
+              placeholder="Feb27"
+              fullWidth
+              size="small"
+              value={newCycleInput}
+              onChange={(e) => setNewCycleInput(e.target.value)}
+              disabled={pollingSaving}
+              sx={{ mb: 1 }}
+            />
+            <Button
+              variant="outlined"
+              color="warning"
+              onClick={handleRollQuarter}
+              disabled={pollingSaving || !newCycleInput.trim()}
+            >
+              Roll to {newCycleInput.trim() || '…'}
+            </Button>
+
+            {pollingError && (
+              <Typography variant="caption" color="error" sx={{ display: 'block', mt: 2 }}>
+                {pollingError}
+              </Typography>
+            )}
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPollingAdminOpen(false)} disabled={pollingSaving}>
+            Close
           </Button>
         </DialogActions>
       </Dialog>

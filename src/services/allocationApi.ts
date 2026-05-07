@@ -159,6 +159,44 @@ export async function fetchVoterAvailability(voterName: string): Promise<VoterAv
 }
 
 /**
+ * Polling state stored in backend Script Properties — overrides the
+ * build-time VITE_POLLING_* env vars when present so admins can advance
+ * stages / quarters without redeploying. Empty string means "not set,
+ * use env fallback".
+ */
+export type PollingState = { stage: string; cycleId: string };
+
+/**
+ * Fetch the backend polling state. Returns null on error / no API URL so
+ * callers can fall back to the env var.
+ */
+export async function fetchPollingState(): Promise<PollingState | null> {
+  if (!API_BASE_URL) return null;
+  try {
+    return await gasGet<PollingState>('get-polling-state');
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Update the backend polling state. Gated server-side to setBy='Chase Grey'.
+ * Pass empty/undefined for fields you don't want to change. Returns the
+ * server's view after the update so callers can confirm.
+ */
+export async function setPollingStateRemote(payload: {
+  stage?: string;
+  cycleId?: string;
+  setBy: string;
+}): Promise<PollingState> {
+  if (!API_BASE_URL) throw new Error('API URL not configured');
+  return gasPost('set-polling-state', payload, {
+    stage: payload.stage ?? '',
+    cycleId: payload.cycleId ?? '',
+  });
+}
+
+/**
  * Fetch per-pitch, per-voter priority tier data aggregated from the VOTES sheet,
  * plus the list of team members who indicated they are NOT available next quarter.
  * Returns empty data on error so callers can fall back gracefully.

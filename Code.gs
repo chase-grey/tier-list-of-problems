@@ -133,6 +133,19 @@ function doGet(e) {
         const name = e.parameter.voterName || e.parameter.name || '';
         return getVoterAvailability(String(name));
       }
+      // Polling state (stage + cycle id). Frontend uses these to override the
+      // VITE_POLLING_STAGE / VITE_POLLING_CYCLE_ID env vars baked at build
+      // time, so an admin can advance the stage/quarter without redeploying.
+      case 'get-polling-state':
+        return getPollingState();
+      case 'set-polling-state': {
+        const result = setPollingState({
+          stage: e.parameter.stage,
+          cycleId: e.parameter.cycleId,
+          setBy: e.parameter.setBy,
+        });
+        return jsonpWrap(e.parameter.callback, result);
+      }
       default:
         return notFound();
     }
@@ -172,6 +185,8 @@ function doPost(e) {
         return refreshPitches(payload);
       case 'set-capacity-override':
         return recordCapacityOverride(payload);
+      case 'set-polling-state':
+        return setPollingState(payload);
       default:
         return notFound();
     }
@@ -762,6 +777,53 @@ function getVoterAvailability(name) {
   if (!voterFields) return json200({ found: false });
   voterFields.found = true;
   return json200(voterFields);
+}
+
+/**
+ * Polling state — current stage + cycle id. Stored as Script Properties so
+ * an admin can advance the quarter or move to the next stage from the UI
+ * without rebuilding. Frontend caches these in localStorage and overrides
+ * the build-time VITE_POLLING_* env vars.
+ *
+ * Valid stage values: '1' | 'tl-1' | '2' | 'tl-2'.
+ * Returns empty strings when the property hasn't been set; the frontend
+ * then falls back to the env var.
+ */
+function getPollingState() {
+  const props = PropertiesService.getScriptProperties();
+  return json200({
+    stage: props.getProperty('polling_stage') || '',
+    cycleId: props.getProperty('polling_cycle_id') || '',
+  });
+}
+
+/**
+ * Update the polling state. Gated to setBy='Chase Grey' so a stray POST
+ * can't roll the stage on everyone. Pass either or both fields. Empty
+ * string is treated as "leave unchanged" (use a non-empty value to clear,
+ * or delete the Script Property manually).
+ *
+ * @param {{stage?: string, cycleId?: string, setBy: string}} body
+ */
+function setPollingState(body) {
+  const { stage, cycleId, setBy } = body || {};
+  if (!setBy || setBy !== 'Chase Grey') {
+    return badRequest('Only Chase Grey may update polling state');
+  }
+  const props = PropertiesService.getScriptProperties();
+  if (typeof stage === 'string' && stage.length > 0) {
+    if (!['1', 'tl-1', '2', 'tl-2'].includes(stage)) {
+      return badRequest("Invalid stage — must be '1', 'tl-1', '2', or 'tl-2'");
+    }
+    props.setProperty('polling_stage', stage);
+  }
+  if (typeof cycleId === 'string' && cycleId.length > 0) {
+    props.setProperty('polling_cycle_id', cycleId);
+  }
+  return json200({
+    stage: props.getProperty('polling_stage') || '',
+    cycleId: props.getProperty('polling_cycle_id') || '',
+  });
 }
 
 /**

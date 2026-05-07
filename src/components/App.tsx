@@ -142,6 +142,25 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
     return () => { cancelled = true; };
   }, []);
 
+  // Polling state from backend Script Properties — overrides the env vars
+  // baked at build time so an admin can advance the stage/quarter from the
+  // UI without redeploying. Cache in localStorage; reload if anything moved
+  // so config.ts reads the new values from the cache on the next render.
+  useEffect(() => {
+    let cancelled = false;
+    import('../services/allocationApi').then(({ fetchPollingState }) => {
+      import('../utils/config').then(({ applyPollingState }) => {
+        fetchPollingState().then(state => {
+          if (cancelled || !state) return;
+          if (applyPollingState({ stage: state.stage, cycleId: state.cycleId })) {
+            window.location.reload();
+          }
+        }).catch(() => { /* fall back to env */ });
+      });
+    });
+    return () => { cancelled = true; };
+  }, []);
+
   // Loading step state — one entry per async init task
   const [pitchStepStatus, setPitchStepStatus] = useState<LoadingStep['status']>('loading');
   const [pitchStepError, setPitchStepError] = useState<string | undefined>(undefined);

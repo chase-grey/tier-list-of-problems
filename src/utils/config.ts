@@ -24,14 +24,26 @@ export const isApiConfigured = (): boolean => {
   return !!import.meta.env.VITE_API_URL;
 };
 
+/**
+ * Backend-cached polling values written by App.tsx after fetching
+ * `get-polling-state`. These take precedence over the build-time env vars
+ * so an admin can advance the stage/quarter without redeploying.
+ */
+const POLLING_STAGE_CACHE_KEY = 'polling.cachedStage';
+const POLLING_CYCLE_CACHE_KEY = 'polling.cachedCycleId';
+
 export const getPollingCycleId = (): string => {
+  if (typeof window !== 'undefined') {
+    try {
+      const cached = window.localStorage.getItem(POLLING_CYCLE_CACHE_KEY);
+      if (cached) return cached;
+    } catch { /* ignore */ }
+  }
   if (import.meta.env.DEV && typeof window !== 'undefined') {
     try {
       const override = window.localStorage.getItem('polling.debugCycleId');
       if (override) return override;
-    } catch {
-      // ignore
-    }
+    } catch { /* ignore */ }
   }
 
   return import.meta.env.VITE_POLLING_CYCLE_ID || '';
@@ -47,6 +59,15 @@ export const getPollingCycleId = (): string => {
 export type PollingStage = 1 | 2 | 'tl-1' | 'tl-2';
 
 export const getPollingStage = (): PollingStage => {
+  if (typeof window !== 'undefined') {
+    try {
+      const cached = window.localStorage.getItem(POLLING_STAGE_CACHE_KEY);
+      if (cached === '1') return 1;
+      if (cached === '2') return 2;
+      if (cached === 'tl-1') return 'tl-1';
+      if (cached === 'tl-2') return 'tl-2';
+    } catch { /* ignore */ }
+  }
   if (import.meta.env.DEV && typeof window !== 'undefined') {
     try {
       const override = window.localStorage.getItem('polling.debugStage');
@@ -54,9 +75,7 @@ export const getPollingStage = (): PollingStage => {
       if (override === '2') return 2;
       if (override === 'tl-1') return 'tl-1';
       if (override === 'tl-2') return 'tl-2';
-    } catch {
-      // ignore
-    }
+    } catch { /* ignore */ }
   }
 
   const stage = import.meta.env.VITE_POLLING_STAGE;
@@ -64,6 +83,30 @@ export const getPollingStage = (): PollingStage => {
   if (stage === 'tl-1') return 'tl-1';
   if (stage === 'tl-2') return 'tl-2';
   return 1; // Default to stage 1
+};
+
+/** Update the localStorage caches and reload if either changed. Used by the
+ *  boot fetch and by the admin button after a successful POST. */
+export const applyPollingState = (next: { stage?: string; cycleId?: string }): boolean => {
+  if (typeof window === 'undefined') return false;
+  let changed = false;
+  try {
+    if (next.stage && ['1', 'tl-1', '2', 'tl-2'].includes(next.stage)) {
+      const current = window.localStorage.getItem(POLLING_STAGE_CACHE_KEY);
+      if (current !== next.stage) {
+        window.localStorage.setItem(POLLING_STAGE_CACHE_KEY, next.stage);
+        changed = true;
+      }
+    }
+    if (next.cycleId) {
+      const current = window.localStorage.getItem(POLLING_CYCLE_CACHE_KEY);
+      if (current !== next.cycleId) {
+        window.localStorage.setItem(POLLING_CYCLE_CACHE_KEY, next.cycleId);
+        changed = true;
+      }
+    }
+  } catch { /* ignore */ }
+  return changed;
 };
 
 /**
