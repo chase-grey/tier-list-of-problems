@@ -177,6 +177,13 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
   // we never fetched for.
   const [hasInterestVotesOnBackend, setHasInterestVotesOnBackend] = useState<boolean | null>(null);
 
+  // Whether the precheck has definitively settled — either the fetch resolved,
+  // the fetch errored, or we determined upfront the precheck doesn't apply for
+  // this role/stage. Used to delay rendering the Stage 3 wait screen until
+  // we know whether the voter actually qualifies, so we don't flash the
+  // "no further action needed" copy during the 1–2s GAS round-trip.
+  const [precheckDone, setPrecheckDone] = useState(false);
+
   const loadingSteps: LoadingStep[] = [
     { label: 'Loading pitches', status: pitchStepStatus, error: pitchStepError },
     ...(appStage2Mode ? [{ label: 'Loading plan assignments', status: planStepStatus, error: planStepError }] : []),
@@ -342,7 +349,12 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
       ? canRankInterestStage2(state.voterRole)
       : canRankInterestStage1(state.voterRole);
     const lateDevInStage3 = appStage2Mode && isDevRole(state.voterRole);
-    if (!standardRoleForStage && !lateDevInStage3) return;
+    if (!standardRoleForStage && !lateDevInStage3) {
+      // Precheck doesn't apply for this role/stage. Mark settled so the wait
+      // screen can render immediately (e.g., for non-contributor roles).
+      setPrecheckDone(true);
+      return;
+    }
 
     availabilityPrecheckRef.current = true;
     // No `cancelled` flag / cleanup function: setAvailability comes from
@@ -389,6 +401,8 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
         // Fetch failed — flip to `false` so the dialog falls open instead of
         // staying hidden behind the loading sentinel.
         setHasInterestVotesOnBackend(false);
+      }).finally(() => {
+        setPrecheckDone(true);
       });
     });
   }, [state.voterName, state.voterRole, state.available, appStage2Mode, setAvailability]);
@@ -1083,14 +1097,21 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
               </Typography>
             </Box>
           ) : appStage2Mode && !canAccessInterestStage ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', flexDirection: 'column', gap: 2, p: 4 }}>
-              <Typography variant="h5" color="text.secondary" textAlign="center">
-                Stage 3: Interest Ranking
-              </Typography>
-              <Typography variant="body1" color="text.secondary" textAlign="center" sx={{ maxWidth: 500 }}>
-                No further action is needed from you at this time. Check back soon for updates on the selected projects for next quarter.
-              </Typography>
-            </Box>
+            // Hold the wait screen until the precheck has settled — otherwise
+            // we'd flash this copy during the 1–2s GAS round-trip and then
+            // navigate to the interest UI once state.available populates.
+            precheckDone ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', flexDirection: 'column', gap: 2, p: 4 }}>
+                <Typography variant="h5" color="text.secondary" textAlign="center">
+                  Stage 3: Interest Ranking
+                </Typography>
+                <Typography variant="body1" color="text.secondary" textAlign="center" sx={{ maxWidth: 500 }}>
+                  No further action is needed from you at this time. Check back soon for updates on the selected projects for next quarter.
+                </Typography>
+              </Box>
+            ) : (
+              <Box sx={{ height: '100%' }} />
+            )
           ) : state.stage === 'priority' ? (
             <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
               {/* Tab bar + bandwidth chip share one row */}
