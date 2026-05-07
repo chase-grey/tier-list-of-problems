@@ -380,10 +380,37 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
         // returned as devInterest per pitch by getAllocationData().
         setPhase2Interests(derivePhase2Interests(enriched, effectiveConfig));
         // Restore saved state, or derive default status grouping from priority/bandwidth.
-        // Dev assignments stay blank — auto-assign is triggered explicitly.
+        // Continuation projects with a willing (interest 1–2) available previousDev
+        // are pre-filled and locked; all other dev assignments start blank.
         if (!savedStep1.current) {
           const defaultPlan = generateDefaultPlan(enriched, effectiveConfig);
-          setPlanAssignments(defaultPlan.map(a => ({ ...a, assignedDev: null })));
+          const pitchMap = new Map(enriched.map(p => [p.id, p]));
+          const unavailableDevs = new Set([
+            ...(effectiveConfig.unavailableNames ?? []),
+            ...(effectiveConfig.unavailableForDevNames ?? []),
+          ]);
+          const availableDevs = new Set(effectiveConfig.devNames.filter(d => !unavailableDevs.has(d)));
+          const continuationLocks: string[] = [];
+          const initialPlan = defaultPlan.map(a => {
+            if (a.status === 'selected') {
+              const pitch = pitchMap.get(a.pitchId);
+              if (pitch?.continuation && pitch.previousDev && availableDevs.has(pitch.previousDev)) {
+                const interest = pitch.devInterest[pitch.previousDev];
+                if (interest === 1 || interest === 2) {
+                  continuationLocks.push(a.pitchId);
+                  return { ...a, assignedDev: pitch.previousDev };
+                }
+              }
+            }
+            return { ...a, assignedDev: null };
+          });
+          setPlanAssignments(initialPlan);
+          if (continuationLocks.length > 0) {
+            setStep1Locks(prev => ({
+              ...prev,
+              pitchIds: [...new Set([...prev.pitchIds, ...continuationLocks])],
+            }));
+          }
         }
         setUsingMockData(false);
       }
@@ -464,12 +491,45 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
   const step2InitRef = useRef(false);
 
   // Initialize step2 assignments when entering step 2 for the first time.
-  // Starts blank — auto-assign is triggered explicitly via the "Auto-assign" button.
+  // Continuation projects whose previousTL and previousQM are willing (phase2
+  // interest absent/1/2) and available are pre-filled; lock the pitch when both
+  // roles are covered. All other TL/QM/PQA1 slots start blank.
   useEffect(() => {
     if (activeStep !== 1 || loading || step2InitRef.current) return;
     step2InitRef.current = true;
-    if (savedStep2.current) return; // Already restored from localStorage via useState init
-    setStep2Assignments(selectedPitchesRef.current.map(p => ({ pitchId: p.id, devTL: null, qm: null, pqa1: null })));
+    if (savedStep2.current) return;
+
+    const unavailableSet = new Set(allocationConfig.unavailableNames ?? []);
+    const devTLSet = new Set(allocationConfig.devTLNames.filter(n => !unavailableSet.has(n)));
+    const qmSet = new Set(allocationConfig.qmNames.filter(n => !unavailableSet.has(n)));
+
+    // Returns true if this person is willing to work on this pitch.
+    // Absent = no data → willing. Null = actively skipped → not willing.
+    const isWilling = (personName: string, pitchId: string): boolean => {
+      const entry = phase2Interests.find(e => e.personName === personName);
+      if (!entry) return true; // no interest votes submitted → treat as willing
+      const level = entry.interestByPitchId[pitchId];
+      return level === undefined || level === 1 || level === 2;
+    };
+
+    const continuationLocks: string[] = [];
+    const initialStep2 = selectedPitchesRef.current.map(p => {
+      if (p.continuation) {
+        const devTL = p.previousTL && devTLSet.has(p.previousTL) && isWilling(p.previousTL, p.id) ? p.previousTL : null;
+        const qm   = p.previousQM  && qmSet.has(p.previousQM)   && isWilling(p.previousQM,  p.id) ? p.previousQM  : null;
+        if (devTL && qm) continuationLocks.push(p.id);
+        return { pitchId: p.id, devTL, qm, pqa1: null };
+      }
+      return { pitchId: p.id, devTL: null, qm: null, pqa1: null };
+    });
+
+    setStep2Assignments(initialStep2);
+    if (continuationLocks.length > 0) {
+      setStep2Locks(prev => ({
+        ...prev,
+        pitchIds: [...new Set([...prev.pitchIds, ...continuationLocks])],
+      }));
+    }
   }, [activeStep, loading, phase2Interests, allocationConfig]);
 
   const handleFinalize = async () => {
