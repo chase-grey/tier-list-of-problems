@@ -17,8 +17,8 @@ import { useLocalStorage } from '../hooks/useLocalStorage';
 import { submitVotes, submitFeedback, fetchPlanStatuses, convertVotesToApiFormat } from '../services/api';
 import { isDevelopmentMode } from '../utils/testUtils';
 import type { DropResult } from '@hello-pangea/dnd';
-import type { AppState, Pitch, Tier, InterestLevel } from '../types/models';
-import { isContributorRole, canRankInterestStage1, canRankInterestStage2 } from '../types/models';
+import type { AppState, Capacity, Pitch, Tier, InterestLevel } from '../types/models';
+import { isContributorRole, canRankInterestStage1, canRankInterestStage2, isDevRole } from '../types/models';
 import { useVoteManagement } from '../hooks/useVoteManagement';
 import { useKeyboardNav } from '../hooks/useKeyboardNav';
 import { getPollingCycleId, isStage2, isTLAllocationStage, getPollingStage } from '../utils/config';
@@ -67,6 +67,11 @@ const initialState: AppState = {
   voterName: null,
   voterRole: null,
   available: null,
+  availableForPQA1: null,
+  devCapacity: null,
+  pqa1Capacity: null,
+  capacity: null,
+  availabilityComment: '',
   stage: 'priority',
   votes: {},
 };
@@ -181,6 +186,7 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
   const [initialHelpShown, setInitialHelpShown] = useState(false);
   // State to control reset confirmation dialog
   const [showResetConfirmation, setShowResetConfirmation] = useState(false);
+  const [allocationResetKey, setAllocationResetKey] = useState(0);
   // State to control feedback dialog
   const [showFeedback, setShowFeedback] = useState(false);
 
@@ -239,6 +245,11 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
     // interest ranking with no indication why. Resetting to null forces the dialog to
     // re-appear each session; clicking Continue with the default switch takes one click.
     available: null as null,
+    availableForPQA1: null as null,
+    devCapacity: null as Capacity | null,
+    pqa1Capacity: null as Capacity | null,
+    capacity: null as Capacity | null,
+    availabilityComment: '',
   };
   
   // Use our centralized vote management hook
@@ -373,11 +384,17 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
     isInterestComplete
   } = stats;
 
-  // Check if the user has a role that can access interest ranking
-  // Stage 1: devs can rank interest (after priority)
-  // Stage 2: QM and dev TL can rank interest on subset of pitches
+  // Check if the user has a role that can access interest ranking.
+  // Stage 1: devs can rank interest (after priority). They qualify if
+  //   they're available for dev assignment OR for PQA1 — either way the
+  //   interest data feeds an auto-assign step they're in the pool for.
+  // Stage 2: QM and dev TL can rank interest on subset of pitches. They
+  //   qualify if `available` is true (single flag — no PQA1 split).
+  const isAvailableForInterest = isDevRole(state.voterRole)
+    ? state.available === true || state.availableForPQA1 === true
+    : state.available === true;
   const canAccessInterestStage = state.voterRole !== null &&
-    state.available === true &&
+    isAvailableForInterest &&
     (appStage2Mode
       ? canRankInterestStage2(state.voterRole)  // Stage 2: QM and dev TL only
       : canRankInterestStage1(state.voterRole)  // Stage 1: devs only
@@ -537,18 +554,35 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
     showSnackbar(`Name updated to ${name}`, 'success');
   };
 
-  // Handle availability update from settings
-  const handleUpdateAvailability = (available: boolean) => {
-    const wasAvailable = state.available === true;
-    
-    setAvailability(available);
-    
-    // If switching from available to not available, switch back to priority stage
-    if (wasAvailable && !available && state.stage === 'interest') {
+  // Handle availability update from settings. Accepts the new capacity-tier
+  // payload; old call paths can still pass just the booleans.
+  const handleUpdateAvailability = (
+    available: boolean,
+    availableForPQA1: boolean | null = null,
+    extras?: {
+      devCapacity?: Capacity | null;
+      pqa1Capacity?: Capacity | null;
+      capacity?: Capacity | null;
+      availabilityComment?: string;
+    },
+  ) => {
+    const isDev = isDevRole(state.voterRole);
+    const wasEligibleForInterest = isDev
+      ? state.available === true || state.availableForPQA1 === true
+      : state.available === true;
+    const newEligibleForInterest = isDev
+      ? available || availableForPQA1 === true
+      : available;
+
+    setAvailability(available, isDev ? availableForPQA1 : null, extras);
+
+    // If they lost interest-ranking eligibility while on the interest stage,
+    // bounce back to priority so they're not stranded on a locked screen.
+    if (wasEligibleForInterest && !newEligibleForInterest && state.stage === 'interest') {
       setStage('priority');
       showSnackbar('Availability updated. Switched back to priority ranking.', 'info');
     } else {
-      showSnackbar(`Availability ${available ? 'confirmed' : 'updated - priority ranking only'}`, 'success');
+      showSnackbar(`Availability ${newEligibleForInterest ? 'confirmed' : 'updated - priority ranking only'}`, 'success');
     }
   };
   
@@ -674,10 +708,25 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
     }
   };
 
-  // Handle availability setting
-  const handleAvailabilitySet = (available: boolean) => {
-    setAvailability(available);
-    showSnackbar(`Availability ${available ? 'confirmed' : 'noted - thanks for letting us know'}`, 'success');
+  // Handle availability setting from the initial AvailabilityDialog.
+  // Devs answer two capacity questions; other roles answer one. Toast wording
+  // reflects whether they'll be ranking interest data after this.
+  const handleAvailabilitySet = (
+    available: boolean,
+    availableForPQA1: boolean | null,
+    extras?: {
+      devCapacity?: Capacity | null;
+      pqa1Capacity?: Capacity | null;
+      capacity?: Capacity | null;
+      availabilityComment?: string;
+    },
+  ) => {
+    setAvailability(available, availableForPQA1, extras);
+    const eligibleForInterest = available || availableForPQA1 === true;
+    showSnackbar(
+      `Availability ${eligibleForInterest ? 'confirmed' : 'noted - thanks for letting us know'}`,
+      'success',
+    );
   };
 
   // Handle showing help dialog
@@ -695,18 +744,22 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
   const handleResetClick = () => {
     setShowResetConfirmation(true);
   };
-  
+
   // Handle reset confirmation
   const handleResetConfirm = () => {
-    // Reset all votes and clear voter name
-    resetAll();
-    // Close confirmation dialog
+    if (isTLStage) {
+      // Allocation mode: clear Stage 2/4 state from localStorage and restart blank
+      ['tl-alloc-step1-assignments', 'tl-alloc-step2-assignments', 'tl-alloc-uxd',
+       'tl-alloc-step1-locks', 'tl-alloc-step2-locks'].forEach(k => localStorage.removeItem(k));
+      setAllocationResetKey(n => n + 1);
+      showSnackbar('Allocation cleared — starting fresh.', 'success');
+    } else {
+      resetAll();
+      setInitialHelpShown(false);
+      setShowHelp(true);
+      showSnackbar('All data has been reset. Please enter your name to continue.', 'success');
+    }
     setShowResetConfirmation(false);
-    // Reset help dialog tracking to show instructions again
-    setInitialHelpShown(false);
-    setShowHelp(true);
-    // Show success message
-    showSnackbar('All data has been reset. Please enter your name to continue.', 'success');
   };
 
   const submitCurrentVotes = async () => {
@@ -715,7 +768,17 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
     try {
       const pitchTitleMap = Object.fromEntries(pitches.map(p => [p.id, p.title]));
       const apiVotes = convertVotesToApiFormat(state.votes, pitchTitleMap);
-      await submitVotes({ voterName: state.voterName, voterRole: state.voterRole ?? undefined, available: state.available ?? undefined, votes: apiVotes });
+      await submitVotes({
+        voterName: state.voterName,
+        voterRole: state.voterRole ?? undefined,
+        available: state.available ?? undefined,
+        availableForPQA1: state.availableForPQA1 ?? undefined,
+        devCapacity: state.devCapacity ?? undefined,
+        pqa1Capacity: state.pqa1Capacity ?? undefined,
+        capacity: state.capacity ?? undefined,
+        availabilityComment: state.availabilityComment || undefined,
+        votes: apiVotes,
+      });
       showSnackbar('Your votes have been submitted successfully!', 'success');
       submittedVotesSnapshot.current = JSON.stringify(
         apiVotes
@@ -810,8 +873,9 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
         open={!state.voterName && initialHelpShown}
       />
 
-      <AvailabilityDialog 
+      <AvailabilityDialog
         open={showAvailabilityDialog}
+        voterRole={state.voterRole}
         onAvailabilitySet={handleAvailabilitySet}
       />
       
@@ -820,6 +884,11 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
           voterName={state.voterName}
           voterRole={state.voterRole}
           available={state.available}
+          availableForPQA1={state.availableForPQA1}
+          devCapacity={state.devCapacity}
+          pqa1Capacity={state.pqa1Capacity}
+          capacity={state.capacity}
+          availabilityComment={state.availabilityComment}
           totalPitchCount={TOTAL}
           rankCount={rankCount}
           interestCount={interestCount}
@@ -853,6 +922,7 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
           {/* TL Allocation stage: dev TLs see the allocation view; everyone else waits */}
           {isTLStage && state.voterRole === 'dev TL' ? (
             <TLAllocationView
+              key={allocationResetKey}
               ref={tlViewRef}
               activeStep={allocationStep}
               showResults={allocationShowResults}
@@ -954,11 +1024,13 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
           {/* Reset confirmation dialog */}
           <ConfirmationDialog
             open={showResetConfirmation}
-            title="Reset Everything"
-            message="Are you sure you want to reset everything? This will clear all your votes and allow you to change your name. You'll also see the instructions page again. This action cannot be undone."
+            title={isTLStage ? 'Clear All Assignments' : 'Reset Everything'}
+            message={isTLStage
+              ? 'Are you sure you want to clear all assignments? This will reset the plan to a blank slate. This action cannot be undone.'
+              : 'Are you sure you want to reset everything? This will clear all your votes and allow you to change your name. You\'ll also see the instructions page again. This action cannot be undone.'}
             onConfirm={handleResetConfirm}
             onCancel={() => setShowResetConfirmation(false)}
-            confirmText="Yes, Reset Everything"
+            confirmText={isTLStage ? 'Yes, Clear All' : 'Yes, Reset Everything'}
             severity="warning"
           />
           

@@ -7,10 +7,11 @@ import type { Pitch } from '../../types/models';
 import {
   MOCK_CONFIG, MOCK_PITCHES, MOCK_PLAN,
 } from '../../mocks/allocationMockData';
-import { fetchAllocationConfig, fetchAllocationVoteData } from '../../services/allocationApi';
+import { fetchAllocationConfig, fetchAllocationVoteData, setCapacityOverride } from '../../services/allocationApi';
+import type { CapacityOverridePayload } from '../../services/allocationApi';
 import { savePlan, saveFinalAssignments } from '../../services/api';
 import { useSnackbar } from '../../hooks/useSnackbar';
-import { generateDefaultPlan, autoAssignPqa1 } from '../../utils/allocationEngine';
+import { generateDefaultPlan, autoAssignPqa1, capForPerson } from '../../utils/allocationEngine';
 import { fetchPitches } from '../../services/api';
 import staticPitchesJson from '../../assets/pitches.json';
 import Step1View from './Step1View';
@@ -85,6 +86,19 @@ function autoAssignStep2(
   const devTLNames = config.devTLNames.filter(n => !unavailableSet.has(n));
   const qmNames = config.qmNames.filter(n => !unavailableSet.has(n));
 
+  // Per-person caps: baseline = fair share of total pitches, shifted by
+  // capacityByName tier ('above-avg' = +1, 'fewer' = -1, 'none' = 0).
+  const tlBaseline = devTLNames.length > 0 ? Math.ceil(pitches.length / devTLNames.length) : 0;
+  const qmBaseline = qmNames.length > 0 ? Math.ceil(pitches.length / qmNames.length) : 0;
+  const devTLCapByName: Record<string, number> = {};
+  const qmCapByName: Record<string, number> = {};
+  devTLNames.forEach(n => {
+    devTLCapByName[n] = capForPerson(tlBaseline, config.capacityByName?.[n], 'capacity');
+  });
+  qmNames.forEach(n => {
+    qmCapByName[n] = capForPerson(qmBaseline, config.capacityByName?.[n], 'capacity');
+  });
+
   const devTLLoad: Record<string, number> = {};
   const qmLoad: Record<string, number> = {};
   devTLNames.forEach(n => { devTLLoad[n] = 0; });
@@ -121,24 +135,36 @@ function autoAssignStep2(
     let devTL: string | null = null;
     let qm: string | null = null;
 
-    // Continuation: try to keep previousTL (unless they're locked elsewhere).
-    if (pitch.continuation && pitch.previousTL && devTLNames.includes(pitch.previousTL) && !lockedPersons.has(pitch.previousTL)) {
+    // Continuation: try to keep previousTL (unless locked elsewhere or at cap).
+    if (
+      pitch.continuation && pitch.previousTL &&
+      devTLNames.includes(pitch.previousTL) &&
+      !lockedPersons.has(pitch.previousTL) &&
+      (devTLLoad[pitch.previousTL] ?? 0) < (devTLCapByName[pitch.previousTL] ?? 0)
+    ) {
       devTL = pitch.previousTL;
       devTLLoad[devTL]++;
     }
 
-    // Continuation: try to keep previousQM
-    if (pitch.continuation && pitch.previousQM && qmNames.includes(pitch.previousQM) && !lockedPersons.has(pitch.previousQM)) {
+    // Continuation: try to keep previousQM (unless locked elsewhere or at cap).
+    if (
+      pitch.continuation && pitch.previousQM &&
+      qmNames.includes(pitch.previousQM) &&
+      !lockedPersons.has(pitch.previousQM) &&
+      (qmLoad[pitch.previousQM] ?? 0) < (qmCapByName[pitch.previousQM] ?? 0)
+    ) {
       qm = pitch.previousQM;
       qmLoad[qm]++;
     }
 
     // Fill unassigned devTL: load is the primary sort, so the spread between any
     // two TLs stays within 1 across the whole quarter. Interest (Phase 2 votes)
-    // and authorship break ties only when loads are equal.
+    // and authorship break ties only when loads are equal. Skip candidates at
+    // or above their per-person cap.
     if (!devTL) {
       devTL = devTLNames
         .filter(n => !lockedPersons.has(n))
+        .filter(n => (devTLLoad[n] ?? 0) < (devTLCapByName[n] ?? 0))
         .sort((a, b) => {
           const loadDiff = (devTLLoad[a] ?? 0) - (devTLLoad[b] ?? 0);
           if (loadDiff !== 0) return loadDiff;
@@ -156,6 +182,7 @@ function autoAssignStep2(
     if (!qm) {
       qm = qmNames
         .filter(n => !lockedPersons.has(n))
+        .filter(n => (qmLoad[n] ?? 0) < (qmCapByName[n] ?? 0))
         .sort((a, b) => {
           const loadDiff = (qmLoad[a] ?? 0) - (qmLoad[b] ?? 0);
           if (loadDiff !== 0) return loadDiff;
@@ -222,7 +249,7 @@ function enrichPitches(
   });
 }
 
-const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProps>(function TLAllocationView({ activeStep, showResults, onShowResultsChange, onFinalize, onAllocationChange }, ref) {
+const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProps>(function TLAllocationView({ activeStep, showResults, onShowResultsChange, onFinalize, onAllocationChange, voterName }, ref) {
   const { showSnackbar } = useSnackbar();
 
   // ── Data loading ──────────────────────────────────────────────────────────
@@ -292,14 +319,23 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
     Promise.all([pitchP, voteP, configP]).then(([pitches, voteResponse, config]) => {
       if (cancelled) return;
 
-      const { pitchData: voteData, unavailableNames } = voteResponse;
+      const { pitchData: voteData, unavailableNames, unavailableForDevNames, unavailableForPqa1Names, capacityByName } = voteResponse;
       const hasRealVotes = Object.keys(voteData).length > 0;
 
-      // Merge unavailableNames from vote data into config (vote data is the authoritative
-      // source since it's derived from what voters actually submitted).
+      // Merge unavailability lists from vote data into config (vote data is the
+      // authoritative source — derived from what voters actually submitted).
+      //   unavailableNames        — fully unavailable (excluded from every pool).
+      //   unavailableForDevNames  — only available as PQA1 (excluded from dev pool).
+      //   unavailableForPqa1Names — only available as dev  (excluded from PQA1 pool).
+      //   capacityByName          — per-person capacity tier + comment (voter
+      //                             answer overlaid with TL override) — drives
+      //                             algorithm caps and Stage 2/4 sidebar badges.
       const effectiveConfig: AllocationConfig = {
         ...(config ?? MOCK_CONFIG),
         ...(unavailableNames.length > 0 ? { unavailableNames } : {}),
+        ...(unavailableForDevNames && unavailableForDevNames.length > 0 ? { unavailableForDevNames } : {}),
+        ...(unavailableForPqa1Names && unavailableForPqa1Names.length > 0 ? { unavailableForPqa1Names } : {}),
+        ...(capacityByName && Object.keys(capacityByName).length > 0 ? { capacityByName } : {}),
       };
 
       setAllocationConfig(effectiveConfig);
@@ -343,10 +379,10 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
         // Derive phase2Interests from vote data — interest is column G in the VOTES tab,
         // returned as devInterest per pitch by getAllocationData().
         setPhase2Interests(derivePhase2Interests(enriched, effectiveConfig));
-        // Only auto-generate the plan if the user has no saved state — otherwise
-        // preserve their work so a page refresh doesn't wipe mid-session changes.
+        // Restore saved state, or start blank (all next-up, no dev assigned).
+        // Auto-assign is only triggered explicitly via the "Auto-assign" button.
         if (!savedStep1.current) {
-          setPlanAssignments(generateDefaultPlan(enriched, effectiveConfig));
+          setPlanAssignments(enriched.map(p => ({ pitchId: p.id, assignedDev: null, status: 'next-up' as const })));
         }
         setUsingMockData(false);
       }
@@ -426,17 +462,13 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
   devByPitchIdRef.current = devByPitchId;
   const step2InitRef = useRef(false);
 
-  // Auto-initialize step2 assignments when entering step 2, waiting for data to load first.
-  // Skip auto-assignment if the user has saved step2 state from a previous session.
+  // Initialize step2 assignments when entering step 2 for the first time.
+  // Starts blank — auto-assign is triggered explicitly via the "Auto-assign" button.
   useEffect(() => {
     if (activeStep !== 1 || loading || step2InitRef.current) return;
     step2InitRef.current = true;
     if (savedStep2.current) return; // Already restored from localStorage via useState init
-    const base = autoAssignStep2(selectedPitchesRef.current, phase2Interests, allocationConfig);
-    const unavailSet = new Set(allocationConfig.unavailableNames ?? []);
-    const availDevNames = allocationConfig.devNames.filter(d => !unavailSet.has(d));
-    const pqa1Map = autoAssignPqa1(selectedPitchesRef.current, devByPitchIdRef.current, availDevNames);
-    setStep2Assignments(base.map(a => ({ ...a, pqa1: pqa1Map[a.pitchId] ?? null })));
+    setStep2Assignments(selectedPitchesRef.current.map(p => ({ pitchId: p.id, devTL: null, qm: null, pqa1: null })));
   }, [activeStep, loading, phase2Interests, allocationConfig]);
 
   const handleFinalize = async () => {
@@ -499,10 +531,14 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
         lockedPersonNames: lockedPersonSet,
         currentAssignments: step2Assignments,
       });
-      const unavailSet2 = new Set(allocationConfig.unavailableNames ?? []);
-      const availDevNames2 = allocationConfig.devNames.filter(d => !unavailSet2.has(d));
+      // PQA1 pool: exclude fully unavailable + dev-only-available.
+      const pqa1ExcludeSet2 = new Set([
+        ...(allocationConfig.unavailableNames ?? []),
+        ...(allocationConfig.unavailableForPqa1Names ?? []),
+      ]);
+      const availDevNames2 = allocationConfig.devNames.filter(d => !pqa1ExcludeSet2.has(d));
       const currentPqa1ByPitch = Object.fromEntries(step2Assignments.map(a => [a.pitchId, a.pqa1 ?? null]));
-      const pqa1Map = autoAssignPqa1(selectedPitches, devByPitchId, availDevNames2, {
+      const pqa1Map = autoAssignPqa1(selectedPitches, devByPitchId, availDevNames2, allocationConfig, {
         lockedPitchIds: lockedPitchSet,
         lockedPersonNames: lockedPersonSet,
         currentPqa1ByPitch,
@@ -510,6 +546,63 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
       setStep2Assignments(base.map(a => ({ ...a, pqa1: pqa1Map[a.pitchId] ?? null })));
       showSnackbar('Team assignments auto-assigned', 'info');
     }
+  };
+
+  // Persist a TL capacity override and reflect it locally so the sidebar
+  // updates instantly. We also rebuild the unavailable* lists to match the new
+  // tiers ('none' = excluded from that pool) — best-effort recompute, the next
+  // backend fetch will overwrite this with the authoritative merged view.
+  const handleCapacityOverride = async (payload: CapacityOverridePayload) => {
+    try {
+      await setCapacityOverride(payload);
+    } catch (err: any) {
+      showSnackbar(`Failed to save capacity: ${err?.message ?? 'unknown error'}`, 'error');
+      throw err;
+    }
+
+    setAllocationConfig(prev => {
+      const prevCap = prev.capacityByName ?? {};
+      const merged = {
+        ...prevCap,
+        [payload.name]: {
+          ...(prevCap[payload.name] ?? {}),
+          ...(payload.devCapacity !== undefined ? { devCapacity: payload.devCapacity } : {}),
+          ...(payload.pqa1Capacity !== undefined ? { pqa1Capacity: payload.pqa1Capacity } : {}),
+          ...(payload.capacity !== undefined ? { capacity: payload.capacity } : {}),
+          comment: payload.comment ?? '',
+          source: 'tl-override' as const,
+        },
+      };
+
+      // Recompute unavailability lists from the merged capacity map. Anyone
+      // with `'none'` in a tier joins the corresponding excluded pool.
+      const isDevName = (n: string) => prev.devNames.includes(n);
+      const fullyUnavail = new Set<string>();
+      const devOnly = new Set<string>();   // available as PQA1 only
+      const pqa1Only = new Set<string>();  // available for dev only
+      Object.entries(merged).forEach(([n, c]) => {
+        if (isDevName(n)) {
+          const dev = c.devCapacity ?? 'avg';
+          const pqa1 = c.pqa1Capacity ?? 'avg';
+          if (dev === 'none' && pqa1 === 'none') fullyUnavail.add(n);
+          else if (dev === 'none') devOnly.add(n);
+          else if (pqa1 === 'none') pqa1Only.add(n);
+        } else if (c.capacity === 'none') {
+          fullyUnavail.add(n);
+        }
+      });
+
+      const dedupe = (arr: string[] = []) => Array.from(new Set(arr));
+      return {
+        ...prev,
+        capacityByName: merged,
+        unavailableNames: dedupe([...(prev.unavailableNames ?? []).filter(n => !merged[n]), ...fullyUnavail]),
+        unavailableForDevNames: dedupe([...(prev.unavailableForDevNames ?? []).filter(n => !merged[n]), ...devOnly]),
+        unavailableForPqa1Names: dedupe([...(prev.unavailableForPqa1Names ?? []).filter(n => !merged[n]), ...pqa1Only]),
+      };
+    });
+
+    showSnackbar(`Capacity updated for ${payload.name}`, 'success');
   };
 
   useImperativeHandle(ref, () => ({ triggerFinalize: handleFinalize, triggerRerunAlgorithm: handleRerunAlgorithm }));
@@ -586,6 +679,8 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
             lockedPersonNames={step1Locks.personNames}
             onTogglePitchLock={toggleStep1PitchLock}
             onTogglePersonLock={toggleStep1PersonLock}
+            voterName={voterName}
+            onCapacityOverride={handleCapacityOverride}
           />
         ) : (
           <Step2View
@@ -603,6 +698,8 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
             lockedPersonNames={step2Locks.personNames}
             onTogglePitchLock={toggleStep2PitchLock}
             onTogglePersonLock={toggleStep2PersonLock}
+            voterName={voterName}
+            onCapacityOverride={handleCapacityOverride}
           />
         )}
       </Box>
