@@ -345,11 +345,16 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
     if (!standardRoleForStage && !lateDevInStage3) return;
 
     availabilityPrecheckRef.current = true;
-    let cancelled = false;
+    // No `cancelled` flag / cleanup function: setAvailability comes from
+    // useVoteManagement without useCallback, so its reference changes on
+    // every render. If we cancelled in cleanup, every render between effect
+    // setup and fetch resolution would kill the in-flight request — and since
+    // GAS responds in 1-2s while React re-renders run far more often, the
+    // resolver basically never reached setAvailability. The effect itself
+    // is one-shot (gated by availabilityPrecheckRef.current), and a stale
+    // unmount-time setState is harmless.
     import('../services/allocationApi').then(({ fetchVoterAvailability }) => {
       fetchVoterAvailability(state.voterName!).then(data => {
-        if (cancelled) return;
-
         // Suppress the AvailabilityDialog for any voter we can identify on the
         // backend. The cleanest signal is `hasInterestVotes` (added to the
         // backend response), but on backends that haven't been redeployed yet
@@ -361,13 +366,10 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
         setHasInterestVotesOnBackend(seenOnBackend);
 
         if (!data.found) return;
-        // Don't overwrite a freshly-submitted dialog answer with the stale
-        // backend value. We still wanted the fetch above for hasInterestVotes.
-        if (state.available !== null) return;
 
-        // Only populate when we actually got availability data — `found:true`
-        // with all fields null/empty means the row exists but has no answer
-        // (e.g. legacy rows pre-cleanup), in which case we still want the popup.
+        // Populate state from backend when we have availability data. The
+        // dialog itself is hidden until hasInterestVotesOnBackend resolves,
+        // so there's no race against a freshly-typed dialog answer.
         const hasFlag = data.available === true || data.available === false
           || data.availableForPQA1 === true || data.availableForPQA1 === false;
         const hasTier = !!(data.devCapacity || data.pqa1Capacity || data.capacity);
@@ -386,10 +388,9 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
       }).catch(() => {
         // Fetch failed — flip to `false` so the dialog falls open instead of
         // staying hidden behind the loading sentinel.
-        if (!cancelled) setHasInterestVotesOnBackend(false);
+        setHasInterestVotesOnBackend(false);
       });
     });
-    return () => { cancelled = true; };
   }, [state.voterName, state.voterRole, state.available, appStage2Mode, setAvailability]);
 
   // After a successful submission we snapshot the votes and watch for any change
@@ -1084,22 +1085,10 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
           ) : appStage2Mode && !canAccessInterestStage ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', flexDirection: 'column', gap: 2, p: 4 }}>
               <Typography variant="h5" color="text.secondary" textAlign="center">
-                Stage 2: Interest Ranking
+                Stage 3: Interest Ranking
               </Typography>
               <Typography variant="body1" color="text.secondary" textAlign="center" sx={{ maxWidth: 500 }}>
-                {isDevRole(state.voterRole) && hasInterestVotesOnBackend ? (
-                  <>Your interest data is already on file — thanks! Check back soon for updates on the selected projects for next quarter.</>
-                ) : (
-                  <>
-                    This stage is only available to QM and dev TL roles who have indicated they are available for next quarter.
-                    {state.voterRole && !canRankInterestStage2(state.voterRole) && !isDevRole(state.voterRole) && (
-                      <><br /><br />Your current role ({state.voterRole}) does not have access to this stage.</>
-                    )}
-                    {state.voterRole && canRankInterestStage2(state.voterRole) && state.available !== true && (
-                      <><br /><br />Please indicate that you are available for next quarter to access interest ranking.</>
-                    )}
-                  </>
-                )}
+                No further action is needed from you at this time. Check back soon for updates on the selected projects for next quarter.
               </Typography>
             </Box>
           ) : state.stage === 'priority' ? (
