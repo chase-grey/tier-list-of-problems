@@ -6,6 +6,7 @@
 import type {
   AllocationPitch,
   AllocationConfig,
+  PersonCapacity,
   PlanAssignment,
 } from '../types/allocationTypes';
 
@@ -14,6 +15,27 @@ function pitchPriorityScore(pitch: AllocationPitch): number {
   const teamScore = (5 - pitch.teamPriorityScore) / 4;
   const tlScore = (5 - pitch.tlPriorityScore) / 4;
   return 0.50 * teamScore + 0.50 * tlScore;
+}
+
+/**
+ * Translate a capacity tier into a numeric cap relative to a baseline.
+ * Used by all three allocation algorithms (Stage 1 dev, PQA1, Stage 2 TL/QM)
+ * to honor per-person `AllocationConfig.capacityByName` entries.
+ */
+export function capForPerson(
+  baseline: number,
+  capacity: PersonCapacity | undefined,
+  field: 'devCapacity' | 'pqa1Capacity' | 'capacity',
+): number {
+  const tier = capacity?.[field];
+  switch (tier) {
+    case 'above-avg': return baseline + 1;
+    case 'fewer':     return Math.max(0, baseline - 1);
+    case 'none':      return 0;
+    case 'avg':
+    case undefined:
+    default:          return baseline;
+  }
 }
 
 /**
@@ -77,8 +99,14 @@ export function generateDefaultPlan(
     }
   });
 
-  // 2 projects per dev
-  const totalSlots = devNames.length * 2;
+  // Baseline of 2 projects per dev, shifted per-person via capacityByName.
+  // Total slots = sum of per-dev caps (people with 'none' contribute 0).
+  const DEV_BASELINE = 2;
+  const devCapByName: Record<string, number> = {};
+  devNames.forEach(d => {
+    devCapByName[d] = capForPerson(DEV_BASELINE, config.capacityByName?.[d], 'devCapacity');
+  });
+  const totalSlots = devNames.reduce((s, d) => s + devCapByName[d], 0);
   const totalPct = categories.reduce((s, c) => s + bandwidth[c], 0);
   const rawSlots = categories.map(c => ({ cat: c, slots: (bandwidth[c] / totalPct) * totalSlots }));
 
@@ -108,8 +136,6 @@ export function generateDefaultPlan(
     selected.push(...catPitches.slice(0, slots));
   });
 
-  const MAX_PER_DEV = 2;
-
   // Continuations prefer their previousDev; open pitches compete freely.
   const continuations = selected.filter(p => p.continuation && p.previousDev && devNames.includes(p.previousDev!));
   const openPitches   = selected.filter(p => !(p.continuation && p.previousDev && devNames.includes(p.previousDev!)));
@@ -117,10 +143,10 @@ export function generateDefaultPlan(
 
   const newAssignments: PlanAssignment[] = [];
 
-  // Expand each dev into (MAX_PER_DEV - lockedDevCount) slots for Hungarian capacity encoding.
+  // Expand each dev into (per-person cap - lockedDevCount) slots for Hungarian capacity encoding.
   const devSlots: string[] = [];
   devNames.forEach(d => {
-    const available = Math.max(0, MAX_PER_DEV - (lockedDevCount[d] ?? 0));
+    const available = Math.max(0, devCapByName[d] - (lockedDevCount[d] ?? 0));
     for (let s = 0; s < available; s++) devSlots.push(d);
   });
 
@@ -248,6 +274,7 @@ export function autoAssignPqa1(
   pitches: AllocationPitch[],
   devByPitchId: Record<string, string | null>,
   devNames: string[],
+  config: AllocationConfig,
   options: {
     lockedPitchIds?: ReadonlySet<string>;
     lockedPersonNames?: ReadonlySet<string>;
@@ -275,8 +302,13 @@ export function autoAssignPqa1(
     if (reviewer && reviewer in pqa1Load) pqa1Load[reviewer]++;
   });
 
-  // Hard cap so no dev gets more than their fair share regardless of interest advantage.
-  const cap = devNames.length > 0 ? Math.ceil(pitches.length / devNames.length) : 0;
+  // Baseline = fair share of total. Per-person caps shift this baseline via
+  // capacityByName. 'none' (cap=0) excludes the dev from candidacy entirely.
+  const baselineCap = devNames.length > 0 ? Math.ceil(pitches.length / devNames.length) : 0;
+  const capByName: Record<string, number> = {};
+  devNames.forEach(d => {
+    capByName[d] = capForPerson(baselineCap, config.capacityByName?.[d], 'pqa1Capacity');
+  });
 
   // Absent key = unrated (no opinion expressed) → neutral 2.5, preferred over medium interest (3).
   // Only an explicit null means "actively skipped" → 5.
@@ -290,12 +322,12 @@ export function autoAssignPqa1(
 
   if (unlockedPitches.length === 0) return result;
 
-  // Expand each dev into (cap - lockedLoad) individual slots so the Hungarian
-  // algorithm respects per-dev capacity without needing a separate flow layer.
+  // Expand each dev into (per-person cap - lockedLoad) individual slots so the
+  // Hungarian algorithm respects per-dev capacity without needing a separate flow layer.
   const BIG = 100; // cost sentinel for infeasible assignments
   const devSlots: string[] = [];
   devNames.forEach(d => {
-    const available = Math.max(0, cap - (pqa1Load[d] ?? 0));
+    const available = Math.max(0, capByName[d] - (pqa1Load[d] ?? 0));
     for (let s = 0; s < available; s++) devSlots.push(d);
   });
 

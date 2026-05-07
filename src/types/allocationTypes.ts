@@ -68,6 +68,57 @@ export interface AllocationConfig {
   memberEmails?: Record<string, string>;
   /** Quarter label used in email subjects, e.g. "4" or "Next Quarter". Defaults to "Next Quarter". */
   quarterLabel?: string;
-  /** Names of team members who indicated they are NOT available next quarter. */
+  /**
+   * Names of team members fully unavailable next quarter (e.g. paternity leave).
+   * Excluded from every assignment pool — Stage 2 dev, Stage 4 TL/QM/PQA1.
+   * For QM / dev TL, this is their single availability flag.
+   */
   unavailableNames?: string[];
+  /**
+   * Devs who are NOT available for Stage 2 dev assignment but *are* available
+   * as Stage 4 PQA1 reviewers (e.g. committed to another project). They stay
+   * eligible in `devNames` for the PQA1 pool; the dev-assign algorithm filters
+   * them out using this list. Devs in `unavailableNames` should not also be
+   * here — the broader list already excludes them everywhere.
+   */
+  unavailableForDevNames?: string[];
+  /**
+   * Devs who *are* available for Stage 2 dev assignment but NOT available as
+   * Stage 4 PQA1 reviewers. The PQA1 auto-assign filters them out via this
+   * list; they remain eligible for dev assignment.
+   */
+  unavailableForPqa1Names?: string[];
+  /**
+   * Per-person capacity tiers + comment. Keyed by voter name. The merged view
+   * the backend returns: voter-submitted values overlaid with TL overrides
+   * (overrides win). Algorithms read this to compute per-person caps:
+   *   above-avg → baseline + 1
+   *   avg       → baseline (or unset → baseline)
+   *   fewer     → max(0, baseline - 1)
+   *   none      → 0 (excluded; also surfaced via the unavailable*Names lists)
+   * Comments are display-only — Stage 2/4 sidebars surface them on hover.
+   */
+  capacityByName?: Record<string, PersonCapacity>;
+}
+
+/**
+ * Capacity record for a single person — returned by the backend in
+ * `AllocationConfig.capacityByName` and used to drive both auto-assign caps
+ * and the Stage 2/4 sidebar capacity badges + tooltips.
+ */
+export interface PersonCapacity {
+  /** Devs only — Stage 2 dev capacity. Undefined for non-devs. */
+  devCapacity?: import('./models').Capacity;
+  /** Devs only — Stage 4 PQA1 capacity. Undefined for non-devs. */
+  pqa1Capacity?: import('./models').Capacity;
+  /** QM / dev TL only — single project capacity. Undefined for devs. */
+  capacity?: import('./models').Capacity;
+  /** Free-text reason for any non-`'avg'` capacity. Empty for fully-standard answers. */
+  comment?: string;
+  /**
+   * Where this record came from. `'voter'` = the person submitted it via the
+   * dialog; `'tl-override'` = a TL set/changed it from the Stage 2/4 UI.
+   * Used in the hover tooltip ("TL set fewer — {comment}" vs "Voter said…").
+   */
+  source?: 'voter' | 'tl-override';
 }

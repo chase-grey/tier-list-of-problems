@@ -16,8 +16,42 @@ export type AllocationVoteData = {
 
 export type AllocationVoteResponse = {
   pitchData: Record<string, AllocationVoteData>;
-  /** Names of team members who explicitly indicated they are NOT available next quarter. */
+  /** Names of team members fully unavailable next quarter (excluded from every pool). */
   unavailableNames: string[];
+  /**
+   * Devs who said no to "available for dev assignment" but yes to "available
+   * as PQA1 reviewer" — excluded from Stage 2 dev assignment but kept in the
+   * Stage 4 PQA1 pool. Optional: omitted by older backends → treated as empty.
+   */
+  unavailableForDevNames?: string[];
+  /**
+   * Devs who said yes to dev assignment but no to PQA1 — included in Stage 2
+   * dev pool, excluded from Stage 4 PQA1 pool. Optional.
+   */
+  unavailableForPqa1Names?: string[];
+  /**
+   * Merged per-person capacity tiers + comments (voter answers overlaid with
+   * TL overrides). The frontend pipes this into AllocationConfig.capacityByName
+   * for the algorithms and Stage 2/4 sidebar tooltips. Optional — older
+   * backends omit it and the frontend treats missing entries as `'avg'`.
+   */
+  capacityByName?: Record<string, import('../types/allocationTypes').PersonCapacity>;
+};
+
+/** Payload for the new TL-override endpoint (set-capacity-override). */
+export type CapacityOverridePayload = {
+  /** Person whose capacity is being overridden. */
+  name: string;
+  /** Devs only. */
+  devCapacity?: 'above-avg' | 'avg' | 'fewer' | 'none';
+  /** Devs only. */
+  pqa1Capacity?: 'above-avg' | 'avg' | 'fewer' | 'none';
+  /** QM / dev TL only. */
+  capacity?: 'above-avg' | 'avg' | 'fewer' | 'none';
+  /** Required when any capacity is non-`'avg'`. */
+  comment?: string;
+  /** Name of the TL recording the override (for audit). */
+  setBy: string;
 };
 
 async function gasGet<T>(route: string): Promise<T> {
@@ -148,4 +182,18 @@ export async function createEmcRecords(payload: {
 }): Promise<{ sent: number; skipped: string[] }> {
   if (!API_BASE_URL) throw new Error('API URL not configured');
   return gasPost('create-emr-records', payload, { sent: payload.assignments.length, skipped: [] });
+}
+
+/**
+ * Persist a TL-driven capacity override for one person. The backend merges this
+ * with the voter's own answer (TL override wins) and the next allocation-data
+ * fetch returns the updated tier in `capacityByName`.
+ *
+ * Uses the same no-cors pattern as the other write endpoints — GAS executes the
+ * request even though we can't read the response body, so we return a synthetic
+ * success value.
+ */
+export async function setCapacityOverride(payload: CapacityOverridePayload): Promise<{ saved: number }> {
+  if (!API_BASE_URL) throw new Error('API URL not configured');
+  return gasPost('set-capacity-override', payload, { saved: 1 });
 }

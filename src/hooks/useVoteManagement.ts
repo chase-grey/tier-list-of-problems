@@ -1,5 +1,5 @@
 import { useReducer, useRef } from 'react';
-import type { AppState, AppAction, Pitch, Vote, Tier, InterestLevel } from '../types/models';
+import type { AppState, AppAction, Capacity, Pitch, Vote, Tier, InterestLevel } from '../types/models';
 import { mapTierToInterestLevel } from '../utils/voteActions';
 
 /**
@@ -29,8 +29,48 @@ export const useVoteManagement = (initialState: AppState) => {
       case 'UPDATE_ROLE':
         return { ...state, voterRole: action.role };
         
-      case 'SET_AVAILABILITY':
-        return { ...state, available: action.available };
+      case 'SET_AVAILABILITY': {
+        // When capacity tiers are passed, derive the matching boolean from
+        // them so old code paths that read `available` / `availableForPQA1`
+        // stay in sync. When only the booleans are passed (legacy callers),
+        // we keep the prior tier values untouched.
+        const nextDevCapacity = action.devCapacity !== undefined
+          ? action.devCapacity
+          : state.devCapacity;
+        const nextPqa1Capacity = action.pqa1Capacity !== undefined
+          ? action.pqa1Capacity
+          : state.pqa1Capacity;
+        const nextCapacity = action.capacity !== undefined
+          ? action.capacity
+          : state.capacity;
+
+        // If a tier was provided, derive the boolean from it; otherwise use
+        // the explicit boolean argument (which is always present).
+        const derivedAvailable =
+          action.devCapacity !== undefined
+            ? action.devCapacity !== 'none'
+            : action.capacity !== undefined
+              ? action.capacity !== 'none'
+              : action.available;
+        const derivedAvailableForPQA1 =
+          action.pqa1Capacity !== undefined
+            ? action.pqa1Capacity !== 'none'
+            : action.availableForPQA1 !== undefined
+              ? action.availableForPQA1
+              : state.availableForPQA1;
+
+        return {
+          ...state,
+          available: derivedAvailable,
+          availableForPQA1: derivedAvailableForPQA1,
+          devCapacity: nextDevCapacity,
+          pqa1Capacity: nextPqa1Capacity,
+          capacity: nextCapacity,
+          availabilityComment: action.availabilityComment !== undefined
+            ? action.availabilityComment
+            : state.availabilityComment,
+        };
+      }
         
       case 'SET_STAGE':
         return { ...state, stage: action.stage };
@@ -142,6 +182,11 @@ export const useVoteManagement = (initialState: AppState) => {
           voterName: null,
           voterRole: null,
           available: null,
+          availableForPQA1: null,
+          devCapacity: null,
+          pqa1Capacity: null,
+          capacity: null,
+          availabilityComment: '',
           stage: 'priority',
           votes: {}
         };
@@ -201,8 +246,30 @@ export const useVoteManagement = (initialState: AppState) => {
     dispatch({ type: 'UPDATE_ROLE', role });
   };
 
-  const setAvailability = (available: boolean) => {
-    dispatch({ type: 'SET_AVAILABILITY', available });
+  /**
+   * Update availability. Old callers can still pass just `available`.
+   * New callers (capacity-tier dialog) pass tiers and a comment; the reducer
+   * then derives the booleans from those tiers.
+   */
+  const setAvailability = (
+    available: boolean,
+    availableForPQA1?: boolean | null,
+    extras?: {
+      devCapacity?: Capacity | null;
+      pqa1Capacity?: Capacity | null;
+      capacity?: Capacity | null;
+      availabilityComment?: string;
+    },
+  ) => {
+    dispatch({
+      type: 'SET_AVAILABILITY',
+      available,
+      availableForPQA1: availableForPQA1 ?? undefined,
+      devCapacity: extras?.devCapacity,
+      pqa1Capacity: extras?.pqa1Capacity,
+      capacity: extras?.capacity,
+      availabilityComment: extras?.availabilityComment,
+    });
   };
 
   // Helper function to set default interest levels based on tiers

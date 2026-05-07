@@ -18,13 +18,17 @@ import {
   Star as StarIcon,
   Lock as LockIcon,
   LockOpen as LockOpenIcon,
+  EditOutlined as EditOutlinedIcon,
+  Circle as CircleIcon,
 } from '@mui/icons-material';
-import type { AllocationPitch, AssignmentStatus, PlanAssignment } from '../../types/allocationTypes';
+import type { AllocationPitch, AssignmentStatus, PlanAssignment, PersonCapacity } from '../../types/allocationTypes';
 import type { AllocationConfig } from '../../types/allocationTypes';
+import type { CapacityOverridePayload } from '../../services/allocationApi';
 import { getShortName } from '../../data/teamRoster';
 import InterestChip from './InterestChip';
 import InterestDot from './InterestDot';
 import InterestAlignmentPanel, { tierToPct } from './InterestAlignmentPanel';
+import CapacityOverrideDialog from '../CapacityOverrideDialog/CapacityOverrideDialog';
 import { useSnackbar } from '../../hooks/useSnackbar';
 
 const DetailsBubble = lazy(() => import('../VotingBoard/PitchCard/DetailsBubble'));
@@ -39,6 +43,10 @@ interface Step1ViewProps {
   lockedPersonNames: string[];
   onTogglePitchLock: (pitchId: string) => void;
   onTogglePersonLock: (name: string) => void;
+  /** Voter name of the TL using the screen — recorded as the override author. */
+  voterName: string;
+  /** Persists a TL capacity override and updates local state to match. */
+  onCapacityOverride: (payload: CapacityOverridePayload) => Promise<void>;
 }
 
 const CATEGORY_SHORT: Record<string, string> = {
@@ -132,14 +140,46 @@ function DevPitchInfo({ pitch }: { pitch: AllocationPitch }) {
   );
 }
 
+// ─── Capacity badge helpers ──────────────────────────────────────────────────
+
+const CAPACITY_LABEL: Record<NonNullable<PersonCapacity['devCapacity']>, string> = {
+  'above-avg': 'above-avg capacity',
+  'avg':       'avg capacity',
+  'fewer':     'fewer projects',
+  'none':      'no availability',
+};
+
+function capacityDotColor(tier: NonNullable<PersonCapacity['devCapacity']> | undefined): string | null {
+  if (tier === 'above-avg') return 'info.main';
+  if (tier === 'fewer') return 'warning.main';
+  if (tier === 'none') return 'error.main';
+  return null;
+}
+
+function capacityTooltip(name: string, tier: NonNullable<PersonCapacity['devCapacity']>, comment: string | undefined, source: PersonCapacity['source']): string {
+  const short = getShortName(name);
+  const tierLabel = CAPACITY_LABEL[tier];
+  const suffix = comment ? ` — ${comment}` : '';
+  if (source === 'tl-override') return `TL set ${tierLabel} for ${short}.${suffix}`;
+  return `${short} indicated ${tierLabel}.${suffix}`;
+}
+
 export default function Step1View({
   pitches, currentAssignments, config,
   onDevChange, onStatusChange,
   lockedPitchIds, lockedPersonNames, onTogglePitchLock, onTogglePersonLock,
+  voterName, onCapacityOverride,
 }: Step1ViewProps) {
   const lockedPitchSet = useMemo(() => new Set(lockedPitchIds), [lockedPitchIds]);
   const lockedPersonSet = useMemo(() => new Set(lockedPersonNames), [lockedPersonNames]);
   const { showSnackbar } = useSnackbar();
+
+  // Per-person capacity records keyed by name. Empty object = no overrides yet.
+  const capacityByName = useMemo<Record<string, PersonCapacity>>(
+    () => config.capacityByName ?? {},
+    [config.capacityByName],
+  );
+  const [capacityDialogTarget, setCapacityDialogTarget] = useState<string | null>(null);
 
   // Reject manual updates that would touch a locked row or move a locked person.
   // The visible lock icons + this guard let users see what's frozen and why.
@@ -531,7 +571,7 @@ export default function Step1View({
                     color: stats.total > 0 && Math.abs(actualPct - config.bandwidth[cat]) <= 5
                       ? 'success.main' : 'text.secondary',
                   }}>
-                    {selectedInCat.length} / {targetCount.toFixed(1)} projects · {actualPct}% / {config.bandwidth[cat]}%
+                    {selectedInCat.length} / {fmtIdeal(targetCount)} projects · {actualPct}% / {config.bandwidth[cat]}%
                   </Typography>
                 </Tooltip>
               </Box>
@@ -783,11 +823,6 @@ export default function Step1View({
                 </>
               )}
             </Typography>
-            {stats.avgTLPriority !== null && Math.abs(stats.avgTeamPriority - stats.avgTLPriority) > 0.4 && (
-              <Typography variant="caption" color="warning.main" sx={{ display: 'block', mt: 0.25 }}>
-                TL and team disagree by {Math.abs(stats.avgTeamPriority - stats.avgTLPriority).toFixed(1)} tiers
-              </Typography>
-            )}
           </Box>
         ) : (
           <Typography variant="caption" color="text.disabled" sx={{ display: 'block', mb: 1.5 }}>
@@ -1036,6 +1071,7 @@ export default function Step1View({
                 mb: 1, borderRadius: 0.5, p: 0.5,
                 bgcolor: highlightPersonName === dev ? 'rgba(25, 118, 210, 0.22)' : undefined,
                 transition: highlightPersonName === dev ? 'none' : 'background-color 1.2s ease',
+                '&:hover .capacity-edit-on-hover': { opacity: 1 },
               }}
             >
               <Box
@@ -1055,6 +1091,13 @@ export default function Step1View({
                     {getShortName(dev)}
                   </Typography>
                 </Tooltip>
+                <CapacityBadge
+                  name={dev}
+                  tier={capacityByName[dev]?.devCapacity}
+                  comment={capacityByName[dev]?.comment}
+                  source={capacityByName[dev]?.source}
+                  onClick={() => setCapacityDialogTarget(dev)}
+                />
                 <Tooltip title={lockedPersonSet.has(dev) ? `Locked — auto-assign won't add or remove ${getShortName(dev)}'s pitches. Click to unlock.` : `Lock ${getShortName(dev)} so auto-assign keeps their pitches as-is`}>
                   <IconButton
                     size="small"
@@ -1142,17 +1185,82 @@ export default function Step1View({
               Not Available
             </Typography>
             {unavailableDevNames.map(dev => (
-              <Box key={dev} sx={{ mb: 0.5, px: 0.5, opacity: 0.5 }}>
+              <Box
+                key={dev}
+                sx={{ mb: 0.5, px: 0.5, opacity: 0.5, display: 'flex', alignItems: 'center', gap: 0.5,
+                      '&:hover .capacity-edit-on-hover': { opacity: 1 } }}
+              >
                 <Typography variant="caption" color="text.disabled" fontWeight={600}>
                   {getShortName(dev)}
                 </Typography>
+                <CapacityBadge
+                  name={dev}
+                  tier={capacityByName[dev]?.devCapacity}
+                  comment={capacityByName[dev]?.comment}
+                  source={capacityByName[dev]?.source}
+                  onClick={() => setCapacityDialogTarget(dev)}
+                />
               </Box>
             ))}
           </>
         )}
       </Box>
       )}
+
+      {/* TL capacity override dialog — shared by dot click and hover-Edit click. */}
+      <CapacityOverrideDialog
+        open={capacityDialogTarget !== null}
+        onClose={() => setCapacityDialogTarget(null)}
+        personName={capacityDialogTarget ?? ''}
+        personRole="dev"
+        current={capacityDialogTarget ? capacityByName[capacityDialogTarget] : undefined}
+        setBy={voterName}
+        onSubmit={onCapacityOverride}
+      />
     </Box>
+  );
+}
+
+// ─── CapacityBadge: dot + hover-Edit affordance for the capacity tier ────────
+
+interface CapacityBadgeProps {
+  name: string;
+  tier: PersonCapacity['devCapacity'];
+  comment: string | undefined;
+  source: PersonCapacity['source'];
+  onClick: () => void;
+}
+
+function CapacityBadge({ name, tier, comment, source, onClick }: CapacityBadgeProps) {
+  // No tier or 'avg' → show only a hover-revealed Edit affordance.
+  const showDot = tier && tier !== 'avg';
+
+  if (!showDot) {
+    return (
+      <Tooltip title={`Set capacity for ${getShortName(name)}`}>
+        <IconButton
+          size="small"
+          className="capacity-edit-on-hover"
+          sx={{ p: 0.2, flexShrink: 0, opacity: 0, transition: 'opacity 0.15s' }}
+          onClick={(e) => { e.stopPropagation(); onClick(); }}
+        >
+          <EditOutlinedIcon sx={{ fontSize: '0.85rem', color: 'text.disabled' }} />
+        </IconButton>
+      </Tooltip>
+    );
+  }
+
+  const color = capacityDotColor(tier) ?? 'text.disabled';
+  return (
+    <Tooltip title={capacityTooltip(name, tier, comment, source)}>
+      <IconButton
+        size="small"
+        sx={{ p: 0.2, flexShrink: 0 }}
+        onClick={(e) => { e.stopPropagation(); onClick(); }}
+      >
+        <CircleIcon sx={{ fontSize: '0.6rem', color }} />
+      </IconButton>
+    </Tooltip>
   );
 }
 
@@ -1292,24 +1400,29 @@ function PitchRow({ assignment, pitch, devNames, onDevChange, onStatusChange, hi
               }
             >
               <MenuItem value=""><Typography variant="body2"><em>Unassign</em></Typography></MenuItem>
-              {sortedDevs.map(dev => (
-                <MenuItem key={dev} value={dev} sx={{ px: 2, py: 0.75 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%', minWidth: 0 }}>
-                    <Typography variant="body2" sx={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{dev}</Typography>
-                    {dev === pitch.previousDev && (
-                      <Tooltip title="Was on this project last quarter" placement="left">
-                        <AutorenewIcon sx={{ fontSize: '0.85rem', color: 'text.secondary', flexShrink: 0 }} />
-                      </Tooltip>
-                    )}
-                    {dev === pitch.author && (
-                      <Tooltip title="Wrote this pitch" placement="left">
-                        <StarIcon sx={{ fontSize: '0.85rem', color: 'text.secondary', flexShrink: 0 }} />
-                      </Tooltip>
-                    )}
-                    <InterestChip level={pitch.devInterest[dev] ?? null} noData={!(dev in pitch.devInterest)} />
-                  </Box>
-                </MenuItem>
-              ))}
+              {sortedDevs.map(dev => {
+                const interestLevel = pitch.devInterest[dev] ?? null;
+                const continuationGold = pitch.previousDev === dev && (interestLevel === 1 || interestLevel === 2);
+                const authorGold = interestLevel === 1;
+                return (
+                  <MenuItem key={dev} value={dev} sx={{ px: 2, py: 0.75 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%', minWidth: 0 }}>
+                      <Typography variant="body2" sx={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{dev}</Typography>
+                      {dev === pitch.previousDev && (
+                        <Tooltip title={continuationGold ? 'Was on this project last quarter and has high interest' : 'Was on this project last quarter'} placement="left">
+                          <AutorenewIcon sx={{ fontSize: '0.85rem', color: continuationGold ? 'success.main' : 'text.secondary', flexShrink: 0 }} />
+                        </Tooltip>
+                      )}
+                      {dev === pitch.author && (
+                        <Tooltip title={authorGold ? 'Wrote this pitch with highest interest' : 'Wrote this pitch'} placement="left">
+                          <StarIcon sx={{ fontSize: '0.85rem', color: authorGold ? 'success.main' : 'text.secondary', flexShrink: 0 }} />
+                        </Tooltip>
+                      )}
+                      <InterestChip level={interestLevel} noData={!(dev in pitch.devInterest)} />
+                    </Box>
+                  </MenuItem>
+                );
+              })}
             </Select>
           )}
           {authorWarning && (

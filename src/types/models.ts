@@ -103,12 +103,43 @@ export interface LocalSave {
   votes: Record<string, Vote>;     // keyed by pitchId
 }
 
+/**
+ * Per-role capacity tier for next quarter. "Standard" in the dialog is sugar
+ * for setting every applicable field to `'avg'`. `'none'` excludes the person
+ * from that pool entirely; `'above-avg'`/`'fewer'` shift their per-person cap
+ * by ±1 from the role baseline.
+ */
+export type Capacity = 'above-avg' | 'avg' | 'fewer' | 'none';
+
 /* ─────────── STATE MANAGEMENT ───────── */
 export interface AppState {
   voterName: string | null;
   voterRole: string | null;
-  available: boolean | null; // Whether the user is available next quarter
-  stage: 'priority' | 'interest'; // Current stage of voting
+  /**
+   * Derived back-compat boolean: `true` when the role-appropriate capacity
+   * tier is not `'none'`. Devs: derived from `devCapacity`. QM / dev TL:
+   * derived from `capacity`. Old code paths still read this field; new code
+   * should read the capacity tiers directly.
+   */
+  available: boolean | null;
+  /**
+   * Devs only, derived back-compat boolean: `true` when `pqa1Capacity` is not
+   * `'none'`. New code should read `pqa1Capacity` directly.
+   */
+  availableForPQA1: boolean | null;
+  /** Devs only — capacity for Stage 2 dev assignment. Null for non-devs / pre-answer. */
+  devCapacity: Capacity | null;
+  /** Devs only — capacity for Stage 4 PQA1 assignment. */
+  pqa1Capacity: Capacity | null;
+  /** QM / dev TL only — single capacity tier for project assignment. */
+  capacity: Capacity | null;
+  /**
+   * Required free-text comment when any capacity tier is non-`'avg'` —
+   * surfaced to TLs in Stage 2/4 so they understand the context (e.g.
+   * "out the second half of the quarter for paternity leave").
+   */
+  availabilityComment: string;
+  stage: 'priority' | 'interest';
   votes: Record<string, Vote>;
 }
 
@@ -120,8 +151,24 @@ export type AppAction =
   | { type: 'UNSET_TIER'; id: string; timestamp?: number }  // Remove tier assignment
   | { type: 'SET_INTEREST'; id: string; interestLevel: InterestLevel; timestamp?: number }
   | { type: 'UNSET_INTEREST'; id: string; timestamp?: number }  // Remove interest level
-  | { type: 'SET_AVAILABILITY'; available: boolean }
+  | {
+      type: 'SET_AVAILABILITY';
+      // Back-compat boolean fields — still accepted from old call sites.
+      available: boolean;
+      availableForPQA1?: boolean | null;
+      // Capacity tiers — preferred path. When provided, reducer should also
+      // update the matching boolean (`available = devCapacity !== 'none'`, etc.).
+      devCapacity?: Capacity | null;
+      pqa1Capacity?: Capacity | null;
+      capacity?: Capacity | null;
+      availabilityComment?: string;
+    }
   | { type: 'SET_STAGE'; stage: 'priority' | 'interest' }
   | { type: 'RESET_FROM_PITCHES'; pitchIds: string[] }  // sync when JSON changes
   | { type: 'RESET_ALL_VOTES' }  // reset all votes but keep voter name
   | { type: 'RESET_ALL' };  // reset everything including voter name
+
+/** True when the role is a dev (single role; not 'dev TL', etc.). */
+export function isDevRole(role: string | null | undefined): boolean {
+  return !!role && role.toLowerCase() === 'dev';
+}

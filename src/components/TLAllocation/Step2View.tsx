@@ -18,14 +18,18 @@ import {
   Star as StarIcon,
   Lock as LockIcon,
   LockOpen as LockOpenIcon,
+  EditOutlined as EditOutlinedIcon,
+  Circle as CircleIcon,
 } from '@mui/icons-material';
 import type {
-  AllocationPitch, Phase2Interest, StaffingAssignment, AllocationConfig, InterestLevel,
+  AllocationPitch, Phase2Interest, StaffingAssignment, AllocationConfig, InterestLevel, PersonCapacity,
 } from '../../types/allocationTypes';
+import type { CapacityOverridePayload } from '../../services/allocationApi';
 import { getShortName } from '../../data/teamRoster';
 import InterestChip from './InterestChip';
 import InterestDot from './InterestDot';
 import InterestAlignmentPanel from './InterestAlignmentPanel';
+import CapacityOverrideDialog from '../CapacityOverrideDialog/CapacityOverrideDialog';
 import { useSnackbar } from '../../hooks/useSnackbar';
 
 const DetailsBubble = lazy(() => import('../VotingBoard/PitchCard/DetailsBubble'));
@@ -45,6 +49,73 @@ interface Step2ViewProps {
   lockedPersonNames: string[];
   onTogglePitchLock: (pitchId: string) => void;
   onTogglePersonLock: (name: string) => void;
+  /** Voter name of the TL using the screen — recorded as the override author. */
+  voterName: string;
+  /** Persists a TL capacity override and updates local state to match. */
+  onCapacityOverride: (payload: CapacityOverridePayload) => Promise<void>;
+}
+
+const CAPACITY_LABEL: Record<NonNullable<PersonCapacity['devCapacity']>, string> = {
+  'above-avg': 'above-avg capacity',
+  'avg':       'avg capacity',
+  'fewer':     'fewer projects',
+  'none':      'no availability',
+};
+
+function capacityDotColor(tier: NonNullable<PersonCapacity['devCapacity']> | undefined): string | null {
+  if (tier === 'above-avg') return 'info.main';
+  if (tier === 'fewer') return 'warning.main';
+  if (tier === 'none') return 'error.main';
+  return null;
+}
+
+function capacityTooltip(name: string, tier: NonNullable<PersonCapacity['devCapacity']>, comment: string | undefined, source: PersonCapacity['source']): string {
+  const short = getShortName(name);
+  const tierLabel = CAPACITY_LABEL[tier];
+  const suffix = comment ? ` — ${comment}` : '';
+  if (source === 'tl-override') return `TL set ${tierLabel} for ${short}.${suffix}`;
+  return `${short} indicated ${tierLabel}.${suffix}`;
+}
+
+interface CapacityBadgeProps {
+  name: string;
+  tier: PersonCapacity['devCapacity'];
+  comment: string | undefined;
+  source: PersonCapacity['source'];
+  onClick: () => void;
+}
+
+/** Colored dot + hover-Edit affordance for a person's capacity tier. */
+function CapacityBadge({ name, tier, comment, source, onClick }: CapacityBadgeProps) {
+  const showDot = tier && tier !== 'avg';
+
+  if (!showDot) {
+    return (
+      <Tooltip title={`Set capacity for ${getShortName(name)}`}>
+        <IconButton
+          size="small"
+          className="capacity-edit-on-hover"
+          sx={{ p: 0.2, flexShrink: 0, opacity: 0, transition: 'opacity 0.15s' }}
+          onClick={(e) => { e.stopPropagation(); onClick(); }}
+        >
+          <EditOutlinedIcon sx={{ fontSize: '0.85rem', color: 'text.disabled' }} />
+        </IconButton>
+      </Tooltip>
+    );
+  }
+
+  const color = capacityDotColor(tier) ?? 'text.disabled';
+  return (
+    <Tooltip title={capacityTooltip(name, tier, comment, source)}>
+      <IconButton
+        size="small"
+        sx={{ p: 0.2, flexShrink: 0 }}
+        onClick={(e) => { e.stopPropagation(); onClick(); }}
+      >
+        <CircleIcon sx={{ fontSize: '0.6rem', color }} />
+      </IconButton>
+    </Tooltip>
+  );
 }
 
 // ─── DevPitchInfo: inline info button for sidebar pitch lists ─────────────────
@@ -105,10 +176,18 @@ export default function Step2View({
   selectedPitches, assignments, phase2Interests, config, onAssign, devByPitchId, devNames,
   includeUXD, onToggleUXD,
   lockedPitchIds, lockedPersonNames, onTogglePitchLock, onTogglePersonLock,
+  voterName, onCapacityOverride,
 }: Step2ViewProps) {
   const lockedPitchSet = useMemo(() => new Set(lockedPitchIds), [lockedPitchIds]);
   const lockedPersonSet = useMemo(() => new Set(lockedPersonNames), [lockedPersonNames]);
   const { showSnackbar } = useSnackbar();
+
+  const capacityByName = useMemo<Record<string, PersonCapacity>>(
+    () => config.capacityByName ?? {},
+    [config.capacityByName],
+  );
+  const devNameSet = useMemo(() => new Set(devNames), [devNames]);
+  const [capacityDialogTarget, setCapacityDialogTarget] = useState<string | null>(null);
 
   const assignmentByPitch = useMemo(
     () => new Map(assignments.map(a => [a.pitchId, a])),
@@ -855,6 +934,7 @@ export default function Step2View({
                     mb: 1, borderRadius: 0.5, p: 0.5,
                     bgcolor: highlightPersonName === name ? 'rgba(25, 118, 210, 0.22)' : undefined,
                     transition: highlightPersonName === name ? 'none' : 'background-color 1.2s ease',
+                    '&:hover .capacity-edit-on-hover': { opacity: 1 },
                   }}
                 >
                   <Box
@@ -874,6 +954,13 @@ export default function Step2View({
                         {getShortName(name)}
                       </Typography>
                     </Tooltip>
+                    <CapacityBadge
+                      name={name}
+                      tier={capacityByName[name]?.capacity}
+                      comment={capacityByName[name]?.comment}
+                      source={capacityByName[name]?.source}
+                      onClick={() => setCapacityDialogTarget(name)}
+                    />
                     <Tooltip title={lockedPersonSet.has(name) ? `Locked — auto-assign won't add or remove ${getShortName(name)}'s pitches. Click to unlock.` : `Lock ${getShortName(name)} so auto-assign keeps their pitches as-is`}>
                       <IconButton
                         size="small"
@@ -1012,6 +1099,7 @@ export default function Step2View({
                     mb: 1, borderRadius: 0.5, p: 0.5,
                     bgcolor: highlightPersonName === name ? 'rgba(25, 118, 210, 0.22)' : undefined,
                     transition: highlightPersonName === name ? 'none' : 'background-color 1.2s ease',
+                    '&:hover .capacity-edit-on-hover': { opacity: 1 },
                   }}
                 >
                   <Box
@@ -1031,6 +1119,13 @@ export default function Step2View({
                         {getShortName(name)}
                       </Typography>
                     </Tooltip>
+                    <CapacityBadge
+                      name={name}
+                      tier={capacityByName[name]?.pqa1Capacity}
+                      comment={capacityByName[name]?.comment}
+                      source={capacityByName[name]?.source}
+                      onClick={() => setCapacityDialogTarget(name)}
+                    />
                     <Tooltip title={lockedPersonSet.has(name) ? `Locked — auto-assign won't add or remove ${getShortName(name)}'s pitches. Click to unlock.` : `Lock ${getShortName(name)} so auto-assign keeps their pitches as-is`}>
                       <IconButton
                         size="small"
@@ -1122,6 +1217,16 @@ export default function Step2View({
       </Box>
       )}
 
+      {/* TL capacity override dialog — opens for whichever sidebar row was clicked. */}
+      <CapacityOverrideDialog
+        open={capacityDialogTarget !== null}
+        onClose={() => setCapacityDialogTarget(null)}
+        personName={capacityDialogTarget ?? ''}
+        personRole={capacityDialogTarget && devNameSet.has(capacityDialogTarget) ? 'dev' : 'qm-or-tl'}
+        current={capacityDialogTarget ? capacityByName[capacityDialogTarget] : undefined}
+        setBy={voterName}
+        onSubmit={onCapacityOverride}
+      />
     </Box>
   );
 }
@@ -1371,22 +1476,26 @@ function Pqa1Dropdown({ value, devNames, devInterest, devHasAnyData, excludeDev,
       }}
     >
       <MenuItem value=""><Typography variant="body2"><em>Unassign</em></Typography></MenuItem>
-      {sorted.map(dev => (
+      {sorted.map(dev => {
+        const interestLevel = (devInterest[dev] ?? null) as (1 | 2 | 3 | 4 | null);
+        const authorGold = interestLevel === 1;
+        return (
         <MenuItem key={dev} value={dev}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
             <Typography variant="body2" sx={{ flex: 1 }}>{dev}</Typography>
             {dev === author && (
-              <Tooltip title="Wrote this pitch" placement="left">
-                <StarIcon sx={{ fontSize: '0.85rem', color: 'text.secondary', flexShrink: 0 }} />
+              <Tooltip title={authorGold ? 'Wrote this pitch with highest interest' : 'Wrote this pitch'} placement="left">
+                <StarIcon sx={{ fontSize: '0.85rem', color: authorGold ? 'success.main' : 'text.secondary', flexShrink: 0 }} />
               </Tooltip>
             )}
             <InterestChip
-              level={(devInterest[dev] ?? null) as (1 | 2 | 3 | 4 | null)}
+              level={interestLevel}
               noData={!devHasAnyData.has(dev)}
             />
           </Box>
         </MenuItem>
-      ))}
+        );
+      })}
     </Select>
   );
 }
@@ -1453,18 +1562,20 @@ function AssignmentDropdown({ value, allNames, options, pitchId, selectId, onCha
         const person = interestMap.get(name);
         const level = (person?.interestByPitchId[pitchId] ?? null) as (1 | 2 | 3 | 4 | null);
         const noData = !person || Object.keys(person.interestByPitchId).length === 0;
+        const continuationGold = name === previousPerson && (level === 1 || level === 2);
+        const authorGold = level === 1;
         return (
           <MenuItem key={name} value={name}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
               <Typography variant="body2" sx={{ flex: 1 }}>{name}</Typography>
               {name === previousPerson && (
-                <Tooltip title="Was on this project last quarter" placement="left">
-                  <AutorenewIcon sx={{ fontSize: '0.85rem', color: 'text.secondary', flexShrink: 0 }} />
+                <Tooltip title={continuationGold ? 'Was on this project last quarter and has high interest' : 'Was on this project last quarter'} placement="left">
+                  <AutorenewIcon sx={{ fontSize: '0.85rem', color: continuationGold ? 'success.main' : 'text.secondary', flexShrink: 0 }} />
                 </Tooltip>
               )}
               {name === author && (
-                <Tooltip title="Wrote this pitch" placement="left">
-                  <StarIcon sx={{ fontSize: '0.85rem', color: 'text.secondary', flexShrink: 0 }} />
+                <Tooltip title={authorGold ? 'Wrote this pitch with highest interest' : 'Wrote this pitch'} placement="left">
+                  <StarIcon sx={{ fontSize: '0.85rem', color: authorGold ? 'success.main' : 'text.secondary', flexShrink: 0 }} />
                 </Tooltip>
               )}
               <InterestChip level={level} noData={noData} />

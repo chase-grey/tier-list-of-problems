@@ -1152,30 +1152,60 @@ function migrateVotesSchemaForPQA1() {
 }
 
 /**
- * One-shot backfill for known availability answers — handles devs (which split
- * `available` for dev assignment vs `availableForPQA1`) AND non-devs like
- * dev TLs / QMs (which have only the single `available` flag).
+ * One-shot backfill of known availability answers — writes the legacy
+ * boolean flags (cols H, I) AND the capacity tiers + comment (cols J–M)
+ * so both the old and new code paths see the same data.
  *
  * Run from the Apps Script editor (Run > backfillKnownDevAvailability) any
- * time — idempotent. For each named person, sets columns H (`available`) and
- * I (`availableForPQA1`) on every row of theirs in VOTES.
+ * time — idempotent. Update the `KNOWN_AVAILABILITY` map below as people
+ * submit.
  *
- * For non-devs, set `availableForPQA1: ''` so column I stays blank — that
- * matches what the new `recordVotes` writes for non-devs going forward.
+ * Per-person record fields:
+ *   available, availableForPQA1: boolean | ''  (booleans for col H, I; '' = leave blank)
+ *   devCapacity, pqa1Capacity, capacity:       'above-avg' | 'avg' | 'fewer' | 'none' | ''
+ *   comment:                                   string (col M); only meaningful when any tier is non-'avg'
  *
- * Update the `KNOWN_AVAILABILITY` map below as people submit.
+ * For people who said "standard" we fill `'avg'` explicitly so the merged
+ * capacityByName view is uniformly populated.
  */
 function backfillKnownDevAvailability() {
   const KNOWN_AVAILABILITY = {
-    // Devs already on the new dialog (both flags answered)
-    'Ke Li':                 { available: false, availableForPQA1: true },
-    'Tim Paukovits':         { available: true,  availableForPQA1: true },
-    'Peter Paulson':         { available: true,  availableForPQA1: true },
-    'Dan Demp':              { available: true,  availableForPQA1: true },
-    'Brandon Campos Botello':{ available: true,  availableForPQA1: true },
-    'Gauresh Walia':         { available: true,  availableForPQA1: true },
-    // Dev TLs / QMs (single flag — leave column I blank)
-    'Nicholas Rose':         { available: true,  availableForPQA1: '' },
+    // Devs — standard capacity (both pools, normal load)
+    'Tim Paukovits': {
+      available: true, availableForPQA1: true,
+      devCapacity: 'avg', pqa1Capacity: 'avg', capacity: '', comment: '',
+    },
+    'Peter Paulson': {
+      available: true, availableForPQA1: true,
+      devCapacity: 'avg', pqa1Capacity: 'avg', capacity: '', comment: '',
+    },
+    'Dan Demp': {
+      available: true, availableForPQA1: true,
+      devCapacity: 'avg', pqa1Capacity: 'avg', capacity: '', comment: '',
+    },
+    'Brandon Campos Botello': {
+      available: true, availableForPQA1: true,
+      devCapacity: 'avg', pqa1Capacity: 'avg', capacity: '', comment: '',
+    },
+    'Gauresh Walia': {
+      available: true, availableForPQA1: true,
+      devCapacity: 'avg', pqa1Capacity: 'avg', capacity: '', comment: '',
+    },
+    // Devs — committed elsewhere; PQA1-only
+    'Ke Li': {
+      available: false, availableForPQA1: true,
+      devCapacity: 'none', pqa1Capacity: 'avg', capacity: '', comment: '',
+    },
+    'Josh Lapicola': {
+      available: false, availableForPQA1: true,
+      devCapacity: 'none', pqa1Capacity: 'fewer', capacity: '',
+      comment: "With the development I'm doing to support Notes on mobile (which is committed for Nov 26), I don't think I'll have time for another project. I think I could probably do PQA1 on a Nov 26 project though. I think PQA on 1 project is probably better. Thanks!",
+    },
+    // Dev TL — single capacity field
+    'Nicholas Rose': {
+      available: true, availableForPQA1: '',
+      devCapacity: '', pqa1Capacity: '', capacity: 'avg', comment: '',
+    },
   };
 
   const sh = ss.getSheetByName('VOTES');
@@ -1185,14 +1215,19 @@ function backfillKnownDevAvailability() {
     return { updatedRows: 0, note: msg };
   }
 
-  // Ensure column I exists before we try to write to it.
-  if (sh.getLastColumn() < 9) {
-    sh.getRange(1, 9).setValue('availableForPQA1');
+  // Ensure cols I and J–M exist before we write to them.
+  if (sh.getLastColumn() < 9) sh.getRange(1, 9).setValue('availableForPQA1');
+  if (sh.getLastColumn() < 13) {
+    sh.getRange(1, 10).setValue('devCapacity');
+    sh.getRange(1, 11).setValue('pqa1Capacity');
+    sh.getRange(1, 12).setValue('capacity');
+    sh.getRange(1, 13).setValue('availabilityComment');
   }
 
   const numRows = sh.getLastRow() - 1;
-  const names = sh.getRange(2, 2, numRows, 1).getValues();      // col B
-  const flagBlock = sh.getRange(2, 8, numRows, 2).getValues();  // cols H, I
+  const names = sh.getRange(2, 2, numRows, 1).getValues();        // col B
+  // Read the 6-column block H..M so we can patch in place.
+  const block = sh.getRange(2, 8, numRows, 6).getValues();        // cols H–M
 
   const perPersonRowCount = {};
   let updatedRows = 0;
@@ -1200,13 +1235,20 @@ function backfillKnownDevAvailability() {
     const name = names[i][0];
     const target = KNOWN_AVAILABILITY[name];
     if (!target) continue;
-    flagBlock[i] = [target.available, target.availableForPQA1];
+    block[i] = [
+      target.available,
+      target.availableForPQA1,
+      target.devCapacity || '',
+      target.pqa1Capacity || '',
+      target.capacity || '',
+      target.comment || '',
+    ];
     perPersonRowCount[name] = (perPersonRowCount[name] || 0) + 1;
     updatedRows++;
   }
 
   if (updatedRows > 0) {
-    sh.getRange(2, 8, numRows, 2).setValues(flagBlock);
+    sh.getRange(2, 8, numRows, 6).setValues(block);
   }
 
   const known = Object.keys(KNOWN_AVAILABILITY);
@@ -1214,7 +1256,7 @@ function backfillKnownDevAvailability() {
     updatedRows: updatedRows,
     perPersonRowCount: perPersonRowCount,
     knownButNotFoundInSheet: known.filter(n => !perPersonRowCount[n]),
-    note: 'Anyone not in this map (e.g. Josh Lapicola, who has not re-submitted under the new dialog) is left untouched and will be re-prompted on their next session.',
+    note: 'Anyone not in this map is left untouched and will be re-prompted on their next session.',
   };
   Logger.log(JSON.stringify(result, null, 2));
   return result;

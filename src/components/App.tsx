@@ -125,6 +125,21 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
   // Check if we're in Stage 2 mode (configured via environment variable)
   const appStage2Mode = isStage2();
 
+  // Quarter label, fetched once from the backend's allocation_config Script
+  // Property and surfaced in the AvailabilityDialog title and the SettingsMenu
+  // row ("Availability for Nov '26"). Falls back to "Next Quarter" until the
+  // fetch resolves (or if the backend hasn't been configured).
+  const [quarterLabel, setQuarterLabel] = useState<string | undefined>(undefined);
+  useEffect(() => {
+    let cancelled = false;
+    import('../services/allocationApi').then(({ fetchAllocationConfig }) => {
+      fetchAllocationConfig().then(cfg => {
+        if (!cancelled && cfg?.quarterLabel) setQuarterLabel(cfg.quarterLabel);
+      }).catch(() => { /* fall back to default */ });
+    });
+    return () => { cancelled = true; };
+  }, []);
+
   // Loading step state — one entry per async init task
   const [pitchStepStatus, setPitchStepStatus] = useState<LoadingStep['status']>('loading');
   const [pitchStepError, setPitchStepError] = useState<string | undefined>(undefined);
@@ -876,9 +891,10 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
       <AvailabilityDialog
         open={showAvailabilityDialog}
         voterRole={state.voterRole}
+        quarterLabel={quarterLabel}
         onAvailabilitySet={handleAvailabilitySet}
       />
-      
+
       <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
         <TopBar
           voterName={state.voterName}
@@ -889,6 +905,7 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
           pqa1Capacity={state.pqa1Capacity}
           capacity={state.capacity}
           availabilityComment={state.availabilityComment}
+          quarterLabel={quarterLabel}
           totalPitchCount={TOTAL}
           rankCount={rankCount}
           interestCount={interestCount}
