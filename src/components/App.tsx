@@ -235,7 +235,12 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
 
   // Pitches from the backend - in Stage 2, filter to only pitches marked 'selected' in PLAN sheet
   // useMemo ensures stable reference when loadedPitches is null (prevents render loop)
-  const allPitches = useMemo(() => loadedPitches ?? [], [loadedPitches]);
+  // Committed pitches are excluded from voting (priority + interest) — they're pre-allocated
+  // and surface only in the TL allocation views.
+  const allPitches = useMemo(
+    () => (loadedPitches ?? []).filter(p => !p.committed),
+    [loadedPitches],
+  );
   const pitches = useMemo(() => {
     if (appStage2Mode) {
       if (planStatuses === null) return []; // Still fetching plan
@@ -345,10 +350,15 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
       fetchVoterAvailability(state.voterName!).then(data => {
         if (cancelled) return;
 
-        // hasInterestVotes is reported even when found=false (e.g. cleanup
-        // utilities can wipe availability fields but leave votes), so capture
-        // it unconditionally.
-        setHasInterestVotesOnBackend(!!data.hasInterestVotes);
+        // Suppress the AvailabilityDialog for any voter we can identify on the
+        // backend. The cleanest signal is `hasInterestVotes` (added to the
+        // backend response), but on backends that haven't been redeployed yet
+        // it'll be undefined — so we also accept `found: true` as evidence
+        // the voter has rows on file. False positives (a row with no votes
+        // and no availability) just mean we skip a re-prompt for someone the
+        // backend already knows; the SettingsMenu still lets them adjust.
+        const seenOnBackend = !!data.hasInterestVotes || !!data.found;
+        setHasInterestVotesOnBackend(seenOnBackend);
 
         if (!data.found) return;
         // Don't overwrite a freshly-submitted dialog answer with the stale
