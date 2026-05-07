@@ -12,6 +12,10 @@ dist
 dist-ssr
 *.local
 
+# Nested clone of this repo that briefly lived at ./tier-list-of-problems
+# and got accidentally tracked as a gitlink — kept on disk but not tracked.
+/tier-list-of-problems/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
