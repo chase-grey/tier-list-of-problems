@@ -182,8 +182,12 @@ const DevAutoPopulate: React.FC<DevAutoPopulateProps> = ({ onPopulate, pitchIds 
     }
   };
 
-  const envCycleId = (import.meta.env.VITE_POLLING_CYCLE_ID as string) || '';
-  const envStage = (import.meta.env.VITE_POLLING_STAGE as string) || '1';
+  const envCycleId = (() => {
+    try { return localStorage.getItem('polling.cachedCycleId') || ''; } catch { return ''; }
+  })() || (import.meta.env.VITE_POLLING_CYCLE_ID as string) || '';
+  const envStage = (() => {
+    try { return localStorage.getItem('polling.cachedStage') || ''; } catch { return ''; }
+  })() || (import.meta.env.VITE_POLLING_STAGE as string) || '1';
   const activeStage = stageOverride || envStage;
 
   return (
