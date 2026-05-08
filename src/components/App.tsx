@@ -908,7 +908,6 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
       // Allocation mode: clear Stage 2/4 state from localStorage and restart blank
       ['tl-alloc-step1-assignments', 'tl-alloc-step2-assignments', 'tl-alloc-uxd',
        'tl-alloc-step1-locks', 'tl-alloc-step2-locks'].forEach(k => localStorage.removeItem(k));
-      localStorage.setItem('tl-alloc-was-cleared', '1');
       setAllocationResetKey(n => n + 1);
       showSnackbar('Allocation cleared — starting fresh.', 'success');
     } else {

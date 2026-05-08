@@ -280,15 +280,6 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
   const savedStep1 = useRef(lsRead<PlanAssignment[] | null>(LS_STEP1_KEY, null));
   const savedStep2 = useRef(lsRead<StaffingAssignment[] | null>(LS_STEP2_KEY, null));
   const savedUXD   = useRef(lsRead<Record<string, boolean>>(LS_UXD_KEY, {}));
-  // True when the user explicitly hit "Clear All Assignments". Consumed at mount
-  // so both Stage 2 and Stage 4 init effects see the same value.
-  const wasCleared = useRef((() => {
-    try {
-      const v = localStorage.getItem('tl-alloc-was-cleared') === '1';
-      localStorage.removeItem('tl-alloc-was-cleared');
-      return v;
-    } catch { return false; }
-  })());
 
   const [planAssignments, setPlanAssignments] = useState<PlanAssignment[]>(
     savedStep1.current ?? MOCK_PLAN
@@ -398,41 +389,36 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
         // returned as devInterest per pitch by getAllocationData().
         setPhase2Interests(derivePhase2Interests(enriched, effectiveConfig));
         // Restore saved state, or derive default status grouping from priority/bandwidth.
-        // On first open: continuation projects with a willing (interest 1–2) available
-        // previousDev are pre-filled and locked. After "Clear All Assignments" (wasCleared)
-        // skip pre-fills and locks so the user gets a truly clean slate.
+        // Continuation projects with a willing (interest 1–2) available previousDev
+        // are pre-filled and locked; all other dev assignments start blank.
         if (!savedStep1.current) {
           const defaultPlan = generateDefaultPlan(enriched, effectiveConfig);
-          if (!wasCleared.current) {
-            const pitchMap = new Map(enriched.map(p => [p.id, p]));
-            const unavailableDevs = new Set([
-              ...(effectiveConfig.unavailableNames ?? []),
-              ...(effectiveConfig.unavailableForDevNames ?? []),
-            ]);
-            const availableDevs = new Set(effectiveConfig.devNames.filter(d => !unavailableDevs.has(d)));
-            const continuationLocks: string[] = [];
-            const initialPlan = defaultPlan.map(a => {
-              if (a.status === 'selected') {
-                const pitch = pitchMap.get(a.pitchId);
-                if (pitch?.continuation && pitch.previousDev && availableDevs.has(pitch.previousDev)) {
-                  const interest = pitch.devInterest[pitch.previousDev];
-                  if (interest === 1 || interest === 2) {
-                    continuationLocks.push(a.pitchId);
-                    return { ...a, assignedDev: pitch.previousDev };
-                  }
+          const pitchMap = new Map(enriched.map(p => [p.id, p]));
+          const unavailableDevs = new Set([
+            ...(effectiveConfig.unavailableNames ?? []),
+            ...(effectiveConfig.unavailableForDevNames ?? []),
+          ]);
+          const availableDevs = new Set(effectiveConfig.devNames.filter(d => !unavailableDevs.has(d)));
+          const continuationLocks: string[] = [];
+          const initialPlan = defaultPlan.map(a => {
+            if (a.status === 'selected') {
+              const pitch = pitchMap.get(a.pitchId);
+              if (pitch?.continuation && pitch.previousDev && availableDevs.has(pitch.previousDev)) {
+                const interest = pitch.devInterest[pitch.previousDev];
+                if (interest === 1 || interest === 2) {
+                  continuationLocks.push(a.pitchId);
+                  return { ...a, assignedDev: pitch.previousDev };
                 }
               }
-              return { ...a, assignedDev: null };
-            });
-            setPlanAssignments(initialPlan);
-            if (continuationLocks.length > 0) {
-              setStep1Locks(prev => ({
-                ...prev,
-                pitchIds: [...new Set([...prev.pitchIds, ...continuationLocks])],
-              }));
             }
-          } else {
-            setPlanAssignments(defaultPlan.map(a => ({ ...a, assignedDev: null })));
+            return { ...a, assignedDev: null };
+          });
+          setPlanAssignments(initialPlan);
+          if (continuationLocks.length > 0) {
+            setStep1Locks(prev => ({
+              ...prev,
+              pitchIds: [...new Set([...prev.pitchIds, ...continuationLocks])],
+            }));
           }
         }
         setUsingMockData(false);
@@ -473,10 +459,23 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
   };
 
   // ── Step 2 state ──────────────────────────────────────────────────────────
-  const selectedPitchIds = useMemo(
-    () => new Set(currentAssignments.filter(a => a.status === 'selected').map(a => a.pitchId)),
-    [currentAssignments]
-  );
+  // Pitches that need a team in Stage 4 (Step 2) are:
+  //   1. Pitches planned in Stage 2 that have a dev assigned (status='selected'
+  //      AND assignedDev !== null). A 'selected' row with no dev is an
+  //      incomplete plan and shouldn't be staffed yet.
+  //   2. Committed projects (pitch.committed). Pre-allocated work needs a team
+  //      regardless of voting / Stage 2 dev assignment.
+  //   3. Manually added (adhoc) projects. The TL chose to add them, so they
+  //      always need staffing — even if no dev was specified at add time.
+  const selectedPitchIds = useMemo(() => {
+    const ids = new Set<string>();
+    adhocPitches.forEach(p => ids.add(p.id));
+    allPitches.forEach(p => { if (p.committed) ids.add(p.id); });
+    for (const a of currentAssignments) {
+      if (a.status === 'selected' && a.assignedDev) ids.add(a.pitchId);
+    }
+    return ids;
+  }, [currentAssignments, adhocPitches, allPitches]);
   const selectedPitches = useMemo(
     () => allPitches.filter(p => selectedPitchIds.has(p.id)),
     [allPitches, selectedPitchIds]
@@ -569,6 +568,11 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
     const unavailableSet = new Set(allocationConfig.unavailableNames ?? []);
     const devTLSet = new Set(allocationConfig.devTLNames.filter(n => !unavailableSet.has(n)));
     const qmSet = new Set(allocationConfig.qmNames.filter(n => !unavailableSet.has(n)));
+    const pqa1UnavailableSet = new Set([
+      ...(allocationConfig.unavailableNames ?? []),
+      ...(allocationConfig.unavailableForPqa1Names ?? []),
+    ]);
+    const pqa1Set = new Set(allocationConfig.devNames.filter(n => !pqa1UnavailableSet.has(n)));
 
     // Returns true if this person is willing to work on this pitch.
     // Absent = no data → willing. Null = actively skipped → not willing.
@@ -586,11 +590,12 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
     const toInit = selectedPitchesRef.current
       .filter(p => !existingIds.has(p.id))
       .map(p => {
-        if (p.continuation && !wasCleared.current) {
-          const devTL = p.previousTL && devTLSet.has(p.previousTL) && isWilling(p.previousTL, p.id) ? p.previousTL : null;
-          const qm   = p.previousQM  && qmSet.has(p.previousQM)   && isWilling(p.previousQM,  p.id) ? p.previousQM  : null;
-          if (devTL && qm) continuationLocks.push(p.id);
-          return { pitchId: p.id, devTL, qm, pqa1: null };
+        if (p.continuation) {
+          const devTL = p.previousTL   && devTLSet.has(p.previousTL)   && isWilling(p.previousTL,   p.id) ? p.previousTL   : null;
+          const qm   = p.previousQM   && qmSet.has(p.previousQM)      && isWilling(p.previousQM,   p.id) ? p.previousQM   : null;
+          const pqa1 = p.previousPQA1 && pqa1Set.has(p.previousPQA1)  && isWilling(p.previousPQA1, p.id) ? p.previousPQA1 : null;
+          if (devTL && qm && pqa1) continuationLocks.push(p.id);
+          return { pitchId: p.id, devTL, qm, pqa1 };
         }
         return { pitchId: p.id, devTL: null, qm: null, pqa1: null };
       });
