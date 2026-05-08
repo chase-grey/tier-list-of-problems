@@ -214,8 +214,12 @@ export const TopBar = ({
           </Box>
         )}
 
-        {/* Voting-only: rank / interest progress and navigation */}
-        {!allocationMode && (
+        {/* Voting-only: rank / interest progress and navigation. Hidden in
+            Stage 3 for voters who can't access the interest UI (e.g. QM/TCap
+            without availability, devs whose interest data is already on
+            file) — they have nothing to track or submit, so the stat pill
+            and Finish button were just confusing noise. */}
+        {!allocationMode && (canAccessInterestStage || !appStage2Mode) && (
           <>
             <Box sx={{ display: 'flex', alignItems: 'center', mr: 2 }}>
               <Typography variant="body2" sx={{ display: 'flex', gap: 1 }}>

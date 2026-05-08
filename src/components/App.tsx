@@ -142,24 +142,8 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
     return () => { cancelled = true; };
   }, []);
 
-  // Polling state from backend Script Properties — overrides the env vars
-  // baked at build time so an admin can advance the stage/quarter from the
-  // UI without redeploying. Cache in localStorage; reload if anything moved
-  // so config.ts reads the new values from the cache on the next render.
-  useEffect(() => {
-    let cancelled = false;
-    import('../services/allocationApi').then(({ fetchPollingState }) => {
-      import('../utils/config').then(({ applyPollingState }) => {
-        fetchPollingState().then(state => {
-          if (cancelled || !state) return;
-          if (applyPollingState({ stage: state.stage, cycleId: state.cycleId })) {
-            window.location.reload();
-          }
-        }).catch(() => { /* fall back to env */ });
-      });
-    });
-    return () => { cancelled = true; };
-  }, []);
+  // (Polling state is fetched + applied in the App wrapper before this
+  // component mounts, so no in-component sync is needed here.)
 
   // Loading step state — one entry per async init task
   const [pitchStepStatus, setPitchStepStatus] = useState<LoadingStep['status']>('loading');
@@ -1213,6 +1197,16 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
  */
 const App: React.FC = () => {
   const [themeMode, setThemeMode] = useState<'dark' | 'light'>('dark');
+  // Block AppContent until the backend polling state has been fetched and
+  // applied to the localStorage cache. AppContent's first render reads
+  // getPollingStage() / getPollingCycleId() at module level, so until the
+  // cache reflects the live backend state we'd render the bundled env
+  // default (which can lag the real stage by an entire round). Waiting
+  // here costs ~1s on first load, but the alternative was QM/TCap users
+  // being stuck on the previous stage's UI whenever the cache or env was
+  // stale. Falls back to cached/env after a 3s timeout so a backend
+  // outage doesn't lock the app.
+  const [pollingResolved, setPollingResolved] = useState(false);
 
   const theme = themeMode === 'dark' ? darkTheme : lightTheme;
 
@@ -1220,11 +1214,39 @@ const App: React.FC = () => {
     setThemeMode(prev => (prev === 'dark' ? 'light' : 'dark'));
   };
 
+  useEffect(() => {
+    let settled = false;
+    const settle = () => {
+      if (settled) return;
+      settled = true;
+      setPollingResolved(true);
+    };
+
+    Promise.all([
+      import('../services/allocationApi'),
+      import('../utils/config'),
+    ]).then(([{ fetchPollingState }, { applyPollingState }]) => {
+      fetchPollingState()
+        .then(s => {
+          if (s) applyPollingState({ stage: s.stage, cycleId: s.cycleId });
+        })
+        .catch(() => { /* fall back to cached/env */ })
+        .finally(settle);
+    }).catch(settle);
+
+    const timeoutId = window.setTimeout(settle, 3000);
+    return () => window.clearTimeout(timeoutId);
+  }, []);
+
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <SnackbarProvider>
-        <AppContent themeMode={themeMode} onToggleTheme={handleToggleTheme} />
+        {pollingResolved ? (
+          <AppContent themeMode={themeMode} onToggleTheme={handleToggleTheme} />
+        ) : (
+          <LoadingScreen steps={[{ label: 'Loading polling state', status: 'loading' }]} />
+        )}
       </SnackbarProvider>
     </ThemeProvider>
   );
