@@ -351,36 +351,47 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
     // unmount-time setState is harmless.
     import('../services/allocationApi').then(({ fetchVoterAvailability }) => {
       fetchVoterAvailability(state.voterName!).then(data => {
-        // Suppress the AvailabilityDialog for any voter we can identify on the
-        // backend. The cleanest signal is `hasInterestVotes` (added to the
-        // backend response), but on backends that haven't been redeployed yet
-        // it'll be undefined — so we also accept `found: true` as evidence
-        // the voter has rows on file. False positives (a row with no votes
-        // and no availability) just mean we skip a re-prompt for someone the
-        // backend already knows; the SettingsMenu still lets them adjust.
-        const seenOnBackend = !!data.hasInterestVotes || !!data.found;
-        setHasInterestVotesOnBackend(seenOnBackend);
+        // hasInterestVotesOnBackend strictly tracks whether the voter has any
+        // row with a non-empty interestLevel — used as the gate for the
+        // late-entry-dev path. Don't widen it to "any row exists": Phase 2
+        // interest submissions go through recordInterestVote which writes
+        // interestLevel only and leaves the availability columns blank, so
+        // `data.found` would be true while `hasFlag`/`hasTier` are both false.
+        setHasInterestVotesOnBackend(!!data.hasInterestVotes);
 
         if (!data.found) return;
 
         // Populate state from backend when we have availability data. The
-        // dialog itself is hidden until hasInterestVotesOnBackend resolves,
-        // so there's no race against a freshly-typed dialog answer.
+        // dialog itself is hidden until precheck resolves, so there's no
+        // race against a freshly-typed dialog answer.
         const hasFlag = data.available === true || data.available === false
           || data.availableForPQA1 === true || data.availableForPQA1 === false;
         const hasTier = !!(data.devCapacity || data.pqa1Capacity || data.capacity);
-        if (!hasFlag && !hasTier) return;
 
-        setAvailability(
-          data.available ?? false,
-          data.availableForPQA1 ?? null,
-          {
-            devCapacity: (data.devCapacity ?? null),
-            pqa1Capacity: (data.pqa1Capacity ?? null),
-            capacity: (data.capacity ?? null),
-            availabilityComment: data.availabilityComment ?? '',
-          },
-        );
+        if (hasFlag || hasTier) {
+          setAvailability(
+            data.available ?? false,
+            data.availableForPQA1 ?? null,
+            {
+              devCapacity: (data.devCapacity ?? null),
+              pqa1Capacity: (data.pqa1Capacity ?? null),
+              capacity: (data.capacity ?? null),
+              availabilityComment: data.availabilityComment ?? '',
+            },
+          );
+        } else if (data.hasInterestVotes) {
+          // Voter has interest data but no availability fields on file
+          // (e.g. a QM/dev TL who submitted via Phase2InterestForm, which
+          // never writes availability). They wouldn't have submitted
+          // interest if they weren't available, so default to available
+          // rather than re-prompt or strand them on the wait screen.
+          setAvailability(true, null, {
+            devCapacity: null,
+            pqa1Capacity: null,
+            capacity: null,
+            availabilityComment: '',
+          });
+        }
       }).catch(() => {
         // Fetch failed — flip to `false` so the dialog falls open instead of
         // staying hidden behind the loading sentinel.
