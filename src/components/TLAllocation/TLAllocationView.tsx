@@ -9,7 +9,7 @@ import {
 } from '../../mocks/allocationMockData';
 import { fetchAllocationConfig, fetchAllocationVoteData, setCapacityOverride } from '../../services/allocationApi';
 import type { CapacityOverridePayload } from '../../services/allocationApi';
-import { savePlan, saveFinalAssignments, fetchPlanFull } from '../../services/api';
+import { savePlan, saveFinalAssignments, fetchPlanFull, fetchAdhocPitches, saveAdhocPitch as saveAdhocPitchApi } from '../../services/api';
 import type { PlanRow } from '../../services/api';
 import AddPitchDialog, { type AdhocPitchDraft } from './AddPitchDialog';
 import { useSnackbar } from '../../hooks/useSnackbar';
@@ -190,25 +190,19 @@ function autoAssignStep2(
       return;
     }
 
-    // Largest-remainder proportional rounding: total slots = exactly N so the
-    // matrix is square and every eligible person gets at least one assignment.
+    // Penalty per additional slot within the same person: 5.5 * s.
+    // The worst first-slot cost is absent (6); the best second-slot cost is
+    // tier-1 + 5.5 = 6.5. Since 6.5 > 6, every first slot beats every second
+    // slot — strict "fill all first slots before any second" — with interest
+    // quality breaking ties within each round.
     const slots: string[] = [];
-    if (totalRemaining <= N) {
-      eligible.forEach(n => { for (let s = 0; s < remCap(n); s++) slots.push(n); });
-    } else {
-      const caps = eligible.map(remCap);
-      const totalCap = caps.reduce((a, b) => a + b, 0);
-      const floats = caps.map(c => (c / totalCap) * N);
-      const targets = floats.map(f => Math.floor(f));
-      let deficit = N - targets.reduce((a, b) => a + b, 0);
-      const order = eligible.map((_, i) => i)
-        .sort((i, j) => (floats[j] - targets[j]) - (floats[i] - targets[i]));
-      for (const idx of order) {
-        if (deficit <= 0) break;
-        if (targets[idx] < caps[idx]) { targets[idx]++; deficit--; }
+    const penalties: number[] = [];
+    eligible.forEach(n => {
+      for (let s = 0; s < remCap(n); s++) {
+        slots.push(n);
+        penalties.push(s * 5.5);
       }
-      eligible.forEach((n, i) => { for (let s = 0; s < targets[i]; s++) slots.push(n); });
-    }
+    });
 
     const totalCols = Math.max(slots.length, N);
     const paddedSlots: (string | null)[] = [
@@ -217,7 +211,7 @@ function autoAssignStep2(
     ];
 
     const costMatrix: number[][] = pending.map(pitch =>
-      paddedSlots.map(name => name === null ? BIG : tlQmScore(interestMap, pitch, name))
+      paddedSlots.map((name, j) => name === null ? BIG : tlQmScore(interestMap, pitch, name) + penalties[j])
     );
 
     const assignment = hungarianMinCost(costMatrix);
@@ -389,7 +383,12 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
     const planP = fetchPlanFull()
       .catch(() => ({} as Record<string, PlanRow>));
 
-    Promise.all([pitchP, voteP, configP, planP]).then(([pitches, voteResponse, config, planFull]) => {
+    // Adhoc pitches live on the backend so a TL adding one can be seen by
+    // every other TL on next refresh. Best-effort — falls back to whatever
+    // is in localStorage when the fetch fails.
+    const adhocP = fetchAdhocPitches().catch(() => [] as Pitch[]);
+
+    Promise.all([pitchP, voteP, configP, planP, adhocP]).then(([pitches, voteResponse, config, planFull, backendAdhoc]) => {
       if (cancelled) return;
 
       const { pitchData: voteData, unavailableNames, unavailableForDevNames, unavailableForPqa1Names, capacityByName } = voteResponse;
@@ -500,6 +499,27 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
           savedStep2.current = sanitized2;
           setStep2Assignments(sanitized2);
         }
+      }
+
+      // Merge backend adhoc pitches into local state. Backend wins for shared
+      // ids (it's the cross-machine source of truth); local-only entries are
+      // preserved so a save still in flight doesn't get clobbered.
+      if (backendAdhoc.length > 0) {
+        const toAllocationPitch = (p: Pitch): AllocationPitch => ({
+          ...p,
+          continuation: false,
+          author: null,
+          teamVotes: {},
+          tlVotes: {},
+          teamPriorityScore: 0,
+          tlPriorityScore: 0,
+          devInterest: {},
+        });
+        const backendIds = new Set(backendAdhoc.map(p => p.id));
+        setAdhocPitches(prev => [
+          ...backendAdhoc.map(toAllocationPitch),
+          ...prev.filter(p => !backendIds.has(p.id)),
+        ]);
       }
 
       if (!hasRealVotes) {
@@ -658,6 +678,7 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
       category,
       continuation: false,
       committed,
+      adhoc: true,
       author: null,
       details: { problem: '' },
       teamVotes: {},
@@ -674,6 +695,12 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
       setStep1Locks(prev => ({ ...prev, pitchIds: [...prev.pitchIds, id] }));
       setStep2Locks(prev => ({ ...prev, pitchIds: [...prev.pitchIds, id] }));
     }
+    // Persist to backend so other TLs see this on next refresh. Local state +
+    // localStorage cache stay authoritative on failure — the user keeps their
+    // work, and the next save attempt (e.g. an edit) will re-upsert.
+    saveAdhocPitchApi(pitch).catch((err: any) => {
+      showSnackbar(`Project added locally — failed to save to sheet: ${err?.message ?? 'unknown error'}`, 'warning');
+    });
   };
 
   const handleEditAdhocPitch = (id: string, draft: AdhocPitchDraft) => {
@@ -702,6 +729,17 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
       setStep1Locks(prev => prev.pitchIds.includes(id) ? { ...prev, pitchIds: prev.pitchIds.filter(x => x !== id) } : prev);
       setStep2Locks(prev => prev.pitchIds.includes(id) ? { ...prev, pitchIds: prev.pitchIds.filter(x => x !== id) } : prev);
     }
+    // Persist edit to backend (upsert).
+    saveAdhocPitchApi({
+      id,
+      title,
+      category,
+      committed,
+      adhoc: true,
+      details: { problem: '' },
+    }).catch((err: any) => {
+      showSnackbar(`Edit saved locally — failed to save to sheet: ${err?.message ?? 'unknown error'}`, 'warning');
+    });
   };
 
   // Adhoc-pitch dialog state, lifted from the views so a single dialog

@@ -118,38 +118,97 @@ export interface SubmitVotesPayload {
 /**
  * Fetches all available pitches from the bundled static JSON.
  * Update src/assets/pitches.json once per quarter via the Dev Tools export button.
+ *
+ * Adhoc (locally-added) pitches are NOT included here — they have a separate
+ * fetchAdhocPitches() endpoint and only flow into the TL allocation UI, never
+ * into the voting flow.
  */
 export async function fetchPitches(): Promise<Pitch[]> {
   return staticPitches as unknown as Pitch[];
 }
 
 /**
+ * Fetch the adhoc rows from the backend PITCHES sheet. Returns [] on any
+ * fetch error so the TL allocation UI keeps working with localStorage-cached
+ * adhoc pitches when the backend is unreachable.
+ */
+export async function fetchAdhocPitches(): Promise<Pitch[]> {
+  if (USE_MOCK_API || !API_BASE_URL) return [];
+  try {
+    const response = await fetch(`${GAS_PROXY}?route=adhoc-pitches`);
+    if (!response.ok) return [];
+    const rows: Array<{ pitch_id: string; title: string; category: string; committed: boolean; adhoc: boolean }> = await response.json();
+    return rows.map(r => ({
+      id: r.pitch_id,
+      title: r.title,
+      category: r.category,
+      adhoc: true,
+      committed: !!r.committed,
+      details: { problem: '' },
+    }));
+  } catch (err) {
+    console.warn('fetchAdhocPitches: failed', err);
+    return [];
+  }
+}
+
+/**
  * Pushes the full pitch list to the backend PITCHES sheet so it stays in sync
  * with pitches.json. Called fire-and-forget after pitches load — failures are
- * logged but never surface to the user.
+ * logged but never surface to the user. Adhoc rows on the backend are
+ * preserved across this rewrite by the server.
  */
 export async function refreshPitchesInSheet(pitches: Pitch[]): Promise<void> {
   const payload = {
-    pitches: pitches.map(p => ({
-      pitch_id: p.id,
-      title: p.title,
-      problem: p.details.problem,
-      ideaForSolution: p.details.ideaForSolution ?? '',
-      characteristics: p.details.characteristics ?? '',
-      whyNow: p.details.whyNow ?? '',
-      smartToolsFit: p.details.smartToolsFit ?? '',
-      epicFit: p.details.epicFit ?? '',
-      success: p.details.success ?? '',
-      maintenance: p.details.maintenance ?? '',
-      internCandidate: p.details.internCandidate ?? false,
-      committed: p.committed ?? false,
-    })),
+    pitches: pitches
+      // Don't push adhoc pitches through the static-replacement route — they
+      // have their own upsert path (saveAdhocPitch) and the backend filters
+      // them out anyway.
+      .filter(p => !p.adhoc)
+      .map(p => ({
+        pitch_id: p.id,
+        title: p.title,
+        category: p.category,
+        problem: p.details.problem,
+        ideaForSolution: p.details.ideaForSolution ?? '',
+        characteristics: p.details.characteristics ?? '',
+        whyNow: p.details.whyNow ?? '',
+        smartToolsFit: p.details.smartToolsFit ?? '',
+        epicFit: p.details.epicFit ?? '',
+        success: p.details.success ?? '',
+        maintenance: p.details.maintenance ?? '',
+        internCandidate: p.details.internCandidate ?? false,
+        committed: p.committed ?? false,
+      })),
   };
   try {
     await gasJsonPost('refresh-pitches', payload, { saved: pitches.length });
   } catch (err) {
     console.warn('refreshPitchesInSheet: sheet sync failed', err);
   }
+}
+
+/**
+ * Upsert a single adhoc (locally-added) pitch on the backend PITCHES sheet.
+ * Called on add and edit. Throws on failure so the caller can surface a
+ * snackbar — adhoc pitches that don't reach the backend won't be visible to
+ * other TLs / on other machines.
+ */
+export async function saveAdhocPitch(pitch: Pitch): Promise<void> {
+  const payload = {
+    pitch: {
+      pitch_id: pitch.id,
+      title: pitch.title,
+      category: pitch.category,
+      committed: pitch.committed ?? false,
+    },
+  };
+  await gasJsonPost('save-adhoc-pitch', payload, { saved: 1 });
+}
+
+/** Removes an adhoc pitch from the backend. Throws on failure. */
+export async function deleteAdhocPitch(pitchId: string): Promise<void> {
+  await gasJsonPost('delete-adhoc-pitch', { pitch_id: pitchId }, { deleted: 1 });
 }
 
 

@@ -10,6 +10,12 @@ export interface Pitch {
    * voting and surfaces in TL allocation as a locked, read-only row.
    */
   committed?: boolean;
+  /**
+   * Locally-added project, not part of the static pitch process. Persisted on
+   * the backend (PITCHES sheet, adhoc=true) so it survives reload + cross-machine,
+   * and editable from the TL allocation UI via the pencil icon.
+   */
+  adhoc?: boolean;
   author?: string | null;  // Person who wrote the pitch (used as assignment tiebreaker)
   previousDev?: string;    // Lead dev from last quarter (continuation projects only)
   previousTL?: string;     // Dev TL from last quarter (continuation projects only)

@@ -68,6 +68,8 @@ function doGet(e) {
     switch (e.parameter.route) {
       case 'pitches':
         return getPitches();
+      case 'adhoc-pitches':
+        return getAdhocPitches();
       case 'results':
         return getResults();
       case 'token':
@@ -183,6 +185,10 @@ function doPost(e) {
         return createEmcRecords(JSON.parse(e.postData.contents));
       case 'refresh-pitches':
         return refreshPitches(payload);
+      case 'save-adhoc-pitch':
+        return saveAdhocPitch(payload);
+      case 'delete-adhoc-pitch':
+        return deleteAdhocPitch(payload);
       case 'set-capacity-override':
         return recordCapacityOverride(payload);
       case 'set-polling-state':
@@ -202,18 +208,23 @@ function doPost(e) {
  */
 function getPitches() {
   const sh = ss.getSheetByName('PITCHES');
-  const rows = sh.getDataRange().getValues().slice(1); // skip header
-  // Column order matches refreshPitches headers:
-  //   0:pitch_id 1:title 2:problem 3:ideaForSolution 4:whyNow 5:smartToolsFit
-  //   6:epicFit  7:maintenance 8:internCandidate 9:characteristics 10:success
-  //   11:committed
+  if (!sh) return json200([]);
+  const lastRow = sh.getLastRow();
+  if (lastRow <= 1) return json200([]);
+  const rows = sh.getRange(2, 1, lastRow - 1, PITCH_HEADERS.length).getValues();
+  // Column order is defined by PITCH_HEADERS — see top of refreshPitches.
+  const adhocIdx = PITCH_HEADERS.indexOf('adhoc');
+  const committedIdx = PITCH_HEADERS.indexOf('committed');
+  const categoryIdx = PITCH_HEADERS.indexOf('category');
   const data = rows.map(r => ({
     pitch_id: r[0],
     title: r[1],
     problem: r[2],
     idea: r[3],
     characteristics: r[9],
-    committed: r[11] === true || r[11] === 'true' || r[11] === 'TRUE',
+    committed: isAdhocCellTrue(r[committedIdx]),
+    category: r[categoryIdx],
+    adhoc: isAdhocCellTrue(r[adhocIdx]),
   }));
   return json200(data);
 }
@@ -1274,31 +1285,157 @@ function createEmcRecords(body) {
   return json200({ sent: sent, skipped: skipped });
 }
 
+// PITCHES sheet schema. Column order is load-bearing for getPitches /
+// refreshPitches / saveAdhocPitch — keep in sync.
+const PITCH_HEADERS = ['pitch_id', 'title', 'problem', 'ideaForSolution', 'whyNow', 'smartToolsFit', 'epicFit', 'maintenance', 'internCandidate', 'characteristics', 'success', 'committed', 'category', 'adhoc'];
+
+function isAdhocCellTrue(value) {
+  return value === true || value === 'true' || value === 'TRUE';
+}
+
 /**
  * Refresh the PITCHES sheet with a full replacement dataset from the caller.
- * Creates the sheet if it does not exist. Clears all existing data before writing.
+ * Creates the sheet if it does not exist. Adhoc rows (adhoc=true) are preserved
+ * across the rewrite so locally-added projects survive the next page load that
+ * pushes the static JSON.
  *
  * Expected body: { pitches: { pitch_id, title, problem, ideaForSolution, whyNow,
  *   smartToolsFit, epicFit, maintenance, internCandidate, characteristics, success,
- *   committed }[] }
+ *   committed, category }[] }
  *
  * The `committed` column flags pitches that are pre-allocated for next quarter —
  * they skip priority/interest voting and surface as locked rows in TL allocation.
- * Admins can flip a pitch to/from committed by editing this column directly.
+ * Admins can flip a pitch to/from committed by editing this column directly. The
+ * `adhoc` column flags rows that were added through the TL allocation UI rather
+ * than the pitch process; those are excluded from the static replacement so this
+ * function never wipes them.
  *
  * @param {Object} body - Parsed request body
- * @return {TextOutput} JSON { updated: number }
+ * @return {TextOutput} JSON { updated: number, preserved: number }
  */
 function refreshPitches(body) {
   const pitches = body.pitches || [];
   const sh = ss.getSheetByName('PITCHES') || ss.insertSheet('PITCHES');
+
+  // Capture existing adhoc rows before clearing — they're not in the incoming
+  // payload (caller is the static-JSON pusher) and should survive the rewrite.
+  let preservedAdhoc = [];
+  const lastRow = sh.getLastRow();
+  if (lastRow > 1) {
+    const existing = sh.getRange(2, 1, lastRow - 1, PITCH_HEADERS.length).getValues();
+    const adhocColIdx = PITCH_HEADERS.indexOf('adhoc');
+    preservedAdhoc = existing.filter(r => isAdhocCellTrue(r[adhocColIdx]));
+  }
+
   sh.clearContents();
 
-  const headers = ['pitch_id', 'title', 'problem', 'ideaForSolution', 'whyNow', 'smartToolsFit', 'epicFit', 'maintenance', 'internCandidate', 'characteristics', 'success', 'committed'];
-  const rows = [headers].concat(pitches.map(p => headers.map(k => p[k] != null ? p[k] : '')));
-  sh.getRange(1, 1, rows.length, headers.length).setValues(rows);
+  const staticRows = pitches.map(p => PITCH_HEADERS.map(k => {
+    if (k === 'adhoc') return false;
+    return p[k] != null ? p[k] : '';
+  }));
+  const rows = [PITCH_HEADERS, ...staticRows, ...preservedAdhoc];
+  sh.getRange(1, 1, rows.length, PITCH_HEADERS.length).setValues(rows);
 
-  return json200({ updated: pitches.length });
+  return json200({ updated: pitches.length, preserved: preservedAdhoc.length });
+}
+
+/**
+ * Upsert a single adhoc pitch in the PITCHES sheet. Matches by pitch_id; if a
+ * row with that id exists it's overwritten, otherwise a new row is appended.
+ * Always sets adhoc=true so the row survives the next refreshPitches.
+ *
+ * Expected body: { pitch: { pitch_id, title, category, committed } }
+ *
+ * @param {Object} body - Parsed request body
+ * @return {TextOutput} JSON { saved: 1, action: 'inserted' | 'updated' }
+ */
+function saveAdhocPitch(body) {
+  const p = body.pitch || {};
+  if (!p.pitch_id) return badRequest('Missing pitch_id');
+
+  const sh = ss.getSheetByName('PITCHES') || ss.insertSheet('PITCHES');
+  // Ensure header row exists.
+  if (sh.getLastRow() === 0) {
+    sh.getRange(1, 1, 1, PITCH_HEADERS.length).setValues([PITCH_HEADERS]);
+  }
+
+  const row = PITCH_HEADERS.map(k => {
+    if (k === 'adhoc') return true;
+    return p[k] != null ? p[k] : '';
+  });
+
+  const lastRow = sh.getLastRow();
+  if (lastRow > 1) {
+    const ids = sh.getRange(2, 1, lastRow - 1, 1).getValues();
+    for (let i = 0; i < ids.length; i++) {
+      if (ids[i][0] === p.pitch_id) {
+        sh.getRange(i + 2, 1, 1, PITCH_HEADERS.length).setValues([row]);
+        return json200({ saved: 1, action: 'updated' });
+      }
+    }
+  }
+  sh.appendRow(row);
+  return json200({ saved: 1, action: 'inserted' });
+}
+
+/**
+ * Delete an adhoc pitch from the PITCHES sheet. Refuses to delete non-adhoc
+ * rows so the static dataset can't be removed through this route.
+ *
+ * Expected body: { pitch_id: string }
+ *
+ * @param {Object} body - Parsed request body
+ * @return {TextOutput} JSON { deleted: 0 | 1 }
+ */
+function deleteAdhocPitch(body) {
+  const id = body.pitch_id;
+  if (!id) return badRequest('Missing pitch_id');
+
+  const sh = ss.getSheetByName('PITCHES');
+  if (!sh) return json200({ deleted: 0 });
+
+  const lastRow = sh.getLastRow();
+  if (lastRow <= 1) return json200({ deleted: 0 });
+
+  const adhocColIdx = PITCH_HEADERS.indexOf('adhoc');
+  const data = sh.getRange(2, 1, lastRow - 1, PITCH_HEADERS.length).getValues();
+  for (let i = 0; i < data.length; i++) {
+    if (data[i][0] === id && isAdhocCellTrue(data[i][adhocColIdx])) {
+      sh.deleteRow(i + 2);
+      return json200({ deleted: 1 });
+    }
+  }
+  return json200({ deleted: 0 });
+}
+
+/**
+ * Return only the adhoc rows from the PITCHES sheet. Used by the frontend on
+ * page load to merge backend-persisted adhoc projects with the static JSON.
+ *
+ * @return {TextOutput} JSON [{ pitch_id, title, category, committed, adhoc:true }]
+ */
+function getAdhocPitches() {
+  const sh = ss.getSheetByName('PITCHES');
+  if (!sh) return json200([]);
+  const lastRow = sh.getLastRow();
+  if (lastRow <= 1) return json200([]);
+
+  const adhocColIdx = PITCH_HEADERS.indexOf('adhoc');
+  const titleIdx = PITCH_HEADERS.indexOf('title');
+  const categoryIdx = PITCH_HEADERS.indexOf('category');
+  const committedIdx = PITCH_HEADERS.indexOf('committed');
+
+  const rows = sh.getRange(2, 1, lastRow - 1, PITCH_HEADERS.length).getValues();
+  const data = rows
+    .filter(r => isAdhocCellTrue(r[adhocColIdx]))
+    .map(r => ({
+      pitch_id: r[0],
+      title: r[titleIdx],
+      category: r[categoryIdx],
+      committed: isAdhocCellTrue(r[committedIdx]),
+      adhoc: true,
+    }));
+  return json200(data);
 }
 
 /**
