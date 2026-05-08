@@ -9,7 +9,8 @@ import {
 } from '../../mocks/allocationMockData';
 import { fetchAllocationConfig, fetchAllocationVoteData, setCapacityOverride } from '../../services/allocationApi';
 import type { CapacityOverridePayload } from '../../services/allocationApi';
-import { savePlan, saveFinalAssignments } from '../../services/api';
+import { savePlan, saveFinalAssignments, fetchPlanFull } from '../../services/api';
+import type { PlanRow } from '../../services/api';
 import type { AdhocTeamAssignment } from './AddPitchDialog';
 import { useSnackbar } from '../../hooks/useSnackbar';
 import { generateDefaultPlan, autoAssignPqa1, capForPerson } from '../../utils/allocationEngine';
@@ -325,7 +326,13 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
       .then(v => { if (!cancelled) setConfigStatus('done'); return v; })
       .catch(e => { if (!cancelled) { setConfigStatus('error'); setConfigError(e?.message ?? 'Failed to load config'); } return null; });
 
-    Promise.all([pitchP, voteP, configP]).then(([pitches, voteResponse, config]) => {
+    // Source of truth for plan + team assignments is the PLAN sheet on the
+    // backend, not per-machine localStorage — TLs collaborate, machines
+    // diverge, and Stage 4 must reflect what was actually saved at finish.
+    const planP = fetchPlanFull()
+      .catch(() => ({} as Record<string, PlanRow>));
+
+    Promise.all([pitchP, voteP, configP, planP]).then(([pitches, voteResponse, config, planFull]) => {
       if (cancelled) return;
 
       const { pitchData: voteData, unavailableNames, unavailableForDevNames, unavailableForPqa1Names, capacityByName } = voteResponse;
@@ -349,33 +356,74 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
 
       setAllocationConfig(effectiveConfig);
 
-      // Sanitize saved localStorage assignments against the freshly-fetched config.
-      // If a person was removed from the roster, clear their assignment rather than
-      // leaving a stale name in a dropdown.
+      // Sanitize against the freshly-fetched roster — anyone removed from
+      // devNames/devTLNames/qmNames gets cleared from their assignment slot
+      // rather than left as a stale dropdown value.
       const devSet = new Set(effectiveConfig.devNames);
       const devTLSet = new Set(effectiveConfig.devTLNames);
       const qmSet = new Set(effectiveConfig.qmNames);
 
-      if (savedStep1.current) {
-        const sanitized1 = savedStep1.current.map(a => {
-          if (a.assignedDev != null && !devSet.has(a.assignedDev)) {
-            return { ...a, assignedDev: null, status: (a.status === 'selected' ? 'next-up' : a.status) as typeof a.status };
-          }
-          return a;
-        });
-        savedStep1.current = sanitized1;
-        setPlanAssignments(sanitized1);
-      }
+      const planEntries = Object.entries(planFull);
+      const hasBackendPlan = planEntries.length > 0;
 
-      if (savedStep2.current) {
-        const sanitized2 = savedStep2.current.map(a => ({
-          ...a,
-          devTL: a.devTL != null && !devTLSet.has(a.devTL) ? null : a.devTL,
-          qm:    a.qm    != null && !qmSet.has(a.qm)       ? null : a.qm,
-          pqa1:  a.pqa1  != null && !devSet.has(a.pqa1)    ? null : a.pqa1,
-        }));
-        savedStep2.current = sanitized2;
-        setStep2Assignments(sanitized2);
+      if (hasBackendPlan) {
+        // Backend PLAN sheet is the source of truth. Build planAssignments
+        // (Stage 2) and step2Assignments (Stage 4) from it directly,
+        // ignoring any stale localStorage state on this machine.
+        const planFromBackend: PlanAssignment[] = planEntries
+          .filter(([, row]) => row.status === 'selected' || row.status === 'next-up' || row.status === 'cut')
+          .map(([pitchId, row]) => {
+            const dev = row.assignedDev != null && devSet.has(row.assignedDev) ? row.assignedDev : null;
+            const status = (row.status === 'selected' && !dev && row.assignedDev != null)
+              // Original dev was on the saved row but is now off the roster — keep
+              // the pitch in the plan but bump status down so the missing dev is
+              // surfaced rather than silently dropped.
+              ? 'next-up'
+              : row.status;
+            return {
+              pitchId,
+              status: status as PlanAssignment['status'],
+              assignedDev: dev,
+            };
+          });
+        savedStep1.current = planFromBackend;
+        setPlanAssignments(planFromBackend);
+
+        const step2FromBackend: StaffingAssignment[] = planEntries
+          .filter(([, row]) => row.devTL || row.qm || row.pqa1)
+          .map(([pitchId, row]) => ({
+            pitchId,
+            devTL: row.devTL && devTLSet.has(row.devTL) ? row.devTL : null,
+            qm:    row.qm    && qmSet.has(row.qm)       ? row.qm    : null,
+            pqa1:  row.pqa1  && devSet.has(row.pqa1)    ? row.pqa1  : null,
+          }));
+        savedStep2.current = step2FromBackend;
+        setStep2Assignments(step2FromBackend);
+      } else {
+        // No backend plan yet (first run / new cycle) — fall back to the
+        // localStorage drafts so a TL's in-progress work isn't lost on
+        // reload before they hit Finish.
+        if (savedStep1.current) {
+          const sanitized1 = savedStep1.current.map(a => {
+            if (a.assignedDev != null && !devSet.has(a.assignedDev)) {
+              return { ...a, assignedDev: null, status: (a.status === 'selected' ? 'next-up' : a.status) as typeof a.status };
+            }
+            return a;
+          });
+          savedStep1.current = sanitized1;
+          setPlanAssignments(sanitized1);
+        }
+
+        if (savedStep2.current) {
+          const sanitized2 = savedStep2.current.map(a => ({
+            ...a,
+            devTL: a.devTL != null && !devTLSet.has(a.devTL) ? null : a.devTL,
+            qm:    a.qm    != null && !qmSet.has(a.qm)       ? null : a.qm,
+            pqa1:  a.pqa1  != null && !devSet.has(a.pqa1)    ? null : a.pqa1,
+          }));
+          savedStep2.current = sanitized2;
+          setStep2Assignments(sanitized2);
+        }
       }
 
       if (!hasRealVotes) {

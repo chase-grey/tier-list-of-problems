@@ -295,6 +295,30 @@ export async function fetchPlanStatuses(): Promise<Record<string, 'selected' | '
   return data.statuses ?? {};
 }
 
+export type PlanRow = {
+  status: 'selected' | 'next-up' | 'cut' | '';
+  assignedDev: string | null;
+  devTL: string | null;
+  qm: string | null;
+  pqa1: string | null;
+};
+
+/**
+ * Fetches the full PLAN sheet rows keyed by pitchId, including dev / devTL /
+ * qm / pqa1 assignments. Used by Stage 4 (TL allocation step 2) to read the
+ * latest plan state from the backend rather than relying on per-machine
+ * localStorage, which can drift when multiple TLs collaborate or after
+ * cycle changes.
+ */
+export async function fetchPlanFull(): Promise<Record<string, PlanRow>> {
+  const response = await fetch(`${GAS_PROXY}?route=get-plan`);
+  if (!response.ok) {
+    throw new ApiError(`Get plan failed (${response.status})`, response.status);
+  }
+  const data = await response.json();
+  return data.assignments ?? {};
+}
+
 /**
  * Fetches current follow-up completion state (projectCreated, kickoffEmailSent) from the PLAN sheet.
  */

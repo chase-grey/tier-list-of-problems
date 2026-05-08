@@ -997,18 +997,37 @@ function saveFinalAssignments(assignments, submittedBy) {
  */
 function getPlanStatuses() {
   const sh = ss.getSheetByName('PLAN');
-  if (!sh || sh.getLastRow() <= 1) return json200({ statuses: {} });
-  // New schema has submittedBy at col B; pitchId is at col C (3). Old schema has pitchId at col B (2).
+  if (!sh || sh.getLastRow() <= 1) return json200({ statuses: {}, assignments: {} });
+  // Schema history: 5 cols (no title) → 6 cols (added pitchTitle) → 7+ cols
+  // (added submittedBy after savePlan), with saveFinalAssignments later
+  // appending devTL/qm/pqa1/projectCreated/kickoffEmailSent.
+  const numCols = sh.getLastColumn();
   const hasSubmittedBy = sh.getRange(1, 2).getValue() === 'submittedBy';
-  const startCol = hasSubmittedBy ? 3 : 2;
-  const data = sh.getRange(2, startCol, sh.getLastRow() - 1, 3).getValues(); // pitchId, pitchTitle, status
+  const pidIdx     = hasSubmittedBy ? 2 : 1;
+  const statusIdx  = pidIdx + 2;
+  const devIdx     = pidIdx + 3;
+  const tlIdx      = pidIdx + 4;
+  const qmIdx      = pidIdx + 5;
+  const pqa1Idx    = pidIdx + 6;
+
+  const rows = sh.getRange(2, 1, sh.getLastRow() - 1, numCols).getValues();
   const statuses = {};
-  for (const row of data) {
-    const pitchId = String(row[0]);
+  const assignments = {};
+  const safe = (idx, row) => (idx < numCols && row[idx] !== '' && row[idx] != null) ? String(row[idx]) : null;
+  for (const row of rows) {
+    const pitchId = String(row[pidIdx] || '');
     if (!pitchId) continue;
-    statuses[pitchId] = row[2]; // 'selected' | 'next-up' | 'cut'
+    const status = safe(statusIdx, row) || '';
+    if (status) statuses[pitchId] = status;
+    assignments[pitchId] = {
+      status: status,
+      assignedDev: safe(devIdx, row),
+      devTL: safe(tlIdx, row),
+      qm: safe(qmIdx, row),
+      pqa1: safe(pqa1Idx, row),
+    };
   }
-  return json200({ statuses });
+  return json200({ statuses, assignments });
 }
 
 /**
