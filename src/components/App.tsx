@@ -1088,12 +1088,12 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
           ) : isTLStage ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', flexDirection: 'column', gap: 2, p: 4 }}>
               <Typography variant="h5" color="text.secondary" textAlign="center">
-                TL Allocation in Progress
+                Leads Allocation in Progress
               </Typography>
               <Typography variant="body1" color="text.secondary" textAlign="center" sx={{ maxWidth: 500 }}>
-                The dev TLs are currently working through the{' '}
+                The leads are currently working through the{' '}
                 {getPollingStage() === 'tl-1' ? 'first' : 'second'} round of allocation.
-                Check back soon for updates on the selected projects for next quarter.
+                You'll receive an email when the next stage is ready.
               </Typography>
             </Box>
           ) : appStage2Mode && !canAccessInterestStage ? (
