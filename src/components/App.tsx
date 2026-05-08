@@ -252,6 +252,12 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
   const appStateStorageKey = buildPollingKey(pollingCycleId, 'appState');
   const voterNameStorageKey = buildPollingKey(pollingCycleId, 'voterName');
   const voterRoleStorageKey = buildPollingKey(pollingCycleId, 'voterRole');
+  // Persisted snapshot of state.votes at the time of last successful submit.
+  // Stored in localStorage so the Finish button keeps its "Submitted" state
+  // across page refreshes and new tabs (the in-memory ref alone resets on
+  // every fresh mount, which made the button look unsaved after a refresh
+  // even when the backend already had identical data).
+  const submittedSnapshotStorageKey = buildPollingKey(pollingCycleId, 'submittedVotesSnapshot');
   
   // Use localStorage for persistence with a safety wrapper
   const [savedState, setSavedState] = (() => {
@@ -403,16 +409,31 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
   }, [state.voterName, state.voterRole, state.available, appStage2Mode, setAvailability]);
 
   // After a successful submission we snapshot the votes and watch for any change
-  // to flip the Finish button back from "submitted" to "changed".
+  // to flip the Finish button back from "submitted" to "changed". The snapshot
+  // is also persisted to localStorage so a page refresh or new tab still shows
+  // "Submitted" when the local state matches what's on the backend.
   useEffect(() => {
-    if (submittedVotesSnapshot.current === null) return;
+    // Seed the ref from localStorage on first run for this cycle key. We
+    // can't initialize the ref synchronously because the storage key depends
+    // on pollingCycleId which is computed during render.
+    if (submittedVotesSnapshot.current === null && typeof window !== 'undefined') {
+      try {
+        const stored = window.localStorage.getItem(submittedSnapshotStorageKey);
+        if (stored !== null) submittedVotesSnapshot.current = stored;
+      } catch { /* ignore */ }
+    }
+
+    if (submittedVotesSnapshot.current === null) {
+      // No prior submission known — leave Finish button in its 'idle' state.
+      return;
+    }
     const current = JSON.stringify(
       convertVotesToApiFormat(state.votes)
         .map(v => ({ p: v.pitch_id, t: v.tier, i: v.interestLevel ?? null }))
         .sort((a, b) => a.p.localeCompare(b.p)),
     );
     setSubmitState(current === submittedVotesSnapshot.current ? 'submitted' : 'changed');
-  }, [state.votes]);
+  }, [state.votes, submittedSnapshotStorageKey]);
 
   // Only pass pitches visible on screen to the keyboard nav hook.
   // In priority stage the board only renders the selected category — passing all
@@ -916,11 +937,15 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
         votes: apiVotes,
       });
       showSnackbar('Your votes have been submitted successfully!', 'success');
-      submittedVotesSnapshot.current = JSON.stringify(
+      const snapshot = JSON.stringify(
         apiVotes
           .map(v => ({ p: v.pitch_id, t: v.tier, i: v.interestLevel ?? null }))
           .sort((a, b) => a.p.localeCompare(b.p)),
       );
+      submittedVotesSnapshot.current = snapshot;
+      try {
+        window.localStorage.setItem(submittedSnapshotStorageKey, snapshot);
+      } catch { /* ignore quota/security errors */ }
       setSubmitState('submitted');
     } catch (err: any) {
       showSnackbar(err?.message || 'Submission failed — please try again', 'error');
