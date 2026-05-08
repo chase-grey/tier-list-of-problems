@@ -87,5 +87,12 @@ export default defineConfig(({ mode }) => {
     build: {
       outDir: 'build',
     },
+    // Restrict dep-scan entries to the outer-project HTML files. By default
+    // vite crawls every *.html for dep pre-bundling, which pulls in the stale
+    // nested ./tier-list-of-problems/ clone (gitignored but kept on disk) and
+    // fails on its outdated App.tsx.
+    optimizeDeps: {
+      entries: ['index.html', 'index.dev.html', 'dev.html', 'public/404.html'],
+    },
   }
 })
