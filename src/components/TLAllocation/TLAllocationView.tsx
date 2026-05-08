@@ -459,12 +459,13 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
   };
 
   // ── Step 2 state ──────────────────────────────────────────────────────────
-  // Pitches that need a team in Stage 4 (Step 2) are:
-  //   1. Pitches planned in Stage 2 that have a dev assigned (status='selected'
-  //      AND assignedDev !== null). A 'selected' row with no dev is an
-  //      incomplete plan and shouldn't be staffed yet.
-  //   2. Committed projects (pitch.committed). Pre-allocated work needs a team
-  //      regardless of voting / Stage 2 dev assignment.
+  // Pitches that need a team in Stage 4 (Step 2) are the union of:
+  //   1. Pitches planned in Stage 2 (status='selected'). The dev may or may
+  //      not be assigned yet — what matters is that the TL has decided this
+  //      pitch is happening next quarter; the team-matching step is exactly
+  //      where the missing dev (if any) gets filled in.
+  //   2. Committed projects (pitch.committed). Pre-allocated work needs a
+  //      team regardless of voting / Stage 2 status.
   //   3. Manually added (adhoc) projects. The TL chose to add them, so they
   //      always need staffing — even if no dev was specified at add time.
   const selectedPitchIds = useMemo(() => {
@@ -472,7 +473,7 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
     adhocPitches.forEach(p => ids.add(p.id));
     allPitches.forEach(p => { if (p.committed) ids.add(p.id); });
     for (const a of currentAssignments) {
-      if (a.status === 'selected' && a.assignedDev) ids.add(a.pitchId);
+      if (a.status === 'selected') ids.add(a.pitchId);
     }
     return ids;
   }, [currentAssignments, adhocPitches, allPitches]);
