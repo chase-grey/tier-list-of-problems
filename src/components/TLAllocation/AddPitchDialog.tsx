@@ -115,7 +115,23 @@ export default function AddPitchDialog({ open, categories, defaultCategory, devN
                 Team (optional)
               </Typography>
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                {(devNames?.length ?? 0) > 0 && nameSelect('Dev', teamDev, setTeamDev, devNames!)}
+                {/* Dev: any role can be assigned here. Devs first, then a
+                    divider + dev TLs, then a divider + QMs. The latter two
+                    are unusual choices, so they're visually separated and
+                    placed below. */}
+                {((devNames?.length ?? 0) > 0 || (devTLNames?.length ?? 0) > 0 || (qmNames?.length ?? 0) > 0) && (
+                  <FormControl fullWidth size="small">
+                    <InputLabel>Dev</InputLabel>
+                    <Select value={teamDev} label="Dev" onChange={e => setTeamDev(e.target.value)}>
+                      <MenuItem value=""><em>Unassigned</em></MenuItem>
+                      {(devNames ?? []).map(n => <MenuItem key={`dev-${n}`} value={n}>{n}</MenuItem>)}
+                      {(devNames?.length ?? 0) > 0 && (devTLNames?.length ?? 0) > 0 && <Divider component="li" />}
+                      {(devTLNames ?? []).map(n => <MenuItem key={`tl-${n}`} value={n}>{n}</MenuItem>)}
+                      {((devNames?.length ?? 0) > 0 || (devTLNames?.length ?? 0) > 0) && (qmNames?.length ?? 0) > 0 && <Divider component="li" />}
+                      {(qmNames ?? []).map(n => <MenuItem key={`qm-${n}`} value={n}>{n}</MenuItem>)}
+                    </Select>
+                  </FormControl>
+                )}
                 {(devTLNames?.length ?? 0) > 0 && nameSelect('Dev TL', teamDevTL, setTeamDevTL, devTLNames!)}
                 {(qmNames?.length ?? 0) > 0 && nameSelect('QM', teamQM, setTeamQM, qmNames!)}
                 {(devNames?.length ?? 0) > 0 && nameSelect('PQA1', teamPqa1, setTeamPqa1, devNames!)}
