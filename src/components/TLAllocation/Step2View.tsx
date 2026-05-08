@@ -6,7 +6,6 @@ import {
   Checkbox, Collapse, LinearProgress, Button, Chip,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import AddPitchDialog, { type AdhocTeamAssignment } from './AddPitchDialog';
 import {
   Warning as WarnIcon,
   CheckCircle as OkIcon,
@@ -55,8 +54,12 @@ interface Step2ViewProps {
   voterName: string;
   /** Persists a TL capacity override and updates local state to match. */
   onCapacityOverride: (payload: CapacityOverridePayload) => Promise<void>;
-  /** Called when the user adds an ad-hoc project not in the original pitch list. */
-  onAddPitch?: (title: string, category: string, committed: boolean, team: AdhocTeamAssignment) => void;
+  /** Opens the parent's add-pitch dialog. Hides the "Add project" button when omitted. */
+  onAdhocAdd?: () => void;
+  /** Opens the parent's add-pitch dialog in edit mode for an existing adhoc pitch. */
+  onAdhocEdit?: (pitchId: string) => void;
+  /** IDs of pitches that were added locally — pencil edit icon is shown for these. */
+  adhocPitchIds?: ReadonlySet<string>;
 }
 
 const CAPACITY_LABEL: Record<NonNullable<PersonCapacity['devCapacity']>, string> = {
@@ -180,7 +183,7 @@ export default function Step2View({
   selectedPitches, assignments, phase2Interests, config, onAssign, devByPitchId, devNames,
   includeUXD, onToggleUXD,
   lockedPitchIds, lockedPersonNames, onTogglePitchLock, onTogglePersonLock,
-  voterName, onCapacityOverride, onAddPitch,
+  voterName, onCapacityOverride, onAdhocAdd, onAdhocEdit, adhocPitchIds,
 }: Step2ViewProps) {
   const committedPitchSet = useMemo(
     () => new Set(selectedPitches.filter(p => p.committed).map(p => p.id)),
@@ -463,7 +466,6 @@ export default function Step2View({
   }, [selectedPitches]);
 
   const [categoryCollapsed, setCategoryCollapsed] = useState<Record<string, boolean>>({});
-  const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [hideLockedPitches, setHideLockedPitches] = useState(false);
 
   const unavailableSet = useMemo(() => new Set(config.unavailableNames ?? []), [config.unavailableNames]);
@@ -631,6 +633,16 @@ export default function Step2View({
       }
     }
 
+    // Per-person PQA1 target adjusted for capacity tier (fewer → ideal-1, above-avg → ideal+1).
+    const pqa1IdealByName: Record<string, number> = {};
+    pqa1Counts.forEach(({ name }) => {
+      const tier = config.capacityByName?.[name]?.pqa1Capacity;
+      if (tier === 'above-avg') pqa1IdealByName[name] = pqa1Ideal + 1;
+      else if (tier === 'fewer') pqa1IdealByName[name] = Math.max(0, pqa1Ideal - 1);
+      else if (tier === 'none') pqa1IdealByName[name] = 0;
+      else pqa1IdealByName[name] = pqa1Ideal;
+    });
+
     return {
       continuations, sameTeamCount, changedItems,
       tlScore: avgPct(tlEntries), qmScore: avgPct(qmEntries), pqa1Score: avgPct(pqa1Entries),
@@ -640,7 +652,7 @@ export default function Step2View({
       pqa1Tier12: tier12Count(pqa1Entries), pqa1Total: pqa1Entries.length,
       allTier12: tier12Count(allEntries), allTotal: allEntries.length,
       tlCounts, qmCounts, pqa1Counts,
-      tlIdeal, qmIdeal, pqa1Ideal,
+      tlIdeal, qmIdeal, pqa1Ideal, pqa1IdealByName,
       tlBalance, qmBalance, pqa1Balance,
       overallBalance: Math.round((tlBalance + qmBalance + pqa1Balance) / 3),
       authorshipItems, authoredPitchCount, authorMatchedCount, authorWarningItems,
@@ -700,17 +712,6 @@ export default function Step2View({
     <Box sx={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
       {/* ── Left: assignment table (category buckets) ── */}
       <Box sx={{ flex: 1, overflow: 'auto', p: 2, minWidth: 0 }}>
-        {onAddPitch && (
-          <AddPitchDialog
-            open={addDialogOpen}
-            categories={categories}
-            devNames={config.devNames}
-            devTLNames={config.devTLNames}
-            qmNames={config.qmNames}
-            onAdd={onAddPitch}
-            onClose={() => setAddDialogOpen(false)}
-          />
-        )}
         {/* Filter toolbar */}
         {(() => {
           const lockedCount = selectedPitches.filter(p => lockedPitchSet.has(p.id)).length;
@@ -795,6 +796,8 @@ export default function Step2View({
                           onToggleLock={() => onTogglePitchLock(pitch.id)}
                           lockedPersonSet={lockedPersonSet}
                           committed={committedPitchSet.has(pitch.id)}
+                          isAdhoc={adhocPitchIds?.has(pitch.id)}
+                          onEdit={onAdhocEdit ? () => onAdhocEdit(pitch.id) : undefined}
                         />
                       );
                     })}
@@ -804,11 +807,11 @@ export default function Step2View({
             </Paper>
           );
         })}
-        {onAddPitch && (
+        {onAdhocAdd && (
           <Button
             startIcon={<AddIcon />}
             size="small"
-            onClick={() => setAddDialogOpen(true)}
+            onClick={onAdhocAdd}
             sx={{ mt: 1, mb: 2 }}
           >
             Add project
@@ -1208,7 +1211,8 @@ export default function Step2View({
                   return selectedPitches.indexOf(pA) - selectedPitches.indexOf(pB);
                 });
               const hasHigh = hasHighInterestPqa1(name);
-              const workloadColor = workloadCountColor(assignedPitchIds.length, step2Stats.pqa1Ideal);
+              const personalIdeal = step2Stats.pqa1IdealByName[name] ?? step2Stats.pqa1Ideal;
+              const workloadColor = workloadCountColor(assignedPitchIds.length, personalIdeal);
               const workloadOff = workloadColor !== 'text.secondary';
 
               return (
@@ -1232,7 +1236,7 @@ export default function Step2View({
                       : <CollapseIcon sx={{ fontSize: '0.9rem', color: 'text.secondary', flexShrink: 0 }} />
                     }
                     <Tooltip
-                      title={workloadOff ? `${assignedPitchIds.length} projects (target ~${fmtIdeal(step2Stats.pqa1Ideal)})` : ''}
+                      title={workloadOff ? `${assignedPitchIds.length} projects (target ~${fmtIdeal(personalIdeal)})` : ''}
                       placement="top"
                       disableHoverListener={!workloadOff}
                     >
@@ -1260,7 +1264,7 @@ export default function Step2View({
                       </IconButton>
                     </Tooltip>
                     <Typography variant="caption" color="text.secondary" sx={{ ml: 'auto' }}>
-                      {assignedPitchIds.length}/{fmtIdeal(step2Stats.pqa1Ideal)}
+                      {assignedPitchIds.length}/{fmtIdeal(personalIdeal)}
                     </Typography>
                   </Box>
                   <Collapse in={!personCollapsed[name]}>
@@ -1320,16 +1324,30 @@ export default function Step2View({
               );
             })}
             {unavailableDevNamesForPqa1.length > 0 && (
-              <Box sx={{ mt: 0.5 }}>
-                <Typography variant="caption" color="text.disabled" sx={{ display: 'block', ml: 0.5, mb: 0.25, fontStyle: 'italic' }}>
-                  Not available
+              <>
+                <Divider sx={{ my: 1 }} />
+                <Typography variant="caption" color="text.disabled" sx={{ display: 'block', mb: 0.5, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                  Not Available
                 </Typography>
                 {unavailableDevNamesForPqa1.map(name => (
-                  <Box key={name} sx={{ ml: 0.5, mb: 0.25, opacity: 0.45 }}>
-                    <Typography variant="caption" color="text.disabled">{name}</Typography>
+                  <Box
+                    key={name}
+                    sx={{ mb: 0.5, px: 0.5, opacity: 0.5, display: 'flex', alignItems: 'center', gap: 0.5,
+                          '&:hover .capacity-edit-on-hover': { opacity: 1 } }}
+                  >
+                    <Typography variant="caption" color="text.disabled" fontWeight={600}>
+                      {getShortName(name)}
+                    </Typography>
+                    <CapacityBadge
+                      name={name}
+                      tier={capacityByName[name]?.pqa1Capacity}
+                      comment={capacityByName[name]?.comment}
+                      source={capacityByName[name]?.source}
+                      onClick={() => setCapacityDialogTarget(name)}
+                    />
                   </Box>
                 ))}
-              </Box>
+              </>
             )}
           </Collapse>
         </Box>
@@ -1371,12 +1389,14 @@ interface Step2RowProps {
   onToggleLock: () => void;
   lockedPersonSet: ReadonlySet<string>;
   committed?: boolean;
+  isAdhoc?: boolean;
+  onEdit?: () => void;
 }
 
 function Step2Row({
   pitch, assignment, devTLInterests, qmInterests, devTLNames, qmNames, devNames, devHasAnyData,
   onAssign, onRef, highlighted, devName, includeUXD, onToggleUXD,
-  locked, onToggleLock, lockedPersonSet, committed,
+  locked, onToggleLock, lockedPersonSet, committed, isAdhoc, onEdit,
 }: Step2RowProps) {
   const [detailsAnchor, setDetailsAnchor] = useState<HTMLButtonElement | null>(null);
 
@@ -1446,6 +1466,13 @@ function Step2Row({
               <InfoIcon sx={{ fontSize: '0.9rem', color: 'text.disabled' }} />
             </IconButton>
           </Tooltip>
+          {isAdhoc && onEdit && (
+            <Tooltip title="Edit this locally-added project">
+              <IconButton size="small" sx={{ p: 0.25, flexShrink: 0 }} onClick={onEdit}>
+                <EditOutlinedIcon sx={{ fontSize: '0.9rem', color: 'text.disabled' }} />
+              </IconButton>
+            </Tooltip>
+          )}
           {pitch.continuation && (
             <Tooltip title="Continuation project">
               <AutorenewIcon sx={{ fontSize: '0.9rem', color: 'text.disabled', flexShrink: 0 }} />
@@ -1542,6 +1569,7 @@ function Step2Row({
             <Pqa1Dropdown
               value={assignment.pqa1 ?? null}
               devNames={devNames}
+              devTLNames={devTLNames}
               devInterest={pitch.devInterest}
               devHasAnyData={devHasAnyData}
               excludeDev={devName}
@@ -1568,6 +1596,7 @@ function Step2Row({
 interface Pqa1DropdownProps {
   value: string | null;
   devNames: string[];
+  devTLNames?: string[];
   devInterest: Record<string, InterestLevel>;
   devHasAnyData: Set<string>;
   excludeDev: string | null;
@@ -1578,15 +1607,18 @@ interface Pqa1DropdownProps {
   disabled?: boolean;
 }
 
-function Pqa1Dropdown({ value, devNames, devInterest, devHasAnyData, excludeDev, selectId, onChange, author, lockedPersonSet, disabled }: Pqa1DropdownProps) {
+function Pqa1Dropdown({ value, devNames, devTLNames = [], devInterest, devHasAnyData, excludeDev, selectId, onChange, author, lockedPersonSet, disabled }: Pqa1DropdownProps) {
   const exclusive = useExclusiveSelect(selectId);
-  const sorted = devNames
+  const devTLSet = new Set(devTLNames);
+  const sortedAll = devNames
     .filter(d => d !== excludeDev)
     .sort((a, b) => {
       const tA = (devInterest[a] ?? 5) as number;
       const tB = (devInterest[b] ?? 5) as number;
       return tA - tB;
     });
+  const sorted = sortedAll.filter(d => !devTLSet.has(d));
+  const sortedTLs = sortedAll.filter(d => devTLSet.has(d));
 
   return (
     <Select
@@ -1618,25 +1650,27 @@ function Pqa1Dropdown({ value, devNames, devInterest, devHasAnyData, excludeDev,
       }}
     >
       <MenuItem value=""><Typography variant="body2"><em>Unassign</em></Typography></MenuItem>
-      {sorted.map(dev => {
+      {[...sorted, ...sortedTLs].map((dev, idx) => {
+        const isTLSection = idx === sorted.length;
         const interestLevel = (devInterest[dev] ?? null) as (1 | 2 | 3 | 4 | null);
         const authorGold = interestLevel === 1;
-        return (
-        <MenuItem key={dev} value={dev}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
-            <Typography variant="body2" sx={{ flex: 1 }}>{dev}</Typography>
-            {dev === author && (
-              <Tooltip title={authorGold ? 'Wrote this pitch with highest interest' : 'Wrote this pitch'} placement="left">
-                <StarIcon sx={{ fontSize: '0.85rem', color: authorGold ? 'success.main' : 'text.secondary', flexShrink: 0 }} />
-              </Tooltip>
-            )}
-            <InterestChip
-              level={interestLevel}
-              noData={!devHasAnyData.has(dev)}
-            />
-          </Box>
-        </MenuItem>
-        );
+        return [
+          isTLSection && sorted.length > 0 ? <Divider key="tl-divider" /> : null,
+          <MenuItem key={dev} value={dev}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
+              <Typography variant="body2" sx={{ flex: 1 }}>{dev}</Typography>
+              {dev === author && (
+                <Tooltip title={authorGold ? 'Wrote this pitch with highest interest' : 'Wrote this pitch'} placement="left">
+                  <StarIcon sx={{ fontSize: '0.85rem', color: authorGold ? 'success.main' : 'text.secondary', flexShrink: 0 }} />
+                </Tooltip>
+              )}
+              <InterestChip
+                level={interestLevel}
+                noData={!devHasAnyData.has(dev)}
+              />
+            </Box>
+          </MenuItem>,
+        ];
       })}
     </Select>
   );

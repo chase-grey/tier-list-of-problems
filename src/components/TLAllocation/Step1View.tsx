@@ -6,7 +6,6 @@ import {
   LinearProgress, Chip, Collapse, IconButton, Button,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import AddPitchDialog, { type AdhocTeamAssignment } from './AddPitchDialog';
 import {
   ExpandMore as ExpandIcon,
   ExpandLess as CollapseIcon,
@@ -49,8 +48,12 @@ interface Step1ViewProps {
   voterName: string;
   /** Persists a TL capacity override and updates local state to match. */
   onCapacityOverride: (payload: CapacityOverridePayload) => Promise<void>;
-  /** Called when the user adds an ad-hoc project not in the original pitch list. */
-  onAddPitch?: (title: string, category: string, committed: boolean, team: AdhocTeamAssignment) => void;
+  /** Opens the parent's add-pitch dialog. Hides the "Add project" button when omitted. */
+  onAdhocAdd?: () => void;
+  /** Opens the parent's add-pitch dialog in edit mode for an existing adhoc pitch. */
+  onAdhocEdit?: (pitchId: string) => void;
+  /** IDs of pitches that were added locally — pencil edit icon is shown for these. */
+  adhocPitchIds?: ReadonlySet<string>;
 }
 
 const CATEGORY_SHORT: Record<string, string> = {
@@ -172,7 +175,7 @@ export default function Step1View({
   pitches, currentAssignments, config,
   onDevChange, onStatusChange,
   lockedPitchIds, lockedPersonNames, onTogglePitchLock, onTogglePersonLock,
-  voterName, onCapacityOverride, onAddPitch,
+  voterName, onCapacityOverride, onAdhocAdd, onAdhocEdit, adhocPitchIds,
 }: Step1ViewProps) {
   const committedPitchSet = useMemo(
     () => new Set(pitches.filter(p => p.committed).map(p => p.id)),
@@ -191,7 +194,6 @@ export default function Step1View({
     [config.capacityByName],
   );
   const [capacityDialogTarget, setCapacityDialogTarget] = useState<string | null>(null);
-  const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [hideLockedPitches, setHideLockedPitches] = useState(false);
 
   // Reject manual updates that would touch a locked row or move a locked person.
@@ -575,17 +577,6 @@ export default function Step1View({
     <Box sx={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
       {/* ── Left: project list ── */}
       <Box sx={{ flex: 1, overflow: 'auto', p: 2, minWidth: 0 }}>
-        {onAddPitch && (
-          <AddPitchDialog
-            open={addDialogOpen}
-            categories={categories}
-            devNames={config.devNames}
-            devTLNames={config.devTLNames}
-            qmNames={config.qmNames}
-            onAdd={onAddPitch}
-            onClose={() => setAddDialogOpen(false)}
-          />
-        )}
         {/* Filter toolbar */}
         {(() => {
           const lockedCount = currentAssignments.filter(a => lockedPitchSet.has(a.pitchId)).length;
@@ -714,6 +705,7 @@ export default function Step1View({
                                   assignment={a}
                                   pitch={pitchMap.get(a.pitchId)!}
                                   devNames={devDropdownNames}
+                                  devTLNames={config.devTLNames}
                                   onDevChange={tryDevChange}
                                   onStatusChange={tryStatusChange}
                                   lockedPersonSet={lockedPersonSet}
@@ -723,6 +715,8 @@ export default function Step1View({
                                   locked={lockedPitchSet.has(a.pitchId)}
                                   onToggleLock={() => onTogglePitchLock(a.pitchId)}
                                   committed={committedPitchSet.has(a.pitchId)}
+                                  isAdhoc={adhocPitchIds?.has(a.pitchId)}
+                                  onEdit={onAdhocEdit ? () => onAdhocEdit(a.pitchId) : undefined}
                                 />
                               ))}
                             </TableBody>
@@ -763,6 +757,7 @@ export default function Step1View({
                                   assignment={a}
                                   pitch={pitchMap.get(a.pitchId)!}
                                   devNames={devDropdownNames}
+                                  devTLNames={config.devTLNames}
                                   onDevChange={tryDevChange}
                                   onStatusChange={tryStatusChange}
                                   lockedPersonSet={lockedPersonSet}
@@ -772,6 +767,8 @@ export default function Step1View({
                                   locked={lockedPitchSet.has(a.pitchId)}
                                   onToggleLock={() => onTogglePitchLock(a.pitchId)}
                                   committed={committedPitchSet.has(a.pitchId)}
+                                  isAdhoc={adhocPitchIds?.has(a.pitchId)}
+                                  onEdit={onAdhocEdit ? () => onAdhocEdit(a.pitchId) : undefined}
                                 />
                               ))}
                             </TableBody>
@@ -812,6 +809,7 @@ export default function Step1View({
                                   assignment={a}
                                   pitch={pitchMap.get(a.pitchId)!}
                                   devNames={devDropdownNames}
+                                  devTLNames={config.devTLNames}
                                   onDevChange={tryDevChange}
                                   onStatusChange={tryStatusChange}
                                   lockedPersonSet={lockedPersonSet}
@@ -821,6 +819,8 @@ export default function Step1View({
                                   locked={lockedPitchSet.has(a.pitchId)}
                                   onToggleLock={() => onTogglePitchLock(a.pitchId)}
                                   committed={committedPitchSet.has(a.pitchId)}
+                                  isAdhoc={adhocPitchIds?.has(a.pitchId)}
+                                  onEdit={onAdhocEdit ? () => onAdhocEdit(a.pitchId) : undefined}
                                 />
                               ))}
                             </TableBody>
@@ -834,11 +834,11 @@ export default function Step1View({
             </Paper>
           );
         })}
-        {onAddPitch && (
+        {onAdhocAdd && (
           <Button
             startIcon={<AddIcon />}
             size="small"
-            onClick={() => setAddDialogOpen(true)}
+            onClick={onAdhocAdd}
             sx={{ mt: 1, mb: 2 }}
           >
             Add project
@@ -1357,6 +1357,7 @@ interface PitchRowProps {
   assignment: PlanAssignment;
   pitch: AllocationPitch;
   devNames: string[];
+  devTLNames: string[];
   onDevChange: (pitchId: string, dev: string | null) => void;
   onStatusChange: (pitchId: string, newStatus: AssignmentStatus) => void;
   highlight: 'selected' | 'next-up' | 'cut';
@@ -1366,16 +1367,23 @@ interface PitchRowProps {
   onToggleLock: () => void;
   lockedPersonSet: ReadonlySet<string>;
   committed?: boolean;
+  /** When true, renders a pencil edit icon next to the title; click invokes onEdit. */
+  isAdhoc?: boolean;
+  onEdit?: () => void;
 }
 
-function PitchRow({ assignment, pitch, devNames, onDevChange, onStatusChange, highlight, onRef, highlighted, locked, onToggleLock, lockedPersonSet, committed }: PitchRowProps) {
+function PitchRow({ assignment, pitch, devNames, devTLNames, onDevChange, onStatusChange, highlight, onRef, highlighted, locked, onToggleLock, lockedPersonSet, committed, isAdhoc, onEdit }: PitchRowProps) {
   const [detailsAnchor, setDetailsAnchor] = useState<HTMLButtonElement | null>(null);
   const devSelectExclusive = useExclusiveSelect(`${pitch.id}-dev`);
 
   const textColor = highlight === 'cut' ? 'text.disabled' : 'text.primary';
 
-  // Sort devs: best interest first; key absent = 5 (no data, goes last)
-  const sortedDevs = [...devNames].sort((a, b) => (pitch.devInterest[a] ?? 5) - (pitch.devInterest[b] ?? 5));
+  // Sort devs: best interest first; key absent = 5 (no data, goes last).
+  // Dev TLs go below a separator at the bottom of the list.
+  const devTLSet = new Set(devTLNames);
+  const sortedAll = [...devNames].sort((a, b) => (pitch.devInterest[a] ?? 5) - (pitch.devInterest[b] ?? 5));
+  const sortedDevs = sortedAll.filter(d => !devTLSet.has(d));
+  const sortedTLDevs = sortedAll.filter(d => devTLSet.has(d));
 
   // Warn when a planned continuation project's assigned dev differs from last quarter's dev
   const devChanged = pitch.continuation && pitch.previousDev &&
@@ -1430,6 +1438,13 @@ function PitchRow({ assignment, pitch, devNames, onDevChange, onStatusChange, hi
               <InfoIcon sx={{ fontSize: '0.9rem', color: 'text.disabled' }} />
             </IconButton>
           </Tooltip>
+          {isAdhoc && onEdit && (
+            <Tooltip title="Edit this locally-added project">
+              <IconButton size="small" sx={{ p: 0.25, flexShrink: 0 }} onClick={onEdit}>
+                <EditOutlinedIcon sx={{ fontSize: '0.9rem', color: 'text.disabled' }} />
+              </IconButton>
+            </Tooltip>
+          )}
           {pitch.continuation && (
             <Tooltip title="Continuation project">
               <AutorenewIcon sx={{ fontSize: '0.9rem', color: 'text.disabled', flexShrink: 0 }} />
@@ -1500,11 +1515,13 @@ function PitchRow({ assignment, pitch, devNames, onDevChange, onStatusChange, hi
               }
             >
               <MenuItem value=""><Typography variant="body2"><em>Unassign</em></Typography></MenuItem>
-              {sortedDevs.map(dev => {
+              {[...sortedDevs, ...sortedTLDevs].map((dev, idx) => {
+                const isTLSection = idx === sortedDevs.length;
                 const interestLevel = pitch.devInterest[dev] ?? null;
                 const continuationGold = pitch.previousDev === dev && (interestLevel === 1 || interestLevel === 2);
                 const authorGold = interestLevel === 1;
-                return (
+                return [
+                  isTLSection && sortedDevs.length > 0 ? <Divider key="tl-divider" /> : null,
                   <MenuItem key={dev} value={dev} sx={{ px: 2, py: 0.75 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%', minWidth: 0 }}>
                       <Typography variant="body2" sx={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{dev}</Typography>
@@ -1520,8 +1537,8 @@ function PitchRow({ assignment, pitch, devNames, onDevChange, onStatusChange, hi
                       )}
                       <InterestChip level={interestLevel} noData={!(dev in pitch.devInterest)} />
                     </Box>
-                  </MenuItem>
-                );
+                  </MenuItem>,
+                ];
               })}
             </Select>
           )}
