@@ -136,12 +136,32 @@ export function generateDefaultPlan(
     selected.push(...catPitches.slice(0, slots));
   });
 
+  // Dev TLs aren't in the regular dev pool — by default they don't take dev
+  // work. Exception: if a TL was the previousDev on a continuation, we keep
+  // them on it. They're pre-assigned outside Hungarian (one slot per TL,
+  // never used for non-continuation pitches).
+  const fullyUnavailableSet = new Set(config.unavailableNames ?? []);
+  const tlContinuationCandidates = new Set(
+    config.devTLNames.filter(n => !fullyUnavailableSet.has(n) && !lockedPersons.has(n)),
+  );
+  const isTLContinuation = (p: AllocationPitch): boolean =>
+    !!(p.continuation && p.previousDev && tlContinuationCandidates.has(p.previousDev));
+
+  const tlContinuationPitches = selected.filter(isTLContinuation);
+  const remainingForHungarian = selected.filter(p => !isTLContinuation(p));
+
   // Continuations prefer their previousDev; open pitches compete freely.
-  const continuations = selected.filter(p => p.continuation && p.previousDev && devNames.includes(p.previousDev!));
-  const openPitches   = selected.filter(p => !(p.continuation && p.previousDev && devNames.includes(p.previousDev!)));
+  const continuations = remainingForHungarian.filter(p => p.continuation && p.previousDev && devNames.includes(p.previousDev!));
+  const openPitches   = remainingForHungarian.filter(p => !(p.continuation && p.previousDev && devNames.includes(p.previousDev!)));
   const allSelected   = [...continuations, ...openPitches];
 
   const newAssignments: PlanAssignment[] = [];
+
+  // Pre-assign TL-continuation pitches outside the Hungarian matching so the
+  // TL never gets pulled onto unrelated pitches just to fill a slot.
+  tlContinuationPitches.forEach(p => {
+    newAssignments.push({ pitchId: p.id, assignedDev: p.previousDev!, status: 'selected' });
+  });
 
   // Expand each dev into (per-person cap - lockedDevCount) slots for Hungarian capacity encoding.
   const devSlots: string[] = [];
@@ -302,6 +322,24 @@ export function autoAssignPqa1(
     if (reviewer && reviewer in pqa1Load) pqa1Load[reviewer]++;
   });
 
+  // Dev TLs aren't in the regular PQA1 pool — by default they don't review.
+  // Exception: if a TL was the previousPQA1 on a continuation, keep them on
+  // it. Pre-assigned outside Hungarian so they don't absorb other reviews.
+  const fullyUnavailableSet = new Set(config.unavailableNames ?? []);
+  const tlPqa1Candidates = new Set(
+    config.devTLNames.filter(n => !fullyUnavailableSet.has(n) && !lockedPersons.has(n)),
+  );
+  const tlContinuationPqa1: string[] = [];
+  pitches.forEach(p => {
+    if (effLocked.has(p.id)) return;
+    if (!p.continuation || !p.previousPQA1) return;
+    if (!tlPqa1Candidates.has(p.previousPQA1)) return;
+    // Don't assign TL as PQA1 of a pitch they're also the dev for.
+    if ((devByPitchId[p.id] ?? null) === p.previousPQA1) return;
+    result[p.id] = p.previousPQA1;
+    tlContinuationPqa1.push(p.id);
+  });
+
   // Baseline = fair share of total. Per-person caps shift this baseline via
   // capacityByName. 'none' (cap=0) excludes the dev from candidacy entirely.
   const baselineCap = devNames.length > 0 ? Math.ceil(pitches.length / devNames.length) : 0;
@@ -318,7 +356,8 @@ export function autoAssignPqa1(
     return v === null ? 5 : (v as number);
   };
 
-  const unlockedPitches = pitches.filter(p => !effLocked.has(p.id));
+  const tlPreassignedSet = new Set(tlContinuationPqa1);
+  const unlockedPitches = pitches.filter(p => !effLocked.has(p.id) && !tlPreassignedSet.has(p.id));
 
   if (unlockedPitches.length === 0) return result;
 

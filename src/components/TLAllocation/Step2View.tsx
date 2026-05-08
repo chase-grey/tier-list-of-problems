@@ -3,7 +3,7 @@ import { useExclusiveSelect } from '../../hooks/useExclusiveSelect';
 import {
   Box, Typography, Paper, Table, TableBody, TableCell, TableHead, TableRow,
   Select, MenuItem, Divider, Tooltip, IconButton,
-  Checkbox, Collapse, LinearProgress, Button,
+  Checkbox, Collapse, LinearProgress, Button, Chip,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import AddPitchDialog, { type AdhocTeamAssignment } from './AddPitchDialog';
@@ -464,6 +464,7 @@ export default function Step2View({
 
   const [categoryCollapsed, setCategoryCollapsed] = useState<Record<string, boolean>>({});
   const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [hideLockedPitches, setHideLockedPitches] = useState(false);
 
   const unavailableSet = useMemo(() => new Set(config.unavailableNames ?? []), [config.unavailableNames]);
   const unavailablePqa1Set = useMemo(
@@ -479,6 +480,15 @@ export default function Step2View({
   const unavailableQmNames = useMemo(() => config.qmNames.filter(n => unavailableSet.has(n)), [config.qmNames, unavailableSet]);
   const availableDevNames = useMemo(() => devNames.filter(n => !unavailablePqa1Set.has(n)), [devNames, unavailablePqa1Set]);
   const unavailableDevNamesForPqa1 = useMemo(() => devNames.filter(n => unavailablePqa1Set.has(n)), [devNames, unavailablePqa1Set]);
+
+  // PQA1 reviewer dropdown options: regular available devs plus available
+  // dev TLs (manually assignable; auto-assign skips them unless they were
+  // previousPQA1 on a continuation — see allocationEngine.autoAssignPqa1).
+  // Workload stats below stay scoped to regular devs only.
+  const pqa1DropdownNames = useMemo(
+    () => [...availableDevNames, ...availableDevTLNames],
+    [availableDevNames, availableDevTLNames],
+  );
 
   const devTLInterests = phase2Interests.filter(p => p.role === 'dev TL');
   const qmInterests = phase2Interests.filter(p => p.role === 'QM');
@@ -695,8 +705,26 @@ export default function Step2View({
             onClose={() => setAddDialogOpen(false)}
           />
         )}
+        {/* Filter toolbar */}
+        {(() => {
+          const lockedCount = selectedPitches.filter(p => lockedPitchSet.has(p.id)).length;
+          return lockedCount > 0 ? (
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1 }}>
+              <Chip
+                label={hideLockedPitches ? `Showing unlocked only (${lockedCount} hidden)` : `Hide locked (${lockedCount})`}
+                size="small"
+                onClick={() => setHideLockedPitches(prev => !prev)}
+                color={hideLockedPitches ? 'primary' : 'default'}
+                variant={hideLockedPitches ? 'filled' : 'outlined'}
+              />
+            </Box>
+          ) : null;
+        })()}
         {categories.map(cat => {
-          const catPitches = pitchesByCategory[cat] ?? [];
+          const allCatPitches = pitchesByCategory[cat] ?? [];
+          const catPitches = hideLockedPitches
+            ? allCatPitches.filter(p => !lockedPitchSet.has(p.id))
+            : allCatPitches;
           if (catPitches.length === 0) return null;
           const collapsed = categoryCollapsed[cat] ?? false;
           return (
@@ -749,7 +777,7 @@ export default function Step2View({
                           qmInterests={qmInterests}
                           devTLNames={availableDevTLNames}
                           qmNames={availableQmNames}
-                          devNames={availableDevNames}
+                          devNames={pqa1DropdownNames}
                           devHasAnyData={devHasAnyData}
                           onAssign={tryAssign}
                           onRef={registerRow(pitch.id)}

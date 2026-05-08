@@ -358,10 +358,13 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
 
       // Sanitize against the freshly-fetched roster — anyone removed from
       // devNames/devTLNames/qmNames gets cleared from their assignment slot
-      // rather than left as a stale dropdown value.
+      // rather than left as a stale dropdown value. Dev TLs are eligible to
+      // be manually assigned as dev or PQA1, so devOrTLSet is the validation
+      // set for those slots.
       const devSet = new Set(effectiveConfig.devNames);
       const devTLSet = new Set(effectiveConfig.devTLNames);
       const qmSet = new Set(effectiveConfig.qmNames);
+      const devOrTLSet = new Set([...effectiveConfig.devNames, ...effectiveConfig.devTLNames]);
 
       const planEntries = Object.entries(planFull);
       const hasBackendPlan = planEntries.length > 0;
@@ -373,7 +376,7 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
         const planFromBackend: PlanAssignment[] = planEntries
           .filter(([, row]) => row.status === 'selected' || row.status === 'next-up' || row.status === 'cut')
           .map(([pitchId, row]) => {
-            const dev = row.assignedDev != null && devSet.has(row.assignedDev) ? row.assignedDev : null;
+            const dev = row.assignedDev != null && devOrTLSet.has(row.assignedDev) ? row.assignedDev : null;
             const status = (row.status === 'selected' && !dev && row.assignedDev != null)
               // Original dev was on the saved row but is now off the roster — keep
               // the pitch in the plan but bump status down so the missing dev is
@@ -395,7 +398,7 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
             pitchId,
             devTL: row.devTL && devTLSet.has(row.devTL) ? row.devTL : null,
             qm:    row.qm    && qmSet.has(row.qm)       ? row.qm    : null,
-            pqa1:  row.pqa1  && devSet.has(row.pqa1)    ? row.pqa1  : null,
+            pqa1:  row.pqa1  && devOrTLSet.has(row.pqa1) ? row.pqa1  : null,
           }));
         savedStep2.current = step2FromBackend;
         setStep2Assignments(step2FromBackend);
@@ -405,7 +408,7 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
         // reload before they hit Finish.
         if (savedStep1.current) {
           const sanitized1 = savedStep1.current.map(a => {
-            if (a.assignedDev != null && !devSet.has(a.assignedDev)) {
+            if (a.assignedDev != null && !devOrTLSet.has(a.assignedDev)) {
               return { ...a, assignedDev: null, status: (a.status === 'selected' ? 'next-up' : a.status) as typeof a.status };
             }
             return a;
@@ -419,7 +422,7 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
             ...a,
             devTL: a.devTL != null && !devTLSet.has(a.devTL) ? null : a.devTL,
             qm:    a.qm    != null && !qmSet.has(a.qm)       ? null : a.qm,
-            pqa1:  a.pqa1  != null && !devSet.has(a.pqa1)    ? null : a.pqa1,
+            pqa1:  a.pqa1  != null && !devOrTLSet.has(a.pqa1) ? null : a.pqa1,
           }));
           savedStep2.current = sanitized2;
           setStep2Assignments(sanitized2);
@@ -446,16 +449,31 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
             ...(effectiveConfig.unavailableNames ?? []),
             ...(effectiveConfig.unavailableForDevNames ?? []),
           ]);
+          const fullyUnavail = new Set(effectiveConfig.unavailableNames ?? []);
           const availableDevs = new Set(effectiveConfig.devNames.filter(d => !unavailableDevs.has(d)));
+          // Dev TLs aren't in the regular dev pool, but a TL who was the
+          // previousDev on a continuation should still be pre-filled + locked
+          // (matches allocationEngine's TL-continuation handling).
+          const availableDevTLsForDev = new Set(effectiveConfig.devTLNames.filter(n => !fullyUnavail.has(n)));
           const continuationLocks: string[] = [];
           const initialPlan = defaultPlan.map(a => {
             if (a.status === 'selected') {
               const pitch = pitchMap.get(a.pitchId);
-              if (pitch?.continuation && pitch.previousDev && availableDevs.has(pitch.previousDev)) {
-                const interest = pitch.devInterest[pitch.previousDev];
-                if (interest === 1 || interest === 2) {
-                  continuationLocks.push(a.pitchId);
-                  return { ...a, assignedDev: pitch.previousDev };
+              if (pitch?.continuation && pitch.previousDev) {
+                const prev = pitch.previousDev;
+                const isAvailable = availableDevs.has(prev) || availableDevTLsForDev.has(prev);
+                if (isAvailable) {
+                  // Regular devs need willing interest (1 or 2) to auto-fill;
+                  // a TL on their own continuation is auto-filled regardless,
+                  // since they don't typically submit Stage 1 interest data.
+                  const interest = pitch.devInterest[prev];
+                  const willing = availableDevTLsForDev.has(prev)
+                    ? interest !== 4 // skip if they actively flagged tier 4
+                    : (interest === 1 || interest === 2);
+                  if (willing) {
+                    continuationLocks.push(a.pitchId);
+                    return { ...a, assignedDev: prev };
+                  }
                 }
               }
             }
@@ -612,7 +630,8 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
   useEffect(() => {
     if (activeStep !== 1 || loading || step2InitRef.current) return;
     step2InitRef.current = true;
-    if (savedStep2.current) return;
+    // An empty array means no team assignments exist yet — don't treat it as "has saved data".
+    if (savedStep2.current !== null && savedStep2.current.length > 0) return;
 
     const unavailableSet = new Set(allocationConfig.unavailableNames ?? []);
     const devTLSet = new Set(allocationConfig.devTLNames.filter(n => !unavailableSet.has(n)));

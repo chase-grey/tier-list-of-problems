@@ -192,6 +192,7 @@ export default function Step1View({
   );
   const [capacityDialogTarget, setCapacityDialogTarget] = useState<string | null>(null);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [hideLockedPitches, setHideLockedPitches] = useState(false);
 
   // Reject manual updates that would touch a locked row or move a locked person.
   // The visible lock icons + this guard let users see what's frozen and why.
@@ -411,6 +412,22 @@ export default function Step1View({
     [config.devNames, unavailableDevSet],
   );
 
+  // Dev TLs are eligible to be manually assigned as the dev for a pitch — but
+  // they're not auto-picked unless they were the previousDev on a continuation
+  // (handled in allocationEngine). Filter to the same fully-available bar that
+  // gates dev TLs in their own pool.
+  const fullyUnavailableSet = useMemo(
+    () => new Set(config.unavailableNames ?? []),
+    [config.unavailableNames],
+  );
+  const devDropdownNames = useMemo(
+    () => [
+      ...availableDevNames,
+      ...config.devTLNames.filter(n => !fullyUnavailableSet.has(n)),
+    ],
+    [availableDevNames, config.devTLNames, fullyUnavailableSet],
+  );
+
   // ── Draggable sidebar (DOM-direct, no re-render on every mousemove) ──────────
   const handleDragStart = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -569,6 +586,21 @@ export default function Step1View({
             onClose={() => setAddDialogOpen(false)}
           />
         )}
+        {/* Filter toolbar */}
+        {(() => {
+          const lockedCount = currentAssignments.filter(a => lockedPitchSet.has(a.pitchId)).length;
+          return lockedCount > 0 ? (
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1 }}>
+              <Chip
+                label={hideLockedPitches ? `Showing unlocked only (${lockedCount} hidden)` : `Hide locked (${lockedCount})`}
+                size="small"
+                onClick={() => setHideLockedPitches(prev => !prev)}
+                color={hideLockedPitches ? 'primary' : 'default'}
+                variant={hideLockedPitches ? 'filled' : 'outlined'}
+              />
+            </Box>
+          ) : null;
+        })()}
         {/* Category sections */}
         {categories.map(cat => {
           const byPriority = (a: PlanAssignment, b: PlanAssignment) => {
@@ -580,13 +612,17 @@ export default function Step1View({
           };
           const selectedInCat = currentAssignments
             .filter(a => a.status === 'selected' && pitchMap.get(a.pitchId)?.category === cat)
+            .filter(a => !hideLockedPitches || !lockedPitchSet.has(a.pitchId))
             .sort(byPriority);
           const nextUpInCat = currentAssignments
             .filter(a => a.status === 'next-up' && pitchMap.get(a.pitchId)?.category === cat)
+            .filter(a => !hideLockedPitches || !lockedPitchSet.has(a.pitchId))
             .sort(byPriority);
           const cutInCat = currentAssignments
             .filter(a => a.status === 'cut' && pitchMap.get(a.pitchId)?.category === cat)
+            .filter(a => !hideLockedPitches || !lockedPitchSet.has(a.pitchId))
             .sort(byPriority);
+          if (hideLockedPitches && selectedInCat.length === 0 && nextUpInCat.length === 0 && cutInCat.length === 0) return null;
 
           // ITEM 5: project count vs target
           const targetCount = (config.bandwidth[cat] / 100) * stats.total;
@@ -677,7 +713,7 @@ export default function Step1View({
                                   key={a.pitchId}
                                   assignment={a}
                                   pitch={pitchMap.get(a.pitchId)!}
-                                  devNames={availableDevNames}
+                                  devNames={devDropdownNames}
                                   onDevChange={tryDevChange}
                                   onStatusChange={tryStatusChange}
                                   lockedPersonSet={lockedPersonSet}
@@ -726,7 +762,7 @@ export default function Step1View({
                                   key={a.pitchId}
                                   assignment={a}
                                   pitch={pitchMap.get(a.pitchId)!}
-                                  devNames={availableDevNames}
+                                  devNames={devDropdownNames}
                                   onDevChange={tryDevChange}
                                   onStatusChange={tryStatusChange}
                                   lockedPersonSet={lockedPersonSet}
@@ -775,7 +811,7 @@ export default function Step1View({
                                   key={a.pitchId}
                                   assignment={a}
                                   pitch={pitchMap.get(a.pitchId)!}
-                                  devNames={availableDevNames}
+                                  devNames={devDropdownNames}
                                   onDevChange={tryDevChange}
                                   onStatusChange={tryStatusChange}
                                   lockedPersonSet={lockedPersonSet}
