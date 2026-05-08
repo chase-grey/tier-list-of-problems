@@ -945,10 +945,8 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
     }
   };
 
-  // Handle feedback dialog close (skip feedback, still submit votes)
   const handleFeedbackClose = () => {
     setShowFeedback(false);
-    submitCurrentVotes();
   };
   
   // Dev only: Handle auto-populate
