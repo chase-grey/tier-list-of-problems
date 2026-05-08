@@ -117,9 +117,9 @@ function autoAssignStep2(
     if (a.qm && a.qm in qmLoad) qmLoad[a.qm]++;
   });
 
-  // Build interest lookup maps keyed by person name so we can sort over the full
-  // names list (not just submitters). People with no submission get tier 5 (lowest),
-  // making load the sole tiebreaker → equal distribution when nobody submits.
+  // Build interest lookup maps keyed by person name for O(1) lookup in the
+  // cost matrix. Missing entries (no submission) score 6 in tlQmScore, which
+  // is worse than any explicit tier so interest data always wins.
   const devTLInterestMap: Record<string, Phase2Interest> = {};
   const qmInterestMap: Record<string, Phase2Interest> = {};
   phase2Interests.forEach(pi => {
@@ -157,8 +157,9 @@ function autoAssignStep2(
   });
 
   // Phase 2: Hungarian globally-optimal assignment for pitches without a role.
-  // Cost = interest tier (absent=2.5, null=5, tier 1-4 = value) minus authorship
-  // bonus (–1 if pitch.author === name, floored at 0). BIG = infeasible.
+  // Cost = interest tier minus authorship bonus, matching PQA1 scoring:
+  // tiers 1–4 direct; absent (no submission) = 6; null (skipped) = 50.
+  // Authorship bonus: –1 if pitch.author === name, floored at 0. BIG = infeasible.
   const BIG = 100;
   const tlQmScore = (
     interestMap: Record<string, Phase2Interest>,
@@ -166,7 +167,7 @@ function autoAssignStep2(
     name: string,
   ): number => {
     const raw = interestMap[name]?.interestByPitchId[pitch.id];
-    const base = raw === undefined ? 2.5 : raw === null ? 5 : (raw as number);
+    const base = raw === undefined ? 6 : raw === null ? 50 : (raw as number);
     return Math.max(0, base - (pitch.author === name ? 1 : 0));
   };
 
@@ -308,10 +309,15 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
   const [voteError,   setVoteError]   = useState<string | undefined>();
   const [configError, setConfigError] = useState<string | undefined>();
   const [loadTrigger, setLoadTrigger] = useState(0);
-  const [step2Ready, setStep2Ready] = useState(false);
+  const [step2DataLoaded, setStep2DataLoaded] = useState(false);
+  const [step2Ready,      setStep2Ready]      = useState(false);
 
-  const dataLoading  = !pollingResolved || [pitchStatus, voteStatus, configStatus].some(s => s === 'loading');
-  const loading      = dataLoading || (activeStep === 1 && !step2Ready);
+  const dataLoading = !pollingResolved || [pitchStatus, voteStatus, configStatus].some(s => s === 'loading');
+  // For Stage 4: keep the loading screen up until Promise.all has finished writing
+  // backend data into state (step2DataLoaded) AND the init effect has run (step2Ready).
+  // This prevents a flash caused by the individual fetch .then() handlers finishing
+  // before Promise.all fires and updates step2Assignments.
+  const loading = dataLoading || (activeStep === 1 && (!step2DataLoaded || !step2Ready));
   const hasLoadError = [pitchStatus, voteStatus, configStatus].some(s => s === 'error');
   const [usingMockData, setUsingMockData] = useState(false);
 
@@ -358,6 +364,7 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
   useEffect(() => {
     let cancelled = false;
 
+    setStep2DataLoaded(false);
     setStep2Ready(false);
     step2InitRef.current = false;
     setPitchStatus('loading'); setPitchError(undefined);
@@ -420,9 +427,15 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
       const hasBackendPlan = planEntries.length > 0;
 
       if (hasBackendPlan) {
-        // Backend PLAN sheet is the source of truth. Build planAssignments
-        // (Stage 2) and step2Assignments (Stage 4) from it directly,
-        // ignoring any stale localStorage state on this machine.
+        // Backend PLAN sheet is the source of truth for backend pitches.
+        // Adhoc (locally-added) pitches don't exist in the backend, so their
+        // planAssignment + step2Assignment entries from localStorage need to
+        // be preserved — otherwise editing an adhoc project's dev assignment
+        // appears to vanish on next reload.
+        const adhocIdSet = new Set(adhocPitches.map(p => p.id));
+        const localAdhocPlan = (savedStep1.current ?? []).filter(a => adhocIdSet.has(a.pitchId));
+        const localAdhocStep2 = (savedStep2.current ?? []).filter(a => adhocIdSet.has(a.pitchId));
+
         const planFromBackend: PlanAssignment[] = planEntries
           .filter(([, row]) => row.status === 'selected' || row.status === 'next-up' || row.status === 'cut')
           .map(([pitchId, row]) => {
@@ -439,8 +452,13 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
               assignedDev: dev,
             };
           });
-        savedStep1.current = planFromBackend;
-        setPlanAssignments(planFromBackend);
+        const planBackendIds = new Set(planFromBackend.map(p => p.pitchId));
+        const mergedPlan = [
+          ...planFromBackend,
+          ...localAdhocPlan.filter(a => !planBackendIds.has(a.pitchId)),
+        ];
+        savedStep1.current = mergedPlan;
+        setPlanAssignments(mergedPlan);
 
         const step2FromBackend: StaffingAssignment[] = planEntries
           .filter(([, row]) => row.devTL || row.qm || row.pqa1)
@@ -450,8 +468,13 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
             qm:    row.qm    && qmSet.has(row.qm)       ? row.qm    : null,
             pqa1:  row.pqa1  && devOrTLSet.has(row.pqa1) ? row.pqa1  : null,
           }));
-        savedStep2.current = step2FromBackend;
-        setStep2Assignments(step2FromBackend);
+        const step2BackendIds = new Set(step2FromBackend.map(s => s.pitchId));
+        const mergedStep2 = [
+          ...step2FromBackend,
+          ...localAdhocStep2.filter(a => !step2BackendIds.has(a.pitchId)),
+        ];
+        savedStep2.current = mergedStep2;
+        setStep2Assignments(mergedStep2);
       } else {
         // No backend plan yet (first run / new cycle) — fall back to the
         // localStorage drafts so a TL's in-progress work isn't lost on
@@ -540,7 +563,7 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
         setUsingMockData(false);
       }
 
-      if (!cancelled) setStep2Ready(true);
+      if (!cancelled) setStep2DataLoaded(true);
     });
 
     return () => { cancelled = true; };
@@ -657,8 +680,19 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
     onAllocationChange?.();
     const { title, category, committed, team } = draft;
     setAdhocPitches(prev => prev.map(p => p.id === id ? { ...p, title, category, committed } : p));
-    setPlanAssignments(prev => prev.map(a => a.pitchId === id ? { ...a, assignedDev: team.dev } : a));
-    setStep2Assignments(prev => prev.map(a => a.pitchId === id ? { ...a, devTL: team.devTL, qm: team.qm, pqa1: team.pqa1 } : a));
+    // Upsert plan + step2 entries — if a prior reload wiped the local row
+    // (e.g. backend plan overwrote it before we started preserving adhoc
+    // entries), append a fresh entry rather than silently dropping the edit.
+    setPlanAssignments(prev => {
+      const idx = prev.findIndex(a => a.pitchId === id);
+      if (idx === -1) return [...prev, { pitchId: id, assignedDev: team.dev, status: 'selected' }];
+      return prev.map(a => a.pitchId === id ? { ...a, assignedDev: team.dev } : a);
+    });
+    setStep2Assignments(prev => {
+      const idx = prev.findIndex(a => a.pitchId === id);
+      if (idx === -1) return [...prev, { pitchId: id, devTL: team.devTL, qm: team.qm, pqa1: team.pqa1 }];
+      return prev.map(a => a.pitchId === id ? { ...a, devTL: team.devTL, qm: team.qm, pqa1: team.pqa1 } : a);
+    });
     // Lock state follows committed: add locks when becoming committed, remove
     // them when un-committing. Only touches the locks for this pitch.
     if (committed) {
@@ -718,7 +752,7 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
   // interest absent/1/2) and available are pre-filled; lock the pitch when both
   // roles are covered. All other TL/QM/PQA1 slots start blank.
   useEffect(() => {
-    if (activeStep !== 1 || dataLoading || step2InitRef.current) return;
+    if (activeStep !== 1 || !step2DataLoaded || step2InitRef.current) return;
     step2InitRef.current = true;
     // An empty array means no team assignments exist yet — don't treat it as "has saved data".
     if (savedStep2.current !== null && savedStep2.current.length > 0) {
@@ -769,7 +803,7 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
       }));
     }
     setStep2Ready(true);
-  }, [activeStep, dataLoading, phase2Interests, allocationConfig]);
+  }, [activeStep, step2DataLoaded, phase2Interests, allocationConfig]);
 
   const handleFinalize = async () => {
     const pitchTitleById = {
@@ -914,7 +948,7 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
       { label: 'Loading pitches',       status: pitchStatus,  error: pitchError },
       { label: 'Loading vote data',     status: voteStatus,   error: voteError },
       { label: 'Loading team config',   status: configStatus, error: configError },
-      ...(activeStep === 1 && !step2Ready && !dataLoading ? [{ label: 'Preparing assignments', status: 'loading' as const, error: undefined }] : []),
+      ...(activeStep === 1 && step2DataLoaded && !step2Ready ? [{ label: 'Preparing assignments', status: 'loading' as const, error: undefined }] : []),
     ];
     const firstError = steps.find(s => s.status === 'error');
     return (
