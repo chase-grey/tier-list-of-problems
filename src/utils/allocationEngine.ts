@@ -237,7 +237,7 @@ export function generateDefaultPlan(
  * Min-cost bipartite matching via the Hungarian algorithm (O(n²m)).
  * cost is an n×m matrix with n ≤ m; returns assignment[i] = column index for row i.
  */
-function hungarianMinCost(cost: number[][]): number[] {
+export function hungarianMinCost(cost: number[][]): number[] {
   const n = cost.length;
   if (n === 0) return [];
   const m = cost[0].length;
