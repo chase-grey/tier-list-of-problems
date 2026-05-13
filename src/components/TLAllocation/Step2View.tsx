@@ -500,14 +500,15 @@ export default function Step2View({
     return map;
   }, [nextUpPitches]);
 
-  // Per-category sub-section collapse state — defaults to Planned open,
-  // Up Next collapsed (the queue is reference info, not the primary task).
+  // Per-category sub-section collapse state — both default to open so the
+  // TL sees the up-next queue at a glance, matching Stage 2's behavior. The
+  // TL can collapse either sub-section if the visual noise gets in the way.
   const [planSubOpen, setPlanSubOpen] = useState<Record<string, boolean>>({});
   const [nextUpSubOpen, setNextUpSubOpen] = useState<Record<string, boolean>>({});
   const togglePlanSub = (cat: string) => setPlanSubOpen(p => ({ ...p, [cat]: !(p[cat] ?? true) }));
-  const toggleNextUpSub = (cat: string) => setNextUpSubOpen(p => ({ ...p, [cat]: !(p[cat] ?? false) }));
+  const toggleNextUpSub = (cat: string) => setNextUpSubOpen(p => ({ ...p, [cat]: !(p[cat] ?? true) }));
   const isPlanOpen = (cat: string) => planSubOpen[cat] ?? true;
-  const isNextUpOpen = (cat: string) => nextUpSubOpen[cat] ?? false;
+  const isNextUpOpen = (cat: string) => nextUpSubOpen[cat] ?? true;
 
   const [categoryCollapsed, setCategoryCollapsed] = useState<Record<string, boolean>>({});
   const [hideLockedPitches, setHideLockedPitches] = useState(false);
@@ -815,6 +816,7 @@ export default function Step2View({
                 lockedPersonSet={lockedPersonSet}
                 committed={committedPitchSet.has(pitch.id)}
                 isAdhoc={adhocPitchIds?.has(pitch.id)}
+                isStretch={stretchSet.has(pitch.id)}
                 onEdit={onAdhocEdit ? () => onAdhocEdit(pitch.id) : undefined}
                 dimmed={opts?.dimmed}
               />
@@ -1572,6 +1574,7 @@ interface Step2RowProps {
   lockedPersonSet: ReadonlySet<string>;
   committed?: boolean;
   isAdhoc?: boolean;
+  isStretch?: boolean;
   onEdit?: () => void;
   /** Reduce row opacity to signal this isn't a planned project (e.g. Up Next).
    *  Doesn't disable interaction — pre-staging assignments on Up Next rows is
@@ -1582,7 +1585,7 @@ interface Step2RowProps {
 function Step2Row({
   pitch, assignment, devTLInterests, qmInterests, devTLNames, qmNames, devNames, devHasAnyData,
   onAssign, onRef, highlighted, devName, includeUXD, onToggleUXD,
-  locked, onToggleLock, lockedPersonSet, committed, isAdhoc, onEdit, dimmed,
+  locked, onToggleLock, lockedPersonSet, committed, isAdhoc, isStretch, onEdit, dimmed,
 }: Step2RowProps) {
   const [detailsAnchor, setDetailsAnchor] = useState<HTMLButtonElement | null>(null);
 
@@ -1637,6 +1640,11 @@ function Step2Row({
                   : <LockOpenIcon sx={{ fontSize: '0.9rem', color: 'text.disabled' }} />
                 }
               </IconButton>
+            </Tooltip>
+          )}
+          {isStretch && (
+            <Tooltip title="Stretch goal — only completed if there's spare capacity">
+              <StretchIcon sx={{ fontSize: '0.95rem', color: 'warning.main', flexShrink: 0, mr: 0.25 }} />
             </Tooltip>
           )}
           <Tooltip title={pitch.title} placement="top-start">

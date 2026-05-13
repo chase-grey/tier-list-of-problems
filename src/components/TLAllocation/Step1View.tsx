@@ -21,6 +21,7 @@ import {
   LockOpen as LockOpenIcon,
   EditOutlined as EditOutlinedIcon,
   Circle as CircleIcon,
+  EmojiEvents as StretchIcon,
 } from '@mui/icons-material';
 import type { AllocationPitch, AssignmentStatus, PlanAssignment, PersonCapacity } from '../../types/allocationTypes';
 import { ASSIGNMENT_NONE } from '../../types/models';
@@ -1430,6 +1431,11 @@ function PitchRow({ assignment, pitch, devNames, devTLNames, onDevChange, onStat
                   : <LockOpenIcon sx={{ fontSize: '0.9rem', color: 'text.disabled' }} />
                 }
               </IconButton>
+            </Tooltip>
+          )}
+          {assignment.stretch && (
+            <Tooltip title="Stretch goal — only completed if there's spare capacity">
+              <StretchIcon sx={{ fontSize: '0.95rem', color: 'warning.main', flexShrink: 0, mr: 0.25 }} />
             </Tooltip>
           )}
           <Tooltip title={pitch.title} placement="top-start">
