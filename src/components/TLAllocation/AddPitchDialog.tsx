@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions,
   Button, TextField, Select, MenuItem, FormControl, InputLabel, Box,
@@ -49,28 +49,32 @@ export default function AddPitchDialog({ open, categories, defaultCategory, devN
   const [teamQM, setTeamQM] = useState('');
   const [teamPqa1, setTeamPqa1] = useState('');
 
-  // Re-sync internal state every time the dialog is opened, so prefill values
-  // (or a fresh blank form) take effect even when the same dialog instance
-  // is reused for both add and edit.
+  // Re-sync internal state on the closed→open transition only. `categories`
+  // is a fresh array each parent render (Object.keys(...)), so depending on it
+  // would wipe in-progress edits whenever the parent re-renders while the
+  // dialog is open (e.g. edit-lock heartbeats).
+  const wasOpenRef = useRef(false);
   useEffect(() => {
-    if (!open) return;
-    if (initial) {
-      setTitle(initial.title);
-      setCategory(initial.category);
-      setCommitted(initial.committed);
-      setTeamDev(initial.team.dev ?? '');
-      setTeamDevTL(initial.team.devTL ?? '');
-      setTeamQM(initial.team.qm ?? '');
-      setTeamPqa1(initial.team.pqa1 ?? '');
-    } else {
-      setTitle('');
-      setCategory(defaultCategory ?? categories[0] ?? '');
-      setCommitted(false);
-      setTeamDev('');
-      setTeamDevTL('');
-      setTeamQM('');
-      setTeamPqa1('');
+    if (open && !wasOpenRef.current) {
+      if (initial) {
+        setTitle(initial.title);
+        setCategory(initial.category);
+        setCommitted(initial.committed);
+        setTeamDev(initial.team.dev ?? '');
+        setTeamDevTL(initial.team.devTL ?? '');
+        setTeamQM(initial.team.qm ?? '');
+        setTeamPqa1(initial.team.pqa1 ?? '');
+      } else {
+        setTitle('');
+        setCategory(defaultCategory ?? categories[0] ?? '');
+        setCommitted(false);
+        setTeamDev('');
+        setTeamDevTL('');
+        setTeamQM('');
+        setTeamPqa1('');
+      }
     }
+    wasOpenRef.current = open;
   }, [open, initial, defaultCategory, categories]);
 
   const hasTeamFields = (devNames?.length ?? 0) > 0 || (devTLNames?.length ?? 0) > 0 || (qmNames?.length ?? 0) > 0;
