@@ -461,10 +461,21 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
       // rather than left as a stale dropdown value. Dev TLs are eligible to
       // be manually assigned as dev or PQA1, so devOrTLSet is the validation
       // set for those slots.
-      const devSet = new Set(effectiveConfig.devNames);
       const devTLSet = new Set(effectiveConfig.devTLNames);
       const qmSet = new Set(effectiveConfig.qmNames);
       const devOrTLSet = new Set([...effectiveConfig.devNames, ...effectiveConfig.devTLNames]);
+      // Adhoc pitches let the TL assign anyone on the team (incl. QMs) to the
+      // Dev slot via AddPitchDialog. Use a permissive set for those so a QM
+      // dev isn't silently stripped on reload.
+      const anyRoleSet = new Set([
+        ...effectiveConfig.devNames,
+        ...effectiveConfig.devTLNames,
+        ...effectiveConfig.qmNames,
+      ]);
+      const adhocBackendIds = new Set(backendAdhoc.map(p => p.id));
+      const adhocLocalIds = new Set(adhocPitches.map(p => p.id));
+      const isAdhocPitch = (id: string) => adhocBackendIds.has(id) || adhocLocalIds.has(id);
+      const validDevSetFor = (id: string) => isAdhocPitch(id) ? anyRoleSet : devOrTLSet;
 
       const planEntries = Object.entries(planFull);
       const hasBackendPlan = planEntries.length > 0;
@@ -482,7 +493,7 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
         const planFromBackend: PlanAssignment[] = planEntries
           .filter(([, row]) => row.status === 'selected' || row.status === 'next-up' || row.status === 'cut')
           .map(([pitchId, row]) => {
-            const dev = row.assignedDev != null && devOrTLSet.has(row.assignedDev) ? row.assignedDev : null;
+            const dev = row.assignedDev != null && validDevSetFor(pitchId).has(row.assignedDev) ? row.assignedDev : null;
             const status = (row.status === 'selected' && !dev && row.assignedDev != null)
               // Original dev was on the saved row but is now off the roster — keep
               // the pitch in the plan but bump status down so the missing dev is
@@ -524,7 +535,7 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
         // reload before they hit Finish.
         if (savedStep1.current) {
           const sanitized1 = savedStep1.current.map(a => {
-            if (a.assignedDev != null && !devOrTLSet.has(a.assignedDev)) {
+            if (a.assignedDev != null && !validDevSetFor(a.pitchId).has(a.assignedDev)) {
               return { ...a, assignedDev: null, status: (a.status === 'selected' ? 'next-up' : a.status) as typeof a.status };
             }
             return a;
