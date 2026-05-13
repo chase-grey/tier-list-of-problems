@@ -140,6 +140,10 @@ function doGet(e) {
       // time, so an admin can advance the stage/quarter without redeploying.
       case 'get-polling-state':
         return getPollingState();
+      // Edit-lock state for Stage 2 / Stage 4 coordination. Frontend polls
+      // this so a TL knows whether to show editor or view-only UI.
+      case 'get-edit-lock':
+        return getEditLock(e.parameter.stage);
       case 'set-polling-state': {
         const result = setPollingState({
           stage: e.parameter.stage,
@@ -193,6 +197,12 @@ function doPost(e) {
         return recordCapacityOverride(payload);
       case 'set-polling-state':
         return setPollingState(payload);
+      case 'acquire-edit-lock':
+        return acquireEditLock(payload);
+      case 'release-edit-lock':
+        return releaseEditLock(payload);
+      case 'heartbeat-edit-lock':
+        return heartbeatEditLock(payload);
       default:
         return notFound();
     }
@@ -880,6 +890,144 @@ function getPollingState() {
   });
 }
 
+// ─── Edit lock (Stage 2 / Stage 4 single-editor coordination) ─────────────
+//
+// Stage 2 (dev assignment) and Stage 4 (TL/QM/PQA1 staffing) each have their
+// own edit lock so only one TL writes to a stage at a time. Storage: Script
+// Properties — `editLock_stage2` and `editLock_stage4` keys, JSON-encoded
+// `{holder, acquiredAt, lastHeartbeat}` records. Lock is considered stale and
+// up-for-grabs if lastHeartbeat is more than EDIT_LOCK_TTL_MS old.
+
+const EDIT_LOCK_TTL_MS = 5 * 60 * 1000;
+
+function editLockKey(stage) {
+  if (stage === '2' || stage === 2) return 'editLock_stage2';
+  if (stage === '4' || stage === 4) return 'editLock_stage4';
+  return null;
+}
+
+function readEditLock(stage) {
+  const key = editLockKey(stage);
+  if (!key) return null;
+  const raw = PropertiesService.getScriptProperties().getProperty(key);
+  if (!raw) return { holder: null, acquiredAt: 0, lastHeartbeat: 0 };
+  try {
+    const parsed = JSON.parse(raw);
+    return {
+      holder: parsed.holder || null,
+      acquiredAt: parsed.acquiredAt || 0,
+      lastHeartbeat: parsed.lastHeartbeat || 0,
+    };
+  } catch (e) {
+    return { holder: null, acquiredAt: 0, lastHeartbeat: 0 };
+  }
+}
+
+function writeEditLock(stage, holder) {
+  const key = editLockKey(stage);
+  if (!key) return null;
+  if (holder == null || holder === '') {
+    PropertiesService.getScriptProperties().deleteProperty(key);
+    return { holder: null, acquiredAt: 0, lastHeartbeat: 0 };
+  }
+  const now = Date.now();
+  const record = { holder: holder, acquiredAt: now, lastHeartbeat: now };
+  PropertiesService.getScriptProperties().setProperty(key, JSON.stringify(record));
+  return record;
+}
+
+function bumpEditLockHeartbeat(stage, holder) {
+  const key = editLockKey(stage);
+  if (!key) return null;
+  const existing = readEditLock(stage);
+  if (!existing || existing.holder !== holder) return existing;
+  const record = { holder: holder, acquiredAt: existing.acquiredAt || Date.now(), lastHeartbeat: Date.now() };
+  PropertiesService.getScriptProperties().setProperty(key, JSON.stringify(record));
+  return record;
+}
+
+function isEditLockStale(lock) {
+  if (!lock || !lock.holder) return true;
+  return Date.now() - (lock.lastHeartbeat || 0) > EDIT_LOCK_TTL_MS;
+}
+
+/**
+ * GET handler — returns the current edit-lock state for one or both stages.
+ * Query params: `stage=2`, `stage=4`, or omit for both.
+ */
+function getEditLock(stage) {
+  if (stage === '2' || stage === '4') {
+    return json200({ stage: stage, lock: readEditLock(stage) });
+  }
+  return json200({
+    stage2: readEditLock('2'),
+    stage4: readEditLock('4'),
+  });
+}
+
+/**
+ * Acquire the lock for a stage. Body: { stage, voterName, force? }.
+ *
+ *   - No current holder OR holder is stale → granted.
+ *   - Caller is current holder → granted (no-op, refreshes heartbeat).
+ *   - Different fresh holder + force !== true → returns 200 with
+ *     { acquired: false, lock: <current> } so the frontend can show the
+ *     "X has the lock" dialog and offer to force.
+ *   - Different fresh holder + force === true → granted, previous holder's
+ *     unsaved work is at risk (frontend disclaims this in the UI).
+ */
+function acquireEditLock(body) {
+  const stage = String(body.stage || '');
+  const voterName = String(body.voterName || '').trim();
+  const force = body.force === true;
+  if (!editLockKey(stage)) return badRequest('Invalid stage');
+  if (!voterName) return badRequest('Missing voterName');
+
+  const current = readEditLock(stage);
+  const canGrant = !current.holder || current.holder === voterName || isEditLockStale(current) || force;
+  if (!canGrant) {
+    return json200({ acquired: false, lock: current });
+  }
+  const updated = writeEditLock(stage, voterName);
+  return json200({ acquired: true, lock: updated, force: force && current.holder && current.holder !== voterName });
+}
+
+/** Release the lock if caller currently holds it. */
+function releaseEditLock(body) {
+  const stage = String(body.stage || '');
+  const voterName = String(body.voterName || '').trim();
+  if (!editLockKey(stage)) return badRequest('Invalid stage');
+  const current = readEditLock(stage);
+  if (current.holder && current.holder !== voterName) {
+    return json200({ released: false, lock: current });
+  }
+  writeEditLock(stage, null);
+  return json200({ released: true, lock: { holder: null, acquiredAt: 0, lastHeartbeat: 0 } });
+}
+
+/**
+ * Bump the heartbeat. Returns the current lock state so the frontend can
+ * detect when it's been force-grabbed by someone else (holder no longer
+ * matches the caller's voterName).
+ */
+function heartbeatEditLock(body) {
+  const stage = String(body.stage || '');
+  const voterName = String(body.voterName || '').trim();
+  if (!editLockKey(stage)) return badRequest('Invalid stage');
+  bumpEditLockHeartbeat(stage, voterName);
+  return json200({ lock: readEditLock(stage) });
+}
+
+/** Check that a caller holds (or could claim) the lock for a save. */
+function callerHoldsEditLock(stage, voterName) {
+  const key = editLockKey(stage);
+  if (!key) return true;
+  const current = readEditLock(stage);
+  if (!current.holder) return true;            // unowned — accept the save
+  if (isEditLockStale(current)) return true;   // stale — accept
+  return current.holder === voterName;
+}
+
 /**
  * Update the polling state. Gated to setBy='Chase Grey' so a stray POST
  * can't roll the stage on everyone. Pass either or both fields. Empty
@@ -909,97 +1057,140 @@ function setPollingState(body) {
   });
 }
 
+// Unified PLAN sheet schema. Every plan write uses this exact column order;
+// callers (savePlan/saveFinalAssignments) only set the subset of fields they
+// know about and the rest are preserved from whatever was already on the row.
+const PLAN_HEADERS = ['timestamp', 'submittedBy', 'pitchId', 'pitchTitle', 'status', 'assignedDev', 'devTL', 'qm', 'pqa1', 'projectCreated', 'kickoffEmailSent'];
+
 /**
- * Save the finalized stage 2 plan to the PLAN sheet.
- * Clears and rewrites the sheet on each call so it always reflects the latest plan.
+ * Upsert PLAN rows by pitchId.
+ *
+ * `updates` is an array of partial plan rows. For each update:
+ *   - Fields present in the update overwrite the existing row's fields.
+ *   - Fields not present are preserved from the existing row.
+ *   - A pitchId with no existing row gets appended.
+ * Rows in the sheet whose pitchId is NOT in `updates` are left untouched.
+ *
+ * This replaces the older "clearContents + rewrite" approach, which wiped any
+ * pitch the current caller's local state didn't know about — a Stage 4 partial
+ * save (e.g. Lauren saving QMs for a subset) would drop the rest of the plan.
+ *
+ * @param {Array<Object>} updates
+ * @param {string} submittedBy
+ * @return {Object} { saved: number, preserved: number }
+ */
+function upsertPlanRows(updates, submittedBy) {
+  let sh = ss.getSheetByName('PLAN');
+  if (!sh) sh = ss.insertSheet('PLAN');
+
+  // Read existing rows into a map keyed by pitchId. Handle older schemas
+  // (5/6/7/10/11 cols) by mapping by header name when possible.
+  const existingByPitch = {};
+  const numCols = sh.getLastColumn();
+  if (sh.getLastRow() > 1 && numCols > 0) {
+    const headerRow = sh.getRange(1, 1, 1, numCols).getValues()[0];
+    const pidIdx = headerRow.indexOf('pitchId');
+    if (pidIdx >= 0) {
+      const rows = sh.getRange(2, 1, sh.getLastRow() - 1, numCols).getValues();
+      for (const row of rows) {
+        const pid = row[pidIdx];
+        if (!pid) continue;
+        const obj = {};
+        for (let i = 0; i < headerRow.length && i < row.length; i++) {
+          obj[headerRow[i]] = row[i];
+        }
+        existingByPitch[String(pid)] = obj;
+      }
+    }
+  }
+  const preservedCount = Object.keys(existingByPitch).length;
+
+  const now = new Date();
+  const pitchTitles = getPitchTitleMap();
+
+  // Convert null → '' but treat undefined as "not provided" (preserve existing).
+  // hasOwnProperty distinguishes "the caller wrote null to clear this" from
+  // "the caller didn't touch this field".
+  const pick = (update, field, existing, fallback) => {
+    if (Object.prototype.hasOwnProperty.call(update, field)) {
+      const v = update[field];
+      return v == null ? '' : v;
+    }
+    return existing[field] != null ? existing[field] : (fallback != null ? fallback : '');
+  };
+
+  for (const u of updates) {
+    const pid = String(u.pitchId);
+    if (!pid) continue;
+    const existing = existingByPitch[pid] || {};
+    existingByPitch[pid] = {
+      timestamp: now,
+      submittedBy: submittedBy || existing.submittedBy || '',
+      pitchId: pid,
+      pitchTitle: u.pitchTitle || existing.pitchTitle || pitchTitles[pid] || '',
+      status: pick(u, 'status', existing, ''),
+      assignedDev: pick(u, 'assignedDev', existing, ''),
+      devTL: pick(u, 'devTL', existing, ''),
+      qm: pick(u, 'qm', existing, ''),
+      pqa1: pick(u, 'pqa1', existing, ''),
+      projectCreated: existing.projectCreated === true,
+      kickoffEmailSent: existing.kickoffEmailSent === true,
+    };
+  }
+
+  // Write back the full set (existing + updated + new).
+  const orderedPids = Object.keys(existingByPitch);
+  const rows = [PLAN_HEADERS].concat(
+    orderedPids.map(pid => {
+      const r = existingByPitch[pid];
+      return PLAN_HEADERS.map(h => (r[h] != null ? r[h] : ''));
+    })
+  );
+  sh.clearContents();
+  sh.getRange(1, 1, rows.length, PLAN_HEADERS.length).setValues(rows);
+
+  return { saved: updates.length, preserved: preservedCount };
+}
+
+/**
+ * Save the stage 2 plan to the PLAN sheet. Each call upserts only the fields
+ * it knows about (status + assignedDev), preserving any TL/QM/PQA1/follow-up
+ * state already on the row.
  *
  * Expected assignments: [{ pitchId, status: 'selected'|'next-up'|'cut', assignedDev: string|null }]
  *
  * @param {Array} assignments
- * @return {TextOutput} JSON { saved: number }
+ * @return {TextOutput} JSON { saved: number, preserved: number }
  */
 function savePlan(assignments, submittedBy) {
   if (!Array.isArray(assignments) || assignments.length === 0) {
     return badRequest('assignments must be a non-empty array');
   }
-
-  return withLock(() => {
-    let sh = ss.getSheetByName('PLAN');
-    if (!sh) sh = ss.insertSheet('PLAN');
-    sh.clearContents();
-
-    const now = new Date();
-    const pitchTitles = getPitchTitleMap();
-    const headers = ['timestamp', 'submittedBy', 'pitchId', 'pitchTitle', 'status', 'assignedDev'];
-    const rows = [headers].concat(
-      assignments.map(a => [now, submittedBy || '', a.pitchId, a.pitchTitle || pitchTitles[String(a.pitchId)] || '', a.status, a.assignedDev || ''])
-    );
-    sh.getRange(1, 1, rows.length, 6).setValues(rows);
-
-    return json200({ saved: assignments.length });
-  });
+  if (!callerHoldsEditLock('2', submittedBy)) {
+    return json200({ error: 'edit-lock-conflict', stage: '2', lock: readEditLock('2') });
+  }
+  return withLock(() => json200(upsertPlanRows(assignments, submittedBy)));
 }
 
 /**
- * Update the PLAN sheet with final stage 4 team assignments.
- * Merges devTL, qm, and pqa1 into the existing rows (matched by pitchId).
- * If a row for a pitchId doesn't exist yet it is appended.
+ * Save stage 4 final assignments. Upserts status + assignedDev + devTL + qm +
+ * pqa1 by pitchId. Rows not in the payload (e.g. pitches another TL hasn't
+ * gotten to yet) are preserved untouched — partial saves no longer wipe the
+ * rest of the plan.
  *
  * Expected assignments: [{ pitchId, status, assignedDev, devTL, qm, pqa1 }]
  *
  * @param {Array} assignments
- * @return {TextOutput} JSON { saved: number }
+ * @return {TextOutput} JSON { saved: number, preserved: number }
  */
 function saveFinalAssignments(assignments, submittedBy) {
   if (!Array.isArray(assignments) || assignments.length === 0) {
     return badRequest('assignments must be a non-empty array');
   }
-
-  return withLock(() => {
-    let sh = ss.getSheetByName('PLAN');
-    if (!sh) sh = ss.insertSheet('PLAN');
-
-    // Preserve existing follow-up state before clearing.
-    // Schema history: 9-col (no title) → 10-col (added pitchTitle) → 11-col (added submittedBy).
-    const existingFollowups = {};
-    if (sh.getLastRow() > 1) {
-      const numCols = sh.getLastColumn();
-      const hasSubmittedBy = numCols >= 11;
-      const hasTitle = numCols >= 10;
-      const pidIdx = hasSubmittedBy ? 2 : 1;
-      const pcIdx  = hasSubmittedBy ? 9 : (hasTitle ? 8 : 7);
-      const keIdx  = hasSubmittedBy ? 10 : (hasTitle ? 9 : 8);
-      const existing = sh.getRange(2, 1, sh.getLastRow() - 1, numCols).getValues();
-      for (const row of existing) {
-        const pid = row[pidIdx];
-        if (pid) existingFollowups[pid] = { projectCreated: row[pcIdx] === true, kickoffEmailSent: row[keIdx] === true };
-      }
-    }
-
-    sh.clearContents();
-
-    const now = new Date();
-    const pitchTitles = getPitchTitleMap();
-    const headers = ['timestamp', 'submittedBy', 'pitchId', 'pitchTitle', 'status', 'assignedDev', 'devTL', 'qm', 'pqa1', 'projectCreated', 'kickoffEmailSent'];
-    const rows = [headers].concat(
-      assignments.map(a => [
-        now,
-        submittedBy || '',
-        a.pitchId,
-        a.pitchTitle || pitchTitles[String(a.pitchId)] || '',
-        a.status || '',
-        a.assignedDev || '',
-        a.devTL || '',
-        a.qm || '',
-        a.pqa1 || '',
-        existingFollowups[a.pitchId]?.projectCreated || false,
-        existingFollowups[a.pitchId]?.kickoffEmailSent || false,
-      ])
-    );
-    sh.getRange(1, 1, rows.length, 11).setValues(rows);
-
-    return json200({ saved: assignments.length });
-  });
+  if (!callerHoldsEditLock('4', submittedBy)) {
+    return json200({ error: 'edit-lock-conflict', stage: '4', lock: readEditLock('4') });
+  }
+  return withLock(() => json200(upsertPlanRows(assignments, submittedBy)));
 }
 
 /**

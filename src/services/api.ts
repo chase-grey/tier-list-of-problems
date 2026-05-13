@@ -288,30 +288,112 @@ export interface FinalAssignmentPayload extends PlanAssignmentPayload {
 }
 
 /**
- * Saves the finalized stage 2 plan (pitch decisions + dev assignments) to the PLAN sheet.
- * Uses the dev-server proxy so we can follow GAS's redirect and read the response body,
- * which allows detecting lock-contention errors returned by withLock().
+ * Saves the stage 2 plan (pitch decisions + dev assignments) to the PLAN sheet.
+ * Backend upserts by pitchId — fields not in the payload are preserved, and
+ * pitches not in the payload aren't touched. Throws EditLockConflictError if
+ * caller doesn't hold the stage-2 edit lock.
  */
 export async function savePlan(assignments: PlanAssignmentPayload[], submittedBy: string): Promise<number> {
-  const data = await gasJsonPost<{ saved?: number }>(
+  const data = await gasJsonPost<{ saved?: number; error?: string; lock?: EditLockState }>(
     'save-plan',
     { assignments, submittedBy },
     { saved: assignments.length },
   );
+  if (data && data.error === 'edit-lock-conflict') {
+    throw new EditLockConflictError('2', data.lock);
+  }
   return data.saved ?? assignments.length;
 }
 
 /**
- * Saves the finalized stage 4 team assignments (devTL, QM, PQA1) to the PLAN sheet,
- * merging with the stage 2 dev assignments already stored there.
+ * Saves stage 4 team assignments. Same upsert semantics as savePlan: partial
+ * saves preserve untouched pitches. Throws EditLockConflictError if caller
+ * doesn't hold the stage-4 edit lock.
  */
 export async function saveFinalAssignments(assignments: FinalAssignmentPayload[], submittedBy: string): Promise<number> {
-  const data = await gasJsonPost<{ saved?: number }>(
+  const data = await gasJsonPost<{ saved?: number; error?: string; lock?: EditLockState }>(
     'save-final-assignments',
     { assignments, submittedBy },
     { saved: assignments.length },
   );
+  if (data && data.error === 'edit-lock-conflict') {
+    throw new EditLockConflictError('4', data.lock);
+  }
   return data.saved ?? assignments.length;
+}
+
+// ─── Edit-lock client ────────────────────────────────────────────────────────
+//
+// Stage 2 (dev assignment) and Stage 4 (TL/QM/PQA1 staffing) are single-editor
+// stages — only one TL holds the lock at a time. Everyone else sees a view-
+// only banner naming the current holder. Heartbeat every 60s while editing;
+// auto-stale after EDIT_LOCK_TTL_MS (5min) of no heartbeat so a closed browser
+// doesn't permanently strand the lock.
+
+export type LockStage = '2' | '4';
+
+export interface EditLockState {
+  holder: string | null;
+  acquiredAt: number;
+  lastHeartbeat: number;
+}
+
+export class EditLockConflictError extends Error {
+  stage: LockStage;
+  lock: EditLockState | undefined;
+  constructor(stage: LockStage, lock: EditLockState | undefined) {
+    super(`edit-lock-conflict for stage ${stage}`);
+    this.name = 'EditLockConflictError';
+    this.stage = stage;
+    this.lock = lock;
+  }
+}
+
+export async function fetchEditLock(stage: LockStage): Promise<EditLockState> {
+  if (!API_BASE_URL) return { holder: null, acquiredAt: 0, lastHeartbeat: 0 };
+  const url = `${GAS_PROXY}?route=get-edit-lock&stage=${encodeURIComponent(stage)}`;
+  const response = await fetch(url);
+  if (!response.ok) return { holder: null, acquiredAt: 0, lastHeartbeat: 0 };
+  const data = await response.json().catch(() => ({} as any));
+  return (data?.lock as EditLockState) ?? { holder: null, acquiredAt: 0, lastHeartbeat: 0 };
+}
+
+/**
+ * Try to acquire the edit lock for a stage. Returns { acquired, lock }. When
+ * acquired=false, the current holder is fresh — the caller can offer a
+ * "Force take" path that re-calls with force=true (the previous holder's
+ * unsaved work is lost; the UI should disclaim this).
+ */
+export async function acquireEditLock(stage: LockStage, voterName: string, force = false): Promise<{ acquired: boolean; lock: EditLockState }> {
+  const data = await gasJsonPost<{ acquired?: boolean; lock?: EditLockState }>(
+    'acquire-edit-lock',
+    { stage, voterName, force },
+    { acquired: true, lock: { holder: voterName, acquiredAt: Date.now(), lastHeartbeat: Date.now() } as EditLockState },
+  );
+  return {
+    acquired: !!data.acquired,
+    lock: data.lock ?? { holder: null, acquiredAt: 0, lastHeartbeat: 0 },
+  };
+}
+
+/** Release the lock. Caller must be the current holder; otherwise no-op. */
+export async function releaseEditLock(stage: LockStage, voterName: string): Promise<void> {
+  await gasJsonPost('release-edit-lock', { stage, voterName }, { released: true });
+}
+
+/**
+ * Bump the lock heartbeat. The returned state lets the caller detect when
+ * the lock was force-taken — if `holder !== voterName`, the UI should
+ * transition to view-only and warn the user that their unsaved changes
+ * cannot be saved.
+ */
+export async function heartbeatEditLock(stage: LockStage, voterName: string): Promise<EditLockState> {
+  const data = await gasJsonPost<{ lock?: EditLockState }>(
+    'heartbeat-edit-lock',
+    { stage, voterName },
+    { lock: { holder: voterName, acquiredAt: 0, lastHeartbeat: Date.now() } as EditLockState },
+  );
+  return data.lock ?? { holder: null, acquiredAt: 0, lastHeartbeat: 0 };
 }
 
 /**

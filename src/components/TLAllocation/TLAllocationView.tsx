@@ -9,10 +9,12 @@ import {
 } from '../../mocks/allocationMockData';
 import { fetchAllocationConfig, fetchAllocationVoteData, setCapacityOverride } from '../../services/allocationApi';
 import type { CapacityOverridePayload } from '../../services/allocationApi';
-import { savePlan, saveFinalAssignments, fetchPlanFull, fetchAdhocPitches, saveAdhocPitch as saveAdhocPitchApi } from '../../services/api';
+import { savePlan, saveFinalAssignments, fetchPlanFull, fetchAdhocPitches, saveAdhocPitch as saveAdhocPitchApi, EditLockConflictError, type LockStage } from '../../services/api';
 import type { PlanRow } from '../../services/api';
 import AddPitchDialog, { type AdhocPitchDraft } from './AddPitchDialog';
 import { useSnackbar } from '../../hooks/useSnackbar';
+import { useEditLock } from '../../hooks/useEditLock';
+import EditLockBanner from './EditLockBanner';
 import { generateDefaultPlan, autoAssignPqa1, capForPerson, hungarianMinCost } from '../../utils/allocationEngine';
 import { fetchPitches } from '../../services/api';
 import staticPitchesJson from '../../assets/pitches.json';
@@ -22,8 +24,15 @@ import Stage2ResultsView from './Stage2ResultsView';
 import Stage4ResultsView from './Stage4ResultsView';
 
 export interface TLAllocationViewHandle {
+  /** Save in place — persists to backend without navigating to the summary view. */
+  triggerSave: () => Promise<boolean>;
+  /** Save + navigate to the Stage 2/4 summary view. No-op if the save fails. */
   triggerFinalize: () => Promise<void>;
   triggerRerunAlgorithm: () => void;
+  /** Whether every selected pitch has all team roles filled (used to gate Finish). */
+  isReadyToFinish: () => boolean;
+  /** True iff the caller currently holds the stage edit lock. */
+  hasLock: () => boolean;
 }
 
 interface TLAllocationViewProps {
@@ -843,47 +852,64 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
     setStep2Ready(true);
   }, [activeStep, step2DataLoaded, phase2Interests, allocationConfig]);
 
-  const handleFinalize = async () => {
+  /**
+   * Save current state to the backend without navigating to the summary view.
+   * Returns true if the save succeeded. Catches EditLockConflictError with a
+   * snackbar pointing at the current holder, and returns false so the caller
+   * (e.g. Finish handler) can short-circuit instead of forging ahead to the
+   * results view.
+   */
+  const handleSavePlan = async (): Promise<boolean> => {
     const pitchTitleById = {
       ...Object.fromEntries((staticPitchesJson as Array<{ id: string; title: string }>).map(p => [p.id, p.title])),
       ...Object.fromEntries(adhocPitches.map(p => [p.id, p.title])),
     };
-    if (activeStep === 0) {
-      const payload = currentAssignments.map(a => ({
-        pitchId: a.pitchId,
-        pitchTitle: pitchTitleById[a.pitchId] ?? '',
-        status: a.status,
-        assignedDev: a.assignedDev,
-      }));
-      try {
+    try {
+      if (activeStep === 0) {
+        const payload = currentAssignments.map(a => ({
+          pitchId: a.pitchId,
+          pitchTitle: pitchTitleById[a.pitchId] ?? '',
+          status: a.status,
+          assignedDev: a.assignedDev,
+        }));
         await savePlan(payload, voterName);
         showSnackbar('Plan saved — dev assignments recorded in the sheet', 'success');
-      } catch (err: any) {
-        showSnackbar(`Failed to save plan: ${err?.message ?? 'unknown error'}`, 'error');
-        throw err;
-      }
-    } else {
-      const devByPitch = Object.fromEntries(currentAssignments.map(a => [a.pitchId, a]));
-      const payload = step2Assignments.map(sa => {
-        const plan = devByPitch[sa.pitchId];
-        return {
-          pitchId: sa.pitchId,
-          pitchTitle: pitchTitleById[sa.pitchId] ?? '',
-          status: plan?.status ?? 'selected',
-          assignedDev: plan?.assignedDev ?? null,
-          devTL: sa.devTL,
-          qm: sa.qm,
-          pqa1: sa.pqa1 ?? null,
-        };
-      });
-      try {
+      } else {
+        const devByPitch = Object.fromEntries(currentAssignments.map(a => [a.pitchId, a]));
+        const payload = step2Assignments.map(sa => {
+          const plan = devByPitch[sa.pitchId];
+          return {
+            pitchId: sa.pitchId,
+            pitchTitle: pitchTitleById[sa.pitchId] ?? '',
+            status: plan?.status ?? 'selected',
+            assignedDev: plan?.assignedDev ?? null,
+            devTL: sa.devTL,
+            qm: sa.qm,
+            pqa1: sa.pqa1 ?? null,
+          };
+        });
         await saveFinalAssignments(payload, voterName);
         showSnackbar('Team assignments saved to the sheet', 'success');
-      } catch (err: any) {
-        showSnackbar(`Failed to save assignments: ${err?.message ?? 'unknown error'}`, 'error');
-        throw err;
       }
+      return true;
+    } catch (err: any) {
+      if (err instanceof EditLockConflictError) {
+        const holder = err.lock?.holder ?? 'someone else';
+        showSnackbar(`Can't save — ${holder} holds the ${stageLabel} edit lock. Take the lock first or coordinate.`, 'error');
+        return false;
+      }
+      showSnackbar(`Failed to save: ${err?.message ?? 'unknown error'}`, 'error');
+      throw err;
     }
+  };
+
+  /** Save + transition to summary view. Bails out if the save failed. */
+  const handleFinalize = async () => {
+    const saved = await handleSavePlan();
+    if (!saved) return;
+    // Successful Finish — release the lock so the next TL can pick up
+    // without having to force-take. Best-effort; failure is non-fatal.
+    editLock.release().catch(() => { /* ignore */ });
     onShowResultsChange(true);
     onFinalize?.();
   };
@@ -978,7 +1004,39 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
     showSnackbar(`Capacity updated for ${payload.name}`, 'success');
   };
 
-  useImperativeHandle(ref, () => ({ triggerFinalize: handleFinalize, triggerRerunAlgorithm: handleRerunAlgorithm }));
+  // Per-stage single-editor lock. Stage 2 (dev assignment) and Stage 4 (team
+  // staffing) each have an independent lock so Lauren and someone else can
+  // work on them in parallel. Heartbeat + force-take semantics live in the
+  // hook; the banner renders state.
+  const lockStage: LockStage = activeStep === 0 ? '2' : '4';
+  const stageLabel = activeStep === 0 ? 'Stage 2' : 'Stage 4';
+  const editLock = useEditLock(lockStage, voterName);
+  // View-only when we're not the editor. We still mount the underlying
+  // editing UI but disable interaction via CSS — keeping the layout intact
+  // so what the editor changes is visible as they save.
+  const isViewOnly = editLock.status === 'viewer' || editLock.status === 'lost';
+
+  // Stage 4 finish gate: every selected pitch needs dev TL + QM + PQA1 filled.
+  // (Dev assignment lives on planAssignments, which Stage 2 handles separately.)
+  // Stage 2 has no all-fields-filled requirement — devs can stay unassigned
+  // until the next round; Finish on Stage 2 just records the plan as-is.
+  const isReadyToFinish = (): boolean => {
+    if (activeStep === 0) return true;
+    if (selectedPitches.length === 0) return false;
+    const byPitch = new Map(step2Assignments.map(a => [a.pitchId, a]));
+    return selectedPitches.every(p => {
+      const sa = byPitch.get(p.id);
+      return !!(sa && sa.devTL && sa.qm && sa.pqa1);
+    });
+  };
+
+  useImperativeHandle(ref, () => ({
+    triggerSave: handleSavePlan,
+    triggerFinalize: handleFinalize,
+    triggerRerunAlgorithm: handleRerunAlgorithm,
+    isReadyToFinish,
+    hasLock: () => editLock.status === 'editor',
+  }));
 
   if (loading || hasLoadError) {
     const steps = [
@@ -1042,7 +1100,30 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-      <Box sx={{ flex: 1, overflow: 'hidden' }}>
+      <EditLockBanner
+        status={editLock.status}
+        lock={editLock.lock}
+        stageLabel={stageLabel}
+        onTake={editLock.take}
+        onRelease={editLock.release}
+        onRefresh={() => window.location.reload()}
+      />
+      <Box
+        sx={{
+          flex: 1,
+          overflow: 'hidden',
+          // View-only mode: block interaction but keep the layout so the user
+          // can see what the editor is working on. pointer-events:none drops
+          // every click/drag inside; opacity hints visually that it's not
+          // editable. The banner above stays interactive.
+          ...(isViewOnly && {
+            pointerEvents: 'none',
+            opacity: 0.65,
+            filter: 'grayscale(0.25)',
+          }),
+        }}
+        aria-disabled={isViewOnly}
+      >
         {activeStep === 0 ? (
           <Step1View
             pitches={allPitches}
