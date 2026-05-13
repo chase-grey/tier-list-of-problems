@@ -16,6 +16,12 @@ export interface Pitch {
    * and editable from the TL allocation UI via the pencil icon.
    */
   adhoc?: boolean;
+  /**
+   * Optional PRJ (project tracker) ID associated with this pitch. Used for
+   * adhoc projects where the work has a tracker entry but isn't part of the
+   * static pitch flow; surfaced as a small chip in the TL allocation row.
+   */
+  prjId?: string;
   author?: string | null;  // Person who wrote the pitch (used as assignment tiebreaker)
   previousDev?: string;    // Lead dev from last quarter (continuation projects only)
   previousTL?: string;     // Dev TL from last quarter (continuation projects only)

@@ -2,9 +2,10 @@ import { useState, useEffect, useRef } from 'react';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions,
   Button, TextField, Select, MenuItem, FormControl, InputLabel, Box,
-  FormControlLabel, Checkbox, Typography, Divider,
+  FormControlLabel, Checkbox, Typography, Divider, Chip, Stack,
 } from '@mui/material';
 import { ASSIGNMENT_NONE } from '../../types/models';
+import type { AssignmentStatus } from '../../types/allocationTypes';
 
 export interface AdhocTeamAssignment {
   dev: string | null;
@@ -18,6 +19,16 @@ export interface AdhocPitchDraft {
   category: string;
   committed: boolean;
   team: AdhocTeamAssignment;
+  /** Plan status for the project. Omitted from the dialog when editing a
+   *  committed pitch (committed pitches stay Planned by definition). */
+  status: AssignmentStatus;
+  /** Stretch goal — planned but only if there's spare capacity. Shown with a
+   *  distinguishing icon in the sidebar and sorted below non-stretch projects.
+   *  Suppressed in the dialog when committed (committed projects are firm). */
+  stretch: boolean;
+  /** Optional PRJ tracker ID, blank string when not provided. Trimmed
+   *  on save; round-tripped through the backend PITCHES sheet. */
+  prjId: string;
 }
 
 interface AddPitchDialogProps {
@@ -34,16 +45,24 @@ interface AddPitchDialogProps {
    * the parent decides whether to create or update based on context.
    */
   initial?: AdhocPitchDraft;
+  /** When true, title/category/committed render read-only (used when editing
+   *  a voting-imported project — those fields are owned by the spreadsheet,
+   *  not the TL). Status + team stay editable. Ignored on create. */
+  lockBasicFields?: boolean;
   onSubmit: (draft: AdhocPitchDraft) => void;
   onClose: () => void;
 }
 
-export default function AddPitchDialog({ open, categories, defaultCategory, devNames, devTLNames, qmNames, initial, onSubmit, onClose }: AddPitchDialogProps) {
+export default function AddPitchDialog({ open, categories, defaultCategory, devNames, devTLNames, qmNames, initial, lockBasicFields, onSubmit, onClose }: AddPitchDialogProps) {
   const isEdit = initial != null;
+  const lockBasics = isEdit && !!lockBasicFields;
 
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState(defaultCategory ?? categories[0] ?? '');
   const [committed, setCommitted] = useState(false);
+  const [status, setStatus] = useState<AssignmentStatus>('selected');
+  const [stretch, setStretch] = useState(false);
+  const [prjId, setPrjId] = useState('');
   const [teamDev, setTeamDev] = useState('');
   const [teamDevTL, setTeamDevTL] = useState('');
   const [teamQM, setTeamQM] = useState('');
@@ -60,6 +79,9 @@ export default function AddPitchDialog({ open, categories, defaultCategory, devN
         setTitle(initial.title);
         setCategory(initial.category);
         setCommitted(initial.committed);
+        setStatus(initial.status);
+        setStretch(!!initial.stretch);
+        setPrjId(initial.prjId ?? '');
         setTeamDev(initial.team.dev ?? '');
         setTeamDevTL(initial.team.devTL ?? '');
         setTeamQM(initial.team.qm ?? '');
@@ -68,6 +90,9 @@ export default function AddPitchDialog({ open, categories, defaultCategory, devN
         setTitle('');
         setCategory(defaultCategory ?? categories[0] ?? '');
         setCommitted(false);
+        setStatus('selected');
+        setStretch(false);
+        setPrjId('');
         setTeamDev('');
         setTeamDevTL('');
         setTeamQM('');
@@ -86,6 +111,11 @@ export default function AddPitchDialog({ open, categories, defaultCategory, devN
       title: trimmed,
       category,
       committed,
+      // Committed pitches always stay Planned and aren't stretch goals —
+      // they're pre-allocated, so either flag would contradict that.
+      status: committed ? 'selected' : status,
+      stretch: committed ? false : stretch,
+      prjId: prjId.trim(),
       team: {
         dev: teamDev || null,
         devTL: teamDevTL || null,
@@ -95,6 +125,12 @@ export default function AddPitchDialog({ open, categories, defaultCategory, devN
     });
     onClose();
   };
+
+  const statusOptions: { value: AssignmentStatus; label: string }[] = [
+    { value: 'selected', label: 'Planned' },
+    { value: 'next-up', label: 'Up Next' },
+    { value: 'cut',     label: 'Not Now' },
+  ];
 
   const nameSelect = (label: string, value: string, onChange: (v: string) => void, names: string[]) => (
     <FormControl fullWidth size="small">
@@ -119,9 +155,11 @@ export default function AddPitchDialog({ open, categories, defaultCategory, devN
             value={title}
             onChange={e => setTitle(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') handleSubmit(); }}
-            autoFocus
+            autoFocus={!lockBasics}
             fullWidth
             required
+            InputProps={{ readOnly: lockBasics }}
+            helperText={lockBasics ? 'Title comes from the voting sheet and isn’t editable here.' : undefined}
           />
           <FormControl fullWidth required>
             <InputLabel>Category</InputLabel>
@@ -129,21 +167,72 @@ export default function AddPitchDialog({ open, categories, defaultCategory, devN
               value={category}
               label="Category"
               onChange={e => setCategory(e.target.value)}
+              readOnly={lockBasics}
             >
               {categories.map(cat => (
                 <MenuItem key={cat} value={cat}>{cat}</MenuItem>
               ))}
             </Select>
           </FormControl>
-          <Box>
-            <FormControlLabel
-              control={<Checkbox checked={committed} onChange={e => setCommitted(e.target.checked)} />}
-              label="Committed project"
-            />
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', pl: 4, mt: -0.5 }}>
-              Skip priority + interest voting and lock as already-allocated. Use for work that's pre-committed for next quarter.
-            </Typography>
-          </Box>
+          <TextField
+            label="PRJ ID (optional)"
+            value={prjId}
+            onChange={e => setPrjId(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') handleSubmit(); }}
+            fullWidth
+            placeholder="e.g. 1234567"
+            helperText="Tracker ID for the project, if one exists. Saved with the pitch and shown in the row."
+          />
+          {!lockBasics && (
+            <Box>
+              <FormControlLabel
+                control={<Checkbox checked={committed} onChange={e => setCommitted(e.target.checked)} />}
+                label="Committed project"
+              />
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', pl: 4, mt: -0.5 }}>
+                Skip priority + interest voting and lock as already-allocated. Use for work that's pre-committed for next quarter.
+              </Typography>
+            </Box>
+          )}
+
+          {/* Status selector — shown when editing a non-committed pitch.
+              Committed pitches stay Planned by definition; new (non-edit)
+              adds start as Planned and don't need a chooser. */}
+          {isEdit && !committed && (
+            <Box>
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                Status
+              </Typography>
+              <Stack direction="row" spacing={1}>
+                {statusOptions.map(opt => (
+                  <Chip
+                    key={opt.value}
+                    label={opt.label}
+                    size="small"
+                    color={status === opt.value ? 'primary' : 'default'}
+                    variant={status === opt.value ? 'filled' : 'outlined'}
+                    onClick={() => setStatus(opt.value)}
+                  />
+                ))}
+              </Stack>
+            </Box>
+          )}
+
+          {/* Stretch goal — only meaningful for non-committed pitches.
+              Hidden on a Cut pitch (cut == not happening, so 'stretch' is
+              redundant); Up Next stretch is allowed since a TL might want
+              to queue a stretch project. */}
+          {!committed && status !== 'cut' && (
+            <Box>
+              <FormControlLabel
+                control={<Checkbox checked={stretch} onChange={e => setStretch(e.target.checked)} />}
+                label="Stretch goal"
+              />
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', pl: 4, mt: -0.5 }}>
+                Only complete if there's spare capacity. Sorts beneath non-stretch projects in the sidebar.
+              </Typography>
+            </Box>
+          )}
 
           {hasTeamFields && (
             <>

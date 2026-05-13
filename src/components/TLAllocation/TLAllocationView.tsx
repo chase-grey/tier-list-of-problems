@@ -698,6 +698,17 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
     [allPitches, selectedPitchIds]
   );
 
+  // Up Next pitches are shown in Stage 4 as a secondary section under each
+  // category so a TL can promote one mid-staffing if a planned project falls
+  // through. Excludes anything already in selectedPitchIds (committed/adhoc
+  // pitches with status='next-up' shouldn't show up twice).
+  const nextUpPitches = useMemo(() => {
+    const nextUpIds = new Set(
+      currentAssignments.filter(a => a.status === 'next-up' && !selectedPitchIds.has(a.pitchId)).map(a => a.pitchId)
+    );
+    return allPitches.filter(p => nextUpIds.has(p.id));
+  }, [currentAssignments, allPitches, selectedPitchIds]);
+
   const [step2Assignments, setStep2Assignments] = useState<StaffingAssignment[]>(
     savedStep2.current ?? []
   );
@@ -726,7 +737,8 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
 
   const handleAddAdhocPitch = (draft: AdhocPitchDraft) => {
     const id = `adhoc-${Date.now()}`;
-    const { title, category, committed, team } = draft;
+    const { title, category, committed, team, status, stretch, prjId } = draft;
+    const trimmedPrjId = prjId.trim();
     const pitch: AllocationPitch = {
       id,
       title,
@@ -734,6 +746,9 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
       continuation: false,
       committed,
       adhoc: true,
+      // Only set prjId when the user actually entered one — leaving it
+      // undefined is cleaner than persisting '' for downstream filters.
+      ...(trimmedPrjId ? { prjId: trimmedPrjId } : {}),
       author: null,
       details: { problem: '' },
       teamVotes: {},
@@ -743,7 +758,7 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
       devInterest: {},
     };
     setAdhocPitches(prev => [...prev, pitch]);
-    setPlanAssignments(prev => [...prev, { pitchId: id, assignedDev: team.dev, status: 'selected' }]);
+    setPlanAssignments(prev => [...prev, { pitchId: id, assignedDev: team.dev, status, stretch }]);
     // Always add to step2Assignments so pre-filled team data survives step2 init.
     setStep2Assignments(prev => [...prev, { pitchId: id, devTL: team.devTL, qm: team.qm, pqa1: team.pqa1 }]);
     if (committed) {
@@ -760,15 +775,22 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
 
   const handleEditAdhocPitch = (id: string, draft: AdhocPitchDraft) => {
     markDirty();
-    const { title, category, committed, team } = draft;
-    setAdhocPitches(prev => prev.map(p => p.id === id ? { ...p, title, category, committed } : p));
+    const { title, category, committed, team, status, stretch, prjId } = draft;
+    const trimmedPrjId = prjId.trim();
+    setAdhocPitches(prev => prev.map(p => p.id === id ? {
+      ...p,
+      title,
+      category,
+      committed,
+      prjId: trimmedPrjId || undefined,
+    } : p));
     // Upsert plan + step2 entries — if a prior reload wiped the local row
     // (e.g. backend plan overwrote it before we started preserving adhoc
     // entries), append a fresh entry rather than silently dropping the edit.
     setPlanAssignments(prev => {
       const idx = prev.findIndex(a => a.pitchId === id);
-      if (idx === -1) return [...prev, { pitchId: id, assignedDev: team.dev, status: 'selected' }];
-      return prev.map(a => a.pitchId === id ? { ...a, assignedDev: team.dev } : a);
+      if (idx === -1) return [...prev, { pitchId: id, assignedDev: team.dev, status, stretch }];
+      return prev.map(a => a.pitchId === id ? { ...a, assignedDev: team.dev, status, stretch } : a);
     });
     setStep2Assignments(prev => {
       const idx = prev.findIndex(a => a.pitchId === id);
@@ -791,22 +813,43 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
       category,
       committed,
       adhoc: true,
+      ...(trimmedPrjId ? { prjId: trimmedPrjId } : {}),
       details: { problem: '' },
     }).catch((err: any) => {
       showSnackbar(`Edit saved locally — failed to save to sheet: ${err?.message ?? 'unknown error'}`, 'warning');
     });
   };
 
-  // Adhoc-pitch dialog state, lifted from the views so a single dialog
+  // Edit a voting-imported (non-adhoc) project. Title/category/committed are
+  // read-only in the dialog for these, so only status + team round-trip back
+  // here. Status updates planAssignments (and clears assignedDev on next-up /
+  // cut, matching handleStatusChange's behavior); team updates step2.
+  const handleEditNonAdhocPitch = (id: string, draft: AdhocPitchDraft) => {
+    markDirty();
+    const { team, status, stretch } = draft;
+    setPlanAssignments(prev => {
+      const idx = prev.findIndex(a => a.pitchId === id);
+      const nextDev = status === 'selected' ? team.dev : null;
+      if (idx === -1) return [...prev, { pitchId: id, assignedDev: nextDev, status, stretch }];
+      return prev.map(a => a.pitchId === id ? { ...a, assignedDev: nextDev, status, stretch } : a);
+    });
+    setStep2Assignments(prev => {
+      const idx = prev.findIndex(a => a.pitchId === id);
+      if (idx === -1) return [...prev, { pitchId: id, devTL: team.devTL, qm: team.qm, pqa1: team.pqa1 }];
+      return prev.map(a => a.pitchId === id ? { ...a, devTL: team.devTL, qm: team.qm, pqa1: team.pqa1 } : a);
+    });
+  };
+
+  // Project edit dialog state, lifted from the views so a single dialog
   // instance can be reused for both Add (editingPitchId === null) and
-  // Edit (editingPitchId === '<adhoc id>').
+  // Edit (editingPitchId === '<pitch id>' — adhoc or voting-imported).
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [editingPitchId, setEditingPitchId] = useState<string | null>(null);
   const adhocPitchIds = useMemo(() => new Set(adhocPitches.map(p => p.id)), [adhocPitches]);
 
   const dialogInitial: AdhocPitchDraft | undefined = useMemo(() => {
     if (!editingPitchId) return undefined;
-    const pitch = adhocPitches.find(p => p.id === editingPitchId);
+    const pitch = allPitches.find(p => p.id === editingPitchId);
     if (!pitch) return undefined;
     const plan = planAssignments.find(a => a.pitchId === editingPitchId);
     const sa = step2Assignments.find(a => a.pitchId === editingPitchId);
@@ -814,6 +857,9 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
       title: pitch.title,
       category: pitch.category,
       committed: !!pitch.committed,
+      status: plan?.status ?? 'selected',
+      stretch: !!plan?.stretch,
+      prjId: pitch.prjId ?? '',
       team: {
         dev: plan?.assignedDev ?? null,
         devTL: sa?.devTL ?? null,
@@ -821,14 +867,21 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
         pqa1: sa?.pqa1 ?? null,
       },
     };
-  }, [editingPitchId, adhocPitches, planAssignments, step2Assignments]);
+  }, [editingPitchId, allPitches, planAssignments, step2Assignments]);
 
+  const stretchPitchIds = useMemo(
+    () => new Set(currentAssignments.filter(a => a.stretch).map(a => a.pitchId)),
+    [currentAssignments],
+  );
+
+  const editingIsAdhoc = editingPitchId != null && adhocPitchIds.has(editingPitchId);
   const openAdhocAdd = () => { setEditingPitchId(null); setAddDialogOpen(true); };
-  const openAdhocEdit = (pitchId: string) => { setEditingPitchId(pitchId); setAddDialogOpen(true); };
+  const openProjectEdit = (pitchId: string) => { setEditingPitchId(pitchId); setAddDialogOpen(true); };
   const closeAdhocDialog = () => { setAddDialogOpen(false); setEditingPitchId(null); };
   const handleDialogSubmit = (draft: AdhocPitchDraft) => {
-    if (editingPitchId) handleEditAdhocPitch(editingPitchId, draft);
-    else handleAddAdhocPitch(draft);
+    if (!editingPitchId) { handleAddAdhocPitch(draft); return; }
+    if (editingIsAdhoc) handleEditAdhocPitch(editingPitchId, draft);
+    else handleEditNonAdhocPitch(editingPitchId, draft);
   };
 
   const devByPitchId = useMemo<Record<string, string | null>>(
@@ -1233,16 +1286,18 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
             voterName={voterName}
             onCapacityOverride={handleCapacityOverride}
             onAdhocAdd={openAdhocAdd}
-            onAdhocEdit={openAdhocEdit}
+            onAdhocEdit={openProjectEdit}
             adhocPitchIds={adhocPitchIds}
           />
         ) : (
           <Step2View
             selectedPitches={selectedPitches}
+            nextUpPitches={nextUpPitches}
             assignments={step2Assignments}
             phase2Interests={phase2Interests}
             config={allocationConfig}
             onAssign={handleStep2Assign}
+            onStatusChange={handleStatusChange}
             onFinalize={handleFinalize}
             devByPitchId={devByPitchId}
             devNames={allocationConfig.devNames}
@@ -1255,8 +1310,9 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
             voterName={voterName}
             onCapacityOverride={handleCapacityOverride}
             onAdhocAdd={openAdhocAdd}
-            onAdhocEdit={openAdhocEdit}
+            onAdhocEdit={openProjectEdit}
             adhocPitchIds={adhocPitchIds}
+            stretchPitchIds={stretchPitchIds}
           />
         )}
       </Box>
@@ -1268,6 +1324,7 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
         devTLNames={allocationConfig.devTLNames}
         qmNames={allocationConfig.qmNames}
         initial={dialogInitial}
+        lockBasicFields={editingPitchId != null && !editingIsAdhoc}
         onSubmit={handleDialogSubmit}
         onClose={closeAdhocDialog}
       />

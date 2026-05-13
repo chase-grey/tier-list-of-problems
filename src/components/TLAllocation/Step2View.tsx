@@ -21,6 +21,7 @@ import {
   LockOpen as LockOpenIcon,
   EditOutlined as EditOutlinedIcon,
   Circle as CircleIcon,
+  EmojiEvents as StretchIcon,
 } from '@mui/icons-material';
 import type {
   AllocationPitch, Phase2Interest, StaffingAssignment, AllocationConfig, InterestLevel, PersonCapacity,
@@ -69,6 +70,10 @@ interface Step2ViewProps {
   onAdhocEdit?: (pitchId: string) => void;
   /** IDs of pitches that were added locally. */
   adhocPitchIds?: ReadonlySet<string>;
+  /** IDs of pitches flagged as stretch goals — rendered with a flag icon
+   *  in the sidebar and sorted beneath non-stretch projects within each
+   *  person's primary-role list. */
+  stretchPitchIds?: ReadonlySet<string>;
 }
 
 const CAPACITY_LABEL: Record<NonNullable<PersonCapacity['devCapacity']>, string> = {
@@ -192,8 +197,9 @@ export default function Step2View({
   selectedPitches, nextUpPitches, assignments, phase2Interests, config, onAssign, onStatusChange, devByPitchId, devNames,
   includeUXD, onToggleUXD,
   lockedPitchIds, lockedPersonNames, onTogglePitchLock, onTogglePersonLock,
-  voterName, onCapacityOverride, onAdhocAdd, onAdhocEdit, adhocPitchIds,
+  voterName, onCapacityOverride, onAdhocAdd, onAdhocEdit, adhocPitchIds, stretchPitchIds,
 }: Step2ViewProps) {
+  const stretchSet = stretchPitchIds ?? new Set<string>();
   const committedPitchSet = useMemo(
     () => new Set(selectedPitches.filter(p => p.committed).map(p => p.id)),
     [selectedPitches],
@@ -780,8 +786,52 @@ export default function Step2View({
           const catPitches = hideLockedPitches
             ? allCatPitches.filter(p => !lockedPitchSet.has(p.id))
             : allCatPitches;
-          if (catPitches.length === 0) return null;
+          const nextUpCatPitches = (nextUpByCategory[cat] ?? []).filter(
+            p => !hideLockedPitches || !lockedPitchSet.has(p.id)
+          );
+          if (catPitches.length === 0 && nextUpCatPitches.length === 0) return null;
           const collapsed = categoryCollapsed[cat] ?? false;
+          const renderRow = (pitch: AllocationPitch, opts?: { dimmed?: boolean }) => {
+            const a = assignMap.get(pitch.id) ?? { pitchId: pitch.id, devTL: null, qm: null, pqa1: null };
+            return (
+              <Step2Row
+                key={pitch.id}
+                pitch={pitch}
+                assignment={a}
+                devTLInterests={devTLInterests}
+                qmInterests={qmInterests}
+                devTLNames={availableDevTLNames}
+                qmNames={availableQmNames}
+                devNames={pqa1DropdownNames}
+                devHasAnyData={devHasAnyData}
+                onAssign={tryAssign}
+                onRef={registerRow(pitch.id)}
+                highlighted={pitch.id === highlightPitchId}
+                devName={devByPitchId[pitch.id] ?? null}
+                includeUXD={includeUXD[pitch.id] ?? false}
+                onToggleUXD={() => tryToggleUXD(pitch.id)}
+                locked={lockedPitchSet.has(pitch.id)}
+                onToggleLock={() => onTogglePitchLock(pitch.id)}
+                lockedPersonSet={lockedPersonSet}
+                committed={committedPitchSet.has(pitch.id)}
+                isAdhoc={adhocPitchIds?.has(pitch.id)}
+                onEdit={onAdhocEdit ? () => onAdhocEdit(pitch.id) : undefined}
+                dimmed={opts?.dimmed}
+              />
+            );
+          };
+          const subHeader = (label: string, count: number, open: boolean, onToggle: () => void, accent: 'planned' | 'nextUp') => (
+            <TableRow sx={{ cursor: 'pointer', '&:hover': { bgcolor: 'action.hover' } }} onClick={onToggle}>
+              <TableCell colSpan={6} sx={{ py: 0.25, bgcolor: 'action.hover' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  {open ? <CollapseIcon sx={{ fontSize: '0.8rem' }} /> : <ExpandIcon sx={{ fontSize: '0.8rem' }} />}
+                  <Typography variant="caption" color={accent === 'planned' ? 'text.secondary' : 'text.disabled'} sx={{ fontStyle: 'italic' }}>
+                    ── {label} ({count}) ──
+                  </Typography>
+                </Box>
+              </TableCell>
+            </TableRow>
+          );
           return (
             <Paper key={cat} variant="outlined" sx={{ mb: 2, overflow: 'auto' }}>
               <Box
@@ -794,7 +844,10 @@ export default function Step2View({
                     {CATEGORY_SHORT[cat] ?? cat}
                   </Typography>
                 </Box>
-                <Typography variant="caption" color="text.secondary">{catPitches.length} projects</Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {catPitches.length} planned
+                  {nextUpCatPitches.length > 0 ? ` · ${nextUpCatPitches.length} up next` : ''}
+                </Typography>
               </Box>
               <Collapse in={!collapsed}>
                 <Table size="small" sx={{ tableLayout: 'fixed', minWidth: 820 }}>
@@ -821,34 +874,10 @@ export default function Step2View({
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {catPitches.map(pitch => {
-                      const a = assignMap.get(pitch.id) ?? { pitchId: pitch.id, devTL: null, qm: null, pqa1: null };
-                      return (
-                        <Step2Row
-                          key={pitch.id}
-                          pitch={pitch}
-                          assignment={a}
-                          devTLInterests={devTLInterests}
-                          qmInterests={qmInterests}
-                          devTLNames={availableDevTLNames}
-                          qmNames={availableQmNames}
-                          devNames={pqa1DropdownNames}
-                          devHasAnyData={devHasAnyData}
-                          onAssign={tryAssign}
-                          onRef={registerRow(pitch.id)}
-                          highlighted={pitch.id === highlightPitchId}
-                          devName={devByPitchId[pitch.id] ?? null}
-                          includeUXD={includeUXD[pitch.id] ?? false}
-                          onToggleUXD={() => tryToggleUXD(pitch.id)}
-                          locked={lockedPitchSet.has(pitch.id)}
-                          onToggleLock={() => onTogglePitchLock(pitch.id)}
-                          lockedPersonSet={lockedPersonSet}
-                          committed={committedPitchSet.has(pitch.id)}
-                          isAdhoc={adhocPitchIds?.has(pitch.id)}
-                          onEdit={onAdhocEdit ? () => onAdhocEdit(pitch.id) : undefined}
-                        />
-                      );
-                    })}
+                    {catPitches.length > 0 && subHeader('Planned', catPitches.length, isPlanOpen(cat), () => togglePlanSub(cat), 'planned')}
+                    {isPlanOpen(cat) && catPitches.map(pitch => renderRow(pitch))}
+                    {nextUpCatPitches.length > 0 && subHeader('Up Next', nextUpCatPitches.length, isNextUpOpen(cat), () => toggleNextUpSub(cat), 'nextUp')}
+                    {isNextUpOpen(cat) && nextUpCatPitches.map(pitch => renderRow(pitch, { dimmed: true }))}
                   </TableBody>
                 </Table>
               </Collapse>
@@ -1048,6 +1077,12 @@ export default function Step2View({
                 const pA = pitchMap.get(a);
                 const pB = pitchMap.get(b);
                 if (!pA || !pB) return 0;
+                // Stretch pitches always sort after non-stretch within a list,
+                // before any other ordering — they're aspirational work, not
+                // committed deliverables.
+                const sA = stretchSet.has(a) ? 1 : 0;
+                const sB = stretchSet.has(b) ? 1 : 0;
+                if (sA !== sB) return sA - sB;
                 const catA = categories.indexOf(pA.category);
                 const catB = categories.indexOf(pB.category);
                 if (catA !== catB) return catA - catB;
@@ -1182,6 +1217,11 @@ export default function Step2View({
                               <LockIcon sx={{ fontSize: '0.75rem', color: 'primary.main', flexShrink: 0 }} />
                             </Tooltip>
                           )}
+                          {stretchSet.has(pid) && (
+                            <Tooltip title="Stretch goal — only completed if there's spare capacity">
+                              <StretchIcon sx={{ fontSize: '0.75rem', color: 'warning.main', flexShrink: 0 }} />
+                            </Tooltip>
+                          )}
                           <Typography
                             variant="caption"
                             color="text.secondary"
@@ -1279,6 +1319,12 @@ export default function Step2View({
                 const pA = pitchMap.get(a);
                 const pB = pitchMap.get(b);
                 if (!pA || !pB) return 0;
+                // Stretch pitches always sort after non-stretch within a list,
+                // before any other ordering — they're aspirational work, not
+                // committed deliverables.
+                const sA = stretchSet.has(a) ? 1 : 0;
+                const sB = stretchSet.has(b) ? 1 : 0;
+                if (sA !== sB) return sA - sB;
                 const catA = categories.indexOf(pA.category);
                 const catB = categories.indexOf(pB.category);
                 if (catA !== catB) return catA - catB;
@@ -1397,6 +1443,11 @@ export default function Step2View({
                           {lockedPitchSet.has(pid) && (
                             <Tooltip title="This project is locked">
                               <LockIcon sx={{ fontSize: '0.75rem', color: 'primary.main', flexShrink: 0 }} />
+                            </Tooltip>
+                          )}
+                          {stretchSet.has(pid) && (
+                            <Tooltip title="Stretch goal — only completed if there's spare capacity">
+                              <StretchIcon sx={{ fontSize: '0.75rem', color: 'warning.main', flexShrink: 0 }} />
                             </Tooltip>
                           )}
                           <Typography
@@ -1522,12 +1573,16 @@ interface Step2RowProps {
   committed?: boolean;
   isAdhoc?: boolean;
   onEdit?: () => void;
+  /** Reduce row opacity to signal this isn't a planned project (e.g. Up Next).
+   *  Doesn't disable interaction — pre-staging assignments on Up Next rows is
+   *  intentional, and the dim cue is enough to keep them visually secondary. */
+  dimmed?: boolean;
 }
 
 function Step2Row({
   pitch, assignment, devTLInterests, qmInterests, devTLNames, qmNames, devNames, devHasAnyData,
   onAssign, onRef, highlighted, devName, includeUXD, onToggleUXD,
-  locked, onToggleLock, lockedPersonSet, committed, isAdhoc, onEdit,
+  locked, onToggleLock, lockedPersonSet, committed, isAdhoc, onEdit, dimmed,
 }: Step2RowProps) {
   const [detailsAnchor, setDetailsAnchor] = useState<HTMLButtonElement | null>(null);
 
@@ -1556,6 +1611,7 @@ function Step2Row({
       sx={{
         bgcolor: highlighted ? 'rgba(25, 118, 210, 0.22)' : undefined,
         transition: highlighted ? 'none' : 'background-color 1.2s ease',
+        opacity: dimmed ? 0.55 : 1,
       }}
     >
       <TableCell>
@@ -1597,8 +1653,8 @@ function Step2Row({
               <InfoIcon sx={{ fontSize: '0.9rem', color: 'text.disabled' }} />
             </IconButton>
           </Tooltip>
-          {isAdhoc && onEdit && (
-            <Tooltip title="Edit this locally-added project">
+          {onEdit && (
+            <Tooltip title={isAdhoc ? 'Edit this locally-added project' : 'Edit status or team'}>
               <IconButton size="small" sx={{ p: 0.25, flexShrink: 0 }} onClick={onEdit}>
                 <EditOutlinedIcon sx={{ fontSize: '0.9rem', color: 'text.disabled' }} />
               </IconButton>
@@ -1607,6 +1663,27 @@ function Step2Row({
           {pitch.continuation && (
             <Tooltip title="Continuation project">
               <AutorenewIcon sx={{ fontSize: '0.9rem', color: 'text.disabled', flexShrink: 0 }} />
+            </Tooltip>
+          )}
+          {pitch.prjId && (
+            <Tooltip title={`Linked PRJ ${pitch.prjId}`}>
+              <Box
+                component="span"
+                sx={{
+                  fontSize: '0.6rem',
+                  fontWeight: 600,
+                  letterSpacing: 0.4,
+                  px: 0.5,
+                  ml: 0.25,
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  borderRadius: 0.5,
+                  color: 'text.secondary',
+                  flexShrink: 0,
+                }}
+              >
+                PRJ {pitch.prjId}
+              </Box>
             </Tooltip>
           )}
         </Box>

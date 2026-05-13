@@ -226,6 +226,7 @@ function getPitches() {
   const adhocIdx = PITCH_HEADERS.indexOf('adhoc');
   const committedIdx = PITCH_HEADERS.indexOf('committed');
   const categoryIdx = PITCH_HEADERS.indexOf('category');
+  const prjIdIdx = PITCH_HEADERS.indexOf('prjId');
   const data = rows.map(r => ({
     pitch_id: r[0],
     title: r[1],
@@ -235,6 +236,7 @@ function getPitches() {
     committed: isAdhocCellTrue(r[committedIdx]),
     category: r[categoryIdx],
     adhoc: isAdhocCellTrue(r[adhocIdx]),
+    prjId: prjIdIdx >= 0 && r[prjIdIdx] != null && r[prjIdIdx] !== '' ? String(r[prjIdIdx]) : '',
   }));
   return json200(data);
 }
@@ -1478,7 +1480,7 @@ function createEmcRecords(body) {
 
 // PITCHES sheet schema. Column order is load-bearing for getPitches /
 // refreshPitches / saveAdhocPitch — keep in sync.
-const PITCH_HEADERS = ['pitch_id', 'title', 'problem', 'ideaForSolution', 'whyNow', 'smartToolsFit', 'epicFit', 'maintenance', 'internCandidate', 'characteristics', 'success', 'committed', 'category', 'adhoc'];
+const PITCH_HEADERS = ['pitch_id', 'title', 'problem', 'ideaForSolution', 'whyNow', 'smartToolsFit', 'epicFit', 'maintenance', 'internCandidate', 'characteristics', 'success', 'committed', 'category', 'adhoc', 'prjId'];
 
 function isAdhocCellTrue(value) {
   return value === true || value === 'true' || value === 'TRUE';
@@ -1615,6 +1617,7 @@ function getAdhocPitches() {
   const titleIdx = PITCH_HEADERS.indexOf('title');
   const categoryIdx = PITCH_HEADERS.indexOf('category');
   const committedIdx = PITCH_HEADERS.indexOf('committed');
+  const prjIdIdx = PITCH_HEADERS.indexOf('prjId');
 
   const rows = sh.getRange(2, 1, lastRow - 1, PITCH_HEADERS.length).getValues();
   const data = rows
@@ -1625,6 +1628,7 @@ function getAdhocPitches() {
       category: r[categoryIdx],
       committed: isAdhocCellTrue(r[committedIdx]),
       adhoc: true,
+      prjId: prjIdIdx >= 0 && r[prjIdIdx] != null && r[prjIdIdx] !== '' ? String(r[prjIdIdx]) : '',
     }));
   return json200(data);
 }

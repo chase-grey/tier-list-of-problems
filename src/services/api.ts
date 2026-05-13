@@ -137,13 +137,14 @@ export async function fetchAdhocPitches(): Promise<Pitch[]> {
   try {
     const response = await fetch(`${GAS_PROXY}?route=adhoc-pitches`);
     if (!response.ok) return [];
-    const rows: Array<{ pitch_id: string; title: string; category: string; committed: boolean; adhoc: boolean }> = await response.json();
+    const rows: Array<{ pitch_id: string; title: string; category: string; committed: boolean; adhoc: boolean; prjId?: string }> = await response.json();
     return rows.map(r => ({
       id: r.pitch_id,
       title: r.title,
       category: r.category,
       adhoc: true,
       committed: !!r.committed,
+      ...(r.prjId ? { prjId: String(r.prjId) } : {}),
       details: { problem: '' },
     }));
   } catch (err) {
@@ -179,6 +180,7 @@ export async function refreshPitchesInSheet(pitches: Pitch[]): Promise<void> {
         maintenance: p.details.maintenance ?? '',
         internCandidate: p.details.internCandidate ?? false,
         committed: p.committed ?? false,
+        prjId: p.prjId ?? '',
       })),
   };
   try {
@@ -201,6 +203,7 @@ export async function saveAdhocPitch(pitch: Pitch): Promise<void> {
       title: pitch.title,
       category: pitch.category,
       committed: pitch.committed ?? false,
+      prjId: pitch.prjId ?? '',
     },
   };
   await gasJsonPost('save-adhoc-pitch', payload, { saved: 1 });

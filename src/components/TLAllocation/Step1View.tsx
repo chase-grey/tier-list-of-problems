@@ -1454,6 +1454,27 @@ function PitchRow({ assignment, pitch, devNames, devTLNames, onDevChange, onStat
               <AutorenewIcon sx={{ fontSize: '0.9rem', color: 'text.disabled', flexShrink: 0 }} />
             </Tooltip>
           )}
+          {pitch.prjId && (
+            <Tooltip title={`Linked PRJ ${pitch.prjId}`}>
+              <Box
+                component="span"
+                sx={{
+                  fontSize: '0.6rem',
+                  fontWeight: 600,
+                  letterSpacing: 0.4,
+                  px: 0.5,
+                  ml: 0.25,
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  borderRadius: 0.5,
+                  color: 'text.secondary',
+                  flexShrink: 0,
+                }}
+              >
+                PRJ {pitch.prjId}
+              </Box>
+            </Tooltip>
+          )}
         </Box>
         {detailsAnchor && (
           <Suspense fallback={null}>
