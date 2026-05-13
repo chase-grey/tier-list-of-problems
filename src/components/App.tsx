@@ -96,7 +96,22 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
     hasLock: false,
     canFinish: false,
     saveStatus: 'idle',
+    lockStatus: 'loading',
+    lockHolder: null,
+    lockLastHeartbeat: 0,
+    stageLabel: '',
   });
+
+  // Inline lock controls in the toolbar; both call into the TLAllocationView
+  // imperative handle. Returning `{acquired:false}` for a foreign-holder lets
+  // the toolbar surface the force-take confirmation dialog.
+  const handleAllocationTakeLock = async (force: boolean): Promise<{ acquired: boolean }> => {
+    const result = await tlViewRef.current?.triggerTakeLock(force);
+    return { acquired: result?.acquired ?? false };
+  };
+  const handleAllocationReleaseLock = async () => {
+    await tlViewRef.current?.triggerReleaseLock();
+  };
 
   // Save in place — calls TLAllocationView.triggerSave which catches
   // EditLockConflictError internally. Does NOT navigate to the summary view.
@@ -1111,6 +1126,12 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
           allocationSaveStatus={allocationStatus.saveStatus}
           allocationHasLock={allocationStatus.hasLock}
           allocationCanFinish={allocationStatus.canFinish}
+          allocationLockStatus={isTLStage && state.voterRole === 'dev TL' ? allocationStatus.lockStatus : undefined}
+          allocationLockHolder={allocationStatus.lockHolder}
+          allocationLockLastHeartbeat={allocationStatus.lockLastHeartbeat}
+          allocationLockStageLabel={allocationStatus.stageLabel}
+          onAllocationTakeLock={isTLStage && state.voterRole === 'dev TL' ? handleAllocationTakeLock : undefined}
+          onAllocationReleaseLock={isTLStage && state.voterRole === 'dev TL' ? handleAllocationReleaseLock : undefined}
           onAllocationFinish={isTLStage && state.voterRole === 'dev TL' ? handleAllocationFinish : undefined}
           onAllocationRerun={isTLStage && state.voterRole === 'dev TL' ? () => tlViewRef.current?.triggerRerunAlgorithm() : undefined}
           allocationSaveState={allocationSaveState}

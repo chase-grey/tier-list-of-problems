@@ -33,12 +33,27 @@ export interface TLAllocationViewHandle {
   isReadyToFinish: () => boolean;
   /** True iff the caller currently holds the stage edit lock. */
   hasLock: () => boolean;
+  /**
+   * Attempt to acquire the edit lock. `force=true` overrides a fresh foreign
+   * holder; their unsaved work is lost (the toolbar dialog disclaims this).
+   */
+  triggerTakeLock: (force?: boolean) => Promise<{ acquired: boolean }>;
+  /** Release the edit lock if currently the holder. No-op otherwise. */
+  triggerReleaseLock: () => Promise<void>;
 }
 
 export interface AllocationStatus {
   hasLock: boolean;
   canFinish: boolean;
   saveStatus: 'idle' | 'saving' | 'saved' | 'dirty';
+  /** Full lock state machine — used by the TopBar lock control. */
+  lockStatus: 'loading' | 'editor' | 'viewer' | 'idle' | 'lost';
+  /** Current lock-holder's full name (null when no one holds the lock). */
+  lockHolder: string | null;
+  /** Lock-holder's last heartbeat timestamp (ms) — drives the "active X ago" copy. */
+  lockLastHeartbeat: number;
+  /** "Stage 2" or "Stage 4" — for labels in the toolbar control. */
+  stageLabel: string;
 }
 
 interface TLAllocationViewProps {
@@ -1052,19 +1067,28 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
     });
   };
 
-  // Push status up to App.tsx on every change. The watched values are:
-  //   editLock.status (hasLock flips when editor/viewer changes)
-  //   selectedPitches + step2Assignments (canFinish flips when all roles fill)
-  //   saveStatus (declared near the top so mutation handlers can flip 'dirty').
+  // Push status up to App.tsx on every change so TopBar can render the
+  // Save/Finish/Take-lock controls. The watched values are:
+  //   editLock.status / holder / lastHeartbeat — drive the toolbar lock control
+  //   selectedPitches + step2Assignments → canFinish (all team roles filled)
+  //   saveStatus (declared near the top so mutation handlers can flip 'dirty')
   const hasLock = editLock.status === 'editor';
   const canFinish = isReadyToFinish();
   useEffect(() => {
-    onStatusChange?.({ hasLock, canFinish, saveStatus });
+    onStatusChange?.({
+      hasLock,
+      canFinish,
+      saveStatus,
+      lockStatus: editLock.status,
+      lockHolder: editLock.lock.holder,
+      lockLastHeartbeat: editLock.lock.lastHeartbeat,
+      stageLabel,
+    });
     // Intentionally don't depend on onStatusChange itself — parents pass a
     // fresh function each render and we'd loop. The values above are the
     // only meaningful triggers.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasLock, canFinish, saveStatus]);
+  }, [hasLock, canFinish, saveStatus, editLock.status, editLock.lock.holder, editLock.lock.lastHeartbeat, stageLabel]);
 
   // Save handler that integrates saveStatus tracking — declared as a const
   // here so the imperative handle can expose it and TopBar can call it
@@ -1089,6 +1113,13 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
     triggerRerunAlgorithm: handleRerunAlgorithm,
     isReadyToFinish,
     hasLock: () => editLock.status === 'editor',
+    triggerTakeLock: async (force?: boolean) => {
+      const result = await editLock.take(force ?? false);
+      return { acquired: result.acquired };
+    },
+    triggerReleaseLock: async () => {
+      await editLock.release();
+    },
   }));
 
   if (loading || hasLoadError) {

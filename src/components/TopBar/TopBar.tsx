@@ -18,6 +18,7 @@ import {
 import { SettingsMenu } from '../SettingsMenu/SettingsMenu';
 import { FinishButton } from './FinishButton';
 import { SaveButton, type SaveStatusFlag } from './SaveButton';
+import LockControl, { type LockStatus } from './LockControl';
 import type { Capacity } from '../../types/models';
 
 
@@ -76,6 +77,14 @@ interface TopBarProps {
   allocationCanFinish?: boolean;
   /** Whether the caller holds the stage edit lock — disables both Save and Finish when false. */
   allocationHasLock?: boolean;
+  /** Full lock-state machine for the inline LockControl. Omit to hide the control. */
+  allocationLockStatus?: LockStatus;
+  allocationLockHolder?: string | null;
+  allocationLockLastHeartbeat?: number;
+  allocationLockStageLabel?: string;
+  /** Take the edit lock; resolves with `acquired:false` if a foreign holder is fresh. */
+  onAllocationTakeLock?: (force: boolean) => Promise<{ acquired: boolean }>;
+  onAllocationReleaseLock?: () => Promise<void>;
   onAllocationFinish?: () => void;
   allocationSaveState?: 'idle' | 'waiting' | 'saving' | 'done';
   allocationShowResults?: boolean;
@@ -124,6 +133,12 @@ export const TopBar = ({
   allocationSaveStatus = 'idle',
   allocationCanFinish = false,
   allocationHasLock = false,
+  allocationLockStatus,
+  allocationLockHolder = null,
+  allocationLockLastHeartbeat = 0,
+  allocationLockStageLabel = '',
+  onAllocationTakeLock,
+  onAllocationReleaseLock,
   onAllocationFinish,
   allocationSaveState = 'idle',
   allocationShowResults = false,
@@ -217,6 +232,16 @@ export const TopBar = ({
               >
                 View summary
               </Button>
+            )}
+            {allocationLockStatus && onAllocationTakeLock && onAllocationReleaseLock && !allocationShowResults && (
+              <LockControl
+                status={allocationLockStatus}
+                holder={allocationLockHolder}
+                lastHeartbeat={allocationLockLastHeartbeat}
+                stageLabel={allocationLockStageLabel}
+                onTake={onAllocationTakeLock}
+                onRelease={onAllocationReleaseLock}
+              />
             )}
             {onAllocationSave && (
               <SaveButton
