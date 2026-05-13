@@ -1380,9 +1380,12 @@ function PitchRow({ assignment, pitch, devNames, devTLNames, onDevChange, onStat
   const textColor = highlight === 'cut' ? 'text.disabled' : 'text.primary';
 
   // Sort devs: best interest first; key absent = 5 (no data, goes last).
-  // Dev TLs go below a separator at the bottom of the list.
+  // Dev TLs go below a separator at the bottom of the list. Adhoc pitches have
+  // no interest data, so fall back to alphabetical order.
   const devTLSet = new Set(devTLNames);
-  const sortedAll = [...devNames].sort((a, b) => (pitch.devInterest[a] ?? 5) - (pitch.devInterest[b] ?? 5));
+  const sortedAll = isAdhoc
+    ? [...devNames].sort((a, b) => a.localeCompare(b))
+    : [...devNames].sort((a, b) => (pitch.devInterest[a] ?? 5) - (pitch.devInterest[b] ?? 5));
   const sortedDevs = sortedAll.filter(d => !devTLSet.has(d));
   const sortedTLDevs = sortedAll.filter(d => devTLSet.has(d));
 
@@ -1512,10 +1515,12 @@ function PitchRow({ assignment, pitch, devNames, devTLNames, onDevChange, onStat
                         <LockIcon sx={{ fontSize: '0.85rem', color: 'primary.main', flexShrink: 0 }} />
                       </Tooltip>
                     )}
-                    <InterestDot
-                      level={pitch.devInterest[val as string] ?? null}
-                      noData={!((val as string) in pitch.devInterest)}
-                    />
+                    {!isAdhoc && (
+                      <InterestDot
+                        level={pitch.devInterest[val as string] ?? null}
+                        noData={!((val as string) in pitch.devInterest)}
+                      />
+                    )}
                   </Box>
                 );
               }}
@@ -1544,7 +1549,7 @@ function PitchRow({ assignment, pitch, devNames, devTLNames, onDevChange, onStat
                           <StarIcon sx={{ fontSize: '0.85rem', color: authorGold ? 'success.main' : 'text.secondary', flexShrink: 0 }} />
                         </Tooltip>
                       )}
-                      <InterestChip level={interestLevel} noData={!(dev in pitch.devInterest)} />
+                      {!isAdhoc && <InterestChip level={interestLevel} noData={!(dev in pitch.devInterest)} />}
                     </Box>
                   </MenuItem>,
                 ];

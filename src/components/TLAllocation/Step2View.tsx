@@ -38,12 +38,19 @@ const DetailsBubble = lazy(() => import('../VotingBoard/PitchCard/DetailsBubble'
 
 interface Step2ViewProps {
   selectedPitches: AllocationPitch[];
+  /** Pitches with status='next-up' — rendered as a secondary sub-section under
+   *  each category so a TL can promote one mid-staffing. Workload stats / the
+   *  right sidebar continue to scope to selectedPitches only. */
+  nextUpPitches?: AllocationPitch[];
   assignments: StaffingAssignment[];
   phase2Interests: Phase2Interest[];
   config: AllocationConfig;
   devByPitchId: Record<string, string | null>;
   devNames: string[];
   onAssign: (pitchId: string, field: 'devTL' | 'qm' | 'pqa1', value: string | null) => void;
+  /** Move a pitch between selected / next-up / cut. Wired to the row's pencil
+   *  edit dialog. Omitted when status changes shouldn't be allowed. */
+  onStatusChange?: (pitchId: string, newStatus: 'selected' | 'next-up' | 'cut') => void;
   onFinalize?: () => void;
   includeUXD: Record<string, boolean>;
   onToggleUXD: (pitchId: string) => void;
@@ -57,9 +64,10 @@ interface Step2ViewProps {
   onCapacityOverride: (payload: CapacityOverridePayload) => Promise<void>;
   /** Opens the parent's add-pitch dialog. Hides the "Add project" button when omitted. */
   onAdhocAdd?: () => void;
-  /** Opens the parent's add-pitch dialog in edit mode for an existing adhoc pitch. */
+  /** Opens the parent's edit dialog for any pitch (adhoc and voting-imported).
+   *  The pencil edit icon is shown on every row when this is provided. */
   onAdhocEdit?: (pitchId: string) => void;
-  /** IDs of pitches that were added locally — pencil edit icon is shown for these. */
+  /** IDs of pitches that were added locally. */
   adhocPitchIds?: ReadonlySet<string>;
 }
 
@@ -181,7 +189,7 @@ function workloadCountColor(count: number, ideal: number): string {
 }
 
 export default function Step2View({
-  selectedPitches, assignments, phase2Interests, config, onAssign, devByPitchId, devNames,
+  selectedPitches, nextUpPitches, assignments, phase2Interests, config, onAssign, onStatusChange, devByPitchId, devNames,
   includeUXD, onToggleUXD,
   lockedPitchIds, lockedPersonNames, onTogglePitchLock, onTogglePersonLock,
   voterName, onCapacityOverride, onAdhocAdd, onAdhocEdit, adhocPitchIds,
@@ -473,6 +481,28 @@ export default function Step2View({
     return map;
   }, [selectedPitches]);
 
+  // Up Next pitches grouped + sorted by team priority. Rendered as a secondary
+  // sub-section under each category so the TL can see what's queued and
+  // promote one mid-staffing if a planned project falls through.
+  const nextUpByCategory = useMemo(() => {
+    const map: Record<string, AllocationPitch[]> = {};
+    (nextUpPitches ?? []).forEach(p => {
+      if (!map[p.category]) map[p.category] = [];
+      map[p.category].push(p);
+    });
+    Object.values(map).forEach(arr => arr.sort((a, b) => a.teamPriorityScore - b.teamPriorityScore));
+    return map;
+  }, [nextUpPitches]);
+
+  // Per-category sub-section collapse state — defaults to Planned open,
+  // Up Next collapsed (the queue is reference info, not the primary task).
+  const [planSubOpen, setPlanSubOpen] = useState<Record<string, boolean>>({});
+  const [nextUpSubOpen, setNextUpSubOpen] = useState<Record<string, boolean>>({});
+  const togglePlanSub = (cat: string) => setPlanSubOpen(p => ({ ...p, [cat]: !(p[cat] ?? true) }));
+  const toggleNextUpSub = (cat: string) => setNextUpSubOpen(p => ({ ...p, [cat]: !(p[cat] ?? false) }));
+  const isPlanOpen = (cat: string) => planSubOpen[cat] ?? true;
+  const isNextUpOpen = (cat: string) => nextUpSubOpen[cat] ?? false;
+
   const [categoryCollapsed, setCategoryCollapsed] = useState<Record<string, boolean>>({});
   const [hideLockedPitches, setHideLockedPitches] = useState(false);
 
@@ -567,8 +597,18 @@ export default function Step2View({
     const allEntries = [...tlEntries, ...qmEntries, ...pqa1Entries];
 
     // ── Workload Balance ────────────────────────────────────────────────
+    // Dev TLs assigned as a dev (Stage 2 dev role) on a pitch carry the heavier
+    // workload of that role, so each such pitch counts as 2 toward their TL
+    // workload count. Pitches where they're TL only count as 1. Other roles
+    // (QM, PQA1) use a plain assignment count.
     const countFor = (names: string[], field: 'devTL' | 'qm' | 'pqa1') =>
-      names.map(n => ({ name: n, count: assignments.filter(a => a[field] === n).length }));
+      names.map(n => {
+        const primary = assignments.filter(a => a[field] === n).length;
+        const devBonus = field === 'devTL'
+          ? 2 * assignments.filter(a => (devByPitchId[a.pitchId] ?? null) === n && a.devTL !== n).length
+          : 0;
+        return { name: n, count: primary + devBonus };
+      });
 
     const tlCounts = countFor(config.devTLNames.filter(n => !unavailSet.has(n)), 'devTL');
     const qmCounts = countFor(config.qmNames.filter(n => !unavailSet.has(n)), 'qm');
@@ -1051,7 +1091,12 @@ export default function Step2View({
               const pi = interests.find(p => p.personName === name);
               const personHasNoData = !pi || Object.keys(pi.interestByPitchId).length === 0;
               const roleIdeal = role === 'devTL' ? step2Stats.tlIdeal : step2Stats.qmIdeal;
-              const workloadColor = workloadCountColor(assignedPitchIds.length, roleIdeal);
+              // Use effective workload count from step2Stats so a Dev TL also
+              // doing dev work has each "as dev" pitch counted ×2. QMs and
+              // pitch-list rendering stay on the raw primary-role list.
+              const workloadCount = (role === 'devTL' ? step2Stats.tlCounts : step2Stats.qmCounts)
+                .find(c => c.name === name)?.count ?? assignedPitchIds.length;
+              const workloadColor = workloadCountColor(workloadCount, roleIdeal);
               const workloadOff = workloadColor !== 'text.secondary';
 
               return (
@@ -1075,7 +1120,7 @@ export default function Step2View({
                       : <CollapseIcon sx={{ fontSize: '0.9rem', color: 'text.secondary', flexShrink: 0 }} />
                     }
                     <Tooltip
-                      title={workloadOff ? `${assignedPitchIds.length} projects (target ~${fmtIdeal(roleIdeal)})` : ''}
+                      title={workloadOff ? `${workloadCount} projects (target ~${fmtIdeal(roleIdeal)})` : ''}
                       placement="top"
                       disableHoverListener={!workloadOff}
                     >
@@ -1103,7 +1148,7 @@ export default function Step2View({
                       </IconButton>
                     </Tooltip>
                     <Typography variant="caption" color="text.secondary" sx={{ ml: 'auto' }}>
-                      {assignedPitchIds.length}/{fmtIdeal(roleIdeal)}
+                      {workloadCount}/{fmtIdeal(roleIdeal)}
                     </Typography>
                   </Box>
                   <Collapse in={!personCollapsed[name]}>
@@ -1180,7 +1225,7 @@ export default function Step2View({
                         {otherRolePitches.map(({ role: secRole, label, pitchIds }) => (
                           <Box key={secRole} sx={{ ml: 1 }}>
                             <Typography variant="caption" color="text.disabled" sx={{ display: 'block', ml: 1.5, mt: 0.5, mb: 0.25, fontSize: '0.6rem', letterSpacing: 0.5, textTransform: 'uppercase' }}>
-                              {label}
+                              {label}{primaryRole === 'devTL' && secRole === 'dev' ? ' · counts ×2' : ''}
                             </Typography>
                             {pitchIds.map(pid => renderPitchRow(pid, secRole))}
                           </Box>
@@ -1607,6 +1652,7 @@ function Step2Row({
               author={author}
               lockedPersonSet={lockedPersonSet}
               disabled={committed}
+              hideInterest={isAdhoc}
             />
           </Box>
           {devTLAuthorWarning && (
@@ -1635,6 +1681,7 @@ function Step2Row({
               author={author}
               lockedPersonSet={lockedPersonSet}
               disabled={committed}
+              hideInterest={isAdhoc}
             />
           </Box>
           {qmAuthorWarning && (
@@ -1664,6 +1711,7 @@ function Step2Row({
               author={author}
               lockedPersonSet={lockedPersonSet}
               disabled={committed}
+              hideInterest={isAdhoc}
             />
           </Box>
           {pqa1AuthorWarning && (
@@ -1691,14 +1739,17 @@ interface Pqa1DropdownProps {
   author?: string | null;
   lockedPersonSet: ReadonlySet<string>;
   disabled?: boolean;
+  /** Adhoc pitches have no interest data — suppress dots/chips and sort alphabetically instead of by interest. */
+  hideInterest?: boolean;
 }
 
-function Pqa1Dropdown({ value, devNames, devTLNames = [], devInterest, devHasAnyData, excludeDev, selectId, onChange, author, lockedPersonSet, disabled }: Pqa1DropdownProps) {
+function Pqa1Dropdown({ value, devNames, devTLNames = [], devInterest, devHasAnyData, excludeDev, selectId, onChange, author, lockedPersonSet, disabled, hideInterest }: Pqa1DropdownProps) {
   const exclusive = useExclusiveSelect(selectId);
   const devTLSet = new Set(devTLNames);
   const sortedAll = devNames
     .filter(d => d !== excludeDev)
     .sort((a, b) => {
+      if (hideInterest) return a.localeCompare(b);
       const tA = (devInterest[a] ?? 5) as number;
       const tB = (devInterest[b] ?? 5) as number;
       return tA - tB;
@@ -1733,7 +1784,7 @@ function Pqa1Dropdown({ value, devNames, devTLNames = [], devInterest, devHasAny
                 <LockIcon sx={{ fontSize: '0.85rem', color: 'primary.main', flexShrink: 0 }} />
               </Tooltip>
             )}
-            <InterestDot level={level} noData={noData} />
+            {!hideInterest && <InterestDot level={level} noData={noData} />}
           </Box>
         );
       }}
@@ -1756,10 +1807,12 @@ function Pqa1Dropdown({ value, devNames, devTLNames = [], devInterest, devHasAny
                   <StarIcon sx={{ fontSize: '0.85rem', color: authorGold ? 'success.main' : 'text.secondary', flexShrink: 0 }} />
                 </Tooltip>
               )}
-              <InterestChip
-                level={interestLevel}
-                noData={!devHasAnyData.has(dev)}
-              />
+              {!hideInterest && (
+                <InterestChip
+                  level={interestLevel}
+                  noData={!devHasAnyData.has(dev)}
+                />
+              )}
             </Box>
           </MenuItem>,
         ];
@@ -1781,22 +1834,29 @@ interface AssignmentDropdownProps {
   author?: string | null;
   lockedPersonSet: ReadonlySet<string>;
   disabled?: boolean;
+  /** Adhoc pitches have no interest data — suppress dots/chips and sort alphabetically. */
+  hideInterest?: boolean;
 }
 
-function AssignmentDropdown({ value, allNames, options, pitchId, selectId, onChange, previousPerson, author, lockedPersonSet, disabled }: AssignmentDropdownProps) {
+function AssignmentDropdown({ value, allNames, options, pitchId, selectId, onChange, previousPerson, author, lockedPersonSet, disabled, hideInterest }: AssignmentDropdownProps) {
   const interestMap = new Map(options.map(o => [o.personName, o]));
   const exclusive = useExclusiveSelect(selectId);
 
-  // Interest submitters first (sorted by level), then remaining names alphabetically
-  const withInterest = [...options].sort((a, b) => {
-    const tA = a.interestByPitchId[pitchId] ?? 5;
-    const tB = b.interestByPitchId[pitchId] ?? 5;
-    return (tA as number) - (tB as number);
-  });
-  const withoutInterest = allNames
-    .filter(n => !interestMap.has(n))
-    .sort((a, b) => a.localeCompare(b));
-  const allEntries = [...withInterest.map(o => o.personName), ...withoutInterest];
+  // Interest submitters first (sorted by level), then remaining names alphabetically.
+  // For adhoc pitches there's no per-pitch interest, so just sort everyone alphabetically.
+  const allEntries = hideInterest
+    ? [...allNames].sort((a, b) => a.localeCompare(b))
+    : (() => {
+        const withInterest = [...options].sort((a, b) => {
+          const tA = a.interestByPitchId[pitchId] ?? 5;
+          const tB = b.interestByPitchId[pitchId] ?? 5;
+          return (tA as number) - (tB as number);
+        });
+        const withoutInterest = allNames
+          .filter(n => !interestMap.has(n))
+          .sort((a, b) => a.localeCompare(b));
+        return [...withInterest.map(o => o.personName), ...withoutInterest];
+      })();
 
   return (
     <Select
@@ -1825,7 +1885,7 @@ function AssignmentDropdown({ value, allNames, options, pitchId, selectId, onCha
                 <LockIcon sx={{ fontSize: '0.85rem', color: 'primary.main', flexShrink: 0 }} />
               </Tooltip>
             )}
-            <InterestDot level={level} noData={noData} />
+            {!hideInterest && <InterestDot level={level} noData={noData} />}
           </Box>
         );
       }}
@@ -1854,7 +1914,7 @@ function AssignmentDropdown({ value, allNames, options, pitchId, selectId, onCha
                   <StarIcon sx={{ fontSize: '0.85rem', color: authorGold ? 'success.main' : 'text.secondary', flexShrink: 0 }} />
                 </Tooltip>
               )}
-              <InterestChip level={level} noData={noData} />
+              {!hideInterest && <InterestChip level={level} noData={noData} />}
             </Box>
           </MenuItem>
         );
