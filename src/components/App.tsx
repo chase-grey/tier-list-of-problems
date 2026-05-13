@@ -1337,12 +1337,15 @@ const App: React.FC = () => {
           // Same step list TLAllocationView shows on first paint, so polling
           // resolving → AppContent mounting → TLAllocationView's own loading
           // screen looks like one continuous screen rather than two.
-          <LoadingScreen steps={[
-            { label: 'Loading polling state', status: 'loading' },
-            { label: 'Loading pitches',       status: 'pending' },
-            { label: 'Loading vote data',     status: 'pending' },
-            { label: 'Loading team config',   status: 'pending' },
-          ]} />
+          <LoadingScreen
+            topReserve={48}
+            steps={[
+              { label: 'Loading polling state', status: 'loading' },
+              { label: 'Loading pitches',       status: 'pending' },
+              { label: 'Loading vote data',     status: 'pending' },
+              { label: 'Loading team config',   status: 'pending' },
+            ]}
+          />
         )}
       </SnackbarProvider>
     </ThemeProvider>

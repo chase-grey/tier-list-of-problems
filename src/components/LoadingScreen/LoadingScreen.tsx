@@ -14,6 +14,12 @@ export interface LoadingStep {
 interface LoadingScreenProps {
   steps: LoadingStep[];
   onRetry?: () => void;
+  /**
+   * Pixels of space to reserve at the top of the screen — set to the TopBar
+   * height (48) when rendering before the TopBar mounts, so the centered
+   * content stays put once the TopBar appears.
+   */
+  topReserve?: number;
 }
 
 const StepIcon: React.FC<{ status: StepStatus }> = ({ status }) => {
@@ -23,12 +29,12 @@ const StepIcon: React.FC<{ status: StepStatus }> = ({ status }) => {
   return <Box sx={{ width: 20, height: 20, borderRadius: '50%', border: '2px solid', borderColor: 'text.disabled' }} />;
 };
 
-export const LoadingScreen: React.FC<LoadingScreenProps> = ({ steps, onRetry }) => {
+export const LoadingScreen: React.FC<LoadingScreenProps> = ({ steps, onRetry, topReserve = 0 }) => {
   const hasError = steps.some(s => s.status === 'error');
   const errorStep = steps.find(s => s.status === 'error');
 
   return (
-    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', flexDirection: 'column', gap: 2 }}>
+    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', flexDirection: 'column', gap: 2, pt: `${topReserve}px`, boxSizing: 'border-box' }}>
       <Typography variant="h6" color="text.secondary">
         {hasError ? 'Failed to load' : 'Loading…'}
       </Typography>
