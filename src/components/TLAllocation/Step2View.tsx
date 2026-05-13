@@ -303,7 +303,14 @@ export default function Step2View({
   // ── Sidebar drag/drop ───────────────────────────────────────────────────────
   // Direct-DOM updates during drag — no React re-renders on every dragover,
   // and a custom ghost that bypasses the browser's translucent default image.
+  //
+  // SidebarDragRole = the three roles that can be reassigned in Stage 4 by
+  // drag-and-drop. `dev` is read-only here (dev assignment happens in Stage 2)
+  // so it's outside this union; it surfaces in sidebar entries as a non-draggable
+  // "As Dev" sub-section so a TL can see who has dev work in addition to TL/QM/
+  // PQA1 work.
   type SidebarDragRole = 'devTL' | 'qm' | 'pqa1';
+  type SidebarRoleView = SidebarDragRole | 'dev';
   const sidebarDragRef = useRef<{ pitchId: string; role: SidebarDragRole; fromPerson: string } | null>(null);
   const sidebarDropElRef = useRef<HTMLElement | null>(null);
   const sidebarSourceElRef = useRef<HTMLElement | null>(null);
@@ -1006,23 +1013,40 @@ export default function Step2View({
                 if (catA !== catB) return catA - catB;
                 return selectedPitches.indexOf(pA) - selectedPitches.indexOf(pB);
               });
-              const assignedPitchIds = sortPitchIds(
-                assignments
-                  .filter(a => (role === 'devTL' ? a.devTL === name : a.qm === name) && pitchMap.has(a.pitchId))
-                  .map(a => a.pitchId),
+              const primaryRole: SidebarDragRole = role;
+              const isPrimary = (a: StaffingAssignment): boolean => (
+                primaryRole === 'devTL' ? a.devTL === name : a.qm === name
               );
-              // For TLs only: pitches where they're the PQA1 reviewer but NOT also
-              // the dev TL (those are already in assignedPitchIds — show once).
-              // Rendered below assignedPitchIds with a separator so it's clear the
-              // role is PQA1, not TL. Workload count + warnings stay scoped to TL
-              // pitches only since PQA1 has its own pool below.
-              const pqa1OnlyPitchIds = role === 'devTL'
-                ? sortPitchIds(
+              const assignedPitchIds = sortPitchIds(
+                assignments.filter(a => isPrimary(a) && pitchMap.has(a.pitchId)).map(a => a.pitchId),
+              );
+              // Every other role this person fills on selected pitches. Surfaced
+              // beneath their primary-role pitches with a sub-section divider so
+              // the TL using the screen can see a person's full responsibilities
+              // (e.g. a dev TL who's also assigned as a dev or PQA1 reviewer on
+              // some pitch shows up here, instead of being invisible until you
+              // scroll to a different section). Workload count + warnings stay
+              // scoped to primary-role pitches; the secondary roles are
+              // informational.
+              type RoleEntry = { role: SidebarRoleView; label: string; check: (a: StaffingAssignment) => boolean };
+              const allRoleDefs: RoleEntry[] = [
+                { role: 'devTL', label: 'As Dev TL', check: (a) => a.devTL === name },
+                { role: 'qm',    label: 'As QM',     check: (a) => a.qm === name },
+                { role: 'dev',   label: 'As Dev',    check: (a) => (devByPitchId[a.pitchId] ?? null) === name },
+                { role: 'pqa1',  label: 'As PQA1',   check: (a) => a.pqa1 === name },
+              ];
+              const otherRolePitches = allRoleDefs
+                .filter(d => d.role !== primaryRole)
+                .map(({ role: r, label, check }) => ({
+                  role: r,
+                  label,
+                  pitchIds: sortPitchIds(
                     assignments
-                      .filter(a => a.pqa1 === name && a.devTL !== name && pitchMap.has(a.pitchId))
+                      .filter(a => check(a) && !isPrimary(a) && pitchMap.has(a.pitchId))
                       .map(a => a.pitchId),
-                  )
-                : [];
+                  ),
+                }))
+                .filter(entry => entry.pitchIds.length > 0);
               const hasHigh = hasHighInterest(name);
               const pi = interests.find(p => p.personName === name);
               const personHasNoData = !pi || Object.keys(pi.interestByPitchId).length === 0;
@@ -1084,20 +1108,28 @@ export default function Step2View({
                   </Box>
                   <Collapse in={!personCollapsed[name]}>
                   {(() => {
-                    const renderPitchRow = (pid: string, asPqa1: boolean) => {
+                    const renderPitchRow = (pid: string, currentRole: SidebarRoleView) => {
                       const p = pitchMap.get(pid);
                       if (!p) return null;
                       const shortTitle = p.title.replace(/^[^/]+\/\s*/, '');
                       const interestLevel = pi?.interestByPitchId[pid] ?? null;
                       const noData = personHasNoData;
-                      const dragRole: SidebarDragRole = asPqa1 ? 'pqa1' : role;
+                      // 'dev' rows are read-only (dev assignment lives in Stage 2);
+                      // sidebarPitchDragProps's role only accepts SidebarDragRole
+                      // values, so dev rows skip the drag wrappers entirely.
+                      const dragProps = currentRole === 'dev'
+                        ? {}
+                        : sidebarPitchDragProps(pid, currentRole, name, shortTitle);
+                      const dragStyle = currentRole === 'dev'
+                        ? { cursor: 'default' as const, userSelect: 'none' as const }
+                        : sidebarPitchDragStyle(pid, name);
                       return (
                         <Box
-                          key={`${asPqa1 ? 'pqa1-' : ''}${pid}`}
-                          {...sidebarPitchDragProps(pid, dragRole, name, shortTitle)}
+                          key={`${currentRole}-${pid}`}
+                          {...dragProps}
                           sx={{
                             display: 'flex', alignItems: 'center', gap: 0.5, ml: 1.5, mt: 0.25,
-                            ...sidebarPitchDragStyle(pid, name),
+                            ...dragStyle,
                           }}
                         >
                           {lockedPitchSet.has(pid) && (
@@ -1116,9 +1148,12 @@ export default function Step2View({
                           </Typography>
                           <DevPitchInfo pitch={p} />
                           {p.continuation && (() => {
-                            const wasHere = asPqa1
-                              ? p.previousPQA1 === name
-                              : (role === 'devTL' ? p.previousTL === name : p.previousQM === name);
+                            const wasHere =
+                              currentRole === 'devTL' ? p.previousTL === name :
+                              currentRole === 'qm'    ? p.previousQM === name :
+                              currentRole === 'pqa1'  ? p.previousPQA1 === name :
+                              currentRole === 'dev'   ? p.previousDev === name :
+                              false;
                             const gold = wasHere && (interestLevel === 1 || interestLevel === 2);
                             return (
                               <Tooltip title={gold ? 'Continuation project — was on this team before and has high interest' : 'Continuation project'}>
@@ -1141,19 +1176,19 @@ export default function Step2View({
                     };
                     return (
                       <>
-                        {assignedPitchIds.map(pid => renderPitchRow(pid, false))}
-                        {pqa1OnlyPitchIds.length > 0 && (
-                          <>
+                        {assignedPitchIds.map(pid => renderPitchRow(pid, primaryRole))}
+                        {otherRolePitches.map(({ role: secRole, label, pitchIds }) => (
+                          <Box key={secRole}>
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, ml: 1.5, mt: 0.5, mb: 0.25 }}>
                               <Box sx={{ flex: 1, height: '1px', bgcolor: 'divider' }} />
                               <Typography variant="caption" color="text.disabled" sx={{ fontSize: '0.6rem', letterSpacing: 0.5, textTransform: 'uppercase' }}>
-                                As PQA1
+                                {label}
                               </Typography>
                               <Box sx={{ flex: 1, height: '1px', bgcolor: 'divider' }} />
                             </Box>
-                            {pqa1OnlyPitchIds.map(pid => renderPitchRow(pid, true))}
-                          </>
-                        )}
+                            {pitchIds.map(pid => renderPitchRow(pid, secRole))}
+                          </Box>
+                        ))}
                       </>
                     );
                   })()}
@@ -1199,18 +1234,40 @@ export default function Step2View({
           </Box>
           <Collapse in={!sidebarCollapsed['PQA1 Reviewers']}>
             {availableDevNames.map(name => {
-              const assignedPitchIds = assignments
-                .filter(a => a.pqa1 === name && pitchMap.has(a.pitchId))
-                .map(a => a.pitchId)
-                .sort((a, b) => {
-                  const pA = pitchMap.get(a);
-                  const pB = pitchMap.get(b);
-                  if (!pA || !pB) return 0;
-                  const catA = categories.indexOf(pA.category);
-                  const catB = categories.indexOf(pB.category);
-                  if (catA !== catB) return catA - catB;
-                  return selectedPitches.indexOf(pA) - selectedPitches.indexOf(pB);
-                });
+              const sortPitchIds = (ids: string[]): string[] => ids.slice().sort((a, b) => {
+                const pA = pitchMap.get(a);
+                const pB = pitchMap.get(b);
+                if (!pA || !pB) return 0;
+                const catA = categories.indexOf(pA.category);
+                const catB = categories.indexOf(pB.category);
+                if (catA !== catB) return catA - catB;
+                return selectedPitches.indexOf(pA) - selectedPitches.indexOf(pB);
+              });
+              // Primary role for this section is PQA1 reviewer. Workload count
+              // tracks PQA1 work (the role being allocated in Stage 4); dev work
+              // from Stage 2 surfaces in an "As Dev" sub-section beneath so the
+              // TL can see this dev's total commitments without scrolling.
+              const isPrimary = (a: StaffingAssignment): boolean => a.pqa1 === name;
+              const assignedPitchIds = sortPitchIds(
+                assignments.filter(a => isPrimary(a) && pitchMap.has(a.pitchId)).map(a => a.pitchId),
+              );
+              type RoleEntry = { role: SidebarRoleView; label: string; check: (a: StaffingAssignment) => boolean };
+              const allRoleDefs: RoleEntry[] = [
+                { role: 'devTL', label: 'As Dev TL', check: (a) => a.devTL === name },
+                { role: 'qm',    label: 'As QM',     check: (a) => a.qm === name },
+                { role: 'dev',   label: 'As Dev',    check: (a) => (devByPitchId[a.pitchId] ?? null) === name },
+              ];
+              const otherRolePitches = allRoleDefs
+                .map(({ role: r, label, check }) => ({
+                  role: r,
+                  label,
+                  pitchIds: sortPitchIds(
+                    assignments
+                      .filter(a => check(a) && !isPrimary(a) && pitchMap.has(a.pitchId))
+                      .map(a => a.pitchId),
+                  ),
+                }))
+                .filter(entry => entry.pitchIds.length > 0);
               const hasHigh = hasHighInterestPqa1(name);
               const personalIdeal = step2Stats.pqa1IdealByName[name] ?? step2Stats.pqa1Ideal;
               const workloadColor = workloadCountColor(assignedPitchIds.length, personalIdeal);
@@ -1269,57 +1326,93 @@ export default function Step2View({
                     </Typography>
                   </Box>
                   <Collapse in={!personCollapsed[name]}>
-                  {assignedPitchIds.map(pid => {
-                    const p = pitchMap.get(pid);
-                    if (!p) return null;
-                    const shortTitle = p.title.replace(/^[^/]+\/\s*/, '');
-                    const interestLevel = p.devInterest[name] ?? null;
-                    const noData = !devHasAnyData.has(name);
-                    return (
-                      <Box
-                        key={pid}
-                        {...sidebarPitchDragProps(pid, 'pqa1', name, shortTitle)}
-                        sx={{
-                          display: 'flex', alignItems: 'center', gap: 0.5, ml: 1.5, mt: 0.25,
-                          ...sidebarPitchDragStyle(pid, name),
-                        }}
-                      >
-                        {lockedPitchSet.has(pid) && (
-                          <Tooltip title="This project is locked">
-                            <LockIcon sx={{ fontSize: '0.75rem', color: 'primary.main', flexShrink: 0 }} />
-                          </Tooltip>
-                        )}
-                        <Typography
-                          variant="caption"
-                          color="text.secondary"
-                          onClick={() => handleFocusPitch(pid)}
-                          sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'pointer',
-                                '&:hover': { textDecoration: 'underline' } }}
+                  {(() => {
+                    const renderPitchRow = (pid: string, currentRole: SidebarRoleView) => {
+                      const p = pitchMap.get(pid);
+                      if (!p) return null;
+                      const shortTitle = p.title.replace(/^[^/]+\/\s*/, '');
+                      // Devs in this section have their interest tier sourced from
+                      // Stage 1 data (pitch.devInterest), not Phase 2 — they may
+                      // not have submitted Stage 2 interest at all.
+                      const interestLevel = p.devInterest[name] ?? null;
+                      const noData = !devHasAnyData.has(name);
+                      // 'dev' rows aren't draggable — dev assignment happens in
+                      // Stage 2, so we show them here for context only.
+                      const dragProps = currentRole === 'dev'
+                        ? {}
+                        : sidebarPitchDragProps(pid, currentRole, name, shortTitle);
+                      const dragStyle = currentRole === 'dev'
+                        ? { cursor: 'default' as const, userSelect: 'none' as const }
+                        : sidebarPitchDragStyle(pid, name);
+                      return (
+                        <Box
+                          key={`${currentRole}-${pid}`}
+                          {...dragProps}
+                          sx={{
+                            display: 'flex', alignItems: 'center', gap: 0.5, ml: 1.5, mt: 0.25,
+                            ...dragStyle,
+                          }}
                         >
-                          {shortTitle}
-                        </Typography>
-                        <DevPitchInfo pitch={p} />
-                        {p.continuation && (() => {
-                          const gold = p.previousPQA1 === name && (interestLevel === 1 || interestLevel === 2);
-                          return (
-                            <Tooltip title={gold ? 'Continuation project — was on this team before and has high interest' : 'Continuation project'}>
-                              <AutorenewIcon sx={{ fontSize: '0.75rem', color: gold ? 'success.main' : 'text.disabled', flexShrink: 0 }} />
+                          {lockedPitchSet.has(pid) && (
+                            <Tooltip title="This project is locked">
+                              <LockIcon sx={{ fontSize: '0.75rem', color: 'primary.main', flexShrink: 0 }} />
                             </Tooltip>
-                          );
-                        })()}
-                        {p.author === name && (
-                          <Tooltip title="Wrote this pitch">
-                            <StarIcon sx={{ fontSize: '0.75rem', color: interestLevel === 1 ? 'success.main' : 'text.disabled', flexShrink: 0 }} />
-                          </Tooltip>
-                        )}
-                        <Box sx={{ flex: 1 }} />
-                        {sidebarWidth < 280
-                          ? <InterestDot level={interestLevel} noData={noData} />
-                          : <InterestChip level={interestLevel} noData={noData} size="small" />
-                        }
-                      </Box>
+                          )}
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                            onClick={() => handleFocusPitch(pid)}
+                            sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'pointer',
+                                  '&:hover': { textDecoration: 'underline' } }}
+                          >
+                            {shortTitle}
+                          </Typography>
+                          <DevPitchInfo pitch={p} />
+                          {p.continuation && (() => {
+                            const wasHere =
+                              currentRole === 'devTL' ? p.previousTL === name :
+                              currentRole === 'qm'    ? p.previousQM === name :
+                              currentRole === 'pqa1'  ? p.previousPQA1 === name :
+                              currentRole === 'dev'   ? p.previousDev === name :
+                              false;
+                            const gold = wasHere && (interestLevel === 1 || interestLevel === 2);
+                            return (
+                              <Tooltip title={gold ? 'Continuation project — was on this team before and has high interest' : 'Continuation project'}>
+                                <AutorenewIcon sx={{ fontSize: '0.75rem', color: gold ? 'success.main' : 'text.disabled', flexShrink: 0 }} />
+                              </Tooltip>
+                            );
+                          })()}
+                          {p.author === name && (
+                            <Tooltip title="Wrote this pitch">
+                              <StarIcon sx={{ fontSize: '0.75rem', color: interestLevel === 1 ? 'success.main' : 'text.disabled', flexShrink: 0 }} />
+                            </Tooltip>
+                          )}
+                          <Box sx={{ flex: 1 }} />
+                          {sidebarWidth < 280
+                            ? <InterestDot level={interestLevel} noData={noData} />
+                            : <InterestChip level={interestLevel} noData={noData} size="small" />
+                          }
+                        </Box>
+                      );
+                    };
+                    return (
+                      <>
+                        {assignedPitchIds.map(pid => renderPitchRow(pid, 'pqa1'))}
+                        {otherRolePitches.map(({ role: secRole, label, pitchIds }) => (
+                          <Box key={secRole}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, ml: 1.5, mt: 0.5, mb: 0.25 }}>
+                              <Box sx={{ flex: 1, height: '1px', bgcolor: 'divider' }} />
+                              <Typography variant="caption" color="text.disabled" sx={{ fontSize: '0.6rem', letterSpacing: 0.5, textTransform: 'uppercase' }}>
+                                {label}
+                              </Typography>
+                              <Box sx={{ flex: 1, height: '1px', bgcolor: 'divider' }} />
+                            </Box>
+                            {pitchIds.map(pid => renderPitchRow(pid, secRole))}
+                          </Box>
+                        ))}
+                      </>
                     );
-                  })}
+                  })()}
                   </Collapse>
                 </Box>
               );
