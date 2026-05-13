@@ -35,12 +35,23 @@ export interface TLAllocationViewHandle {
   hasLock: () => boolean;
 }
 
+export interface AllocationStatus {
+  hasLock: boolean;
+  canFinish: boolean;
+  saveStatus: 'idle' | 'saving' | 'saved' | 'dirty';
+}
+
 interface TLAllocationViewProps {
   activeStep: 0 | 1;
   showResults: boolean;
   onShowResultsChange: (v: boolean) => void;
   onFinalize?: () => void;
   onAllocationChange?: () => void;
+  /**
+   * Pushed up to App.tsx whenever the lock state or readiness changes, so the
+   * TopBar Save/Finish buttons can react without polling the ref handle.
+   */
+  onStatusChange?: (status: AllocationStatus) => void;
   voterName: string;
   voterRole: string;
   pollingResolved?: boolean;
@@ -301,8 +312,17 @@ function enrichPitches(
   });
 }
 
-const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProps>(function TLAllocationView({ activeStep, showResults, onShowResultsChange, onFinalize, onAllocationChange, voterName, pollingResolved = true }, ref) {
+const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProps>(function TLAllocationView({ activeStep, showResults, onShowResultsChange, onFinalize, onAllocationChange, onStatusChange, voterName, pollingResolved = true }, ref) {
   const { showSnackbar } = useSnackbar();
+
+  // Save state for the TopBar Save button. Mutations flip to 'dirty';
+  // handleSaveWithStatus drives 'saving' → 'saved' → 'idle' (timed). Defined
+  // early so the mutation helpers below can flip it without forward refs.
+  const [saveStatus, setSaveStatus] = useState<AllocationStatus['saveStatus']>('idle');
+  const markDirty = () => {
+    onAllocationChange?.();
+    setSaveStatus(prev => prev === 'saving' ? prev : 'dirty');
+  };
 
   // ── Data loading ──────────────────────────────────────────────────────────
   const [pitchStatus,  setPitchStatus]  = useState<'loading'|'done'|'error'>('loading');
@@ -602,7 +622,7 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
   const currentAssignments = planAssignments;
 
   const mutateCurrentAssignments = (updater: (prev: PlanAssignment[]) => PlanAssignment[]) => {
-    onAllocationChange?.();
+    markDirty();
     setPlanAssignments(prev => updater(prev));
   };
 
@@ -670,7 +690,7 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
   step2AssignmentsRef.current = step2Assignments;
 
   const handleStep2Assign = (pitchId: string, field: 'devTL' | 'qm' | 'pqa1', value: string | null) => {
-    onAllocationChange?.();
+    markDirty();
     setStep2Assignments(prev => {
       const exists = prev.find(a => a.pitchId === pitchId);
       if (exists) return prev.map(a => a.pitchId === pitchId ? { ...a, [field]: value } : a);
@@ -713,7 +733,7 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
   };
 
   const handleEditAdhocPitch = (id: string, draft: AdhocPitchDraft) => {
-    onAllocationChange?.();
+    markDirty();
     const { title, category, committed, team } = draft;
     setAdhocPitches(prev => prev.map(p => p.id === id ? { ...p, title, category, committed } : p));
     // Upsert plan + step2 entries — if a prior reload wiped the local row
@@ -1016,22 +1036,55 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
   // so what the editor changes is visible as they save.
   const isViewOnly = editLock.status === 'viewer' || editLock.status === 'lost';
 
-  // Stage 4 finish gate: every selected pitch needs dev TL + QM + PQA1 filled.
-  // (Dev assignment lives on planAssignments, which Stage 2 handles separately.)
-  // Stage 2 has no all-fields-filled requirement — devs can stay unassigned
-  // until the next round; Finish on Stage 2 just records the plan as-is.
+  // Stage 4 finish gate: every selected pitch needs dev TL + QM + PQA1
+  // resolved — either a named person OR an explicit "None" choice. (Empty /
+  // null means "still undecided" and blocks Finish.) Stage 2 has no
+  // all-fields-filled requirement — devs can stay unassigned until the next
+  // round; Finish on Stage 2 just records the plan as-is.
   const isReadyToFinish = (): boolean => {
     if (activeStep === 0) return true;
     if (selectedPitches.length === 0) return false;
     const byPitch = new Map(step2Assignments.map(a => [a.pitchId, a]));
+    const filled = (v: string | null | undefined) => v != null && v !== '';
     return selectedPitches.every(p => {
       const sa = byPitch.get(p.id);
-      return !!(sa && sa.devTL && sa.qm && sa.pqa1);
+      return !!(sa && filled(sa.devTL) && filled(sa.qm) && filled(sa.pqa1));
     });
   };
 
+  // Push status up to App.tsx on every change. The watched values are:
+  //   editLock.status (hasLock flips when editor/viewer changes)
+  //   selectedPitches + step2Assignments (canFinish flips when all roles fill)
+  //   saveStatus (declared near the top so mutation handlers can flip 'dirty').
+  const hasLock = editLock.status === 'editor';
+  const canFinish = isReadyToFinish();
+  useEffect(() => {
+    onStatusChange?.({ hasLock, canFinish, saveStatus });
+    // Intentionally don't depend on onStatusChange itself — parents pass a
+    // fresh function each render and we'd loop. The values above are the
+    // only meaningful triggers.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasLock, canFinish, saveStatus]);
+
+  // Save handler that integrates saveStatus tracking — declared as a const
+  // here so the imperative handle can expose it and TopBar can call it
+  // through the ref. handleSavePlan is the core save (no status mgmt).
+  const handleSaveWithStatus = async (): Promise<boolean> => {
+    setSaveStatus('saving');
+    const ok = await handleSavePlan();
+    setSaveStatus(ok ? 'saved' : 'dirty');
+    return ok;
+  };
+
+  // Trigger 'saved' → 'idle' fade.
+  useEffect(() => {
+    if (saveStatus !== 'saved') return;
+    const handle = window.setTimeout(() => setSaveStatus('idle'), 2500);
+    return () => window.clearTimeout(handle);
+  }, [saveStatus]);
+
   useImperativeHandle(ref, () => ({
-    triggerSave: handleSavePlan,
+    triggerSave: handleSaveWithStatus,
     triggerFinalize: handleFinalize,
     triggerRerunAlgorithm: handleRerunAlgorithm,
     isReadyToFinish,

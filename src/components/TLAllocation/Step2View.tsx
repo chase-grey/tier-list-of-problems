@@ -25,6 +25,7 @@ import {
 import type {
   AllocationPitch, Phase2Interest, StaffingAssignment, AllocationConfig, InterestLevel, PersonCapacity,
 } from '../../types/allocationTypes';
+import { ASSIGNMENT_NONE } from '../../types/models';
 import type { CapacityOverridePayload } from '../../services/allocationApi';
 import { getShortName } from '../../data/teamRoster';
 import InterestChip from './InterestChip';
@@ -1631,6 +1632,9 @@ function Pqa1Dropdown({ value, devNames, devTLNames = [], devInterest, devHasAny
       sx={{ fontSize: '0.75rem', width: '100%', '& .MuiSelect-select': { py: 0.5, px: 1 } }}
       renderValue={val => {
         if (!val) return <Typography variant="caption" color="text.disabled">Assign…</Typography>;
+        if (val === ASSIGNMENT_NONE) {
+          return <Typography variant="caption" sx={{ fontStyle: 'italic', color: 'text.secondary' }}>None</Typography>;
+        }
         const name = val as string;
         const level = (devInterest[name] ?? null) as (1 | 2 | 3 | 4 | null);
         const noData = !devHasAnyData.has(name);
@@ -1650,6 +1654,9 @@ function Pqa1Dropdown({ value, devNames, devTLNames = [], devInterest, devHasAny
       }}
     >
       <MenuItem value=""><Typography variant="body2"><em>Unassign</em></Typography></MenuItem>
+      <MenuItem value={ASSIGNMENT_NONE}>
+        <Typography variant="body2" sx={{ fontStyle: 'italic', color: 'text.secondary' }}>None — no PQA1 reviewer</Typography>
+      </MenuItem>
       {[...sorted, ...sortedTLs].map((dev, idx) => {
         const isTLSection = idx === sorted.length;
         const interestLevel = (devInterest[dev] ?? null) as (1 | 2 | 3 | 4 | null);
@@ -1717,6 +1724,9 @@ function AssignmentDropdown({ value, allNames, options, pitchId, selectId, onCha
       sx={{ fontSize: '0.75rem', width: '100%', '& .MuiSelect-select': { py: 0.5, px: 1 } }}
       renderValue={val => {
         if (!val) return <Typography variant="caption" color="text.disabled">Assign…</Typography>;
+        if (val === ASSIGNMENT_NONE) {
+          return <Typography variant="caption" sx={{ fontStyle: 'italic', color: 'text.secondary' }}>None</Typography>;
+        }
         const person = interestMap.get(val as string);
         const level = (person?.interestByPitchId[pitchId] ?? null) as (1 | 2 | 3 | 4 | null);
         const noData = !person || Object.keys(person.interestByPitchId).length === 0;
@@ -1736,6 +1746,9 @@ function AssignmentDropdown({ value, allNames, options, pitchId, selectId, onCha
       }}
     >
       <MenuItem value=""><Typography variant="body2"><em>Unassign</em></Typography></MenuItem>
+      <MenuItem value={ASSIGNMENT_NONE}>
+        <Typography variant="body2" sx={{ fontStyle: 'italic', color: 'text.secondary' }}>None — no one needed in this role</Typography>
+      </MenuItem>
       {allEntries.map(name => {
         const person = interestMap.get(name);
         const level = (person?.interestByPitchId[pitchId] ?? null) as (1 | 2 | 3 | 4 | null);

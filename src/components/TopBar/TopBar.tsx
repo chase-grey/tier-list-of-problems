@@ -17,6 +17,7 @@ import {
 } from '@mui/icons-material';
 import { SettingsMenu } from '../SettingsMenu/SettingsMenu';
 import { FinishButton } from './FinishButton';
+import { SaveButton, type SaveStatusFlag } from './SaveButton';
 import type { Capacity } from '../../types/models';
 
 
@@ -39,6 +40,11 @@ interface TopBarProps {
   totalPitchCount: number;
   rankCount: number;
   interestCount: number;
+  /** Save current votes without opening the feedback dialog or showing the
+   *  completion view. Always available alongside Finish. */
+  onSave?: () => void;
+  /** Save button visual state (mirrors the submitState in App.tsx). */
+  saveStatus?: SaveStatusFlag;
   onFinish: () => void;
   isExportEnabled: boolean;
   onHelpClick: () => void;
@@ -63,6 +69,13 @@ interface TopBarProps {
   appStage2Mode?: boolean;
   allocationMode?: boolean;
   allocationStep?: 0 | 1;
+  /** Save Stage 2/4 in place (no nav to summary). Requires lock-holder. */
+  onAllocationSave?: () => void;
+  allocationSaveStatus?: SaveStatusFlag;
+  /** Whether Stage 4 has every project's team filled (gates Finish). */
+  allocationCanFinish?: boolean;
+  /** Whether the caller holds the stage edit lock — disables both Save and Finish when false. */
+  allocationHasLock?: boolean;
   onAllocationFinish?: () => void;
   allocationSaveState?: 'idle' | 'waiting' | 'saving' | 'done';
   allocationShowResults?: boolean;
@@ -88,9 +101,11 @@ export const TopBar = ({
   availabilityComment = '',
   quarterLabel,
   totalPitchCount,
-  rankCount, 
+  rankCount,
   interestCount,
-  onFinish, 
+  onSave,
+  saveStatus = 'idle',
+  onFinish,
   isExportEnabled,
   onHelpClick,
   onResetClick,
@@ -105,6 +120,10 @@ export const TopBar = ({
   appStage2Mode = false,
   allocationMode = false,
   allocationStep = 0,
+  onAllocationSave,
+  allocationSaveStatus = 'idle',
+  allocationCanFinish = false,
+  allocationHasLock = false,
   onAllocationFinish,
   allocationSaveState = 'idle',
   allocationShowResults = false,
@@ -199,6 +218,19 @@ export const TopBar = ({
                 View summary
               </Button>
             )}
+            {onAllocationSave && (
+              <SaveButton
+                status={allocationSaveStatus}
+                onClick={onAllocationSave}
+                disabled={!allocationHasLock}
+                tooltip={
+                  !allocationHasLock
+                    ? 'Take the edit lock before saving — someone else is editing.'
+                    : 'Save progress without going to the summary page.'
+                }
+                ariaLabel="Save allocation in place"
+              />
+            )}
             {onAllocationFinish && (
               <FinishButton
                 saveState={
@@ -208,6 +240,7 @@ export const TopBar = ({
                   'idle'
                 }
                 onClick={onAllocationFinish}
+                disabled={!allocationHasLock || !allocationCanFinish}
                 ariaLabel="Finish and save allocation"
               />
             )}
@@ -284,6 +317,19 @@ export const TopBar = ({
               </Tooltip>
             )}
 
+            {onSave && (
+              <SaveButton
+                status={saveStatus}
+                onClick={onSave}
+                tooltip={
+                  rankCount === 0 && interestCount === 0
+                    ? 'Nothing to save yet — rank at least one pitch first.'
+                    : 'Save progress without finishing — you can keep editing.'
+                }
+                disabled={rankCount === 0 && interestCount === 0}
+                ariaLabel="Save progress"
+              />
+            )}
             <FinishButton
               saveState={
                 submitState === 'submitted' ? 'done' :

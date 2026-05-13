@@ -109,6 +109,29 @@ export interface Vote {
   timestamp?: number; // Used for consistent ordering
 }
 
+/**
+ * Sentinel string stored in dev/TL/QM/PQA1 assignment fields when the TL
+ * has decided the slot should remain empty — distinct from `null` (which
+ * means "not yet decided"). The value uses double underscores so no real
+ * person name can collide, and is round-tripped to the backend as-is.
+ *
+ * Use `isAssignedOrNone(v)` for "this is a valid finish choice" checks
+ * (named person OR explicit None). Use `=== ASSIGNMENT_NONE` only when
+ * the special-case rendering matters (e.g. dropdowns showing "None"
+ * styled differently from a real name).
+ */
+export const ASSIGNMENT_NONE = '__NONE__';
+
+/** True when the slot has a real assignee or an explicit "None" choice. */
+export function isAssignedOrNone(value: string | null | undefined): boolean {
+  return value != null && value !== '';
+}
+
+/** True only when the slot has a real assignee (not None, not empty). */
+export function hasNamedAssignee(value: string | null | undefined): boolean {
+  return value != null && value !== '' && value !== ASSIGNMENT_NONE;
+}
+
 /* ─────────── LOCAL PERSISTENCE ───────── */
 export interface LocalSave {
   voterName: string;               // "Ada Lovelace"

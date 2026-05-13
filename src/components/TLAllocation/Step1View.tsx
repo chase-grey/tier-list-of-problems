@@ -23,6 +23,7 @@ import {
   Circle as CircleIcon,
 } from '@mui/icons-material';
 import type { AllocationPitch, AssignmentStatus, PlanAssignment, PersonCapacity } from '../../types/allocationTypes';
+import { ASSIGNMENT_NONE } from '../../types/models';
 import type { AllocationConfig } from '../../types/allocationTypes';
 import type { CapacityOverridePayload } from '../../services/allocationApi';
 import { getShortName } from '../../data/teamRoster';
@@ -1496,8 +1497,13 @@ function PitchRow({ assignment, pitch, devNames, devTLNames, onDevChange, onStat
               onChange={e => onDevChange(pitch.id, e.target.value || null)}
               displayEmpty
               sx={{ fontSize: '0.75rem', width: '100%', '& .MuiSelect-select': { py: 0.5, px: 1 } }}
-              renderValue={val => val
-                ? <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0 }}>
+              renderValue={val => {
+                if (!val) return <Typography variant="caption" color="text.disabled">Assign dev…</Typography>;
+                if (val === ASSIGNMENT_NONE) {
+                  return <Typography variant="caption" sx={{ fontStyle: 'italic', color: 'text.secondary' }}>None</Typography>;
+                }
+                return (
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0 }}>
                     <Typography variant="caption" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
                       {getShortName(val as string)}
                     </Typography>
@@ -1511,10 +1517,13 @@ function PitchRow({ assignment, pitch, devNames, devTLNames, onDevChange, onStat
                       noData={!((val as string) in pitch.devInterest)}
                     />
                   </Box>
-                : <Typography variant="caption" color="text.disabled">Assign dev…</Typography>
-              }
+                );
+              }}
             >
               <MenuItem value=""><Typography variant="body2"><em>Unassign</em></Typography></MenuItem>
+              <MenuItem value={ASSIGNMENT_NONE}>
+                <Typography variant="body2" sx={{ fontStyle: 'italic', color: 'text.secondary' }}>None — no dev needed</Typography>
+              </MenuItem>
               {[...sortedDevs, ...sortedTLDevs].map((dev, idx) => {
                 const isTLSection = idx === sortedDevs.length;
                 const interestLevel = pitch.devInterest[dev] ?? null;

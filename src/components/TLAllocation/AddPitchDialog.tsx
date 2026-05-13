@@ -4,6 +4,7 @@ import {
   Button, TextField, Select, MenuItem, FormControl, InputLabel, Box,
   FormControlLabel, Checkbox, Typography, Divider,
 } from '@mui/material';
+import { ASSIGNMENT_NONE } from '../../types/models';
 
 export interface AdhocTeamAssignment {
   dev: string | null;
@@ -96,6 +97,9 @@ export default function AddPitchDialog({ open, categories, defaultCategory, devN
       <InputLabel>{label}</InputLabel>
       <Select value={value} label={label} onChange={e => onChange(e.target.value)}>
         <MenuItem value=""><em>Unassigned</em></MenuItem>
+        <MenuItem value={ASSIGNMENT_NONE}>
+          <Typography variant="body2" sx={{ fontStyle: 'italic', color: 'text.secondary' }}>None — no one needed</Typography>
+        </MenuItem>
         {names.map(n => <MenuItem key={n} value={n}>{n}</MenuItem>)}
       </Select>
     </FormControl>
@@ -153,6 +157,9 @@ export default function AddPitchDialog({ open, categories, defaultCategory, devN
                     <InputLabel>Dev</InputLabel>
                     <Select value={teamDev} label="Dev" onChange={e => setTeamDev(e.target.value)}>
                       <MenuItem value=""><em>Unassigned</em></MenuItem>
+                      <MenuItem value={ASSIGNMENT_NONE}>
+                        <Typography variant="body2" sx={{ fontStyle: 'italic', color: 'text.secondary' }}>None — no dev needed</Typography>
+                      </MenuItem>
                       {(devNames ?? []).map(n => <MenuItem key={`dev-${n}`} value={n}>{n}</MenuItem>)}
                       {(devNames?.length ?? 0) > 0 && (devTLNames?.length ?? 0) > 0 && <Divider component="li" />}
                       {(devTLNames ?? []).map(n => <MenuItem key={`tl-${n}`} value={n}>{n}</MenuItem>)}

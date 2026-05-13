@@ -25,7 +25,7 @@ import { getPollingCycleId, isStage2, isTLAllocationStage, getPollingStage } fro
 import { buildPollingKey, cleanupPollingStorageOnCycleChange, getEffectivePollingCycleId } from '../utils/pollingStorage';
 import { getInterestLevelLabel } from '../utils/voteActions';
 import { fetchPitches, refreshPitchesInSheet } from '../services/api';
-import TLAllocationView, { type TLAllocationViewHandle } from './TLAllocation/TLAllocationView';
+import TLAllocationView, { type TLAllocationViewHandle, type AllocationStatus } from './TLAllocation/TLAllocationView';
 import CategoryBandwidthBar from './VotingBoard/CategoryBandwidthBar';
 import type { CategoryBandwidthConfig } from './VotingBoard/CategoryBandwidthBar';
 import { LoadingScreen, type LoadingStep } from './LoadingScreen/LoadingScreen';
@@ -90,6 +90,19 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
   const [allocationSaveState, setAllocationSaveState] = useState<'idle' | 'waiting' | 'saving' | 'done'>('idle');
   const [allocationShowResults, setAllocationShowResults] = useState(false);
   const [allocationHasResults, setAllocationHasResults] = useState(false);
+  // Pushed up from TLAllocationView. Drives Save/Finish disabled state and
+  // the Save button's "dirty"/"saved" visual flag in TopBar.
+  const [allocationStatus, setAllocationStatus] = useState<AllocationStatus>({
+    hasLock: false,
+    canFinish: false,
+    saveStatus: 'idle',
+  });
+
+  // Save in place — calls TLAllocationView.triggerSave which catches
+  // EditLockConflictError internally. Does NOT navigate to the summary view.
+  const handleAllocationSave = async () => {
+    await tlViewRef.current?.triggerSave();
+  };
 
   const handleAllocationFinish = async () => {
     const MAX_RETRIES = 6;
@@ -958,13 +971,22 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
     setSubmitState(prev => prev === 'submitted' ? 'changed' : prev);
   };
 
-  // Handle finish process
+  // Handle finish process — gated by the 50% threshold (isExportEnabled).
+  // Opens the feedback dialog; submission happens after that dialog closes.
   const handleFinish = () => {
     if (state.voterName && isExportEnabled) {
       setShowFeedback(true);
     } else {
       showSnackbar('Complete at least 50% of rankings first', 'error');
     }
+  };
+
+  // Save is always available (as long as the voter has typed at least one
+  // vote). It just persists current state to the backend without opening
+  // the feedback dialog or marking the session as finished.
+  const handleSave = async () => {
+    if (!state.voterName) return;
+    await submitCurrentVotes();
   };
 
   // Handle feedback submission
@@ -1063,6 +1085,13 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
           totalPitchCount={TOTAL}
           rankCount={rankCount}
           interestCount={interestCount}
+          onSave={state.voterName ? handleSave : undefined}
+          saveStatus={
+            isSubmitting ? 'saving' :
+            submitState === 'submitted' ? 'saved' :
+            submitState === 'changed' ? 'dirty' :
+            'idle'
+          }
           onFinish={handleFinish}
           isExportEnabled={isExportEnabled}
           onHelpClick={handleHelpClick}
@@ -1078,6 +1107,10 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
           appStage2Mode={appStage2Mode}
           allocationMode={isTLStage}
           allocationStep={allocationStep}
+          onAllocationSave={isTLStage && state.voterRole === 'dev TL' ? handleAllocationSave : undefined}
+          allocationSaveStatus={allocationStatus.saveStatus}
+          allocationHasLock={allocationStatus.hasLock}
+          allocationCanFinish={allocationStatus.canFinish}
           onAllocationFinish={isTLStage && state.voterRole === 'dev TL' ? handleAllocationFinish : undefined}
           onAllocationRerun={isTLStage && state.voterRole === 'dev TL' ? () => tlViewRef.current?.triggerRerunAlgorithm() : undefined}
           allocationSaveState={allocationSaveState}
@@ -1100,6 +1133,7 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
               onShowResultsChange={(v) => { setAllocationShowResults(v); if (v) setAllocationHasResults(true); }}
               onFinalize={() => setAllocationSaveState('done')}
               onAllocationChange={() => setAllocationSaveState('idle')}
+              onStatusChange={setAllocationStatus}
               voterName={state.voterName ?? ''}
               voterRole={state.voterRole ?? ''}
             />
