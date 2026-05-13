@@ -1178,14 +1178,10 @@ export default function Step2View({
                       <>
                         {assignedPitchIds.map(pid => renderPitchRow(pid, primaryRole))}
                         {otherRolePitches.map(({ role: secRole, label, pitchIds }) => (
-                          <Box key={secRole}>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, ml: 1.5, mt: 0.5, mb: 0.25 }}>
-                              <Box sx={{ flex: 1, height: '1px', bgcolor: 'divider' }} />
-                              <Typography variant="caption" color="text.disabled" sx={{ fontSize: '0.6rem', letterSpacing: 0.5, textTransform: 'uppercase' }}>
-                                {label}
-                              </Typography>
-                              <Box sx={{ flex: 1, height: '1px', bgcolor: 'divider' }} />
-                            </Box>
+                          <Box key={secRole} sx={{ ml: 1 }}>
+                            <Typography variant="caption" color="text.disabled" sx={{ display: 'block', ml: 1.5, mt: 0.5, mb: 0.25, fontSize: '0.6rem', letterSpacing: 0.5, textTransform: 'uppercase' }}>
+                              {label}
+                            </Typography>
                             {pitchIds.map(pid => renderPitchRow(pid, secRole))}
                           </Box>
                         ))}
@@ -1399,14 +1395,10 @@ export default function Step2View({
                       <>
                         {assignedPitchIds.map(pid => renderPitchRow(pid, 'pqa1'))}
                         {otherRolePitches.map(({ role: secRole, label, pitchIds }) => (
-                          <Box key={secRole}>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, ml: 1.5, mt: 0.5, mb: 0.25 }}>
-                              <Box sx={{ flex: 1, height: '1px', bgcolor: 'divider' }} />
-                              <Typography variant="caption" color="text.disabled" sx={{ fontSize: '0.6rem', letterSpacing: 0.5, textTransform: 'uppercase' }}>
-                                {label}
-                              </Typography>
-                              <Box sx={{ flex: 1, height: '1px', bgcolor: 'divider' }} />
-                            </Box>
+                          <Box key={secRole} sx={{ ml: 1 }}>
+                            <Typography variant="caption" color="text.disabled" sx={{ display: 'block', ml: 1.5, mt: 0.5, mb: 0.25, fontSize: '0.6rem', letterSpacing: 0.5, textTransform: 'uppercase' }}>
+                              {label}
+                            </Typography>
                             {pitchIds.map(pid => renderPitchRow(pid, secRole))}
                           </Box>
                         ))}
