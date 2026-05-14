@@ -156,6 +156,15 @@ function priorityColor(score: number): string {
 
 const TIER_LABEL: Record<0 | 1 | 2 | 3 | 4, string> = { 0: 'Unsorted', 1: 'Highest', 2: 'High', 3: 'Medium', 4: 'Low' };
 
+/** Coarse label for an average priority tier — matches Step1View so the
+ *  Average Project Priority sidebar reads the same across stages. */
+function interestLabel(avg: number): string {
+  if (avg <= 1.5) return 'Very High';
+  if (avg <= 2.5) return 'High';
+  if (avg <= 3.5) return 'Medium';
+  return 'Low';
+}
+
 /** Hover content for the priority score cells — per-voter tier breakdown. */
 function VoteBreakdown({ votes, label }: { votes: Record<string, 0 | 1 | 2 | 3 | 4 | null>; label: string }) {
   // tier=0 (explicitly unsorted) sorts after tier 4; null sorts last
@@ -595,7 +604,14 @@ export default function Step2View({
   const availableQmNames = useMemo(() => config.qmNames.filter(n => !unavailableSet.has(n)), [config.qmNames, unavailableSet]);
   const unavailableQmNames = useMemo(() => config.qmNames.filter(n => unavailableSet.has(n)), [config.qmNames, unavailableSet]);
   const availableDevNames = useMemo(() => devNames.filter(n => !unavailablePqa1Set.has(n)), [devNames, unavailablePqa1Set]);
-  const unavailableDevNamesForPqa1 = useMemo(() => devNames.filter(n => unavailablePqa1Set.has(n)), [devNames, unavailablePqa1Set]);
+  // PQA1 pool sidebar splits into three buckets: available, "Available for
+  // Dev only" (pqa1Capacity='none' but devCapacity isn't), and fully
+  // unavailable. Symmetric with Step1View's dev-pool split.
+  const devOnlyAvailablePqa1Names = useMemo(() => {
+    const pqa1OnlyUnavail = new Set(config.unavailableForPqa1Names ?? []);
+    return devNames.filter(n => pqa1OnlyUnavail.has(n));
+  }, [devNames, config.unavailableForPqa1Names]);
+  const unavailableDevNamesForPqa1 = useMemo(() => devNames.filter(n => unavailableSet.has(n)), [devNames, unavailableSet]);
 
   // PQA1 reviewer dropdown options: regular available devs plus available
   // dev TLs (manually assignable; auto-assign skips them unless they were
@@ -611,6 +627,41 @@ export default function Step2View({
 
   // ── Sidebar stats ──────────────────────────────────────────────────────
   const step2Stats = useMemo(() => {
+    // ── Selected priority + category mix (parity with Stage 2 sidebar) ──
+    const selectedTotal = selectedPitches.length;
+    const avgTeamPriority = selectedTotal
+      ? selectedPitches.reduce((s, p) => s + p.teamPriorityScore, 0) / selectedTotal
+      : null;
+    const avgTLPriority = selectedTotal
+      ? selectedPitches.reduce((s, p) => s + p.tlPriorityScore, 0) / selectedTotal
+      : null;
+    const categoryList = Object.keys(config.bandwidth);
+    const catCounts: Record<string, number> = {};
+    categoryList.forEach(c => { catCounts[c] = 0; });
+    selectedPitches.forEach(p => { catCounts[p.category] = (catCounts[p.category] ?? 0) + 1; });
+    const catActualPct: Record<string, number> = Object.fromEntries(
+      categoryList.map(c => [c, selectedTotal > 0 ? Math.round((catCounts[c] / selectedTotal) * 100) : 0])
+    );
+
+    // ── Continuation rollup across all statuses (Stage 2 parity) ────────
+    // selectedPitches is "planned"; nextUpPitches + cutPitches cover what
+    // was deprioritized. The dropped list helps the TL see which prior-
+    // quarter teams won't be continuing.
+    const otherPitches = [...(nextUpPitches ?? []), ...(cutPitches ?? [])];
+    const allContinuations = [
+      ...selectedPitches.filter(p => p.continuation),
+      ...otherPitches.filter(p => p.continuation),
+    ];
+    const continuationsSelected = selectedPitches.filter(p => p.continuation);
+    const continuationsDropped = otherPitches
+      .filter(p => p.continuation)
+      .sort((a, b) => Math.min(a.teamPriorityScore, a.tlPriorityScore) - Math.min(b.teamPriorityScore, b.tlPriorityScore));
+    const continuationsDevChanged = continuationsSelected.filter(p => {
+      if (!p.previousDev) return false;
+      const dev = devByPitchId[p.id] ?? null;
+      return dev !== null && dev !== p.previousDev;
+    });
+
     // ── Team Consistency (continuation projects) ────────────────────────
     const continuations = selectedPitches.filter(p => p.continuation);
     const consistencyItems = continuations.map(p => {
@@ -774,6 +825,8 @@ export default function Step2View({
     });
 
     return {
+      avgTeamPriority, avgTLPriority, catActualPct,
+      allContinuations, continuationsSelected, continuationsDropped, continuationsDevChanged,
       continuations, sameTeamCount, changedItems,
       tlScore: avgPct(tlEntries), qmScore: avgPct(qmEntries), pqa1Score: avgPct(pqa1Entries),
       totalScore: avgPct(allEntries),
@@ -787,7 +840,7 @@ export default function Step2View({
       overallBalance: Math.round((tlBalance + qmBalance + pqa1Balance) / 3),
       authorshipItems, authoredPitchCount, authorMatchedCount, authorWarningItems,
     };
-  }, [selectedPitches, assignments, assignMap, pitchMap, phase2Interests, config, devNames, devByPitchId]);
+  }, [selectedPitches, nextUpPitches, cutPitches, assignments, assignMap, pitchMap, phase2Interests, config, devNames, devByPitchId]);
 
   // Which devs submitted ANY Phase 1 interest data (used to distinguish "no data" from "skipped this pitch")
   const devHasAnyData = useMemo(() => {
@@ -933,17 +986,17 @@ export default function Step2View({
                 </Typography>
               </Box>
               <Collapse in={!collapsed}>
-                <Table size="small" sx={{ tableLayout: 'fixed', minWidth: 1080 }}>
+                <Table size="small" sx={{ tableLayout: 'fixed', minWidth: 1020 }}>
                   <colgroup>
                     <col />{/* pitch: flex */}
                     <col style={{ width: 56 }} />{/* Team priority */}
                     <col style={{ width: 56 }} />{/* TL priority */}
-                    <col style={{ width: 170 }} />{/* status chips */}
+                    <col style={{ width: 210 }} />{/* status chips — sized so Plan + Up Next + Not Now fit without truncation */}
                     <col style={{ width: 48 }} />{/* UXD */}
                     <col style={{ width: 72 }} />{/* dev read-only */}
-                    <col style={{ width: 155 }} />{/* DevTL */}
-                    <col style={{ width: 155 }} />{/* QM */}
-                    <col style={{ width: 155 }} />{/* PQA1 Reviewer */}
+                    <col style={{ width: 130 }} />{/* DevTL — name + interest indicator + chevron */}
+                    <col style={{ width: 130 }} />{/* QM */}
+                    <col style={{ width: 130 }} />{/* PQA1 Reviewer */}
                   </colgroup>
                   <TableHead>
                     <TableRow sx={{ '& th': { py: 0.5, fontSize: '0.72rem', color: 'text.secondary' } }}>
@@ -958,16 +1011,16 @@ export default function Step2View({
                           <span>TL</span>
                         </Tooltip>
                       </TableCell>
-                      <TableCell width={170} />
+                      <TableCell width={210} />
                       <TableCell width={48} align="center">
                         <Tooltip title="Include UXD in project kickoff">
                           <span>UXD</span>
                         </Tooltip>
                       </TableCell>
                       <TableCell width={72} align="center">Dev</TableCell>
-                      <TableCell width={155} align="center">Dev TL</TableCell>
-                      <TableCell width={155} align="center">QM</TableCell>
-                      <TableCell width={155} align="center">PQA1 Reviewer</TableCell>
+                      <TableCell width={130} align="center">Dev TL</TableCell>
+                      <TableCell width={130} align="center">QM</TableCell>
+                      <TableCell width={130} align="center">PQA1 Reviewer</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -1034,6 +1087,157 @@ export default function Step2View({
         ref={sidebarRef}
         sx={{ width: sidebarWidth, flexShrink: 0, overflow: 'auto', p: 2 }}
       >
+
+        {/* ── Stats: Average Project Priority (parity with Stage 2) ── */}
+        <Tooltip
+          title="Average priority tier across all planned projects, based on team and TL votes. Lower is better — tier 1 means the project was ranked highest priority."
+          placement="bottom-start"
+          slotProps={{ tooltip: { sx: { bgcolor: 'background.paper', color: 'text.primary', boxShadow: 3, border: '1px solid', borderColor: 'divider', maxWidth: 260, fontSize: '0.72rem' } } }}
+        >
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, mb: 0.5, textTransform: 'uppercase', letterSpacing: 0.5, cursor: 'default' }}>
+            Average Project Priority
+            <InfoIcon sx={{ fontSize: '0.85rem', opacity: 0.5 }} />
+          </Typography>
+        </Tooltip>
+        {step2Stats.avgTeamPriority !== null ? (
+          <Box sx={{ mb: 1.5 }}>
+            <Typography variant="caption" sx={{ display: 'block' }}>
+              <Box component="span" sx={{ color: priorityColor(step2Stats.avgTeamPriority), fontWeight: 700 }}>
+                Team: {step2Stats.avgTeamPriority.toFixed(1)} ({interestLabel(step2Stats.avgTeamPriority)})
+              </Box>
+              {step2Stats.avgTLPriority !== null && (
+                <>
+                  <Box component="span" sx={{ color: 'text.disabled', mx: 0.5 }}>·</Box>
+                  <Box component="span" sx={{ color: priorityColor(step2Stats.avgTLPriority), fontWeight: 700 }}>
+                    TL: {step2Stats.avgTLPriority.toFixed(1)} ({interestLabel(step2Stats.avgTLPriority)})
+                  </Box>
+                </>
+              )}
+            </Typography>
+          </Box>
+        ) : (
+          <Typography variant="caption" color="text.disabled" sx={{ display: 'block', mb: 1.5 }}>
+            No projects planned yet
+          </Typography>
+        )}
+
+        <Divider sx={{ my: 1.25 }} />
+
+        {/* ── Stats: Category Mix (parity with Stage 2) ── */}
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+          Category Mix
+        </Typography>
+        {categories.map(cat => {
+          const actual = step2Stats.catActualPct[cat] ?? 0;
+          const target = config.bandwidth[cat];
+          const diff = actual - target;
+          const barColor = Math.abs(diff) <= 5 ? 'success.main' : 'warning.main';
+          return (
+            <Box key={cat} sx={{ mb: 0.875 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                <Typography variant="caption">{CATEGORY_SHORT[cat] ?? cat}</Typography>
+                <Typography variant="caption" sx={{ color: barColor, fontWeight: 600 }}>
+                  {actual}% / {target}%
+                </Typography>
+              </Box>
+              <Box sx={{ position: 'relative' }}>
+                <LinearProgress
+                  variant="determinate"
+                  value={Math.min(actual, 100)}
+                  sx={{
+                    height: 7, borderRadius: 1, bgcolor: 'action.hover',
+                    '& .MuiLinearProgress-bar': { bgcolor: barColor },
+                  }}
+                />
+                <Tooltip title={`Target: ${target}%`} placement="top">
+                  <Box sx={{
+                    position: 'absolute', top: -2, bottom: -2,
+                    left: `${target}%`,
+                    width: 2, bgcolor: 'text.primary', opacity: 0.45,
+                    borderRadius: 1, pointerEvents: 'none',
+                  }} />
+                </Tooltip>
+              </Box>
+            </Box>
+          );
+        })}
+
+        <Divider sx={{ my: 1.25 }} />
+
+        {/* ── Stats: Continuation Projects (parity with Stage 2) ── */}
+        {step2Stats.allContinuations.length > 0 && (<>
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+            Continuation Projects
+          </Typography>
+          <Box sx={{ mb: 1.5 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mb: 0.25 }}>
+              {step2Stats.continuationsDropped.length === 0 && (
+                <OkIcon fontSize="small" color="success" sx={{ fontSize: '0.9rem' }} />
+              )}
+              <Typography variant="caption">
+                {step2Stats.allContinuations.length - step2Stats.continuationsDropped.length}/{step2Stats.allContinuations.length} continuations planned
+              </Typography>
+            </Box>
+            {step2Stats.continuationsDropped.map(p => {
+              const highPriorityCut = p.teamPriorityScore <= 2.5 || p.tlPriorityScore <= 2.5;
+              const tooltipText = highPriorityCut
+                ? `${p.title} — cut despite high priority (team: ${p.teamPriorityScore.toFixed(1)}, TL: ${p.tlPriorityScore.toFixed(1)}) — click to jump`
+                : `${p.title} — cut (low priority) — click to jump`;
+              return (
+                <Box
+                  key={p.id}
+                  sx={{ overflow: 'hidden', width: '100%', cursor: 'pointer' }}
+                  onClick={() => handleFocusPitch(p.id)}
+                >
+                  <Tooltip title={tooltipText}>
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        display: 'block', ml: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%',
+                        color: highPriorityCut ? 'warning.main' : 'text.disabled',
+                        '&:hover': { textDecoration: 'underline' },
+                      }}
+                    >
+                      ✕ {p.title.replace(/^[^/]+\/\s*/, '')}
+                    </Typography>
+                  </Tooltip>
+                </Box>
+              );
+            })}
+            {step2Stats.continuationsSelected.some(p => p.previousDev) && (<>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mt: 0.5, mb: 0.25 }}>
+                {step2Stats.continuationsDevChanged.length === 0 && (
+                  <OkIcon fontSize="small" color="success" sx={{ fontSize: '0.9rem' }} />
+                )}
+                <Typography variant="caption">
+                  {step2Stats.continuationsSelected.filter(p => p.previousDev).length - step2Stats.continuationsDevChanged.length}/{step2Stats.continuationsSelected.filter(p => p.previousDev).length} have same dev as before
+                </Typography>
+              </Box>
+              {step2Stats.continuationsDevChanged.map(p => (
+                <Tooltip
+                  key={p.id}
+                  title={`Dev changed: ${p.previousDev} → ${devByPitchId[p.id] ?? 'unassigned'} — click to jump`}
+                  placement="left"
+                >
+                  <Box
+                    sx={{ display: 'flex', alignItems: 'center', gap: 0.5, ml: 1.5, mt: 0.25, cursor: 'pointer', overflow: 'hidden' }}
+                    onClick={() => handleFocusPitch(p.id)}
+                  >
+                    <SwapIcon sx={{ fontSize: '0.85rem', color: 'info.main', flexShrink: 0 }} />
+                    <Typography
+                      variant="caption"
+                      sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                            '&:hover': { textDecoration: 'underline' } }}
+                    >
+                      {p.title.replace(/^[^/]+\/\s*/, '')}
+                    </Typography>
+                  </Box>
+                </Tooltip>
+              ))}
+            </>)}
+          </Box>
+          <Divider sx={{ my: 1.25 }} />
+        </>)}
 
         {/* ── Stats: Team Consistency ── */}
         {step2Stats.continuations.length > 0 && (<>
@@ -1608,6 +1812,33 @@ export default function Step2View({
                 </Box>
               );
             })}
+            {devOnlyAvailablePqa1Names.length > 0 && (
+              <>
+                <Divider sx={{ my: 1 }} />
+                <Typography variant="caption" color="text.disabled" sx={{ display: 'block', mb: 0.5, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                  Available for Dev only
+                </Typography>
+                {devOnlyAvailablePqa1Names.map(name => (
+                  <Box
+                    key={name}
+                    sx={{ mb: 0.5, px: 0.5, opacity: 0.6, display: 'flex', alignItems: 'center', gap: 0.5,
+                          '&:hover .capacity-edit-on-hover': { opacity: 1 } }}
+                  >
+                    <Typography variant="caption" color="text.disabled" fontWeight={600}>
+                      {getShortName(name)}
+                    </Typography>
+                    <CapacityBadge
+                      name={name}
+                      tier={capacityByName[name]?.devCapacity}
+                      comment={capacityByName[name]?.comment}
+                      source={capacityByName[name]?.source}
+                      onClick={() => setCapacityDialogTarget(name)}
+                    />
+                  </Box>
+                ))}
+              </>
+            )}
+
             {unavailableDevNamesForPqa1.length > 0 && (
               <>
                 <Divider sx={{ my: 1 }} />
@@ -1844,7 +2075,10 @@ function Step2Row({
           status column — committed rows show only the Plan chip (locked
           into Planned), other rows toggle between all three. */}
       <TableCell sx={{ px: 1 }}>
-        <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-end' }}>
+        <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-end', flexWrap: 'nowrap' }}>
+          {/* flexShrink: 0 + whiteSpace: nowrap on each chip protects their
+              full label from being clipped when the row narrows — matches the
+              guard in Step1View so "Not Now" never collapses to "Not N…" */}
           <Tooltip title={committed ? 'Committed projects are always planned' : "Include in this quarter's projects"}>
             <Chip
               label="Plan"
@@ -1852,7 +2086,7 @@ function Step2Row({
               onClick={committed || !onStatusChange ? undefined : () => onStatusChange('selected')}
               color={status === 'selected' ? 'primary' : 'default'}
               variant={status === 'selected' ? 'filled' : 'outlined'}
-              sx={{ cursor: committed || !onStatusChange ? 'default' : 'pointer', fontSize: '0.65rem', minWidth: 36, opacity: committed ? 0.85 : 1 }}
+              sx={{ cursor: committed || !onStatusChange ? 'default' : 'pointer', fontSize: '0.65rem', minWidth: 36, opacity: committed ? 0.85 : 1, flexShrink: 0, whiteSpace: 'nowrap' }}
             />
           </Tooltip>
           {!committed && onStatusChange && (
@@ -1863,7 +2097,7 @@ function Step2Row({
                 onClick={() => onStatusChange('next-up')}
                 color={status === 'next-up' ? 'info' : 'default'}
                 variant={status === 'next-up' ? 'filled' : 'outlined'}
-                sx={{ cursor: 'pointer', fontSize: '0.65rem', minWidth: 44 }}
+                sx={{ cursor: 'pointer', fontSize: '0.65rem', minWidth: 44, flexShrink: 0, whiteSpace: 'nowrap' }}
               />
             </Tooltip>
           )}
@@ -1875,7 +2109,7 @@ function Step2Row({
                 onClick={() => onStatusChange('cut')}
                 color="default"
                 variant={status === 'cut' ? 'filled' : 'outlined'}
-                sx={{ cursor: 'pointer', fontSize: '0.65rem', minWidth: 52, color: status === 'cut' ? undefined : 'text.disabled' }}
+                sx={{ cursor: 'pointer', fontSize: '0.65rem', minWidth: 52, color: status === 'cut' ? undefined : 'text.disabled', flexShrink: 0, whiteSpace: 'nowrap' }}
               />
             </Tooltip>
           )}

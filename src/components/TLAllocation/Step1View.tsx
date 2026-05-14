@@ -411,19 +411,29 @@ export default function Step1View({
     () => config.devNames.filter(d => !unavailableDevSet.has(d)),
     [config.devNames, unavailableDevSet],
   );
-  const unavailableDevNames = useMemo(
-    () => config.devNames.filter(d => unavailableDevSet.has(d)),
-    [config.devNames, unavailableDevSet],
+  // "Not Available" sidebar section — fully unavailable only. People who are
+  // dev-only-unavailable but available for PQA1 get their own section below so
+  // they aren't misclassified as fully out.
+  const fullyUnavailableSet = useMemo(
+    () => new Set(config.unavailableNames ?? []),
+    [config.unavailableNames],
   );
+  const unavailableDevNames = useMemo(
+    () => config.devNames.filter(d => fullyUnavailableSet.has(d)),
+    [config.devNames, fullyUnavailableSet],
+  );
+  // Devs with devCapacity='none' but a non-'none' PQA1 capacity. Shown in
+  // Stage 2 as "Available for PQA1 only" so the TL knows they're still on
+  // the team, just not part of this stage's pool.
+  const pqa1OnlyAvailableDevNames = useMemo(() => {
+    const devOnlyUnavail = new Set(config.unavailableForDevNames ?? []);
+    return config.devNames.filter(d => devOnlyUnavail.has(d));
+  }, [config.devNames, config.unavailableForDevNames]);
 
   // Dev TLs are eligible to be manually assigned as the dev for a pitch — but
   // they're not auto-picked unless they were the previousDev on a continuation
   // (handled in allocationEngine). Filter to the same fully-available bar that
   // gates dev TLs in their own pool.
-  const fullyUnavailableSet = useMemo(
-    () => new Set(config.unavailableNames ?? []),
-    [config.unavailableNames],
-  );
   const devDropdownNames = useMemo(
     () => [
       ...availableDevNames,
@@ -1270,6 +1280,33 @@ export default function Step1View({
           );
         })}
 
+        {pqa1OnlyAvailableDevNames.length > 0 && (
+          <>
+            <Divider sx={{ my: 1 }} />
+            <Typography variant="caption" color="text.disabled" sx={{ display: 'block', mb: 0.5, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+              Available for PQA1 only
+            </Typography>
+            {pqa1OnlyAvailableDevNames.map(dev => (
+              <Box
+                key={dev}
+                sx={{ mb: 0.5, px: 0.5, opacity: 0.6, display: 'flex', alignItems: 'center', gap: 0.5,
+                      '&:hover .capacity-edit-on-hover': { opacity: 1 } }}
+              >
+                <Typography variant="caption" color="text.disabled" fontWeight={600}>
+                  {getShortName(dev)}
+                </Typography>
+                <CapacityBadge
+                  name={dev}
+                  tier={capacityByName[dev]?.pqa1Capacity}
+                  comment={capacityByName[dev]?.comment}
+                  source={capacityByName[dev]?.source}
+                  onClick={() => setCapacityDialogTarget(dev)}
+                />
+              </Box>
+            ))}
+          </>
+        )}
+
         {unavailableDevNames.length > 0 && (
           <>
             <Divider sx={{ my: 1 }} />
@@ -1520,14 +1557,18 @@ function PitchRow({ assignment, pitch, devNames, devTLNames, onDevChange, onStat
         </Tooltip>
       </TableCell>
       <TableCell sx={{ px: 1 }}>
-        <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-end' }}>
-          {/* ITEM 7: descriptive tooltips on status chips */}
+        <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-end', flexWrap: 'nowrap' }}>
+          {/* ITEM 7: descriptive tooltips on status chips.
+              flexShrink: 0 + whiteSpace: nowrap on each chip protects their
+              full label from being clipped when the row narrows — without
+              these, MUI's flex defaults let the chips compress and "Not Now"
+              would truncate to "Not N…" on smaller screens. */}
           <Tooltip title={committed ? 'Committed projects are always planned' : "Include in this quarter's projects"}>
             <Chip label="Plan" size="small"
               onClick={committed ? undefined : () => onStatusChange(pitch.id, 'selected')}
               color={highlight === 'selected' ? 'primary' : 'default'}
               variant={highlight === 'selected' ? 'filled' : 'outlined'}
-              sx={{ cursor: committed ? 'default' : 'pointer', fontSize: '0.65rem', minWidth: 36, opacity: committed ? 0.85 : 1 }}
+              sx={{ cursor: committed ? 'default' : 'pointer', fontSize: '0.65rem', minWidth: 36, opacity: committed ? 0.85 : 1, flexShrink: 0, whiteSpace: 'nowrap' }}
             />
           </Tooltip>
           {!committed && (
@@ -1536,7 +1577,7 @@ function PitchRow({ assignment, pitch, devNames, devTLNames, onDevChange, onStat
                 onClick={() => onStatusChange(pitch.id, 'next-up')}
                 color={highlight === 'next-up' ? 'info' : 'default'}
                 variant={highlight === 'next-up' ? 'filled' : 'outlined'}
-                sx={{ cursor: 'pointer', fontSize: '0.65rem', minWidth: 44 }}
+                sx={{ cursor: 'pointer', fontSize: '0.65rem', minWidth: 44, flexShrink: 0, whiteSpace: 'nowrap' }}
               />
             </Tooltip>
           )}
@@ -1546,7 +1587,7 @@ function PitchRow({ assignment, pitch, devNames, devTLNames, onDevChange, onStat
                 onClick={() => onStatusChange(pitch.id, 'cut')}
                 color="default"
                 variant={highlight === 'cut' ? 'filled' : 'outlined'}
-                sx={{ cursor: 'pointer', fontSize: '0.65rem', minWidth: 52, color: highlight === 'cut' ? undefined : 'text.disabled' }}
+                sx={{ cursor: 'pointer', fontSize: '0.65rem', minWidth: 52, color: highlight === 'cut' ? undefined : 'text.disabled', flexShrink: 0, whiteSpace: 'nowrap' }}
               />
             </Tooltip>
           )}
