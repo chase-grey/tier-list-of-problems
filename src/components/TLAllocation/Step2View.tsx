@@ -53,6 +53,9 @@ interface Step2ViewProps {
   devByPitchId: Record<string, string | null>;
   devNames: string[];
   onAssign: (pitchId: string, field: 'devTL' | 'qm' | 'pqa1', value: string | null) => void;
+  /** Update the dev assignment for a pitch (writes to Stage 2's planAssignments).
+   *  Wired so the dev column on Stage 4 can be edited like the PQA1 column. */
+  onDevAssign: (pitchId: string, value: string | null) => void;
   /** Move a pitch between selected / next-up / cut. Wired to the row's pencil
    *  edit dialog. Omitted when status changes shouldn't be allowed. */
   onStatusChange?: (pitchId: string, newStatus: 'selected' | 'next-up' | 'cut') => void;
@@ -234,7 +237,7 @@ function workloadCountColor(count: number, ideal: number): string {
 }
 
 export default function Step2View({
-  selectedPitches, nextUpPitches, cutPitches, assignments, phase2Interests, config, onAssign, onStatusChange, devByPitchId, devNames,
+  selectedPitches, nextUpPitches, cutPitches, assignments, phase2Interests, config, onAssign, onDevAssign, onStatusChange, devByPitchId, devNames,
   includeUXD, onToggleUXD,
   lockedPitchIds, lockedPersonNames, onTogglePitchLock, onTogglePersonLock,
   voterName, onCapacityOverride, onAdhocAdd, onAdhocEdit, adhocPitchIds, stretchPitchIds,
@@ -360,7 +363,7 @@ export default function Step2View({
   const handleFocusPerson = useCallback((name: string) => {
     const sectionLabel = config.devTLNames.includes(name) ? 'Dev TLs'
       : config.qmNames.includes(name) ? 'QMs'
-      : 'PQA1 Reviewers';
+      : 'Devs';
     setSidebarCollapsed(prev => ({ ...prev, [sectionLabel]: false }));
     setTimeout(() => {
       personRefs.current.get(name)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -656,6 +659,25 @@ export default function Step2View({
     [availableDevNames, availableDevTLNames],
   );
 
+  // Dev dropdown options for the Stage 4 dev column. Mirrors Step1View's
+  // devDropdownNames: devs whose devCapacity isn't 'none' (i.e. NOT in
+  // unavailableNames or unavailableForDevNames) plus available dev TLs (TLs
+  // can be manually assigned as the lead dev on a non-standard project).
+  const unavailableForDevSet = useMemo(
+    () => new Set([
+      ...(config.unavailableNames ?? []),
+      ...(config.unavailableForDevNames ?? []),
+    ]),
+    [config.unavailableNames, config.unavailableForDevNames],
+  );
+  const devDropdownNames = useMemo(
+    () => [
+      ...devNames.filter(d => !unavailableForDevSet.has(d)),
+      ...availableDevTLNames,
+    ],
+    [devNames, unavailableForDevSet, availableDevTLNames],
+  );
+
   const devTLInterests = phase2Interests.filter(p => p.role === 'dev TL');
   const qmInterests = phase2Interests.filter(p => p.role === 'QM');
 
@@ -939,8 +961,10 @@ export default function Step2View({
                 devTLNames={availableDevTLNames}
                 qmNames={availableQmNames}
                 devNames={pqa1DropdownNames}
+                devDropdownNames={devDropdownNames}
                 devHasAnyData={devHasAnyData}
                 onAssign={tryAssign}
+                onDevAssign={onDevAssign}
                 onRef={registerRow(pitch.id)}
                 highlighted={pitch.id === highlightPitchId}
                 devName={devByPitchId[pitch.id] ?? null}
@@ -990,14 +1014,14 @@ export default function Step2View({
                 </Typography>
               </Box>
               <Collapse in={!collapsed}>
-                <Table size="small" sx={{ tableLayout: 'fixed', minWidth: 1020 }}>
+                <Table size="small" sx={{ tableLayout: 'fixed', minWidth: 1020, '& th, & td': { px: 1.25 } }}>
                   <colgroup>
                     <col />{/* pitch: flex */}
                     <col style={{ width: 56 }} />{/* Team priority */}
                     <col style={{ width: 56 }} />{/* TL priority */}
-                    <col style={{ width: 170 }} />{/* status chips — snug to the chip group so adjacent cell padding lands symmetrically */}
+                    <col style={{ width: 180 }} />{/* status chips — 8px left pad on the cell + ~170px of chips */}
                     <col style={{ width: 48 }} />{/* UXD */}
-                    <col style={{ width: 72 }} />{/* dev read-only */}
+                    <col style={{ width: 130 }} />{/* Dev — dropdown, mirrors PQA1 column shape */}
                     <col style={{ width: 130 }} />{/* DevTL — name + interest indicator + chevron */}
                     <col style={{ width: 130 }} />{/* QM */}
                     <col style={{ width: 130 }} />{/* PQA1 Reviewer */}
@@ -1015,13 +1039,13 @@ export default function Step2View({
                           <span>TL</span>
                         </Tooltip>
                       </TableCell>
-                      <TableCell width={170} />
+                      <TableCell width={180} />
                       <TableCell width={48} align="center">
                         <Tooltip title="Include UXD in project kickoff">
                           <span>UXD</span>
                         </Tooltip>
                       </TableCell>
-                      <TableCell width={72} align="center">Dev</TableCell>
+                      <TableCell width={130} align="center">Dev</TableCell>
                       <TableCell width={130} align="center">Dev TL</TableCell>
                       <TableCell width={130} align="center">QM</TableCell>
                       <TableCell width={130} align="center">PQA1 Reviewer</TableCell>
@@ -1602,24 +1626,24 @@ export default function Step2View({
 
         <Divider sx={{ my: 1.25 }} />
 
-        {/* ── PQA1 Reviewers ── */}
+        {/* ── Devs (PQA1 pool + any dev work they've picked up) ── */}
         <Box>
           <Box
             sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5, cursor: 'pointer', userSelect: 'none' }}
-            onClick={() => toggleSidebarSection('PQA1 Reviewers')}
+            onClick={() => toggleSidebarSection('Devs')}
           >
-            {sidebarCollapsed['PQA1 Reviewers']
+            {sidebarCollapsed['Devs']
               ? <ExpandIcon sx={{ fontSize: '0.9rem', color: 'text.secondary' }} />
               : <CollapseIcon sx={{ fontSize: '0.9rem', color: 'text.secondary' }} />
             }
             <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: 0.5 }}>
-              PQA1 Reviewers
+              Devs
             </Typography>
             <Typography variant="caption" color="text.disabled" sx={{ ml: 'auto' }}>
-              Avg {fmtIdeal(step2Stats.pqa1Ideal)} / PQA1
+              Avg {fmtIdeal(step2Stats.pqa1Ideal)} / Dev
             </Typography>
           </Box>
-          <Collapse in={!sidebarCollapsed['PQA1 Reviewers']}>
+          <Collapse in={!sidebarCollapsed['Devs']}>
             {availableDevNames.map(name => {
               const sortPitchIds = (ids: string[]): string[] => ids.slice().sort((a, b) => {
                 const pA = pitchMap.get(a);
@@ -1923,8 +1947,13 @@ interface Step2RowProps {
   devTLNames: string[];
   qmNames: string[];
   devNames: string[];
+  /** Eligible names for the Stage 4 dev column dropdown. Available regular
+   *  devs plus available dev TLs — same shape as Step1View's devDropdownNames. */
+  devDropdownNames: string[];
   devHasAnyData: Set<string>;
   onAssign: (pitchId: string, field: 'devTL' | 'qm' | 'pqa1', value: string | null) => void;
+  /** Update the dev assignment for this pitch. Pulls into Stage 2's plan. */
+  onDevAssign: (pitchId: string, value: string | null) => void;
   onRef?: (el: HTMLTableRowElement | null) => void;
   highlighted?: boolean;
   devName: string | null;
@@ -1951,8 +1980,8 @@ interface Step2RowProps {
 }
 
 function Step2Row({
-  pitch, assignment, devTLInterests, qmInterests, devTLNames, qmNames, devNames, devHasAnyData,
-  onAssign, onRef, highlighted, devName, includeUXD, onToggleUXD,
+  pitch, assignment, devTLInterests, qmInterests, devTLNames, qmNames, devNames, devDropdownNames, devHasAnyData,
+  onAssign, onDevAssign, onRef, highlighted, devName, includeUXD, onToggleUXD,
   locked, onToggleLock, lockedPersonSet, committed, isAdhoc, isStretch, onEdit, dimmed,
   status, onStatusChange,
 }: Step2RowProps) {
@@ -2103,15 +2132,15 @@ function Step2Row({
       {/* Plan / Up Next / Not Now status chips. Mirror of Step1View's
           status column — committed rows show only the Plan chip (locked
           into Planned), other rows toggle between all three. */}
-      <TableCell sx={{ p: 0 }}>
+      <TableCell sx={{ pl: 1, pr: 0 }}>
         <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-start', flexWrap: 'nowrap' }}>
           {/* flexShrink: 0 + whiteSpace: nowrap on each chip protects their
               full label from being clipped when the row narrows — matches the
               guard in Step1View so "Not Now" never collapses to "Not N…".
-              p:0 on both sides so the chip group hugs the column tight; the
-              col is sized snug to the three chips so gaps to TL (left) and
-              UXD (right) come entirely from those cells' default padding
-              and read symmetric instead of stacking up on one side. */}
+              The cell overrides the table-wide px:1.25 with pl:1 pr:0 so
+              the chip group has a small breath of left padding (more gap
+              from the TL number) and hugs the right edge so the Plan→UXD
+              gap stays balanced. */}
           <Tooltip title={committed ? 'Committed projects are always planned' : "Include in this quarter's projects"}>
             <Chip
               label="Plan"
@@ -2158,11 +2187,24 @@ function Step2Row({
           sx={{ p: 0.5 }}
         />
       </TableCell>
-      {/* Dev read-only */}
-      <TableCell align="center">
-        <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: 'nowrap' }}>
-          {devName ? getShortName(devName) : '—'}
-        </Typography>
+      {/* Dev — editable dropdown. Writes back to Stage 2's plan via onDevAssign. */}
+      <TableCell sx={{ px: 0.5, py: 0.25 }}>
+        <Pqa1Dropdown
+          value={devName}
+          devNames={devDropdownNames}
+          devTLNames={devTLNames}
+          devInterest={pitch.devInterest}
+          devHasAnyData={devHasAnyData}
+          excludeDev={null}
+          selectId={`${pitch.id}-dev`}
+          onChange={v => onDevAssign(pitch.id, v)}
+          author={author}
+          lockedPersonSet={lockedPersonSet}
+          disabled={committed}
+          hideInterest={isAdhoc}
+          placeholder="Assign dev…"
+          noneLabel="None — no dev needed"
+        />
       </TableCell>
       <TableCell sx={{ px: 0.5, py: 0.25 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
@@ -2267,9 +2309,15 @@ interface Pqa1DropdownProps {
   disabled?: boolean;
   /** Adhoc pitches have no interest data — suppress dots/chips and sort alphabetically instead of by interest. */
   hideInterest?: boolean;
+  /** Placeholder when no value is selected. Defaults to "Assign…". */
+  placeholder?: string;
+  /** Label for the "None — no <role>" menu item. Defaults to PQA1 wording. */
+  noneLabel?: string;
 }
 
-function Pqa1Dropdown({ value, devNames, devTLNames = [], devInterest, devHasAnyData, excludeDev, selectId, onChange, author, lockedPersonSet, disabled, hideInterest }: Pqa1DropdownProps) {
+// Re-used for the Dev column too — same dev-name list, same interest dots,
+// just different placeholder/none labels and a different `excludeDev` set.
+function Pqa1Dropdown({ value, devNames, devTLNames = [], devInterest, devHasAnyData, excludeDev, selectId, onChange, author, lockedPersonSet, disabled, hideInterest, placeholder = 'Assign…', noneLabel = 'None — no PQA1 reviewer' }: Pqa1DropdownProps) {
   const exclusive = useExclusiveSelect(selectId);
   const devTLSet = new Set(devTLNames);
   const sortedAll = devNames
@@ -2293,7 +2341,7 @@ function Pqa1Dropdown({ value, devNames, devTLNames = [], devInterest, devHasAny
       displayEmpty
       sx={{ fontSize: '0.75rem', width: '100%', '& .MuiSelect-select': { py: 0.5, px: 1 } }}
       renderValue={val => {
-        if (!val) return <Typography variant="caption" color="text.disabled">Assign…</Typography>;
+        if (!val) return <Typography variant="caption" color="text.disabled">{placeholder}</Typography>;
         if (val === ASSIGNMENT_NONE) {
           return <Typography variant="caption" sx={{ fontStyle: 'italic', color: 'text.secondary' }}>None</Typography>;
         }
@@ -2317,7 +2365,7 @@ function Pqa1Dropdown({ value, devNames, devTLNames = [], devInterest, devHasAny
     >
       <MenuItem value=""><Typography variant="body2"><em>Unassign</em></Typography></MenuItem>
       <MenuItem value={ASSIGNMENT_NONE}>
-        <Typography variant="body2" sx={{ fontStyle: 'italic', color: 'text.secondary' }}>None — no PQA1 reviewer</Typography>
+        <Typography variant="body2" sx={{ fontStyle: 'italic', color: 'text.secondary' }}>{noneLabel}</Typography>
       </MenuItem>
       {[...sorted, ...sortedTLs].map((dev, idx) => {
         const isTLSection = idx === sorted.length;
