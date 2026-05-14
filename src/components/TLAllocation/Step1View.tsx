@@ -657,12 +657,12 @@ export default function Step1View({
 
               {/* Collapsible bucket content */}
               <Collapse in={isOpen(cat, 'bucket')}>
-                <Table size="small" sx={{ tableLayout: 'fixed', minWidth: 620 }}>
+                <Table size="small" sx={{ tableLayout: 'fixed', minWidth: 620, '& th, & td': { px: 1.25 } }}>
                   <colgroup>
                     <col />{/* pitch: takes remaining space */}
                     <col style={{ width: 56 }} />{/* Team priority */}
                     <col style={{ width: 56 }} />{/* TL priority */}
-                    <col style={{ width: 170 }} />{/* Plan / Up Next / Not Now — sized snug to the three chips so adjacent cell padding lands symmetrically */}
+                    <col style={{ width: 180 }} />{/* Plan / Up Next / Not Now — 8px left pad on the cell + ~170px of chips */}
                     <col style={{ width: 150 }} />{/* Dev */}
                   </colgroup>
                   <TableHead>
@@ -678,7 +678,7 @@ export default function Step1View({
                           <span>TL</span>
                         </Tooltip>
                       </TableCell>
-                      <TableCell width={170} align="center" />
+                      <TableCell width={180} align="center" />
                       <TableCell align="center" width={150}>Dev</TableCell>
                     </TableRow>
                   </TableHead>
@@ -702,12 +702,12 @@ export default function Step1View({
                     <TableRow sx={{ p: 0, m: 0 }}>
                       <TableCell colSpan={5} sx={{ p: 0, border: 0 }}>
                         <Collapse in={isOpen(cat, 'planned')}>
-                          <Table size="small" sx={{ tableLayout: 'fixed', width: '100%' }}>
+                          <Table size="small" sx={{ tableLayout: 'fixed', width: '100%', '& th, & td': { px: 1.25 } }}>
                             <colgroup>
                               <col />{/* pitch: flex to match outer table */}
                               <col style={{ width: 56 }} />{/* Team */}
                               <col style={{ width: 56 }} />{/* TL */}
-                              <col style={{ width: 170 }} />{/* Plan / Up Next / Not Now */}
+                              <col style={{ width: 180 }} />{/* Plan / Up Next / Not Now — 8px left pad on the cell + ~170px of chips */}
                               <col style={{ width: 150 }} />{/* Dev */}
                             </colgroup>
                             <TableBody>
@@ -754,12 +754,12 @@ export default function Step1View({
                     <TableRow sx={{ p: 0, m: 0 }}>
                       <TableCell colSpan={5} sx={{ p: 0, border: 0 }}>
                         <Collapse in={isOpen(cat, 'nextUp')}>
-                          <Table size="small" sx={{ tableLayout: 'fixed', width: '100%' }}>
+                          <Table size="small" sx={{ tableLayout: 'fixed', width: '100%', '& th, & td': { px: 1.25 } }}>
                             <colgroup>
                               <col />{/* pitch: flex to match outer table */}
                               <col style={{ width: 56 }} />{/* Team */}
                               <col style={{ width: 56 }} />{/* TL */}
-                              <col style={{ width: 170 }} />{/* Plan / Up Next / Not Now */}
+                              <col style={{ width: 180 }} />{/* Plan / Up Next / Not Now — 8px left pad on the cell + ~170px of chips */}
                               <col style={{ width: 150 }} />{/* Dev */}
                             </colgroup>
                             <TableBody>
@@ -806,12 +806,12 @@ export default function Step1View({
                     <TableRow sx={{ p: 0, m: 0 }}>
                       <TableCell colSpan={5} sx={{ p: 0, border: 0 }}>
                         <Collapse in={isOpen(cat, 'notNow')}>
-                          <Table size="small" sx={{ tableLayout: 'fixed', width: '100%' }}>
+                          <Table size="small" sx={{ tableLayout: 'fixed', width: '100%', '& th, & td': { px: 1.25 } }}>
                             <colgroup>
                               <col />{/* pitch: flex to match outer table */}
                               <col style={{ width: 56 }} />{/* Team */}
                               <col style={{ width: 56 }} />{/* TL */}
-                              <col style={{ width: 170 }} />{/* Plan / Up Next / Not Now */}
+                              <col style={{ width: 180 }} />{/* Plan / Up Next / Not Now — 8px left pad on the cell + ~170px of chips */}
                               <col style={{ width: 150 }} />{/* Dev */}
                             </colgroup>
                             <TableBody>
@@ -1562,18 +1562,17 @@ function PitchRow({ assignment, pitch, devNames, devTLNames, onDevChange, onStat
           </Typography>
         </Tooltip>
       </TableCell>
-      <TableCell sx={{ p: 0 }}>
+      <TableCell sx={{ pl: 1, pr: 0 }}>
         <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-start', flexWrap: 'nowrap' }}>
           {/* ITEM 7: descriptive tooltips on status chips.
               flexShrink: 0 + whiteSpace: nowrap on each chip protects their
               full label from being clipped when the row narrows — without
               these, MUI's flex defaults let the chips compress and "Not Now"
               would truncate to "Not N…" on smaller screens.
-              p:0 on the cell so the chip group hugs both sides of the
-              column. With the col sized snug to the three chips, gaps to
-              the neighboring columns (TL on the left, Dev on the right)
-              come entirely from those cells' default padding — so they
-              read symmetric instead of having extra slack on one side. */}
+              The cell overrides the table-wide px:1.25 with pl:1 pr:0 so
+              the chip group has a small breath of left padding (slightly
+              more gap from the TL number) and hugs the right edge so the
+              Plan→UXD/Dev gap stays balanced. */}
           <Tooltip title={committed ? 'Committed projects are always planned' : "Include in this quarter's projects"}>
             <Chip label="Plan" size="small"
               onClick={committed ? undefined : () => onStatusChange(pitch.id, 'selected')}
