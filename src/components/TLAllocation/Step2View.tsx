@@ -21,7 +21,7 @@ import {
   LockOpen as LockOpenIcon,
   EditOutlined as EditOutlinedIcon,
   Circle as CircleIcon,
-  EmojiEvents as StretchIcon,
+  AutoAwesome as StretchIcon,
 } from '@mui/icons-material';
 import type {
   AllocationPitch, Phase2Interest, StaffingAssignment, AllocationConfig, InterestLevel, PersonCapacity,
@@ -136,6 +136,40 @@ function CapacityBadge({ name, tier, comment, source, onClick }: CapacityBadgePr
         <CircleIcon sx={{ fontSize: '0.6rem', color }} />
       </IconButton>
     </Tooltip>
+  );
+}
+
+/** Ombre color for priority score. t=0 (score=1, best) → deep blue;
+ *  t=1 (score=4, worst) → muted slate. Mirrors Step1View's priorityColor so
+ *  the Team/TL priority cells render with consistent shading across stages. */
+function priorityColor(score: number): string {
+  const t = Math.max(0, Math.min(1, (score - 1) / 3));
+  const r = Math.round(0x15 + t * (0x78 - 0x15));
+  const g = Math.round(0x65 + t * (0x90 - 0x65));
+  const b = Math.round(0xc0 + t * (0x9c - 0xc0));
+  return `rgb(${r},${g},${b})`;
+}
+
+const TIER_LABEL: Record<0 | 1 | 2 | 3 | 4, string> = { 0: 'Unsorted', 1: 'Highest', 2: 'High', 3: 'Medium', 4: 'Low' };
+
+/** Hover content for the priority score cells — per-voter tier breakdown. */
+function VoteBreakdown({ votes, label }: { votes: Record<string, 0 | 1 | 2 | 3 | 4 | null>; label: string }) {
+  // tier=0 (explicitly unsorted) sorts after tier 4; null sorts last
+  const sorted = Object.entries(votes).sort(([, a], [, b]) => (a === 0 ? 5 : a ?? 6) - (b === 0 ? 5 : b ?? 6));
+  return (
+    <Box sx={{ p: 0.5 }}>
+      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5, fontWeight: 700 }}>
+        {label}
+      </Typography>
+      {sorted.map(([name, tier]) => (
+        <Box key={name} sx={{ display: 'flex', justifyContent: 'space-between', gap: 1.5 }}>
+          <Typography variant="caption">{getShortName(name)}</Typography>
+          <Typography variant="caption" sx={{ color: (tier != null && tier > 0) ? priorityColor(tier) : 'text.disabled', fontWeight: 700 }}>
+            {(tier != null && tier > 0) ? `${TIER_LABEL[tier]} (${tier})` : tier === 0 ? 'Unsorted' : 'Unranked (–)'}
+          </Typography>
+        </Box>
+      ))}
+    </Box>
   );
 }
 
@@ -258,6 +292,21 @@ export default function Step2View({
     }
     onToggleUXD(pitchId);
   }, [committedPitchSet, lockedPitchSet, onToggleUXD, showSnackbar]);
+
+  // Status changes from Stage 4. Reuses the same guards as the assign /
+  // toggleUXD paths: committed rows stay Planned, locked rows refuse edits.
+  const tryStatusChange = useCallback((pitchId: string, newStatus: 'selected' | 'next-up' | 'cut') => {
+    if (!onStatusChange) return;
+    if (committedPitchSet.has(pitchId)) {
+      showSnackbar('This is a committed project — it stays planned.', 'warning');
+      return;
+    }
+    if (lockedPitchSet.has(pitchId)) {
+      showSnackbar('This row is locked. Unlock it to change.', 'warning');
+      return;
+    }
+    onStatusChange(pitchId, newStatus);
+  }, [committedPitchSet, lockedPitchSet, onStatusChange, showSnackbar]);
   // ── Sidebar resize (Item 5) ──────────────────────────────────────────────
   const [sidebarWidth, setSidebarWidth] = useState(() => Math.round(window.innerWidth / 3));
   const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 1400);
@@ -792,7 +841,7 @@ export default function Step2View({
           );
           if (catPitches.length === 0 && nextUpCatPitches.length === 0) return null;
           const collapsed = categoryCollapsed[cat] ?? false;
-          const renderRow = (pitch: AllocationPitch, opts?: { dimmed?: boolean }) => {
+          const renderRow = (pitch: AllocationPitch, opts?: { dimmed?: boolean; status?: 'selected' | 'next-up' | 'cut' }) => {
             const a = assignMap.get(pitch.id) ?? { pitchId: pitch.id, devTL: null, qm: null, pqa1: null };
             return (
               <Step2Row
@@ -819,12 +868,14 @@ export default function Step2View({
                 isStretch={stretchSet.has(pitch.id)}
                 onEdit={onAdhocEdit ? () => onAdhocEdit(pitch.id) : undefined}
                 dimmed={opts?.dimmed}
+                status={opts?.status}
+                onStatusChange={onStatusChange ? (newStatus) => tryStatusChange(pitch.id, newStatus) : undefined}
               />
             );
           };
           const subHeader = (label: string, count: number, open: boolean, onToggle: () => void, accent: 'planned' | 'nextUp') => (
             <TableRow sx={{ cursor: 'pointer', '&:hover': { bgcolor: 'action.hover' } }} onClick={onToggle}>
-              <TableCell colSpan={6} sx={{ py: 0.25, bgcolor: 'action.hover' }}>
+              <TableCell colSpan={9} sx={{ py: 0.25, bgcolor: 'action.hover' }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                   {open ? <CollapseIcon sx={{ fontSize: '0.8rem' }} /> : <ExpandIcon sx={{ fontSize: '0.8rem' }} />}
                   <Typography variant="caption" color={accent === 'planned' ? 'text.secondary' : 'text.disabled'} sx={{ fontStyle: 'italic' }}>
@@ -852,18 +903,31 @@ export default function Step2View({
                 </Typography>
               </Box>
               <Collapse in={!collapsed}>
-                <Table size="small" sx={{ tableLayout: 'fixed', minWidth: 820 }}>
+                <Table size="small" sx={{ tableLayout: 'fixed', minWidth: 1080 }}>
                   <colgroup>
                     <col />{/* pitch: flex */}
+                    <col style={{ width: 56 }} />{/* Team priority */}
+                    <col style={{ width: 56 }} />{/* TL priority */}
                     <col style={{ width: 48 }} />{/* UXD */}
                     <col style={{ width: 72 }} />{/* dev read-only */}
                     <col style={{ width: 155 }} />{/* DevTL */}
                     <col style={{ width: 155 }} />{/* QM */}
                     <col style={{ width: 155 }} />{/* PQA1 Reviewer */}
+                    <col style={{ width: 170 }} />{/* status chips */}
                   </colgroup>
                   <TableHead>
                     <TableRow sx={{ '& th': { py: 0.5, fontSize: '0.72rem', color: 'text.secondary' } }}>
                       <TableCell>Pitch</TableCell>
+                      <TableCell width={56} align="center">
+                        <Tooltip title="Team priority score — hover a score to see voter breakdown" placement="top">
+                          <span>Team</span>
+                        </Tooltip>
+                      </TableCell>
+                      <TableCell width={56} align="center">
+                        <Tooltip title="TL priority score — hover a score to see voter breakdown" placement="top">
+                          <span>TL</span>
+                        </Tooltip>
+                      </TableCell>
                       <TableCell width={48} align="center">
                         <Tooltip title="Include UXD in project kickoff">
                           <span>UXD</span>
@@ -873,13 +937,14 @@ export default function Step2View({
                       <TableCell width={155} align="center">Dev TL</TableCell>
                       <TableCell width={155} align="center">QM</TableCell>
                       <TableCell width={155} align="center">PQA1 Reviewer</TableCell>
+                      <TableCell width={170} />
                     </TableRow>
                   </TableHead>
                   <TableBody>
                     {catPitches.length > 0 && subHeader('Planned', catPitches.length, isPlanOpen(cat), () => togglePlanSub(cat), 'planned')}
-                    {isPlanOpen(cat) && catPitches.map(pitch => renderRow(pitch))}
+                    {isPlanOpen(cat) && catPitches.map(pitch => renderRow(pitch, { status: 'selected' }))}
                     {nextUpCatPitches.length > 0 && subHeader('Up Next', nextUpCatPitches.length, isNextUpOpen(cat), () => toggleNextUpSub(cat), 'nextUp')}
-                    {isNextUpOpen(cat) && nextUpCatPitches.map(pitch => renderRow(pitch, { dimmed: true }))}
+                    {isNextUpOpen(cat) && nextUpCatPitches.map(pitch => renderRow(pitch, { dimmed: true, status: 'next-up' }))}
                   </TableBody>
                 </Table>
               </Collapse>
@@ -1580,12 +1645,20 @@ interface Step2RowProps {
    *  Doesn't disable interaction — pre-staging assignments on Up Next rows is
    *  intentional, and the dim cue is enough to keep them visually secondary. */
   dimmed?: boolean;
+  /** Plan status — drives the highlighted chip among Plan / Up Next / Not Now.
+   *  Pass undefined to skip the status column entirely (when onStatusChange
+   *  isn't wired). */
+  status?: 'selected' | 'next-up' | 'cut';
+  /** Move this pitch between Planned / Up Next / Not Now. Pre-checked against
+   *  committed/locked guards by the parent (tryStatusChange in Step2View). */
+  onStatusChange?: (newStatus: 'selected' | 'next-up' | 'cut') => void;
 }
 
 function Step2Row({
   pitch, assignment, devTLInterests, qmInterests, devTLNames, qmNames, devNames, devHasAnyData,
   onAssign, onRef, highlighted, devName, includeUXD, onToggleUXD,
   locked, onToggleLock, lockedPersonSet, committed, isAdhoc, isStretch, onEdit, dimmed,
+  status, onStatusChange,
 }: Step2RowProps) {
   const [detailsAnchor, setDetailsAnchor] = useState<HTMLButtonElement | null>(null);
 
@@ -1707,6 +1780,30 @@ function Step2Row({
           </Suspense>
         )}
       </TableCell>
+      {/* Team priority score */}
+      <TableCell align="right">
+        <Tooltip
+          title={<VoteBreakdown votes={pitch.teamVotes} label="Team votes" />}
+          placement="left"
+          slotProps={{ tooltip: { sx: { bgcolor: 'background.paper', color: 'text.primary', boxShadow: 3, border: '1px solid', borderColor: 'divider', p: 0 } } }}
+        >
+          <Typography variant="caption" sx={{ color: priorityColor(pitch.teamPriorityScore), fontWeight: 600, cursor: 'default' }}>
+            {pitch.teamPriorityScore.toFixed(1)}
+          </Typography>
+        </Tooltip>
+      </TableCell>
+      {/* TL priority score */}
+      <TableCell align="right">
+        <Tooltip
+          title={<VoteBreakdown votes={pitch.tlVotes} label="TL votes" />}
+          placement="left"
+          slotProps={{ tooltip: { sx: { bgcolor: 'background.paper', color: 'text.primary', boxShadow: 3, border: '1px solid', borderColor: 'divider', p: 0 } } }}
+        >
+          <Typography variant="caption" sx={{ color: priorityColor(pitch.tlPriorityScore), fontWeight: 600, cursor: 'default' }}>
+            {pitch.tlPriorityScore.toFixed(1)}
+          </Typography>
+        </Tooltip>
+      </TableCell>
       {/* UXD checkbox */}
       <TableCell align="center" sx={{ p: 0 }}>
         <Checkbox
@@ -1802,6 +1899,47 @@ function Step2Row({
           {pqa1AuthorWarning && (
             <Tooltip title={`${author} wrote this pitch with highest interest but isn't assigned as PQA1`} placement="top">
               <WarnIcon sx={{ fontSize: '0.95rem', color: 'warning.main', flexShrink: 0 }} />
+            </Tooltip>
+          )}
+        </Box>
+      </TableCell>
+      {/* Plan / Up Next / Not Now status chips. Mirror of Step1View's
+          status column — committed rows show only the Plan chip (locked
+          into Planned), other rows toggle between all three. */}
+      <TableCell sx={{ px: 1 }}>
+        <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-end' }}>
+          <Tooltip title={committed ? 'Committed projects are always planned' : "Include in this quarter's projects"}>
+            <Chip
+              label="Plan"
+              size="small"
+              onClick={committed || !onStatusChange ? undefined : () => onStatusChange('selected')}
+              color={status === 'selected' ? 'primary' : 'default'}
+              variant={status === 'selected' ? 'filled' : 'outlined'}
+              sx={{ cursor: committed || !onStatusChange ? 'default' : 'pointer', fontSize: '0.65rem', minWidth: 36, opacity: committed ? 0.85 : 1 }}
+            />
+          </Tooltip>
+          {!committed && onStatusChange && (
+            <Tooltip title="Queue as a potential project — keeps any TL/QM/PQA1 picks but flags it as not-yet-planned">
+              <Chip
+                label="Up Next"
+                size="small"
+                onClick={() => onStatusChange('next-up')}
+                color={status === 'next-up' ? 'info' : 'default'}
+                variant={status === 'next-up' ? 'filled' : 'outlined'}
+                sx={{ cursor: 'pointer', fontSize: '0.65rem', minWidth: 44 }}
+              />
+            </Tooltip>
+          )}
+          {!committed && onStatusChange && (
+            <Tooltip title="Cut from this quarter">
+              <Chip
+                label="Not Now"
+                size="small"
+                onClick={() => onStatusChange('cut')}
+                color="default"
+                variant={status === 'cut' ? 'filled' : 'outlined'}
+                sx={{ cursor: 'pointer', fontSize: '0.65rem', minWidth: 52, color: status === 'cut' ? undefined : 'text.disabled' }}
+              />
             </Tooltip>
           )}
         </Box>
