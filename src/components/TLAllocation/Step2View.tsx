@@ -566,17 +566,17 @@ export default function Step2View({
     return map;
   }, [cutPitches]);
 
-  // Per-category sub-section collapse state. Planned + Up Next default open
-  // so the TL sees current and queued work at a glance; Not Now defaults
-  // closed since it's reference info, not the primary task.
+  // Per-category sub-section collapse state. Only Planned defaults open —
+  // Up Next and Not Now are reference info that the TL can expand when
+  // needed; staffing focus stays on the active plan.
   const [planSubOpen, setPlanSubOpen] = useState<Record<string, boolean>>({});
   const [nextUpSubOpen, setNextUpSubOpen] = useState<Record<string, boolean>>({});
   const [cutSubOpen, setCutSubOpen] = useState<Record<string, boolean>>({});
   const togglePlanSub = (cat: string) => setPlanSubOpen(p => ({ ...p, [cat]: !(p[cat] ?? true) }));
-  const toggleNextUpSub = (cat: string) => setNextUpSubOpen(p => ({ ...p, [cat]: !(p[cat] ?? true) }));
+  const toggleNextUpSub = (cat: string) => setNextUpSubOpen(p => ({ ...p, [cat]: !(p[cat] ?? false) }));
   const toggleCutSub = (cat: string) => setCutSubOpen(p => ({ ...p, [cat]: !(p[cat] ?? false) }));
   const isPlanOpen = (cat: string) => planSubOpen[cat] ?? true;
-  const isNextUpOpen = (cat: string) => nextUpSubOpen[cat] ?? true;
+  const isNextUpOpen = (cat: string) => nextUpSubOpen[cat] ?? false;
   const isCutOpen = (cat: string) => cutSubOpen[cat] ?? false;
 
   const [categoryCollapsed, setCategoryCollapsed] = useState<Record<string, boolean>>({});
@@ -1225,9 +1225,9 @@ export default function Step2View({
               const pi = interests.find(p => p.personName === name);
               const personHasNoData = !pi || Object.keys(pi.interestByPitchId).length === 0;
               const roleIdeal = role === 'devTL' ? step2Stats.tlIdeal : step2Stats.qmIdeal;
-              // Use effective workload count from step2Stats so a Dev TL also
-              // doing dev work has each "as dev" pitch counted ×2. QMs and
-              // pitch-list rendering stay on the raw primary-role list.
+              // Weighted workload score from step2Stats so a TL or QM who also
+              // picked up the dev slot on a project gets that ×2 weight. The
+              // pitch list below still renders from the raw primary-role list.
               const workloadCount = (role === 'devTL' ? step2Stats.tlCounts : step2Stats.qmCounts)
                 .find(c => c.name === name)?.count ?? assignedPitchIds.length;
               const workloadColor = workloadCountColor(workloadCount, roleIdeal);
