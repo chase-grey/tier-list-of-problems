@@ -21,7 +21,7 @@ import {
   LockOpen as LockOpenIcon,
   EditOutlined as EditOutlinedIcon,
   Circle as CircleIcon,
-  EmojiEvents as StretchIcon,
+  AutoAwesome as StretchIcon,
 } from '@mui/icons-material';
 import type { AllocationPitch, AssignmentStatus, PlanAssignment, PersonCapacity } from '../../types/allocationTypes';
 import { ASSIGNMENT_NONE } from '../../types/models';
@@ -510,11 +510,14 @@ export default function Step1View({
       return a?.assignedDev !== null && a?.assignedDev !== p.previousDev;
     });
 
-    // Dev workload (available devs only)
+    // Dev workload (available devs only). The dev dropdown allows picking a
+    // Dev TL or QM as the implementing dev for non-standard projects, so
+    // a.assignedDev isn't guaranteed to be in availableDevNames — bucket only
+    // those that are, to avoid pushing into an undefined slot.
     const devProjects: Record<string, string[]> = {};
     availableDevNames.forEach(d => { devProjects[d] = []; });
     selectedAssignments.forEach(a => {
-      if (a.assignedDev && !unavailableDevSet.has(a.assignedDev)) devProjects[a.assignedDev].push(a.pitchId);
+      if (a.assignedDev && devProjects[a.assignedDev]) devProjects[a.assignedDev].push(a.pitchId);
     });
 
     // Dev workload balance. Stage 2 always targets 2 projects per dev — that
@@ -650,10 +653,10 @@ export default function Step1View({
                 <Table size="small" sx={{ tableLayout: 'fixed', minWidth: 620 }}>
                   <colgroup>
                     <col />{/* pitch: takes remaining space */}
-                    <col style={{ width: 56 }} />
-                    <col style={{ width: 56 }} />
-                    <col style={{ width: 150 }} />
-                    <col style={{ width: 200 }} />
+                    <col style={{ width: 56 }} />{/* Team priority */}
+                    <col style={{ width: 56 }} />{/* TL priority */}
+                    <col style={{ width: 200 }} />{/* Plan / Up Next / Not Now */}
+                    <col style={{ width: 150 }} />{/* Dev */}
                   </colgroup>
                   <TableHead>
                     <TableRow sx={{ '& th': { py: 0.5, fontSize: '0.72rem', color: 'text.secondary' } }}>
@@ -668,8 +671,8 @@ export default function Step1View({
                           <span>TL</span>
                         </Tooltip>
                       </TableCell>
+                      <TableCell width={200} align="center" />
                       <TableCell align="center" width={150}>Dev</TableCell>
-                      <TableCell width={160} align="center" />
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -695,10 +698,10 @@ export default function Step1View({
                           <Table size="small" sx={{ tableLayout: 'fixed', width: '100%' }}>
                             <colgroup>
                               <col />{/* pitch: flex to match outer table */}
-                              <col style={{ width: 56 }} />
-                              <col style={{ width: 56 }} />
-                              <col style={{ width: 150 }} />
-                              <col style={{ width: 200 }} />
+                              <col style={{ width: 56 }} />{/* Team */}
+                              <col style={{ width: 56 }} />{/* TL */}
+                              <col style={{ width: 200 }} />{/* Plan / Up Next / Not Now */}
+                              <col style={{ width: 150 }} />{/* Dev */}
                             </colgroup>
                             <TableBody>
                               {selectedInCat.map(a => (
@@ -747,10 +750,10 @@ export default function Step1View({
                           <Table size="small" sx={{ tableLayout: 'fixed', width: '100%' }}>
                             <colgroup>
                               <col />{/* pitch: flex to match outer table */}
-                              <col style={{ width: 56 }} />
-                              <col style={{ width: 56 }} />
-                              <col style={{ width: 150 }} />
-                              <col style={{ width: 200 }} />
+                              <col style={{ width: 56 }} />{/* Team */}
+                              <col style={{ width: 56 }} />{/* TL */}
+                              <col style={{ width: 200 }} />{/* Plan / Up Next / Not Now */}
+                              <col style={{ width: 150 }} />{/* Dev */}
                             </colgroup>
                             <TableBody>
                               {nextUpInCat.map(a => (
@@ -799,10 +802,10 @@ export default function Step1View({
                           <Table size="small" sx={{ tableLayout: 'fixed', width: '100%' }}>
                             <colgroup>
                               <col />{/* pitch: flex to match outer table */}
-                              <col style={{ width: 56 }} />
-                              <col style={{ width: 56 }} />
-                              <col style={{ width: 150 }} />
-                              <col style={{ width: 200 }} />
+                              <col style={{ width: 56 }} />{/* Team */}
+                              <col style={{ width: 56 }} />{/* TL */}
+                              <col style={{ width: 200 }} />{/* Plan / Up Next / Not Now */}
+                              <col style={{ width: 150 }} />{/* Dev */}
                             </colgroup>
                             <TableBody>
                               {cutInCat.map(a => (
@@ -1516,6 +1519,39 @@ function PitchRow({ assignment, pitch, devNames, devTLNames, onDevChange, onStat
           </Typography>
         </Tooltip>
       </TableCell>
+      <TableCell sx={{ px: 1 }}>
+        <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-end' }}>
+          {/* ITEM 7: descriptive tooltips on status chips */}
+          <Tooltip title={committed ? 'Committed projects are always planned' : "Include in this quarter's projects"}>
+            <Chip label="Plan" size="small"
+              onClick={committed ? undefined : () => onStatusChange(pitch.id, 'selected')}
+              color={highlight === 'selected' ? 'primary' : 'default'}
+              variant={highlight === 'selected' ? 'filled' : 'outlined'}
+              sx={{ cursor: committed ? 'default' : 'pointer', fontSize: '0.65rem', minWidth: 36, opacity: committed ? 0.85 : 1 }}
+            />
+          </Tooltip>
+          {!committed && (
+            <Tooltip title="Queue as a potential project — will create a record with blank staffing">
+              <Chip label="Up Next" size="small"
+                onClick={() => onStatusChange(pitch.id, 'next-up')}
+                color={highlight === 'next-up' ? 'info' : 'default'}
+                variant={highlight === 'next-up' ? 'filled' : 'outlined'}
+                sx={{ cursor: 'pointer', fontSize: '0.65rem', minWidth: 44 }}
+              />
+            </Tooltip>
+          )}
+          {!committed && (
+            <Tooltip title="Cut from this quarter">
+              <Chip label="Not Now" size="small"
+                onClick={() => onStatusChange(pitch.id, 'cut')}
+                color="default"
+                variant={highlight === 'cut' ? 'filled' : 'outlined'}
+                sx={{ cursor: 'pointer', fontSize: '0.65rem', minWidth: 52, color: highlight === 'cut' ? undefined : 'text.disabled' }}
+              />
+            </Tooltip>
+          )}
+        </Box>
+      </TableCell>
       <TableCell sx={{ px: 0.5, py: 0.25 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
           {highlight === 'selected' && (
@@ -1591,39 +1627,6 @@ function PitchRow({ assignment, pitch, devNames, devTLNames, onDevChange, onStat
           {devChanged && (
             <Tooltip title={`Previous dev: ${pitch.previousDev} — team changed from last quarter`} placement="top">
               <WarnIcon sx={{ fontSize: '0.95rem', color: 'warning.main', flexShrink: 0 }} />
-            </Tooltip>
-          )}
-        </Box>
-      </TableCell>
-      <TableCell sx={{ px: 1 }}>
-        <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-end' }}>
-          {/* ITEM 7: descriptive tooltips on status chips */}
-          <Tooltip title={committed ? 'Committed projects are always planned' : "Include in this quarter's projects"}>
-            <Chip label="Plan" size="small"
-              onClick={committed ? undefined : () => onStatusChange(pitch.id, 'selected')}
-              color={highlight === 'selected' ? 'primary' : 'default'}
-              variant={highlight === 'selected' ? 'filled' : 'outlined'}
-              sx={{ cursor: committed ? 'default' : 'pointer', fontSize: '0.65rem', minWidth: 36, opacity: committed ? 0.85 : 1 }}
-            />
-          </Tooltip>
-          {!committed && (
-            <Tooltip title="Queue as a potential project — will create a record with blank staffing">
-              <Chip label="Up Next" size="small"
-                onClick={() => onStatusChange(pitch.id, 'next-up')}
-                color={highlight === 'next-up' ? 'info' : 'default'}
-                variant={highlight === 'next-up' ? 'filled' : 'outlined'}
-                sx={{ cursor: 'pointer', fontSize: '0.65rem', minWidth: 44 }}
-              />
-            </Tooltip>
-          )}
-          {!committed && (
-            <Tooltip title="Cut from this quarter">
-              <Chip label="Not Now" size="small"
-                onClick={() => onStatusChange(pitch.id, 'cut')}
-                color="default"
-                variant={highlight === 'cut' ? 'filled' : 'outlined'}
-                sx={{ cursor: 'pointer', fontSize: '0.65rem', minWidth: 52, color: highlight === 'cut' ? undefined : 'text.disabled' }}
-              />
             </Tooltip>
           )}
         </Box>

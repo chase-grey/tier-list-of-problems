@@ -43,6 +43,10 @@ interface Step2ViewProps {
    *  each category so a TL can promote one mid-staffing. Workload stats / the
    *  right sidebar continue to scope to selectedPitches only. */
   nextUpPitches?: AllocationPitch[];
+  /** Pitches with status='cut' — rendered as a tertiary, default-collapsed
+   *  sub-section under each category so the TL can review what was
+   *  deprioritized without flipping back to Stage 2. */
+  cutPitches?: AllocationPitch[];
   assignments: StaffingAssignment[];
   phase2Interests: Phase2Interest[];
   config: AllocationConfig;
@@ -228,7 +232,7 @@ function workloadCountColor(count: number, ideal: number): string {
 }
 
 export default function Step2View({
-  selectedPitches, nextUpPitches, assignments, phase2Interests, config, onAssign, onStatusChange, devByPitchId, devNames,
+  selectedPitches, nextUpPitches, cutPitches, assignments, phase2Interests, config, onAssign, onStatusChange, devByPitchId, devNames,
   includeUXD, onToggleUXD,
   lockedPitchIds, lockedPersonNames, onTogglePitchLock, onTogglePersonLock,
   voterName, onCapacityOverride, onAdhocAdd, onAdhocEdit, adhocPitchIds, stretchPitchIds,
@@ -549,15 +553,31 @@ export default function Step2View({
     return map;
   }, [nextUpPitches]);
 
-  // Per-category sub-section collapse state — both default to open so the
-  // TL sees the up-next queue at a glance, matching Stage 2's behavior. The
-  // TL can collapse either sub-section if the visual noise gets in the way.
+  // Not Now (cut) pitches grouped + sorted by team priority. Rendered as a
+  // tertiary, default-collapsed sub-section so deprioritized work is
+  // accessible but doesn't compete for visual space with the active plan.
+  const cutByCategory = useMemo(() => {
+    const map: Record<string, AllocationPitch[]> = {};
+    (cutPitches ?? []).forEach(p => {
+      if (!map[p.category]) map[p.category] = [];
+      map[p.category].push(p);
+    });
+    Object.values(map).forEach(arr => arr.sort((a, b) => a.teamPriorityScore - b.teamPriorityScore));
+    return map;
+  }, [cutPitches]);
+
+  // Per-category sub-section collapse state. Planned + Up Next default open
+  // so the TL sees current and queued work at a glance; Not Now defaults
+  // closed since it's reference info, not the primary task.
   const [planSubOpen, setPlanSubOpen] = useState<Record<string, boolean>>({});
   const [nextUpSubOpen, setNextUpSubOpen] = useState<Record<string, boolean>>({});
+  const [cutSubOpen, setCutSubOpen] = useState<Record<string, boolean>>({});
   const togglePlanSub = (cat: string) => setPlanSubOpen(p => ({ ...p, [cat]: !(p[cat] ?? true) }));
   const toggleNextUpSub = (cat: string) => setNextUpSubOpen(p => ({ ...p, [cat]: !(p[cat] ?? true) }));
+  const toggleCutSub = (cat: string) => setCutSubOpen(p => ({ ...p, [cat]: !(p[cat] ?? false) }));
   const isPlanOpen = (cat: string) => planSubOpen[cat] ?? true;
   const isNextUpOpen = (cat: string) => nextUpSubOpen[cat] ?? true;
+  const isCutOpen = (cat: string) => cutSubOpen[cat] ?? false;
 
   const [categoryCollapsed, setCategoryCollapsed] = useState<Record<string, boolean>>({});
   const [hideLockedPitches, setHideLockedPitches] = useState(false);
@@ -653,25 +673,23 @@ export default function Step2View({
     const allEntries = [...tlEntries, ...qmEntries, ...pqa1Entries];
 
     // ── Workload Balance ────────────────────────────────────────────────
-    // Dev TLs assigned as a dev (Stage 2 dev role) on a pitch carry the heavier
-    // workload of that role, so each such pitch counts as 2 toward their TL
-    // workload count. Pitches where they're TL only count as 1. When the same
-    // person is *both* dev and devTL on the same pitch, the dev weight wins
-    // (it's still one project's worth of work, just the heavier kind) — we
-    // don't add 1+2=3. Other roles (QM, PQA1) use a plain assignment count.
+    // Per-person workload score = sum across pitches: dev role contributes 2
+    // (heavier work), assigned-in-this-role-but-not-as-dev contributes 1.
+    // Applies to every section — a QM or dev who's also picked up the dev
+    // slot on a project carries that heavier weight in their own sidebar
+    // section, not just devTLs'. When a person is *both* dev and the primary
+    // role on the same pitch, the dev weight wins (still one project's
+    // worth of work, just the heavier kind) — we don't add 1+2=3.
     const countFor = (names: string[], field: 'devTL' | 'qm' | 'pqa1') =>
       names.map(n => {
-        if (field === 'devTL') {
-          let count = 0;
-          for (const a of assignments) {
-            const isDev = (devByPitchId[a.pitchId] ?? null) === n;
-            const isTL = a.devTL === n;
-            if (isDev) count += 2;
-            else if (isTL) count += 1;
-          }
-          return { name: n, count };
+        let count = 0;
+        for (const a of assignments) {
+          const isDev = (devByPitchId[a.pitchId] ?? null) === n;
+          const isPrimary = a[field] === n;
+          if (isDev) count += 2;
+          else if (isPrimary) count += 1;
         }
-        return { name: n, count: assignments.filter(a => a[field] === n).length };
+        return { name: n, count };
       });
 
     const tlCounts = countFor(config.devTLNames.filter(n => !unavailSet.has(n)), 'devTL');
@@ -847,7 +865,10 @@ export default function Step2View({
           const nextUpCatPitches = (nextUpByCategory[cat] ?? []).filter(
             p => !hideLockedPitches || !lockedPitchSet.has(p.id)
           );
-          if (catPitches.length === 0 && nextUpCatPitches.length === 0) return null;
+          const cutCatPitches = (cutByCategory[cat] ?? []).filter(
+            p => !hideLockedPitches || !lockedPitchSet.has(p.id)
+          );
+          if (catPitches.length === 0 && nextUpCatPitches.length === 0 && cutCatPitches.length === 0) return null;
           const collapsed = categoryCollapsed[cat] ?? false;
           const renderRow = (pitch: AllocationPitch, opts?: { dimmed?: boolean; status?: 'selected' | 'next-up' | 'cut' }) => {
             const a = assignMap.get(pitch.id) ?? { pitchId: pitch.id, devTL: null, qm: null, pqa1: null };
@@ -881,7 +902,7 @@ export default function Step2View({
               />
             );
           };
-          const subHeader = (label: string, count: number, open: boolean, onToggle: () => void, accent: 'planned' | 'nextUp') => (
+          const subHeader = (label: string, count: number, open: boolean, onToggle: () => void, accent: 'planned' | 'nextUp' | 'cut') => (
             <TableRow sx={{ cursor: 'pointer', '&:hover': { bgcolor: 'action.hover' } }} onClick={onToggle}>
               <TableCell colSpan={9} sx={{ py: 0.25, bgcolor: 'action.hover' }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
@@ -908,6 +929,7 @@ export default function Step2View({
                 <Typography variant="caption" color="text.secondary">
                   {catPitches.length} planned
                   {nextUpCatPitches.length > 0 ? ` · ${nextUpCatPitches.length} up next` : ''}
+                  {cutCatPitches.length > 0 ? ` · ${cutCatPitches.length} not now` : ''}
                 </Typography>
               </Box>
               <Collapse in={!collapsed}>
@@ -916,12 +938,12 @@ export default function Step2View({
                     <col />{/* pitch: flex */}
                     <col style={{ width: 56 }} />{/* Team priority */}
                     <col style={{ width: 56 }} />{/* TL priority */}
+                    <col style={{ width: 170 }} />{/* status chips */}
                     <col style={{ width: 48 }} />{/* UXD */}
                     <col style={{ width: 72 }} />{/* dev read-only */}
                     <col style={{ width: 155 }} />{/* DevTL */}
                     <col style={{ width: 155 }} />{/* QM */}
                     <col style={{ width: 155 }} />{/* PQA1 Reviewer */}
-                    <col style={{ width: 170 }} />{/* status chips */}
                   </colgroup>
                   <TableHead>
                     <TableRow sx={{ '& th': { py: 0.5, fontSize: '0.72rem', color: 'text.secondary' } }}>
@@ -936,6 +958,7 @@ export default function Step2View({
                           <span>TL</span>
                         </Tooltip>
                       </TableCell>
+                      <TableCell width={170} />
                       <TableCell width={48} align="center">
                         <Tooltip title="Include UXD in project kickoff">
                           <span>UXD</span>
@@ -945,7 +968,6 @@ export default function Step2View({
                       <TableCell width={155} align="center">Dev TL</TableCell>
                       <TableCell width={155} align="center">QM</TableCell>
                       <TableCell width={155} align="center">PQA1 Reviewer</TableCell>
-                      <TableCell width={170} />
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -953,6 +975,8 @@ export default function Step2View({
                     {isPlanOpen(cat) && catPitches.map(pitch => renderRow(pitch, { status: 'selected' }))}
                     {nextUpCatPitches.length > 0 && subHeader('Up Next', nextUpCatPitches.length, isNextUpOpen(cat), () => toggleNextUpSub(cat), 'nextUp')}
                     {isNextUpOpen(cat) && nextUpCatPitches.map(pitch => renderRow(pitch, { dimmed: true, status: 'next-up' }))}
+                    {cutCatPitches.length > 0 && subHeader('Not Now', cutCatPitches.length, isCutOpen(cat), () => toggleCutSub(cat), 'cut')}
+                    {isCutOpen(cat) && cutCatPitches.map(pitch => renderRow(pitch, { dimmed: true, status: 'cut' }))}
                   </TableBody>
                 </Table>
               </Collapse>
@@ -1230,7 +1254,7 @@ export default function Step2View({
                       : <CollapseIcon sx={{ fontSize: '0.9rem', color: 'text.secondary', flexShrink: 0 }} />
                     }
                     <Tooltip
-                      title={workloadOff ? `${workloadCount} projects (target ~${fmtIdeal(roleIdeal)})` : ''}
+                      title={workloadOff ? `Workload score ${workloadCount} (target ~${fmtIdeal(roleIdeal)})` : ''}
                       placement="top"
                       disableHoverListener={!workloadOff}
                     >
@@ -1432,7 +1456,11 @@ export default function Step2View({
                 .filter(entry => entry.pitchIds.length > 0);
               const hasHigh = hasHighInterestPqa1(name);
               const personalIdeal = step2Stats.pqa1IdealByName[name] ?? step2Stats.pqa1Ideal;
-              const workloadColor = workloadCountColor(assignedPitchIds.length, personalIdeal);
+              // Weighted workload score from step2Stats so a dev who's also
+              // picked up the dev slot on a project gets that ×2 weight in
+              // their PQA1 sidebar entry, matching devTL/QM behavior.
+              const workloadCount = step2Stats.pqa1Counts.find(c => c.name === name)?.count ?? assignedPitchIds.length;
+              const workloadColor = workloadCountColor(workloadCount, personalIdeal);
               const workloadOff = workloadColor !== 'text.secondary';
 
               return (
@@ -1456,7 +1484,7 @@ export default function Step2View({
                       : <CollapseIcon sx={{ fontSize: '0.9rem', color: 'text.secondary', flexShrink: 0 }} />
                     }
                     <Tooltip
-                      title={workloadOff ? `${assignedPitchIds.length} projects (target ~${fmtIdeal(personalIdeal)})` : ''}
+                      title={workloadOff ? `Workload score ${workloadCount} (target ~${fmtIdeal(personalIdeal)})` : ''}
                       placement="top"
                       disableHoverListener={!workloadOff}
                     >
@@ -1484,7 +1512,7 @@ export default function Step2View({
                       </IconButton>
                     </Tooltip>
                     <Typography variant="caption" color="text.secondary" sx={{ ml: 'auto' }}>
-                      {assignedPitchIds.length}/{fmtIdeal(personalIdeal)}
+                      {workloadCount}/{fmtIdeal(personalIdeal)}
                     </Typography>
                   </Box>
                   <Collapse in={!personCollapsed[name]}>
@@ -1812,6 +1840,47 @@ function Step2Row({
           </Typography>
         </Tooltip>
       </TableCell>
+      {/* Plan / Up Next / Not Now status chips. Mirror of Step1View's
+          status column — committed rows show only the Plan chip (locked
+          into Planned), other rows toggle between all three. */}
+      <TableCell sx={{ px: 1 }}>
+        <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-end' }}>
+          <Tooltip title={committed ? 'Committed projects are always planned' : "Include in this quarter's projects"}>
+            <Chip
+              label="Plan"
+              size="small"
+              onClick={committed || !onStatusChange ? undefined : () => onStatusChange('selected')}
+              color={status === 'selected' ? 'primary' : 'default'}
+              variant={status === 'selected' ? 'filled' : 'outlined'}
+              sx={{ cursor: committed || !onStatusChange ? 'default' : 'pointer', fontSize: '0.65rem', minWidth: 36, opacity: committed ? 0.85 : 1 }}
+            />
+          </Tooltip>
+          {!committed && onStatusChange && (
+            <Tooltip title="Queue as a potential project — keeps any TL/QM/PQA1 picks but flags it as not-yet-planned">
+              <Chip
+                label="Up Next"
+                size="small"
+                onClick={() => onStatusChange('next-up')}
+                color={status === 'next-up' ? 'info' : 'default'}
+                variant={status === 'next-up' ? 'filled' : 'outlined'}
+                sx={{ cursor: 'pointer', fontSize: '0.65rem', minWidth: 44 }}
+              />
+            </Tooltip>
+          )}
+          {!committed && onStatusChange && (
+            <Tooltip title="Cut from this quarter">
+              <Chip
+                label="Not Now"
+                size="small"
+                onClick={() => onStatusChange('cut')}
+                color="default"
+                variant={status === 'cut' ? 'filled' : 'outlined'}
+                sx={{ cursor: 'pointer', fontSize: '0.65rem', minWidth: 52, color: status === 'cut' ? undefined : 'text.disabled' }}
+              />
+            </Tooltip>
+          )}
+        </Box>
+      </TableCell>
       {/* UXD checkbox */}
       <TableCell align="center" sx={{ p: 0 }}>
         <Checkbox
@@ -1907,47 +1976,6 @@ function Step2Row({
           {pqa1AuthorWarning && (
             <Tooltip title={`${author} wrote this pitch with highest interest but isn't assigned as PQA1`} placement="top">
               <WarnIcon sx={{ fontSize: '0.95rem', color: 'warning.main', flexShrink: 0 }} />
-            </Tooltip>
-          )}
-        </Box>
-      </TableCell>
-      {/* Plan / Up Next / Not Now status chips. Mirror of Step1View's
-          status column — committed rows show only the Plan chip (locked
-          into Planned), other rows toggle between all three. */}
-      <TableCell sx={{ px: 1 }}>
-        <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-end' }}>
-          <Tooltip title={committed ? 'Committed projects are always planned' : "Include in this quarter's projects"}>
-            <Chip
-              label="Plan"
-              size="small"
-              onClick={committed || !onStatusChange ? undefined : () => onStatusChange('selected')}
-              color={status === 'selected' ? 'primary' : 'default'}
-              variant={status === 'selected' ? 'filled' : 'outlined'}
-              sx={{ cursor: committed || !onStatusChange ? 'default' : 'pointer', fontSize: '0.65rem', minWidth: 36, opacity: committed ? 0.85 : 1 }}
-            />
-          </Tooltip>
-          {!committed && onStatusChange && (
-            <Tooltip title="Queue as a potential project — keeps any TL/QM/PQA1 picks but flags it as not-yet-planned">
-              <Chip
-                label="Up Next"
-                size="small"
-                onClick={() => onStatusChange('next-up')}
-                color={status === 'next-up' ? 'info' : 'default'}
-                variant={status === 'next-up' ? 'filled' : 'outlined'}
-                sx={{ cursor: 'pointer', fontSize: '0.65rem', minWidth: 44 }}
-              />
-            </Tooltip>
-          )}
-          {!committed && onStatusChange && (
-            <Tooltip title="Cut from this quarter">
-              <Chip
-                label="Not Now"
-                size="small"
-                onClick={() => onStatusChange('cut')}
-                color="default"
-                variant={status === 'cut' ? 'filled' : 'outlined'}
-                sx={{ cursor: 'pointer', fontSize: '0.65rem', minWidth: 52, color: status === 'cut' ? undefined : 'text.disabled' }}
-              />
             </Tooltip>
           )}
         </Box>
