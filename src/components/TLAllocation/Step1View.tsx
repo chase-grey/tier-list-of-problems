@@ -680,7 +680,7 @@ export default function Step1View({
                     <col />{/* pitch: takes remaining space */}
                     <col style={{ width: 56 }} />{/* Team priority */}
                     <col style={{ width: 56 }} />{/* TL priority */}
-                    <col style={{ width: 180 }} />{/* Plan / Up Next / Not Now — sized snug to the three chips */}
+                    <col style={{ width: 170 }} />{/* Plan / Up Next / Not Now — sized snug to the three chips so adjacent cell padding lands symmetrically */}
                     <col style={{ width: 150 }} />{/* Dev */}
                   </colgroup>
                   <TableHead>
@@ -696,7 +696,7 @@ export default function Step1View({
                           <span>TL</span>
                         </Tooltip>
                       </TableCell>
-                      <TableCell width={180} align="center" />
+                      <TableCell width={170} align="center" />
                       <TableCell align="center" width={150}>Dev</TableCell>
                     </TableRow>
                   </TableHead>
@@ -725,7 +725,7 @@ export default function Step1View({
                               <col />{/* pitch: flex to match outer table */}
                               <col style={{ width: 56 }} />{/* Team */}
                               <col style={{ width: 56 }} />{/* TL */}
-                              <col style={{ width: 180 }} />{/* Plan / Up Next / Not Now */}
+                              <col style={{ width: 170 }} />{/* Plan / Up Next / Not Now */}
                               <col style={{ width: 150 }} />{/* Dev */}
                             </colgroup>
                             <TableBody>
@@ -777,7 +777,7 @@ export default function Step1View({
                               <col />{/* pitch: flex to match outer table */}
                               <col style={{ width: 56 }} />{/* Team */}
                               <col style={{ width: 56 }} />{/* TL */}
-                              <col style={{ width: 180 }} />{/* Plan / Up Next / Not Now */}
+                              <col style={{ width: 170 }} />{/* Plan / Up Next / Not Now */}
                               <col style={{ width: 150 }} />{/* Dev */}
                             </colgroup>
                             <TableBody>
@@ -829,7 +829,7 @@ export default function Step1View({
                               <col />{/* pitch: flex to match outer table */}
                               <col style={{ width: 56 }} />{/* Team */}
                               <col style={{ width: 56 }} />{/* TL */}
-                              <col style={{ width: 180 }} />{/* Plan / Up Next / Not Now */}
+                              <col style={{ width: 170 }} />{/* Plan / Up Next / Not Now */}
                               <col style={{ width: 150 }} />{/* Dev */}
                             </colgroup>
                             <TableBody>
@@ -1301,24 +1301,33 @@ export default function Step1View({
             <Typography variant="caption" color="text.disabled" sx={{ display: 'block', mb: 0.5, textTransform: 'uppercase', letterSpacing: 0.5 }}>
               Available for PQA1 only
             </Typography>
-            {pqa1OnlyAvailableDevNames.map(dev => (
-              <Box
-                key={dev}
-                sx={{ mb: 0.5, px: 0.5, opacity: 0.6, display: 'flex', alignItems: 'center', gap: 0.5,
-                      '&:hover .capacity-edit-on-hover': { opacity: 1 } }}
-              >
-                <Typography variant="caption" color="text.disabled" fontWeight={600}>
-                  {getShortName(dev)}
-                </Typography>
-                <CapacityBadge
-                  name={dev}
-                  tier={capacityByName[dev]?.pqa1Capacity}
-                  comment={capacityByName[dev]?.comment}
-                  source={capacityByName[dev]?.source}
-                  onClick={() => setCapacityDialogTarget(dev)}
-                />
-              </Box>
-            ))}
+            {pqa1OnlyAvailableDevNames.map(dev => {
+              const comment = capacityByName[dev]?.comment;
+              const source = capacityByName[dev]?.source;
+              const short = getShortName(dev);
+              const setter = source === 'tl-override' ? 'TL set' : `${short} indicated`;
+              const tip = `${setter}: no capacity for additional dev work — available for PQA1 only${comment ? ` — ${comment}` : ''}.`;
+              return (
+                <Box
+                  key={dev}
+                  sx={{ mb: 0.5, px: 0.5, opacity: 0.6, display: 'flex', alignItems: 'center', gap: 0.5,
+                        '&:hover .capacity-edit-on-hover': { opacity: 1 } }}
+                >
+                  <Typography variant="caption" color="text.disabled" fontWeight={600}>
+                    {short}
+                  </Typography>
+                  <Tooltip title={tip}>
+                    <IconButton
+                      size="small"
+                      sx={{ p: 0.2, flexShrink: 0 }}
+                      onClick={(e) => { e.stopPropagation(); setCapacityDialogTarget(dev); }}
+                    >
+                      <CircleIcon sx={{ fontSize: '0.6rem', color: 'warning.main' }} />
+                    </IconButton>
+                  </Tooltip>
+                </Box>
+              );
+            })}
           </>
         )}
 
@@ -1571,16 +1580,18 @@ function PitchRow({ assignment, pitch, devNames, devTLNames, onDevChange, onStat
           </Typography>
         </Tooltip>
       </TableCell>
-      <TableCell sx={{ pl: 0, pr: 1 }}>
+      <TableCell sx={{ p: 0 }}>
         <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-start', flexWrap: 'nowrap' }}>
           {/* ITEM 7: descriptive tooltips on status chips.
               flexShrink: 0 + whiteSpace: nowrap on each chip protects their
               full label from being clipped when the row narrows — without
               these, MUI's flex defaults let the chips compress and "Not Now"
               would truncate to "Not N…" on smaller screens.
-              pl:0 on the cell + flex-start keeps the Plan chip flush with
-              the TL priority column instead of drifting to the right edge
-              with empty slack between TL and Plan. */}
+              p:0 on the cell so the chip group hugs both sides of the
+              column. With the col sized snug to the three chips, gaps to
+              the neighboring columns (TL on the left, Dev on the right)
+              come entirely from those cells' default padding — so they
+              read symmetric instead of having extra slack on one side. */}
           <Tooltip title={committed ? 'Committed projects are always planned' : "Include in this quarter's projects"}>
             <Chip label="Plan" size="small"
               onClick={committed ? undefined : () => onStatusChange(pitch.id, 'selected')}

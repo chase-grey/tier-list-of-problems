@@ -1010,7 +1010,7 @@ export default function Step2View({
                     <col />{/* pitch: flex */}
                     <col style={{ width: 56 }} />{/* Team priority */}
                     <col style={{ width: 56 }} />{/* TL priority */}
-                    <col style={{ width: 190 }} />{/* status chips — sized snug to Plan + Up Next + Not Now without slack */}
+                    <col style={{ width: 170 }} />{/* status chips — snug to the chip group so adjacent cell padding lands symmetrically */}
                     <col style={{ width: 48 }} />{/* UXD */}
                     <col style={{ width: 72 }} />{/* dev read-only */}
                     <col style={{ width: 130 }} />{/* DevTL — name + interest indicator + chevron */}
@@ -1030,7 +1030,7 @@ export default function Step2View({
                           <span>TL</span>
                         </Tooltip>
                       </TableCell>
-                      <TableCell width={190} />
+                      <TableCell width={170} />
                       <TableCell width={48} align="center">
                         <Tooltip title="Include UXD in project kickoff">
                           <span>UXD</span>
@@ -1837,24 +1837,33 @@ export default function Step2View({
                 <Typography variant="caption" color="text.disabled" sx={{ display: 'block', mb: 0.5, textTransform: 'uppercase', letterSpacing: 0.5 }}>
                   Available for Dev only
                 </Typography>
-                {devOnlyAvailablePqa1Names.map(name => (
-                  <Box
-                    key={name}
-                    sx={{ mb: 0.5, px: 0.5, opacity: 0.6, display: 'flex', alignItems: 'center', gap: 0.5,
-                          '&:hover .capacity-edit-on-hover': { opacity: 1 } }}
-                  >
-                    <Typography variant="caption" color="text.disabled" fontWeight={600}>
-                      {getShortName(name)}
-                    </Typography>
-                    <CapacityBadge
-                      name={name}
-                      tier={capacityByName[name]?.devCapacity}
-                      comment={capacityByName[name]?.comment}
-                      source={capacityByName[name]?.source}
-                      onClick={() => setCapacityDialogTarget(name)}
-                    />
-                  </Box>
-                ))}
+                {devOnlyAvailablePqa1Names.map(name => {
+                  const comment = capacityByName[name]?.comment;
+                  const source = capacityByName[name]?.source;
+                  const short = getShortName(name);
+                  const setter = source === 'tl-override' ? 'TL set' : `${short} indicated`;
+                  const tip = `${setter}: no capacity for PQA1 work — available for dev only${comment ? ` — ${comment}` : ''}.`;
+                  return (
+                    <Box
+                      key={name}
+                      sx={{ mb: 0.5, px: 0.5, opacity: 0.6, display: 'flex', alignItems: 'center', gap: 0.5,
+                            '&:hover .capacity-edit-on-hover': { opacity: 1 } }}
+                    >
+                      <Typography variant="caption" color="text.disabled" fontWeight={600}>
+                        {short}
+                      </Typography>
+                      <Tooltip title={tip}>
+                        <IconButton
+                          size="small"
+                          sx={{ p: 0.2, flexShrink: 0 }}
+                          onClick={(e) => { e.stopPropagation(); setCapacityDialogTarget(name); }}
+                        >
+                          <CircleIcon sx={{ fontSize: '0.6rem', color: 'warning.main' }} />
+                        </IconButton>
+                      </Tooltip>
+                    </Box>
+                  );
+                })}
               </>
             )}
 
@@ -2093,14 +2102,15 @@ function Step2Row({
       {/* Plan / Up Next / Not Now status chips. Mirror of Step1View's
           status column — committed rows show only the Plan chip (locked
           into Planned), other rows toggle between all three. */}
-      <TableCell sx={{ pl: 0, pr: 1 }}>
+      <TableCell sx={{ p: 0 }}>
         <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-start', flexWrap: 'nowrap' }}>
           {/* flexShrink: 0 + whiteSpace: nowrap on each chip protects their
               full label from being clipped when the row narrows — matches the
               guard in Step1View so "Not Now" never collapses to "Not N…".
-              pl:0 + flex-start keeps the Plan chip flush against the TL
-              column so there's no empty gap between the priority score and
-              the status buttons. */}
+              p:0 on both sides so the chip group hugs the column tight; the
+              col is sized snug to the three chips so gaps to TL (left) and
+              UXD (right) come entirely from those cells' default padding
+              and read symmetric instead of stacking up on one side. */}
           <Tooltip title={committed ? 'Committed projects are always planned' : "Include in this quarter's projects"}>
             <Chip
               label="Plan"
