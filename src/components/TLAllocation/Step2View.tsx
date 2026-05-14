@@ -655,15 +655,23 @@ export default function Step2View({
     // ── Workload Balance ────────────────────────────────────────────────
     // Dev TLs assigned as a dev (Stage 2 dev role) on a pitch carry the heavier
     // workload of that role, so each such pitch counts as 2 toward their TL
-    // workload count. Pitches where they're TL only count as 1. Other roles
-    // (QM, PQA1) use a plain assignment count.
+    // workload count. Pitches where they're TL only count as 1. When the same
+    // person is *both* dev and devTL on the same pitch, the dev weight wins
+    // (it's still one project's worth of work, just the heavier kind) — we
+    // don't add 1+2=3. Other roles (QM, PQA1) use a plain assignment count.
     const countFor = (names: string[], field: 'devTL' | 'qm' | 'pqa1') =>
       names.map(n => {
-        const primary = assignments.filter(a => a[field] === n).length;
-        const devBonus = field === 'devTL'
-          ? 2 * assignments.filter(a => (devByPitchId[a.pitchId] ?? null) === n && a.devTL !== n).length
-          : 0;
-        return { name: n, count: primary + devBonus };
+        if (field === 'devTL') {
+          let count = 0;
+          for (const a of assignments) {
+            const isDev = (devByPitchId[a.pitchId] ?? null) === n;
+            const isTL = a.devTL === n;
+            if (isDev) count += 2;
+            else if (isTL) count += 1;
+          }
+          return { name: n, count };
+        }
+        return { name: n, count: assignments.filter(a => a[field] === n).length };
       });
 
     const tlCounts = countFor(config.devTLNames.filter(n => !unavailSet.has(n)), 'devTL');
