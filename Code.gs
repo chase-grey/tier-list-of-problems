@@ -144,6 +144,10 @@ function doGet(e) {
       // this so a TL knows whether to show editor or view-only UI.
       case 'get-edit-lock':
         return getEditLock(e.parameter.stage);
+      // Per-stage pitch/person locks (auto-assign skip flags) — shared so
+      // every TL sees the same lock state.
+      case 'get-allocation-locks':
+        return getAllocationLocks();
       case 'set-polling-state': {
         const result = setPollingState({
           stage: e.parameter.stage,
@@ -203,6 +207,8 @@ function doPost(e) {
         return releaseEditLock(payload);
       case 'heartbeat-edit-lock':
         return heartbeatEditLock(payload);
+      case 'set-allocation-locks':
+        return setAllocationLocks(payload);
       default:
         return notFound();
     }
@@ -1030,6 +1036,72 @@ function callerHoldsEditLock(stage, voterName) {
   return current.holder === voterName;
 }
 
+// ─── Allocation locks (per-stage pitch/person locks for auto-assign) ──────
+//
+// Locks tell the auto-assign algorithm to leave a pitch row or person's
+// pitches as-is. Persisted in a single Script Property so all TLs see the
+// same lock state. Shape:
+//   { "2": { pitchIds: string[], personNames: string[] },
+//     "4": { pitchIds: string[], personNames: string[] } }
+// Only the holder of the corresponding stage's edit lock can write; reads
+// are public (viewers see the same locks the editor set).
+
+const ALLOCATION_LOCKS_KEY = 'allocation_locks';
+
+function emptyAllocationLocks() {
+  return {
+    '2': { pitchIds: [], personNames: [] },
+    '4': { pitchIds: [], personNames: [] },
+  };
+}
+
+function readAllocationLocks() {
+  const raw = PropertiesService.getScriptProperties().getProperty(ALLOCATION_LOCKS_KEY);
+  if (!raw) return emptyAllocationLocks();
+  try {
+    const parsed = JSON.parse(raw) || {};
+    const normalize = (obj) => ({
+      pitchIds: Array.isArray(obj && obj.pitchIds) ? obj.pitchIds.map(String) : [],
+      personNames: Array.isArray(obj && obj.personNames) ? obj.personNames.map(String) : [],
+    });
+    return {
+      '2': normalize(parsed['2']),
+      '4': normalize(parsed['4']),
+    };
+  } catch (e) {
+    return emptyAllocationLocks();
+  }
+}
+
+function getAllocationLocks() {
+  return json200(readAllocationLocks());
+}
+
+function setAllocationLocks(body) {
+  const stage = String((body && body.stage) || '');
+  if (stage !== '2' && stage !== '4') return badRequest('Invalid stage');
+  const submittedBy = String((body && body.submittedBy) || '').trim();
+  if (!submittedBy) return badRequest('Missing submittedBy');
+
+  // Edit-lock check — only the stage's current editor can write.
+  if (!callerHoldsEditLock(stage, submittedBy)) {
+    return json200({ error: 'edit-lock-conflict', stage: stage, lock: readEditLock(stage) });
+  }
+
+  const incoming = (body && body.locks) || {};
+  const pitchIds = Array.isArray(incoming.pitchIds)
+    ? Array.from(new Set(incoming.pitchIds.map(String)))
+    : [];
+  const personNames = Array.isArray(incoming.personNames)
+    ? Array.from(new Set(incoming.personNames.map(String)))
+    : [];
+
+  const all = readAllocationLocks();
+  all[stage] = { pitchIds: pitchIds, personNames: personNames };
+  PropertiesService.getScriptProperties().setProperty(ALLOCATION_LOCKS_KEY, JSON.stringify(all));
+  return json200({ saved: true, locks: all });
+}
+
 /**
  * Update the polling state. Gated to setBy='Chase Grey' so a stray POST
  * can't roll the stage on everyone. Pass either or both fields. Empty
@@ -1062,7 +1134,11 @@ function setPollingState(body) {
 // Unified PLAN sheet schema. Every plan write uses this exact column order;
 // callers (savePlan/saveFinalAssignments) only set the subset of fields they
 // know about and the rest are preserved from whatever was already on the row.
-const PLAN_HEADERS = ['timestamp', 'submittedBy', 'pitchId', 'pitchTitle', 'status', 'assignedDev', 'devTL', 'qm', 'pqa1', 'projectCreated', 'kickoffEmailSent'];
+// prjId is appended at the end so the fixed column offsets in getPlanStatuses
+// (statusIdx = pidIdx + 2, devIdx = pidIdx + 3, etc.) stay valid. Adhoc pitches
+// carry a project tracker ID through their PITCHES row; this column surfaces
+// that ID on the PLAN sheet so downstream consumers don't have to join.
+const PLAN_HEADERS = ['timestamp', 'submittedBy', 'pitchId', 'pitchTitle', 'status', 'assignedDev', 'devTL', 'qm', 'pqa1', 'projectCreated', 'kickoffEmailSent', 'prjId'];
 
 /**
  * Upsert PLAN rows by pitchId.
@@ -1137,6 +1213,7 @@ function upsertPlanRows(updates, submittedBy) {
       pqa1: pick(u, 'pqa1', existing, ''),
       projectCreated: existing.projectCreated === true,
       kickoffEmailSent: existing.kickoffEmailSent === true,
+      prjId: pick(u, 'prjId', existing, ''),
     };
   }
 

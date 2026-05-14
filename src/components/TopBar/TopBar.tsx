@@ -98,7 +98,7 @@ interface TopBarProps {
   onAllocationBackToEdit?: () => void;
   onAllocationRerun?: () => void;
   /** Stage 4 only: re-run auto-assignment for a single role. */
-  onAllocationRerunRole?: (role: 'devTL' | 'qm' | 'pqa1') => void;
+  onAllocationRerunRole?: (role: 'dev' | 'devTL' | 'qm' | 'pqa1') => void;
   votingLoading?: boolean;
   submitState?: 'idle' | 'submitted' | 'changed';
 }
@@ -159,7 +159,7 @@ export const TopBar = ({
 }: TopBarProps) => {
   const [rerunMenuAnchor, setRerunMenuAnchor] = useState<HTMLElement | null>(null);
   const closeRerunMenu = () => setRerunMenuAnchor(null);
-  const handleRerunRole = (role: 'devTL' | 'qm' | 'pqa1') => () => {
+  const handleRerunRole = (role: 'dev' | 'devTL' | 'qm' | 'pqa1') => () => {
     closeRerunMenu();
     onAllocationRerunRole?.(role);
   };
@@ -215,6 +215,7 @@ export const TopBar = ({
                   anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
                   transformOrigin={{ vertical: 'top', horizontal: 'right' }}
                 >
+                  <MenuItem onClick={handleRerunRole('dev')}>Devs only</MenuItem>
                   <MenuItem onClick={handleRerunRole('devTL')}>Dev TLs only</MenuItem>
                   <MenuItem onClick={handleRerunRole('qm')}>QMs only</MenuItem>
                   <MenuItem onClick={handleRerunRole('pqa1')}>PQA1s only</MenuItem>

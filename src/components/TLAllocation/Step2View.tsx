@@ -996,7 +996,7 @@ export default function Step2View({
             </TableRow>
           );
           return (
-            <Paper key={cat} variant="outlined" sx={{ mb: 2, overflow: 'auto' }}>
+            <Paper key={cat} variant="outlined" sx={{ mb: 2 }}>
               <Box
                 sx={{ px: 2, py: 1, bgcolor: 'action.hover', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', userSelect: 'none' }}
                 onClick={() => setCategoryCollapsed(prev => ({ ...prev, [cat]: !prev[cat] }))}
@@ -1014,6 +1014,7 @@ export default function Step2View({
                 </Typography>
               </Box>
               <Collapse in={!collapsed}>
+                <Box sx={{ overflowX: 'auto' }}>
                 <Table size="small" sx={{ tableLayout: 'fixed', minWidth: 1020, '& th, & td': { px: 0.75 } }}>
                   <colgroup>
                     <col />{/* pitch: flex */}
@@ -1060,6 +1061,7 @@ export default function Step2View({
                     {isCutOpen(cat) && cutCatPitches.map(pitch => renderRow(pitch, { dimmed: true, status: 'cut' }))}
                   </TableBody>
                 </Table>
+                </Box>
               </Collapse>
             </Paper>
           );

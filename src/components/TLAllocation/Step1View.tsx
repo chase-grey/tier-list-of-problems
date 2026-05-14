@@ -632,7 +632,7 @@ export default function Step1View({
           const actualPct = stats.total > 0 ? Math.round((selectedInCat.length / stats.total) * 100) : 0;
 
           return (
-            <Paper key={cat} variant="outlined" sx={{ mb: 2, overflow: 'auto' }}>
+            <Paper key={cat} variant="outlined" sx={{ mb: 2 }}>
               {/* ITEM 6: clickable bucket header */}
               <Box
                 sx={{ px: 2, py: 1, bgcolor: 'action.hover', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', userSelect: 'none' }}
@@ -657,6 +657,7 @@ export default function Step1View({
 
               {/* Collapsible bucket content */}
               <Collapse in={isOpen(cat, 'bucket')}>
+                <Box sx={{ overflowX: 'auto' }}>
                 <Table size="small" sx={{ tableLayout: 'fixed', minWidth: 620, '& th, & td': { px: 0.75 } }}>
                   <colgroup>
                     <col />{/* pitch: takes remaining space */}
@@ -842,6 +843,7 @@ export default function Step1View({
                     </TableRow>
                   </TableBody>
                 </Table>
+                </Box>
               </Collapse>
             </Paper>
           );

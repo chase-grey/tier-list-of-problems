@@ -9,7 +9,7 @@ import {
 } from '../../mocks/allocationMockData';
 import { fetchAllocationConfig, fetchAllocationVoteData, setCapacityOverride } from '../../services/allocationApi';
 import type { CapacityOverridePayload } from '../../services/allocationApi';
-import { savePlan, saveFinalAssignments, fetchPlanFull, fetchAdhocPitches, saveAdhocPitch as saveAdhocPitchApi, EditLockConflictError, type LockStage } from '../../services/api';
+import { savePlan, saveFinalAssignments, fetchPlanFull, fetchAdhocPitches, saveAdhocPitch as saveAdhocPitchApi, EditLockConflictError, fetchAllocationLocks, setAllocationLocks, type LockStage } from '../../services/api';
 import type { PlanRow } from '../../services/api';
 import AddPitchDialog, { type AdhocPitchDraft } from './AddPitchDialog';
 import { useSnackbar } from '../../hooks/useSnackbar';
@@ -28,7 +28,7 @@ import Stage4ResultsView from './Stage4ResultsView';
  * there. Stage 4 can re-run all roles or just one (devTL / qm / pqa1) — used by
  * the TopBar split button's dropdown.
  */
-export type RerunRole = 'all' | 'devTL' | 'qm' | 'pqa1';
+export type RerunRole = 'all' | 'dev' | 'devTL' | 'qm' | 'pqa1';
 
 export interface TLAllocationViewHandle {
   /** Save in place — persists to backend without navigating to the summary view. */
@@ -387,12 +387,71 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
   const [phase2Interests, setPhase2Interests] = useState<Phase2Interest[]>([]);
 
   // Lock state per stage. A locked pitch keeps its current row across re-runs;
-  // a locked person can't be assigned new work. Persisted in localStorage so
-  // locks survive page reloads.
+  // a locked person can't be assigned new work. Persisted to the backend so
+  // every TL sees the same locks; localStorage caches the last-known value
+  // so the initial render isn't blank while the fetch is in flight.
   const [step1Locks, setStep1Locks] = useState<LockSet>(() => lsRead(LS_STEP1_LOCKS_KEY, EMPTY_LOCKS));
   const [step2Locks, setStep2Locks] = useState<LockSet>(() => lsRead(LS_STEP2_LOCKS_KEY, EMPTY_LOCKS));
   useEffect(() => { lsWrite(LS_STEP1_LOCKS_KEY, step1Locks); }, [step1Locks]);
   useEffect(() => { lsWrite(LS_STEP2_LOCKS_KEY, step2Locks); }, [step2Locks]);
+
+  // Initial fetch: pull authoritative lock state from the backend and
+  // overwrite local. `locksLoadedRef` gates the push effects below so we
+  // don't echo the fetched values back to the backend on first paint.
+  const locksLoadedRef = useRef(false);
+  const skipNextLockPushRef = useRef({ step1: false, step2: false });
+  useEffect(() => {
+    let cancelled = false;
+    fetchAllocationLocks().then(remote => {
+      if (cancelled) return;
+      skipNextLockPushRef.current = { step1: true, step2: true };
+      setStep1Locks(remote['2']);
+      setStep2Locks(remote['4']);
+      locksLoadedRef.current = true;
+    }).catch(() => {
+      // Network failure — keep LS state, allow pushes (viewer toggles will
+      // fail and be silently dropped; editor toggles will sync on retry).
+      locksLoadedRef.current = true;
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  // Debounced push of step1 / step2 locks to the backend. Backend rejects
+  // non-holders with edit-lock-conflict — we swallow that, since viewers
+  // shouldn't be persisting locks anyway. The fetched-state echo is skipped
+  // via skipNextLockPushRef.
+  useEffect(() => {
+    if (!locksLoadedRef.current) return;
+    if (skipNextLockPushRef.current.step1) {
+      skipNextLockPushRef.current.step1 = false;
+      return;
+    }
+    if (!voterName) return;
+    const handle = window.setTimeout(() => {
+      setAllocationLocks('2', step1Locks, voterName).catch(err => {
+        if (!(err instanceof EditLockConflictError)) {
+          console.warn('Failed to persist Stage 2 locks:', err);
+        }
+      });
+    }, 500);
+    return () => window.clearTimeout(handle);
+  }, [step1Locks, voterName]);
+  useEffect(() => {
+    if (!locksLoadedRef.current) return;
+    if (skipNextLockPushRef.current.step2) {
+      skipNextLockPushRef.current.step2 = false;
+      return;
+    }
+    if (!voterName) return;
+    const handle = window.setTimeout(() => {
+      setAllocationLocks('4', step2Locks, voterName).catch(err => {
+        if (!(err instanceof EditLockConflictError)) {
+          console.warn('Failed to persist Stage 4 locks:', err);
+        }
+      });
+    }, 500);
+    return () => window.clearTimeout(handle);
+  }, [step2Locks, voterName]);
 
   const toggleInArray = (arr: string[], item: string): string[] =>
     arr.includes(item) ? arr.filter(x => x !== item) : [...arr, item];
@@ -798,6 +857,18 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
     });
   };
 
+  // Stage 4's dev column writes back to Stage 2's plan since that's where
+  // the per-pitch dev assignment lives. Mirrors Step1View's onDevChange path
+  // but exposed to Step2View so TLs can edit the dev without flipping stages.
+  const handleStep2DevAssign = (pitchId: string, value: string | null) => {
+    markDirty();
+    setPlanAssignments(prev => {
+      const exists = prev.find(a => a.pitchId === pitchId);
+      if (exists) return prev.map(a => a.pitchId === pitchId ? { ...a, assignedDev: value } : a);
+      return [...prev, { pitchId, assignedDev: value, status: 'selected' }];
+    });
+  };
+
   const handleAddAdhocPitch = (draft: AdhocPitchDraft) => {
     const id = `adhoc-${Date.now()}`;
     const { title, category, committed, team, status, stretch, prjId } = draft;
@@ -1026,6 +1097,10 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
       ...Object.fromEntries((staticPitchesJson as Array<{ id: string; title: string }>).map(p => [p.id, p.title])),
       ...Object.fromEntries(adhocPitches.map(p => [p.id, p.title])),
     };
+    // Adhoc pitches carry an optional tracker project ID. Static pitches don't
+    // have one, so they fall through to ''. Included in every save payload so
+    // the PLAN sheet's prjId column gets populated for adhoc rows.
+    const pitchPrjIdById = Object.fromEntries(adhocPitches.map(p => [p.id, p.prjId ?? '']));
     try {
       if (activeStep === 0) {
         const payload = currentAssignments.map(a => ({
@@ -1033,21 +1108,29 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
           pitchTitle: pitchTitleById[a.pitchId] ?? '',
           status: a.status,
           assignedDev: a.assignedDev,
+          prjId: pitchPrjIdById[a.pitchId] ?? '',
         }));
         await savePlan(payload, voterName);
         showSnackbar('Plan saved — dev assignments recorded in the sheet', 'success');
       } else {
-        const devByPitch = Object.fromEntries(currentAssignments.map(a => [a.pitchId, a]));
-        const payload = step2Assignments.map(sa => {
-          const plan = devByPitch[sa.pitchId];
+        // Iterate planAssignments rather than step2Assignments so status
+        // changes on Stage 4 (e.g. demoting a planned pitch to Up Next)
+        // always land in the payload — even for pitches that have no team
+        // assignments yet. step2Assignments excludes those (the load filter
+        // drops backend rows with empty TL/QM/PQA1), which used to make
+        // partial saves silently ignore the status change.
+        const step2ByPitch = Object.fromEntries(step2Assignments.map(a => [a.pitchId, a]));
+        const payload = currentAssignments.map(plan => {
+          const sa = step2ByPitch[plan.pitchId];
           return {
-            pitchId: sa.pitchId,
-            pitchTitle: pitchTitleById[sa.pitchId] ?? '',
-            status: plan?.status ?? 'selected',
-            assignedDev: plan?.assignedDev ?? null,
-            devTL: sa.devTL,
-            qm: sa.qm,
-            pqa1: sa.pqa1 ?? null,
+            pitchId: plan.pitchId,
+            pitchTitle: pitchTitleById[plan.pitchId] ?? '',
+            status: plan.status,
+            assignedDev: plan.assignedDev,
+            devTL: sa?.devTL ?? null,
+            qm: sa?.qm ?? null,
+            pqa1: sa?.pqa1 ?? null,
+            prjId: pitchPrjIdById[plan.pitchId] ?? '',
           };
         });
         await saveFinalAssignments(payload, voterName);
@@ -1090,12 +1173,23 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
 
     // Stage 4: per-role scope. autoAssignStep2 produces both devTL + qm; we
     // call it only when at least one of those is being re-run, then merge so
-    // the other role keeps its existing value. PQA1 has its own pass.
+    // the other role keeps its existing value. PQA1 has its own pass. Dev is
+    // the Stage 2 algorithm — re-running it from Stage 4 updates the per-pitch
+    // dev assignment that drives Stage 4's read of devByPitchId.
     const lockedPitchSet = new Set(step2Locks.pitchIds);
     const lockedPersonSet = new Set(step2Locks.personNames);
+    const runDev = role === 'all' || role === 'dev';
     const runDevTL = role === 'all' || role === 'devTL';
     const runQm = role === 'all' || role === 'qm';
     const runPqa1 = role === 'all' || role === 'pqa1';
+
+    if (runDev) {
+      setPlanAssignments(generateDefaultPlan(allocationPitches, allocationConfig, {
+        lockedPitchIds: lockedPitchSet,
+        lockedPersonNames: lockedPersonSet,
+        currentPlan: planAssignments,
+      }));
+    }
 
     const base = (runDevTL || runQm)
       ? autoAssignStep2(selectedPitches, phase2Interests, allocationConfig, {
@@ -1120,18 +1214,21 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
         })
       : currentPqa1ByPitch;
 
-    const existingByPitch = new Map(step2Assignments.map(a => [a.pitchId, a]));
-    setStep2Assignments(base.map(a => {
-      const existing = existingByPitch.get(a.pitchId);
-      return {
-        pitchId: a.pitchId,
-        devTL: runDevTL ? a.devTL : (existing?.devTL ?? a.devTL),
-        qm: runQm ? a.qm : (existing?.qm ?? a.qm),
-        pqa1: pqa1Map[a.pitchId] ?? null,
-      };
-    }));
+    if (runDevTL || runQm || runPqa1) {
+      const existingByPitch = new Map(step2Assignments.map(a => [a.pitchId, a]));
+      setStep2Assignments(base.map(a => {
+        const existing = existingByPitch.get(a.pitchId);
+        return {
+          pitchId: a.pitchId,
+          devTL: runDevTL ? a.devTL : (existing?.devTL ?? a.devTL),
+          qm: runQm ? a.qm : (existing?.qm ?? a.qm),
+          pqa1: pqa1Map[a.pitchId] ?? null,
+        };
+      }));
+    }
 
     const label = role === 'all' ? 'Team assignments'
+      : role === 'dev' ? 'Devs'
       : role === 'devTL' ? 'Dev TLs'
       : role === 'qm' ? 'QMs'
       : 'PQA1s';
@@ -1396,6 +1493,7 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
             phase2Interests={phase2Interests}
             config={allocationConfig}
             onAssign={handleStep2Assign}
+            onDevAssign={handleStep2DevAssign}
             onStatusChange={handleStatusChange}
             onFinalize={handleFinalize}
             devByPitchId={devByPitchId}

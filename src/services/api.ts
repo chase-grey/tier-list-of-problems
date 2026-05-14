@@ -282,6 +282,10 @@ export interface PlanAssignmentPayload {
   pitchTitle?: string;
   status: 'selected' | 'next-up' | 'cut';
   assignedDev: string | null;
+  /** Tracker project ID for adhoc pitches. Empty string for non-adhoc rows
+   *  (their static dataset doesn't carry a prjId). Surfaced on the PLAN
+   *  sheet's prjId column so downstream consumers don't have to join. */
+  prjId?: string;
 }
 
 export interface FinalAssignmentPayload extends PlanAssignmentPayload {
@@ -416,6 +420,69 @@ export async function heartbeatEditLock(stage: LockStage, voterName: string): Pr
     { lock: { holder: voterName, acquiredAt: 0, lastHeartbeat: Date.now() } as EditLockState },
   );
   return data.lock ?? { holder: null, acquiredAt: 0, lastHeartbeat: 0 };
+}
+
+// ─── Allocation locks (per-stage auto-assign skip flags) ────────────────────
+// Pitch and person locks tell the auto-assign algorithm to leave specific
+// rows / people as-is. Persisted server-side so every TL sees the same locks
+// rather than relying on per-machine localStorage. Writes are gated by the
+// stage's edit lock; reads are public.
+
+export interface AllocationLockSet {
+  pitchIds: string[];
+  personNames: string[];
+}
+
+export interface AllocationLocks {
+  '2': AllocationLockSet;
+  '4': AllocationLockSet;
+}
+
+const EMPTY_ALLOCATION_LOCKS: AllocationLocks = {
+  '2': { pitchIds: [], personNames: [] },
+  '4': { pitchIds: [], personNames: [] },
+};
+
+function normalizeLockSet(obj: any): AllocationLockSet {
+  return {
+    pitchIds: Array.isArray(obj?.pitchIds) ? obj.pitchIds.map(String) : [],
+    personNames: Array.isArray(obj?.personNames) ? obj.personNames.map(String) : [],
+  };
+}
+
+export async function fetchAllocationLocks(): Promise<AllocationLocks> {
+  if (!API_BASE_URL) return EMPTY_ALLOCATION_LOCKS;
+  try {
+    const response = await fetch(`${GAS_PROXY}?route=get-allocation-locks`);
+    if (!response.ok) return EMPTY_ALLOCATION_LOCKS;
+    const data = await response.json().catch(() => ({}));
+    return {
+      '2': normalizeLockSet(data?.['2']),
+      '4': normalizeLockSet(data?.['4']),
+    };
+  } catch {
+    return EMPTY_ALLOCATION_LOCKS;
+  }
+}
+
+/**
+ * Persist per-stage pitch/person locks. Throws EditLockConflictError when
+ * the caller doesn't hold the stage's edit lock (viewers' lock toggles are
+ * intentionally rejected so the shared lock state stays authoritative).
+ */
+export async function setAllocationLocks(
+  stage: LockStage,
+  locks: AllocationLockSet,
+  submittedBy: string,
+): Promise<void> {
+  const data = await gasJsonPost<{ saved?: boolean; error?: string; lock?: EditLockState }>(
+    'set-allocation-locks',
+    { stage, locks, submittedBy },
+    { saved: true },
+  );
+  if (data && data.error === 'edit-lock-conflict') {
+    throw new EditLockConflictError(stage, data.lock);
+  }
 }
 
 /**
