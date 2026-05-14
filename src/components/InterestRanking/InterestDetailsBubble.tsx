@@ -28,9 +28,10 @@ const InterestDetailsBubble = ({ pitch, vote, anchorEl, onClose, userRole }: Int
   const open = Boolean(anchorEl);
   const id = open ? `details-popover-${pitch.id}` : undefined;
 
+  // Tier type is 1|2|3|4|null — there's no 0 case to handle.
   const priorityLabel = vote?.tier != null && vote.tier > 0
     ? `${TIER_LABEL[vote.tier] ?? `Tier ${vote.tier}`} (${vote.tier})`
-    : vote?.tier === 0 ? 'Unsorted' : null;
+    : null;
   
   const renderDetailSection = (label: string, content?: string | boolean) => {
     const cleaned = typeof content === 'string'

@@ -48,7 +48,6 @@ const VoteSubmission: React.FC<VoteSubmissionProps> = ({
     try {
       // With mock API enabled, this will use the mock implementation
       const result = await submitVotes({
-        nonce: 'mock-token',
         voterName,
         voterRole,
         votes: apiVotes,

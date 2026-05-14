@@ -74,11 +74,6 @@ function priorityColor(score: number): string {
   return `rgb(${r},${g},${b})`;
 }
 
-/** Width % for a "quality bar" — higher bar = better priority (inverts tier scale). */
-function priorityBarPct(score: number): number {
-  return Math.round(((5 - score) / 4) * 100);
-}
-
 function interestLabel(avg: number): string {
   if (avg <= 1.5) return 'Very High';
   if (avg <= 2.5) return 'High';
@@ -478,19 +473,6 @@ export default function Step1View({
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup', onUp);
   };
-
-  // ── Missing data status per dev ────────────────────────────────────────────
-  const devDataStatus = useMemo<Record<string, 'full' | 'partial' | 'none'>>(() => {
-    const total = pitches.length;
-    return Object.fromEntries(
-      config.devNames.map(dev => {
-        const filled = pitches.filter(p => dev in p.devInterest).length;
-        if (filled === 0) return [dev, 'none'];
-        if (filled < total) return [dev, 'partial'];
-        return [dev, 'full'];
-      })
-    );
-  }, [pitches, config.devNames]);
 
   // ── Stats ──────────────────────────────────────────────────────────────────
   const stats = useMemo(() => {

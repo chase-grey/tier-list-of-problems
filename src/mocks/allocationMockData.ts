@@ -170,10 +170,10 @@ function priorityVotesForPitch(pitchId: string, category: string): {
   ) as Record<string, 0 | 1 | 2 | 3 | 4>;
 
   const allTiers = Object.values(teamVotes);
-  const teamPriorityScore = allTiers.reduce((s, t) => s + t, 0) / allTiers.length;
+  const teamPriorityScore = allTiers.reduce<number>((s, t) => s + t, 0) / allTiers.length;
   const tlTiers = Object.values(tlVotes);
   const tlPriorityScore = tlTiers.length > 0
-    ? tlTiers.reduce((s, t) => s + t, 0) / tlTiers.length
+    ? tlTiers.reduce<number>((s, t) => s + t, 0) / tlTiers.length
     : teamPriorityScore;
 
   return { teamVotes, tlVotes, teamPriorityScore, tlPriorityScore };

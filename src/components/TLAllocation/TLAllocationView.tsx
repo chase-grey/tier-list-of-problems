@@ -319,7 +319,7 @@ function derivePhase2Interests(pitches: AllocationPitch[], config: AllocationCon
 
 function enrichPitches(
   basePitches: Pitch[],
-  voteData: Record<string, { teamVotes: Record<string, 0|1|2|3|4>; tlVotes: Record<string, 0|1|2|3|4>; teamPriorityScore: number; tlPriorityScore: number }>,
+  voteData: Record<string, { teamVotes: Record<string, 0|1|2|3|4>; tlVotes: Record<string, 0|1|2|3|4>; teamPriorityScore: number; tlPriorityScore: number; devInterest?: Record<string, number | null> }>,
 ): AllocationPitch[] {
   return basePitches.map(p => {
     const v = voteData[p.id];
@@ -329,7 +329,7 @@ function enrichPitches(
       tlVotes: v?.tlVotes ?? {},
       teamPriorityScore: v?.teamPriorityScore ?? 0,
       tlPriorityScore: v?.tlPriorityScore ?? 0,
-      devInterest: v?.devInterest ?? {},
+      devInterest: (v?.devInterest ?? {}) as AllocationPitch['devInterest'],
     };
   });
 }
@@ -1347,9 +1347,6 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
       <EditLockBanner
         status={editLock.status}
         lock={editLock.lock}
-        stageLabel={stageLabel}
-        onTake={editLock.take}
-        onRelease={editLock.release}
         onRefresh={() => window.location.reload()}
       />
       <Box

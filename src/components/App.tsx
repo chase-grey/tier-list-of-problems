@@ -1,5 +1,5 @@
 import React, { useEffect, memo, useState, useMemo, useRef } from 'react';
-import { ThemeProvider, CssBaseline, Box, Typography, Tabs, Tab, Snackbar, Alert } from '@mui/material';
+import { ThemeProvider, CssBaseline, Box, Typography, Tabs, Tab } from '@mui/material';
 import { darkTheme, lightTheme } from '../theme';
 import { NameGate } from './NameGate/NameGate';
 import { TopBar } from './TopBar/TopBar';

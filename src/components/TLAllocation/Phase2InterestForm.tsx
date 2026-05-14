@@ -24,7 +24,7 @@ interface Phase2InterestFormProps {
 
 type InterestSelection = 1 | 2 | 3 | 4 | 'skip' | null;
 
-const TOGGLE_OPTIONS: { value: InterestSelection; label: string; color: string }[] = [
+const TOGGLE_OPTIONS: { value: Exclude<InterestSelection, null>; label: string; color: string }[] = [
   { value: 1,      label: 'Very Interested',     color: '#4a148c' },
   { value: 2,      label: 'Interested',           color: '#7b1fa2' },
   { value: 3,      label: 'Somewhat Interested',  color: '#ab47bc' },

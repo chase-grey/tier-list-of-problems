@@ -2,7 +2,7 @@
  * Utilities for migrating from CSV-based storage to the Google Sheets API
  */
 import type { Vote } from '../types/models';
-import { submitVotes, getCsrfToken } from '../services/api';
+import { submitVotes } from '../services/api';
 import { getPollingCycleId } from './config';
 import { buildPollingKey, getStoredPollingCycleId } from './pollingStorage';
 
@@ -13,17 +13,14 @@ import { buildPollingKey, getStoredPollingCycleId } from './pollingStorage';
  * @returns Number of votes successfully migrated
  */
 export async function migrateLocalStorageToApi(
-  voterName: string, 
+  voterName: string,
   votes: Record<string, Vote>
 ): Promise<number> {
   // Skip if no votes or no voter name
   if (!voterName || Object.keys(votes).length === 0) {
     return 0;
   }
-  
-  // Get a CSRF token
-  const nonce = await getCsrfToken();
-  
+
   // Convert votes to API format
   const apiVotes = Object.entries(votes)
     .filter(([_, vote]) => vote.tier) // Filter out incomplete votes
@@ -31,14 +28,14 @@ export async function migrateLocalStorageToApi(
       pitch_id: pitchId,
       tier: vote.tier as number // Type assertion since we filtered undefined
     }));
-  
-  // Submit votes to the API
+
+  // Submit votes to the API. The backend no longer requires a CSRF nonce —
+  // the `nonce` field was removed from SubmitVotesPayload, so don't pass it.
   const result = await submitVotes({
-    nonce,
     voterName,
     votes: apiVotes
   });
-  
+
   return result;
 }
 

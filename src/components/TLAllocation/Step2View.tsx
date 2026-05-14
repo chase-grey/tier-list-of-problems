@@ -220,13 +220,6 @@ const CATEGORY_SHORT: Record<string, string> = {
 };
 
 
-function balanceScoreColor(score: number): string {
-  if (score >= 100) return 'success.main';
-  if (score >= 75) return 'text.primary';
-  if (score >= 50) return 'warning.main';
-  return 'error.main';
-}
-
 /** One-decimal format that drops the trailing `.0` so 7.0 reads as "7". */
 function fmtIdeal(v: number): string {
   const s = v.toFixed(1);
@@ -890,37 +883,7 @@ export default function Step2View({
     return set;
   }, [selectedPitches]);
 
-  const totalPitches = selectedPitches.length;
 
-  // Per-person data completeness
-  const personDataStatus = useMemo(() => {
-    return Object.fromEntries(
-      phase2Interests.map(pi => {
-        const filled = selectedPitches.filter(p => p.id in pi.interestByPitchId).length;
-        if (filled === 0) return [pi.personName, 'none'];
-        if (filled < totalPitches) return [pi.personName, 'partial'];
-        return [pi.personName, 'full'];
-      })
-    ) as Record<string, 'full' | 'partial' | 'none'>;
-  }, [phase2Interests, selectedPitches, totalPitches]);
-
-  const hasHighInterest = (name: string) => {
-    const pi = phase2Interests.find(p => p.personName === name);
-    if (!pi) return false;
-    return assignments.some(a => {
-      const isAssigned = a.devTL === name || a.qm === name;
-      if (!isAssigned) return false;
-      const tier = pi.interestByPitchId[a.pitchId];
-      return tier === 1 || tier === 2;
-    });
-  };
-
-  const hasHighInterestPqa1 = (name: string) =>
-    assignments.some(a => {
-      if (a.pqa1 !== name) return false;
-      const tier = pitchMap.get(a.pitchId)?.devInterest[name];
-      return tier === 1 || tier === 2;
-    });
 
   // ── Sidebar section collapse state ──────────────────────────────────────
   const [sidebarCollapsed, setSidebarCollapsed] = useState<Record<string, boolean>>({});
@@ -1466,7 +1429,6 @@ export default function Step2View({
                   ),
                 }))
                 .filter(entry => entry.pitchIds.length > 0);
-              const hasHigh = hasHighInterest(name);
               const pi = interests.find(p => p.personName === name);
               const personHasNoData = !pi || Object.keys(pi.interestByPitchId).length === 0;
               const roleIdeal = role === 'devTL' ? step2Stats.tlIdeal : step2Stats.qmIdeal;
@@ -1699,7 +1661,6 @@ export default function Step2View({
                   ),
                 }))
                 .filter(entry => entry.pitchIds.length > 0);
-              const hasHigh = hasHighInterestPqa1(name);
               const personalIdeal = step2Stats.pqa1IdealByName[name] ?? step2Stats.pqa1Ideal;
               // Weighted workload score from step2Stats so a dev who's also
               // picked up the dev slot on a project gets that ×2 weight in

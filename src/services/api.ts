@@ -15,7 +15,7 @@ const USE_MOCK_API = false;
 // POST response bodies (GAS's 302 redirect breaks CORS for direct browser POSTs).
 // In production (static GitHub Pages build) the middleware doesn't exist, so we
 // hit GAS directly — the same pattern allocationApi.ts uses successfully.
-const IS_DEV_PROXY = import.meta.env.DEV;
+const IS_DEV_PROXY = (import.meta as any).env?.DEV ?? false;
 const GAS_BASE = IS_DEV_PROXY ? '/gas-proxy' : API_BASE_URL;
 const GAS_PROXY = GAS_BASE;
 

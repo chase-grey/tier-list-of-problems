@@ -1,7 +1,7 @@
 /**
  * Tests for the API service
  */
-import { fetchPitches, getCsrfToken, submitVotes, fetchResults, ApiError } from '../services/api';
+import { fetchPitches, submitVotes, fetchResults, ApiError } from '../services/api';
 import { describe, beforeEach, it, expect, jest } from '@jest/globals';
 
 // Mock the fetch function
@@ -61,41 +61,24 @@ describe('API Service', () => {
     });
   });
 
-  describe('getCsrfToken', () => {
-    it('should fetch and return a CSRF token', async () => {
-      const mockToken = { nonce: 'test-token-123' };
-      
-      (global.fetch as jest.MockedFunction<typeof fetch>).mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockToken
-      } as Response);
-      
-      const result = await getCsrfToken();
-      
-      expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('?route=token'));
-      expect(result).toBe('test-token-123');
-    });
-  });
-
   describe('submitVotes', () => {
     it('should submit votes correctly', async () => {
       const mockPayload = {
-        nonce: 'test-token-123',
         voterName: 'Test User',
         votes: [
           { pitch_id: 'pitch-1', tier: 2 }
         ]
       };
-      
+
       const mockResponse = { saved: 1 };
-      
+
       (global.fetch as jest.MockedFunction<typeof fetch>).mockResolvedValueOnce({
         ok: true,
         json: async () => mockResponse
       } as Response);
-      
+
       const result = await submitVotes(mockPayload);
-      
+
       expect(global.fetch).toHaveBeenCalledWith(
         expect.stringContaining('?route=vote'),
         expect.objectContaining({

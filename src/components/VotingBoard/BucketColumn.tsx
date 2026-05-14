@@ -22,7 +22,7 @@ interface BucketColumnProps {
 /**
  * Represents a tier bucket column in the voting board
  */
-const BucketColumn = ({ tier, pitches, votes, columnCount = 9, onSendToBottom, userRole, focusedPitchId, onFocusPitch }: BucketColumnProps) => {
+const BucketColumn = ({ tier, pitches, votes, onSendToBottom, userRole, focusedPitchId, onFocusPitch }: BucketColumnProps) => {
   const columnRef = useRef<HTMLDivElement>(null);
   const columnId = tier === null ? 'unsorted' : `tier-${tier}`;
   
