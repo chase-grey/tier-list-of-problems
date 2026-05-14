@@ -33,6 +33,10 @@ export interface PlanAssignment {
   pitchId: string;
   assignedDev: string | null;
   status: AssignmentStatus;
+  /** Stretch goals are planned projects we'll only complete if there's spare
+   *  capacity. They render with a distinguishing icon and sort beneath
+   *  non-stretch projects in the Stage 4 sidebar. */
+  stretch?: boolean;
 }
 
 /** Phase 2 interest: a dev TL or QM's interest ratings across the selected projects. */
