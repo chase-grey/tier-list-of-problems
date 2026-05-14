@@ -1014,13 +1014,13 @@ export default function Step2View({
                 </Typography>
               </Box>
               <Collapse in={!collapsed}>
-                <Table size="small" sx={{ tableLayout: 'fixed', minWidth: 1020, '& th, & td': { px: 1.25 } }}>
+                <Table size="small" sx={{ tableLayout: 'fixed', minWidth: 1020, '& th, & td': { px: 0.75 } }}>
                   <colgroup>
                     <col />{/* pitch: flex */}
                     <col style={{ width: 56 }} />{/* Team priority */}
                     <col style={{ width: 56 }} />{/* TL priority */}
                     <col style={{ width: 180 }} />{/* status chips — 8px left pad on the cell + ~170px of chips */}
-                    <col style={{ width: 48 }} />{/* UXD */}
+                    <col style={{ width: 36 }} />{/* UXD — snug to the checkbox; the col pad override on the cell is 0 so most of this is the checkbox's own visible bounds */}
                     <col style={{ width: 130 }} />{/* Dev — dropdown, mirrors PQA1 column shape */}
                     <col style={{ width: 130 }} />{/* DevTL — name + interest indicator + chevron */}
                     <col style={{ width: 130 }} />{/* QM */}
@@ -1040,7 +1040,7 @@ export default function Step2View({
                         </Tooltip>
                       </TableCell>
                       <TableCell width={180} />
-                      <TableCell width={48} align="center">
+                      <TableCell width={36} align="center">
                         <Tooltip title="Include UXD in project kickoff">
                           <span>UXD</span>
                         </Tooltip>

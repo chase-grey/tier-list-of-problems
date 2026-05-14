@@ -657,7 +657,7 @@ export default function Step1View({
 
               {/* Collapsible bucket content */}
               <Collapse in={isOpen(cat, 'bucket')}>
-                <Table size="small" sx={{ tableLayout: 'fixed', minWidth: 620, '& th, & td': { px: 1.25 } }}>
+                <Table size="small" sx={{ tableLayout: 'fixed', minWidth: 620, '& th, & td': { px: 0.75 } }}>
                   <colgroup>
                     <col />{/* pitch: takes remaining space */}
                     <col style={{ width: 56 }} />{/* Team priority */}
@@ -702,7 +702,7 @@ export default function Step1View({
                     <TableRow sx={{ p: 0, m: 0 }}>
                       <TableCell colSpan={5} sx={{ p: 0, border: 0 }}>
                         <Collapse in={isOpen(cat, 'planned')}>
-                          <Table size="small" sx={{ tableLayout: 'fixed', width: '100%', '& th, & td': { px: 1.25 } }}>
+                          <Table size="small" sx={{ tableLayout: 'fixed', width: '100%', '& th, & td': { px: 0.75 } }}>
                             <colgroup>
                               <col />{/* pitch: flex to match outer table */}
                               <col style={{ width: 56 }} />{/* Team */}
@@ -754,7 +754,7 @@ export default function Step1View({
                     <TableRow sx={{ p: 0, m: 0 }}>
                       <TableCell colSpan={5} sx={{ p: 0, border: 0 }}>
                         <Collapse in={isOpen(cat, 'nextUp')}>
-                          <Table size="small" sx={{ tableLayout: 'fixed', width: '100%', '& th, & td': { px: 1.25 } }}>
+                          <Table size="small" sx={{ tableLayout: 'fixed', width: '100%', '& th, & td': { px: 0.75 } }}>
                             <colgroup>
                               <col />{/* pitch: flex to match outer table */}
                               <col style={{ width: 56 }} />{/* Team */}
@@ -806,7 +806,7 @@ export default function Step1View({
                     <TableRow sx={{ p: 0, m: 0 }}>
                       <TableCell colSpan={5} sx={{ p: 0, border: 0 }}>
                         <Collapse in={isOpen(cat, 'notNow')}>
-                          <Table size="small" sx={{ tableLayout: 'fixed', width: '100%', '& th, & td': { px: 1.25 } }}>
+                          <Table size="small" sx={{ tableLayout: 'fixed', width: '100%', '& th, & td': { px: 0.75 } }}>
                             <colgroup>
                               <col />{/* pitch: flex to match outer table */}
                               <col style={{ width: 56 }} />{/* Team */}
