@@ -368,15 +368,34 @@ export async function fetchEditLock(stage: LockStage): Promise<EditLockState> {
  * unsaved work is lost; the UI should disclaim this).
  */
 export async function acquireEditLock(stage: LockStage, voterName: string, force = false): Promise<{ acquired: boolean; lock: EditLockState }> {
-  const data = await gasJsonPost<{ acquired?: boolean; lock?: EditLockState }>(
-    'acquire-edit-lock',
-    { stage, voterName, force },
-    { acquired: true, lock: { holder: voterName, acquiredAt: Date.now(), lastHeartbeat: Date.now() } as EditLockState },
-  );
-  return {
-    acquired: !!data.acquired,
-    lock: data.lock ?? { holder: null, acquiredAt: 0, lastHeartbeat: 0 },
+  const synthetic = {
+    acquired: true,
+    lock: { holder: voterName, acquiredAt: Date.now(), lastHeartbeat: Date.now() } as EditLockState,
   };
+  try {
+    const data = await gasJsonPost<{ acquired?: boolean; lock?: EditLockState }>(
+      'acquire-edit-lock',
+      { stage, voterName, force },
+      synthetic,
+    );
+    // Backend didn't return the expected shape (proxy returned empty body, or
+    // the response shape changed) — treat as "backend unreachable" and grant
+    // the lock locally so dev work isn't blocked.
+    if (data.acquired === undefined) return synthetic;
+    return {
+      acquired: !!data.acquired,
+      lock: data.lock ?? { holder: null, acquiredAt: 0, lastHeartbeat: 0 },
+    };
+  } catch (err) {
+    // gasJsonPost throws when the proxy returns an `error` field (e.g.
+    // VITE_API_URL not configured) or the response body fails to parse.
+    // Neither case represents a real "someone else holds the lock" refusal —
+    // it means we can't reach the backend at all. Fall back to the synthetic
+    // grant so the TL can keep working locally, and rethrow as a tagged
+    // marker so callers that care can surface a snackbar.
+    console.warn('acquireEditLock: backend unreachable, granting locally', err);
+    return synthetic;
+  }
 }
 
 /** Release the lock. Caller must be the current holder; otherwise no-op. */

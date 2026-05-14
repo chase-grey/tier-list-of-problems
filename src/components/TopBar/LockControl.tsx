@@ -5,6 +5,7 @@ import LockOpenIcon from '@mui/icons-material/LockOpen';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import { getShortName } from '../../data/teamRoster';
 import ForceTakeLockDialog from '../TLAllocation/ForceTakeLockDialog';
+import { useSnackbar } from '../../hooks/useSnackbar';
 
 export type LockStatus = 'loading' | 'editor' | 'viewer' | 'idle' | 'lost';
 
@@ -37,6 +38,7 @@ export default function LockControl({ status, holder, lastHeartbeat, stageLabel,
   const [forceDialogOpen, setForceDialogOpen] = useState(false);
   const [busy, setBusy] = useState(false);
 
+  const { showSnackbar } = useSnackbar();
   const handleTake = async (force: boolean) => {
     setBusy(true);
     try {
@@ -46,6 +48,11 @@ export default function LockControl({ status, holder, lastHeartbeat, stageLabel,
       } else if (result.acquired) {
         setForceDialogOpen(false);
       }
+    } catch (err: any) {
+      // Previously this swallowed the rejection silently — the button just
+      // reverted to "Take lock" with no feedback. Surface a snackbar so the
+      // user knows the click did something (and can report what went wrong).
+      showSnackbar(`Couldn't take the lock: ${err?.message ?? 'unknown error'}`, 'error');
     } finally {
       setBusy(false);
     }
