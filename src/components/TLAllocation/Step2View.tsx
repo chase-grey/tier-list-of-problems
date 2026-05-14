@@ -606,12 +606,31 @@ export default function Step2View({
   const availableDevNames = useMemo(() => devNames.filter(n => !unavailablePqa1Set.has(n)), [devNames, unavailablePqa1Set]);
   // PQA1 pool sidebar splits into three buckets: available, "Available for
   // Dev only" (pqa1Capacity='none' but devCapacity isn't), and fully
-  // unavailable. Symmetric with Step1View's dev-pool split.
-  const devOnlyAvailablePqa1Names = useMemo(() => {
-    const pqa1OnlyUnavail = new Set(config.unavailableForPqa1Names ?? []);
-    return devNames.filter(n => pqa1OnlyUnavail.has(n));
-  }, [devNames, config.unavailableForPqa1Names]);
-  const unavailableDevNamesForPqa1 = useMemo(() => devNames.filter(n => unavailableSet.has(n)), [devNames, unavailableSet]);
+  // unavailable. We trust capacityByName first (most specific) and fall back
+  // to unavailableForPqa1Names vs unavailableNames — same defensive pattern
+  // as Step1View, robust to backends that lump role-only-unavailable people
+  // into unavailableNames.
+  const { unavailableDevNamesForPqa1, devOnlyAvailablePqa1Names } = useMemo(() => {
+    const cap = config.capacityByName ?? {};
+    const devOnlyFromList = new Set(config.unavailableForPqa1Names ?? []);
+
+    const fullyUnavail: string[] = [];
+    const devOnly: string[] = [];
+    for (const name of devNames) {
+      if (!unavailablePqa1Set.has(name)) continue;
+      const c = cap[name];
+      const devCap = c?.devCapacity;
+      const pqa1Cap = c?.pqa1Capacity;
+      if (pqa1Cap === 'none' && devCap && devCap !== 'none') {
+        devOnly.push(name);
+      } else if (devOnlyFromList.has(name) && !(devCap === 'none' && pqa1Cap === 'none')) {
+        devOnly.push(name);
+      } else {
+        fullyUnavail.push(name);
+      }
+    }
+    return { unavailableDevNamesForPqa1: fullyUnavail, devOnlyAvailablePqa1Names: devOnly };
+  }, [devNames, config.unavailableForPqa1Names, config.capacityByName, unavailablePqa1Set]);
 
   // PQA1 reviewer dropdown options: regular available devs plus available
   // dev TLs (manually assignable; auto-assign skips them unless they were
@@ -991,7 +1010,7 @@ export default function Step2View({
                     <col />{/* pitch: flex */}
                     <col style={{ width: 56 }} />{/* Team priority */}
                     <col style={{ width: 56 }} />{/* TL priority */}
-                    <col style={{ width: 210 }} />{/* status chips — sized so Plan + Up Next + Not Now fit without truncation */}
+                    <col style={{ width: 190 }} />{/* status chips — sized snug to Plan + Up Next + Not Now without slack */}
                     <col style={{ width: 48 }} />{/* UXD */}
                     <col style={{ width: 72 }} />{/* dev read-only */}
                     <col style={{ width: 130 }} />{/* DevTL — name + interest indicator + chevron */}
@@ -1011,7 +1030,7 @@ export default function Step2View({
                           <span>TL</span>
                         </Tooltip>
                       </TableCell>
-                      <TableCell width={210} />
+                      <TableCell width={190} />
                       <TableCell width={48} align="center">
                         <Tooltip title="Include UXD in project kickoff">
                           <span>UXD</span>
@@ -2074,11 +2093,14 @@ function Step2Row({
       {/* Plan / Up Next / Not Now status chips. Mirror of Step1View's
           status column — committed rows show only the Plan chip (locked
           into Planned), other rows toggle between all three. */}
-      <TableCell sx={{ px: 1 }}>
-        <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-end', flexWrap: 'nowrap' }}>
+      <TableCell sx={{ pl: 0, pr: 1 }}>
+        <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-start', flexWrap: 'nowrap' }}>
           {/* flexShrink: 0 + whiteSpace: nowrap on each chip protects their
               full label from being clipped when the row narrows — matches the
-              guard in Step1View so "Not Now" never collapses to "Not N…" */}
+              guard in Step1View so "Not Now" never collapses to "Not N…".
+              pl:0 + flex-start keeps the Plan chip flush against the TL
+              column so there's no empty gap between the priority score and
+              the status buttons. */}
           <Tooltip title={committed ? 'Committed projects are always planned' : "Include in this quarter's projects"}>
             <Chip
               label="Plan"
