@@ -23,12 +23,19 @@ import Step2View from './Step2View';
 import Stage2ResultsView from './Stage2ResultsView';
 import Stage4ResultsView from './Stage4ResultsView';
 
+/**
+ * Auto-assign scope. Stage 2 has only a dev role, so the parameter is ignored
+ * there. Stage 4 can re-run all roles or just one (devTL / qm / pqa1) — used by
+ * the TopBar split button's dropdown.
+ */
+export type RerunRole = 'all' | 'devTL' | 'qm' | 'pqa1';
+
 export interface TLAllocationViewHandle {
   /** Save in place — persists to backend without navigating to the summary view. */
   triggerSave: () => Promise<boolean>;
   /** Save + navigate to the Stage 2/4 summary view. No-op if the save fails. */
   triggerFinalize: () => Promise<void>;
-  triggerRerunAlgorithm: () => void;
+  triggerRerunAlgorithm: (role?: RerunRole) => void;
   /** Whether every selected pitch has all team roles filled (used to gate Finish). */
   isReadyToFinish: () => boolean;
   /** True iff the caller currently holds the stage edit lock. */
@@ -446,11 +453,19 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
       //   capacityByName          — per-person capacity tier + comment (voter
       //                             answer overlaid with TL override) — drives
       //                             algorithm caps and Stage 2/4 sidebar badges.
+      // Vote data is authoritative for unavailability — always overwrite, even
+      // when empty. The old conditional preserved stale `unavailableNames`
+      // baked into the Script Property `allocation_config`, which caused
+      // people to appear in two lists at once (e.g. dev='none', pqa1='avg'
+      // reclassified into unavailableForDevNames while still pinned in the
+      // property's unavailableNames). For the optional `*ForDev/*ForPqa1`
+      // lists, only overwrite when the response defines them (older backends
+      // that omit those fields → keep whatever the config provided).
       const effectiveConfig: AllocationConfig = {
         ...(config ?? MOCK_CONFIG),
-        ...(unavailableNames.length > 0 ? { unavailableNames } : {}),
-        ...(unavailableForDevNames && unavailableForDevNames.length > 0 ? { unavailableForDevNames } : {}),
-        ...(unavailableForPqa1Names && unavailableForPqa1Names.length > 0 ? { unavailableForPqa1Names } : {}),
+        unavailableNames,
+        ...(unavailableForDevNames !== undefined ? { unavailableForDevNames } : {}),
+        ...(unavailableForPqa1Names !== undefined ? { unavailableForPqa1Names } : {}),
         ...(capacityByName && Object.keys(capacityByName).length > 0 ? { capacityByName } : {}),
       };
 
@@ -464,21 +479,48 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
       const devTLSet = new Set(effectiveConfig.devTLNames);
       const qmSet = new Set(effectiveConfig.qmNames);
       const devOrTLSet = new Set([...effectiveConfig.devNames, ...effectiveConfig.devTLNames]);
-      // Adhoc pitches let the TL assign anyone on the team (incl. QMs) to the
-      // Dev slot via AddPitchDialog. Use a permissive set for those so a QM
-      // dev isn't silently stripped on reload.
+      // Dev slots accept anyone on the team — a TL may legitimately assign a
+      // Dev TL or QM as the lead dev on a non-standard project, and adhoc
+      // pitches have always allowed this via AddPitchDialog. The strict
+      // dev+TL-only validation that used to apply to non-adhoc pitches
+      // silently nulled QM-as-dev assignments on reload, so we accept any
+      // team-roster name for both kinds of pitch.
       const anyRoleSet = new Set([
         ...effectiveConfig.devNames,
         ...effectiveConfig.devTLNames,
         ...effectiveConfig.qmNames,
       ]);
-      const adhocBackendIds = new Set(backendAdhoc.map(p => p.id));
-      const adhocLocalIds = new Set(adhocPitches.map(p => p.id));
-      const isAdhocPitch = (id: string) => adhocBackendIds.has(id) || adhocLocalIds.has(id);
-      const validDevSetFor = (id: string) => isAdhocPitch(id) ? anyRoleSet : devOrTLSet;
+      const validDevSetFor = (_id: string) => anyRoleSet;
 
       const planEntries = Object.entries(planFull);
       const hasBackendPlan = planEntries.length > 0;
+
+      // Compute enriched pitches up front so the backend-load branch can use
+      // them to fill in defaults for pitches missing from the PLAN sheet. The
+      // hasRealVotes branch below will reuse this same array via state.
+      const enrichedAll: AllocationPitch[] = hasRealVotes ? enrichPitches(pitches, voteData) : [];
+      // Committed pitches are pre-allocated for next quarter, so they're
+      // always 'selected' regardless of whatever the PLAN sheet / default
+      // plan tries to assign. Includes both backend committed pitches and
+      // locally-added committed adhocs.
+      const committedPitchIds = new Set<string>([
+        ...pitches.filter(p => p.committed).map(p => p.id),
+        ...adhocPitches.filter(p => p.committed).map(p => p.id),
+        ...backendAdhoc.filter(p => p.committed).map(p => p.id),
+      ]);
+      // Default plan grouping (selected/next-up/cut) from priority + bandwidth.
+      // Used to backfill rows missing from the backend plan so every pitch is
+      // visible in *some* sub-section in Stage 2, not silently dropped.
+      const defaultsForMissing = (existingIds: ReadonlySet<string>): PlanAssignment[] => {
+        if (enrichedAll.length === 0) return [];
+        return generateDefaultPlan(enrichedAll, effectiveConfig)
+          .filter(d => !existingIds.has(d.pitchId))
+          .map(d => ({
+            ...d,
+            assignedDev: null,
+            status: committedPitchIds.has(d.pitchId) ? 'selected' : d.status,
+          }));
+      };
 
       if (hasBackendPlan) {
         // Backend PLAN sheet is the source of truth for backend pitches.
@@ -494,12 +536,15 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
           .filter(([, row]) => row.status === 'selected' || row.status === 'next-up' || row.status === 'cut')
           .map(([pitchId, row]) => {
             const dev = row.assignedDev != null && validDevSetFor(pitchId).has(row.assignedDev) ? row.assignedDev : null;
-            const status = (row.status === 'selected' && !dev && row.assignedDev != null)
+            const rawStatus = (row.status === 'selected' && !dev && row.assignedDev != null)
               // Original dev was on the saved row but is now off the roster — keep
               // the pitch in the plan but bump status down so the missing dev is
               // surfaced rather than silently dropped.
               ? 'next-up'
               : row.status;
+            // Committed pitches are always Planned by definition — never let
+            // a stale or demoted PLAN row drop them out of the planned set.
+            const status = committedPitchIds.has(pitchId) ? 'selected' : rawStatus;
             return {
               pitchId,
               status: status as PlanAssignment['status'],
@@ -507,10 +552,15 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
             };
           });
         const planBackendIds = new Set(planFromBackend.map(p => p.pitchId));
-        const mergedPlan = [
+        const mergedBackendPlan = [
           ...planFromBackend,
           ...localAdhocPlan.filter(a => !planBackendIds.has(a.pitchId)),
         ];
+        // Fill in defaults for pitches the backend PLAN sheet doesn't have a
+        // row for (e.g. a prior partial save dropped non-selected rows). Keeps
+        // every pitch visible in some Stage 2 sub-section.
+        const mergedPlanIds = new Set(mergedBackendPlan.map(p => p.pitchId));
+        const mergedPlan = [...mergedBackendPlan, ...defaultsForMissing(mergedPlanIds)];
         savedStep1.current = mergedPlan;
         setPlanAssignments(mergedPlan);
 
@@ -540,8 +590,10 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
             }
             return a;
           });
-          savedStep1.current = sanitized1;
-          setPlanAssignments(sanitized1);
+          const sanitizedIds = new Set(sanitized1.map(a => a.pitchId));
+          const filled = [...sanitized1, ...defaultsForMissing(sanitizedIds)];
+          savedStep1.current = filled;
+          setPlanAssignments(filled);
         }
 
         if (savedStep2.current) {
@@ -707,6 +759,17 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
       currentAssignments.filter(a => a.status === 'next-up' && !selectedPitchIds.has(a.pitchId)).map(a => a.pitchId)
     );
     return allPitches.filter(p => nextUpIds.has(p.id));
+  }, [currentAssignments, allPitches, selectedPitchIds]);
+
+  // Not Now (cut) pitches surface in Stage 4 as a default-collapsed sub-section
+  // under each category so the TL can review what was deprioritized without
+  // having to flip back to Stage 2. Excluded from selectedPitchIds for the
+  // same reason as nextUpPitches.
+  const cutPitches = useMemo(() => {
+    const cutIds = new Set(
+      currentAssignments.filter(a => a.status === 'cut' && !selectedPitchIds.has(a.pitchId)).map(a => a.pitchId)
+    );
+    return allPitches.filter(p => cutIds.has(p.id));
   }, [currentAssignments, allPitches, selectedPitchIds]);
 
   const [step2Assignments, setStep2Assignments] = useState<StaffingAssignment[]>(
@@ -1013,37 +1076,66 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
     onFinalize?.();
   };
 
-  const handleRerunAlgorithm = () => {
+  const handleRerunAlgorithm = (role: RerunRole = 'all') => {
     if (activeStep === 0) {
+      // Stage 2 has only the dev role — role param is ignored.
       setPlanAssignments(generateDefaultPlan(allocationPitches, allocationConfig, {
         lockedPitchIds: new Set(step1Locks.pitchIds),
         lockedPersonNames: new Set(step1Locks.personNames),
         currentPlan: planAssignments,
       }));
       showSnackbar('Plan auto-assigned', 'info');
-    } else {
-      const lockedPitchSet = new Set(step2Locks.pitchIds);
-      const lockedPersonSet = new Set(step2Locks.personNames);
-      const base = autoAssignStep2(selectedPitches, phase2Interests, allocationConfig, {
-        lockedPitchIds: lockedPitchSet,
-        lockedPersonNames: lockedPersonSet,
-        currentAssignments: step2Assignments,
-      });
-      // PQA1 pool: exclude fully unavailable + dev-only-available.
-      const pqa1ExcludeSet2 = new Set([
-        ...(allocationConfig.unavailableNames ?? []),
-        ...(allocationConfig.unavailableForPqa1Names ?? []),
-      ]);
-      const availDevNames2 = allocationConfig.devNames.filter(d => !pqa1ExcludeSet2.has(d));
-      const currentPqa1ByPitch = Object.fromEntries(step2Assignments.map(a => [a.pitchId, a.pqa1 ?? null]));
-      const pqa1Map = autoAssignPqa1(selectedPitches, devByPitchId, availDevNames2, allocationConfig, {
-        lockedPitchIds: lockedPitchSet,
-        lockedPersonNames: lockedPersonSet,
-        currentPqa1ByPitch,
-      });
-      setStep2Assignments(base.map(a => ({ ...a, pqa1: pqa1Map[a.pitchId] ?? null })));
-      showSnackbar('Team assignments auto-assigned', 'info');
+      return;
     }
+
+    // Stage 4: per-role scope. autoAssignStep2 produces both devTL + qm; we
+    // call it only when at least one of those is being re-run, then merge so
+    // the other role keeps its existing value. PQA1 has its own pass.
+    const lockedPitchSet = new Set(step2Locks.pitchIds);
+    const lockedPersonSet = new Set(step2Locks.personNames);
+    const runDevTL = role === 'all' || role === 'devTL';
+    const runQm = role === 'all' || role === 'qm';
+    const runPqa1 = role === 'all' || role === 'pqa1';
+
+    const base = (runDevTL || runQm)
+      ? autoAssignStep2(selectedPitches, phase2Interests, allocationConfig, {
+          lockedPitchIds: lockedPitchSet,
+          lockedPersonNames: lockedPersonSet,
+          currentAssignments: step2Assignments,
+        })
+      : step2Assignments;
+
+    // PQA1 pool: exclude fully unavailable + dev-only-available.
+    const pqa1ExcludeSet2 = new Set([
+      ...(allocationConfig.unavailableNames ?? []),
+      ...(allocationConfig.unavailableForPqa1Names ?? []),
+    ]);
+    const availDevNames2 = allocationConfig.devNames.filter(d => !pqa1ExcludeSet2.has(d));
+    const currentPqa1ByPitch = Object.fromEntries(step2Assignments.map(a => [a.pitchId, a.pqa1 ?? null]));
+    const pqa1Map = runPqa1
+      ? autoAssignPqa1(selectedPitches, devByPitchId, availDevNames2, allocationConfig, {
+          lockedPitchIds: lockedPitchSet,
+          lockedPersonNames: lockedPersonSet,
+          currentPqa1ByPitch,
+        })
+      : currentPqa1ByPitch;
+
+    const existingByPitch = new Map(step2Assignments.map(a => [a.pitchId, a]));
+    setStep2Assignments(base.map(a => {
+      const existing = existingByPitch.get(a.pitchId);
+      return {
+        pitchId: a.pitchId,
+        devTL: runDevTL ? a.devTL : (existing?.devTL ?? a.devTL),
+        qm: runQm ? a.qm : (existing?.qm ?? a.qm),
+        pqa1: pqa1Map[a.pitchId] ?? null,
+      };
+    }));
+
+    const label = role === 'all' ? 'Team assignments'
+      : role === 'devTL' ? 'Dev TLs'
+      : role === 'qm' ? 'QMs'
+      : 'PQA1s';
+    showSnackbar(`${label} auto-assigned`, 'info');
   };
 
   // Persist a TL capacity override and reflect it locally so the sidebar
@@ -1113,7 +1205,11 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
   // View-only when we're not the editor. We still mount the underlying
   // editing UI but disable interaction via CSS — keeping the layout intact
   // so what the editor changes is visible as they save.
-  const isViewOnly = editLock.status === 'viewer' || editLock.status === 'lost';
+  // Read-only unless the caller actively holds the lock. 'idle' (nobody
+  // holds it) doesn't grant edits anymore — the TL has to click Take lock
+  // first so saves are properly attributed and concurrent edits don't sneak
+  // through without acquiring the explicit single-editor lock.
+  const isViewOnly = editLock.status !== 'editor';
 
   // Stage 4 finish gate: every selected pitch needs dev TL + QM + PQA1
   // resolved — either a named person OR an explicit "None" choice. (Empty /
@@ -1260,14 +1356,19 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
         sx={{
           flex: 1,
           overflow: 'hidden',
-          // View-only mode: block interaction but keep the layout so the user
-          // can see what the editor is working on. pointer-events:none drops
-          // every click/drag inside; opacity hints visually that it's not
-          // editable. The banner above stays interactive.
+          // View-only mode: keep scroll, collapse toggles, info popovers, and
+          // the sidebar resize handle usable so the TL can read the current
+          // plan; only the change-making controls (dropdowns, chips, drag,
+          // checkboxes) are blocked. Visual opacity/grayscale hints at the
+          // disabled state. The earlier blanket pointer-events:none also
+          // killed scrolling, which made view-only unusable for verification.
           ...(isViewOnly && {
-            pointerEvents: 'none',
             opacity: 0.65,
             filter: 'grayscale(0.25)',
+            '& .MuiSelect-select, & .MuiInputBase-input, & .MuiCheckbox-root, & .MuiChip-clickable, & [draggable="true"]': {
+              pointerEvents: 'none',
+              cursor: 'not-allowed',
+            },
           }),
         }}
         aria-disabled={isViewOnly}
@@ -1285,14 +1386,15 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
             onTogglePersonLock={toggleStep1PersonLock}
             voterName={voterName}
             onCapacityOverride={handleCapacityOverride}
-            onAdhocAdd={openAdhocAdd}
-            onAdhocEdit={openProjectEdit}
+            onAdhocAdd={isViewOnly ? undefined : openAdhocAdd}
+            onAdhocEdit={isViewOnly ? undefined : openProjectEdit}
             adhocPitchIds={adhocPitchIds}
           />
         ) : (
           <Step2View
             selectedPitches={selectedPitches}
             nextUpPitches={nextUpPitches}
+            cutPitches={cutPitches}
             assignments={step2Assignments}
             phase2Interests={phase2Interests}
             config={allocationConfig}
@@ -1309,8 +1411,8 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
             onTogglePersonLock={toggleStep2PersonLock}
             voterName={voterName}
             onCapacityOverride={handleCapacityOverride}
-            onAdhocAdd={openAdhocAdd}
-            onAdhocEdit={openProjectEdit}
+            onAdhocAdd={isViewOnly ? undefined : openAdhocAdd}
+            onAdhocEdit={isViewOnly ? undefined : openProjectEdit}
             adhocPitchIds={adhocPitchIds}
             stretchPitchIds={stretchPitchIds}
           />

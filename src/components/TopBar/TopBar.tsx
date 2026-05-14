@@ -1,11 +1,15 @@
+import { useState } from 'react';
 import {
   AppBar,
   Toolbar,
   Typography,
   Button,
+  ButtonGroup,
   Box,
   IconButton,
   Tooltip,
+  Menu,
+  MenuItem,
 } from '@mui/material';
 import {
   HelpOutline as HelpIcon,
@@ -14,6 +18,7 @@ import {
   NavigateBefore as PrevIcon,
   ThumbUp as InterestIcon,
   AutoFixHigh as WandIcon,
+  ArrowDropDown as ArrowDropDownIcon,
 } from '@mui/icons-material';
 import { SettingsMenu } from '../SettingsMenu/SettingsMenu';
 import { FinishButton } from './FinishButton';
@@ -92,6 +97,8 @@ interface TopBarProps {
   onAllocationViewSummary?: () => void;
   onAllocationBackToEdit?: () => void;
   onAllocationRerun?: () => void;
+  /** Stage 4 only: re-run auto-assignment for a single role. */
+  onAllocationRerunRole?: (role: 'devTL' | 'qm' | 'pqa1') => void;
   votingLoading?: boolean;
   submitState?: 'idle' | 'submitted' | 'changed';
 }
@@ -146,9 +153,17 @@ export const TopBar = ({
   onAllocationViewSummary,
   onAllocationBackToEdit,
   onAllocationRerun,
+  onAllocationRerunRole,
   votingLoading = false,
   submitState = 'idle',
 }: TopBarProps) => {
+  const [rerunMenuAnchor, setRerunMenuAnchor] = useState<HTMLElement | null>(null);
+  const closeRerunMenu = () => setRerunMenuAnchor(null);
+  const handleRerunRole = (role: 'devTL' | 'qm' | 'pqa1') => () => {
+    closeRerunMenu();
+    onAllocationRerunRole?.(role);
+  };
+  const showRerunDropdown = allocationStep === 1 && !!onAllocationRerunRole;
   const appTitle = allocationMode
     ? (allocationStep === 0 ? 'Dev Matching' : 'Team Matching')
     : appStage2Mode ? 'Interest Voting' : 'Priority Voting';
@@ -169,19 +184,43 @@ export const TopBar = ({
           </Typography>
 
           {allocationMode && !allocationShowResults && onAllocationRerun && (
-            <Tooltip title="Re-run auto-assignment algorithm (Shift+Alt+A)">
-              <Button
-                variant="outlined"
-                color="inherit"
-                size="small"
-                startIcon={<WandIcon />}
-                accessKey="a"
-                onClick={onAllocationRerun}
-                sx={{ ml: 1 }}
-              >
-                <u>A</u>uto-assign
-              </Button>
-            </Tooltip>
+            <>
+              <ButtonGroup variant="outlined" color="inherit" size="small" sx={{ ml: 1 }}>
+                <Tooltip title="Re-run auto-assignment algorithm (Shift+Alt+A)">
+                  <Button
+                    startIcon={<WandIcon />}
+                    accessKey="a"
+                    onClick={onAllocationRerun}
+                  >
+                    <u>A</u>uto-assign
+                  </Button>
+                </Tooltip>
+                {showRerunDropdown && (
+                  <Tooltip title="Auto-assign just one role…">
+                    <Button
+                      onClick={(e) => setRerunMenuAnchor(e.currentTarget)}
+                      aria-label="Auto-assign one role"
+                      sx={{ px: 0.5, minWidth: 'auto' }}
+                    >
+                      <ArrowDropDownIcon />
+                    </Button>
+                  </Tooltip>
+                )}
+              </ButtonGroup>
+              {showRerunDropdown && (
+                <Menu
+                  anchorEl={rerunMenuAnchor}
+                  open={Boolean(rerunMenuAnchor)}
+                  onClose={closeRerunMenu}
+                  anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                  transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+                >
+                  <MenuItem onClick={handleRerunRole('devTL')}>Dev TLs only</MenuItem>
+                  <MenuItem onClick={handleRerunRole('qm')}>QMs only</MenuItem>
+                  <MenuItem onClick={handleRerunRole('pqa1')}>PQA1s only</MenuItem>
+                </Menu>
+              )}
+            </>
           )}
 
           <Tooltip title="View Instructions (?)">

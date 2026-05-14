@@ -1134,6 +1134,7 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
           onAllocationReleaseLock={isTLStage && state.voterRole === 'dev TL' ? handleAllocationReleaseLock : undefined}
           onAllocationFinish={isTLStage && state.voterRole === 'dev TL' ? handleAllocationFinish : undefined}
           onAllocationRerun={isTLStage && state.voterRole === 'dev TL' ? () => tlViewRef.current?.triggerRerunAlgorithm() : undefined}
+          onAllocationRerunRole={isTLStage && state.voterRole === 'dev TL' ? (role) => tlViewRef.current?.triggerRerunAlgorithm(role) : undefined}
           allocationSaveState={allocationSaveState}
           allocationShowResults={allocationShowResults}
           allocationHasResults={allocationHasResults}

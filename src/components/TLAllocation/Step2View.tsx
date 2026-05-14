@@ -632,6 +632,28 @@ export default function Step2View({
     return { unavailableDevNamesForPqa1: fullyUnavail, devOnlyAvailablePqa1Names: devOnly };
   }, [devNames, config.unavailableForPqa1Names, config.capacityByName, unavailablePqa1Set]);
 
+  // Devs in the PQA1 pool's available list who can't take dev work
+  // (devCapacity='none' but pqa1Capacity is something other than 'none').
+  // Used to show a yellow warning dot next to their name so a TL knows
+  // they're PQA1-only — they appear in the available list but shouldn't be
+  // mentally counted as full-availability devs.
+  const pqa1OnlyAvailableDevNamesSet = useMemo(() => {
+    const cap = config.capacityByName ?? {};
+    const devOnlyUnavailFromList = new Set(config.unavailableForDevNames ?? []);
+    const result = new Set<string>();
+    for (const name of availableDevNames) {
+      const c = cap[name];
+      const devCap = c?.devCapacity;
+      const pqa1Cap = c?.pqa1Capacity;
+      if (devCap === 'none' && pqa1Cap && pqa1Cap !== 'none') {
+        result.add(name);
+      } else if (devOnlyUnavailFromList.has(name) && !(devCap === 'none' && pqa1Cap === 'none')) {
+        result.add(name);
+      }
+    }
+    return result;
+  }, [availableDevNames, config.capacityByName, config.unavailableForDevNames]);
+
   // PQA1 reviewer dropdown options: regular available devs plus available
   // dev TLs (manually assignable; auto-assign skips them unless they were
   // previousPQA1 on a continuation — see allocationEngine.autoAssignPqa1).
@@ -1715,13 +1737,31 @@ export default function Step2View({
                         {getShortName(name)}
                       </Typography>
                     </Tooltip>
-                    <CapacityBadge
-                      name={name}
-                      tier={capacityByName[name]?.pqa1Capacity}
-                      comment={capacityByName[name]?.comment}
-                      source={capacityByName[name]?.source}
-                      onClick={() => setCapacityDialogTarget(name)}
-                    />
+                    {pqa1OnlyAvailableDevNamesSet.has(name) ? (() => {
+                      const comment = capacityByName[name]?.comment;
+                      const source = capacityByName[name]?.source;
+                      const setter = source === 'tl-override' ? 'TL set' : `${getShortName(name)} indicated`;
+                      const tip = `${setter}: no capacity for additional dev work — available for PQA1 only${comment ? ` — ${comment}` : ''}.`;
+                      return (
+                        <Tooltip title={tip}>
+                          <IconButton
+                            size="small"
+                            sx={{ p: 0.2, flexShrink: 0 }}
+                            onClick={(e) => { e.stopPropagation(); setCapacityDialogTarget(name); }}
+                          >
+                            <CircleIcon sx={{ fontSize: '0.6rem', color: 'warning.main' }} />
+                          </IconButton>
+                        </Tooltip>
+                      );
+                    })() : (
+                      <CapacityBadge
+                        name={name}
+                        tier={capacityByName[name]?.pqa1Capacity}
+                        comment={capacityByName[name]?.comment}
+                        source={capacityByName[name]?.source}
+                        onClick={() => setCapacityDialogTarget(name)}
+                      />
+                    )}
                     <Tooltip title={lockedPersonSet.has(name) ? `Locked — auto-assign won't add or remove ${getShortName(name)}'s pitches. Click to unlock.` : `Lock ${getShortName(name)} so auto-assign keeps their pitches as-is`}>
                       <IconButton
                         size="small"
