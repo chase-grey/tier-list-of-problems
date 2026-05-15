@@ -183,6 +183,11 @@ export default function Step1View({
     [lockedPitchIds, committedPitchSet],
   );
   const lockedPersonSet = useMemo(() => new Set(lockedPersonNames), [lockedPersonNames]);
+  // Adhoc pitches are TL-owned locally-added projects; the row-level locked /
+  // committed guards exist to protect external pre-allocations, not the TL's
+  // own additions, so the dev dropdown and status chips bypass those guards
+  // for adhoc rows (the auto-allocator still respects their locked status).
+  const adhocSet = adhocPitchIds ?? new Set<string>();
   const { showSnackbar } = useSnackbar();
 
   // Per-person capacity records keyed by name. Empty object = no overrides yet.
@@ -196,11 +201,12 @@ export default function Step1View({
   // Reject manual updates that would touch a locked row or move a locked person.
   // The visible lock icons + this guard let users see what's frozen and why.
   const tryDevChange = useCallback((pitchId: string, dev: string | null): boolean => {
-    if (committedPitchSet.has(pitchId)) {
+    const isAdhoc = adhocSet.has(pitchId);
+    if (!isAdhoc && committedPitchSet.has(pitchId)) {
       showSnackbar('This is a committed project — it cannot be changed from this view.', 'warning');
       return false;
     }
-    if (lockedPitchSet.has(pitchId)) {
+    if (!isAdhoc && lockedPitchSet.has(pitchId)) {
       showSnackbar('This row is locked. Unlock it to change.', 'warning');
       return false;
     }
@@ -215,14 +221,15 @@ export default function Step1View({
     }
     onDevChange(pitchId, dev);
     return true;
-  }, [committedPitchSet, lockedPitchSet, lockedPersonSet, currentAssignments, onDevChange, showSnackbar]);
+  }, [adhocSet, committedPitchSet, lockedPitchSet, lockedPersonSet, currentAssignments, onDevChange, showSnackbar]);
 
   const tryStatusChange = useCallback((pitchId: string, newStatus: AssignmentStatus) => {
-    if (committedPitchSet.has(pitchId)) {
+    const isAdhoc = adhocSet.has(pitchId);
+    if (!isAdhoc && committedPitchSet.has(pitchId)) {
       showSnackbar('This is a committed project — it stays planned.', 'warning');
       return;
     }
-    if (lockedPitchSet.has(pitchId)) {
+    if (!isAdhoc && lockedPitchSet.has(pitchId)) {
       showSnackbar('This row is locked. Unlock it to change.', 'warning');
       return;
     }
@@ -232,7 +239,7 @@ export default function Step1View({
       return;
     }
     onStatusChange(pitchId, newStatus);
-  }, [committedPitchSet, lockedPitchSet, lockedPersonSet, currentAssignments, onStatusChange, showSnackbar]);
+  }, [adhocSet, committedPitchSet, lockedPitchSet, lockedPersonSet, currentAssignments, onStatusChange, showSnackbar]);
   const [sidebarWidth, setSidebarWidth] = useState(() => Math.round(window.innerWidth / 3));
   const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 1400);
   const sidebarRef = useRef<HTMLDivElement>(null);
@@ -1611,7 +1618,7 @@ function PitchRow({ assignment, pitch, devNames, devTLNames, onDevChange, onStat
             <Select
               {...devSelectExclusive}
               size="small"
-              disabled={committed}
+              disabled={committed && !isAdhoc}
               value={assignment.assignedDev ?? ''}
               onChange={e => onDevChange(pitch.id, e.target.value || null)}
               displayEmpty

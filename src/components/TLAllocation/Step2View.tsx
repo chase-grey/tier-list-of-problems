@@ -249,6 +249,11 @@ export default function Step2View({
     [lockedPitchIds, committedPitchSet],
   );
   const lockedPersonSet = useMemo(() => new Set(lockedPersonNames), [lockedPersonNames]);
+  // Adhoc pitches are TL-owned locally-added projects; the row-level locked /
+  // committed guards exist to protect external pre-allocations, not the TL's
+  // own additions, so the dropdowns and status chips bypass those guards for
+  // adhoc rows (the auto-allocator still respects their locked status).
+  const adhocSet = adhocPitchIds ?? new Set<string>();
   const { showSnackbar } = useSnackbar();
 
   const capacityByName = useMemo<Record<string, PersonCapacity>>(
@@ -265,11 +270,12 @@ export default function Step2View({
 
   // Reject manual updates that would touch a locked row or move a locked person.
   const tryAssign = useCallback((pitchId: string, field: 'devTL' | 'qm' | 'pqa1', value: string | null): boolean => {
-    if (committedPitchSet.has(pitchId)) {
+    const isAdhoc = adhocSet.has(pitchId);
+    if (!isAdhoc && committedPitchSet.has(pitchId)) {
       showSnackbar('This is a committed project — it cannot be changed from this view.', 'warning');
       return false;
     }
-    if (lockedPitchSet.has(pitchId)) {
+    if (!isAdhoc && lockedPitchSet.has(pitchId)) {
       showSnackbar('This row is locked. Unlock it to change.', 'warning');
       return false;
     }
@@ -285,22 +291,23 @@ export default function Step2View({
     }
     onAssign(pitchId, field, value);
     return true;
-  }, [committedPitchSet, lockedPitchSet, lockedPersonSet, assignmentByPitch, onAssign, showSnackbar]);
+  }, [adhocSet, committedPitchSet, lockedPitchSet, lockedPersonSet, assignmentByPitch, onAssign, showSnackbar]);
 
   // Status changes from Stage 4. Reuses the same guards as the assign path:
   // committed rows stay Planned, locked rows refuse edits.
   const tryStatusChange = useCallback((pitchId: string, newStatus: 'selected' | 'next-up' | 'cut') => {
     if (!onStatusChange) return;
-    if (committedPitchSet.has(pitchId)) {
+    const isAdhoc = adhocSet.has(pitchId);
+    if (!isAdhoc && committedPitchSet.has(pitchId)) {
       showSnackbar('This is a committed project — it stays planned.', 'warning');
       return;
     }
-    if (lockedPitchSet.has(pitchId)) {
+    if (!isAdhoc && lockedPitchSet.has(pitchId)) {
       showSnackbar('This row is locked. Unlock it to change.', 'warning');
       return;
     }
     onStatusChange(pitchId, newStatus);
-  }, [committedPitchSet, lockedPitchSet, onStatusChange, showSnackbar]);
+  }, [adhocSet, committedPitchSet, lockedPitchSet, onStatusChange, showSnackbar]);
   // ── Sidebar resize (Item 5) ──────────────────────────────────────────────
   const [sidebarWidth, setSidebarWidth] = useState(() => Math.round(window.innerWidth / 3));
   const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 1400);
@@ -2181,7 +2188,7 @@ function Step2Row({
           onChange={v => onDevAssign(pitch.id, v)}
           author={author}
           lockedPersonSet={lockedPersonSet}
-          disabled={committed}
+          disabled={committed && !isAdhoc}
           hideInterest={isAdhoc}
           placeholder="Assign dev…"
           noneLabel="None — no dev needed"
@@ -2200,7 +2207,7 @@ function Step2Row({
               previousPerson={pitch.previousTL}
               author={author}
               lockedPersonSet={lockedPersonSet}
-              disabled={committed}
+              disabled={committed && !isAdhoc}
               hideInterest={isAdhoc}
             />
           </Box>
@@ -2229,7 +2236,7 @@ function Step2Row({
               previousPerson={pitch.previousQM}
               author={author}
               lockedPersonSet={lockedPersonSet}
-              disabled={committed}
+              disabled={committed && !isAdhoc}
               hideInterest={isAdhoc}
             />
           </Box>
@@ -2259,7 +2266,7 @@ function Step2Row({
               onChange={v => onAssign(pitch.id, 'pqa1', v)}
               author={author}
               lockedPersonSet={lockedPersonSet}
-              disabled={committed}
+              disabled={committed && !isAdhoc}
               hideInterest={isAdhoc}
             />
           </Box>
