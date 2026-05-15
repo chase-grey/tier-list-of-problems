@@ -737,6 +737,7 @@ export default function Step2View({
     );
 
     type AlignEntry = { score: number; tier: number };
+    const devEntries: AlignEntry[] = [];
     const tlEntries: AlignEntry[] = [];
     const qmEntries: AlignEntry[] = [];
     const pqa1Entries: AlignEntry[] = [];
@@ -745,6 +746,11 @@ export default function Step2View({
     for (const a of assignments) {
       const pitch = pitchMap.get(a.pitchId);
       if (!pitch) continue;
+      const dev = devByPitchId[a.pitchId] ?? null;
+      if (dev && !unavailSet.has(dev)) {
+        const tier = pitch.devInterest[dev] ?? null;
+        if (tier !== null) devEntries.push({ tier, score: (5 - tier) / 4 });
+      }
       if (a.devTL && !unavailSet.has(a.devTL)) {
         const tier = tlInterestMap.get(a.devTL)?.interestByPitchId[a.pitchId] ?? null;
         if (tier !== null) tlEntries.push({ tier, score: (5 - tier) / 4 });
@@ -762,7 +768,7 @@ export default function Step2View({
     const avgPct = (entries: AlignEntry[]) =>
       entries.length ? Math.round(entries.reduce((s, e) => s + e.score, 0) / entries.length * 100) : null;
     const tier12Count = (entries: AlignEntry[]) => entries.filter(e => e.tier <= 2).length;
-    const allEntries = [...tlEntries, ...qmEntries, ...pqa1Entries];
+    const allEntries = [...devEntries, ...tlEntries, ...qmEntries, ...pqa1Entries];
 
     // ── Workload Balance ────────────────────────────────────────────────
     // Per-person workload score = sum across pitches: dev role contributes 2
@@ -869,8 +875,9 @@ export default function Step2View({
       avgTeamPriority, avgTLPriority, catActualPct,
       allContinuations, continuationsSelected, continuationsDropped, continuationsDevChanged,
       continuations, sameTeamCount, changedItems,
-      tlScore: avgPct(tlEntries), qmScore: avgPct(qmEntries), pqa1Score: avgPct(pqa1Entries),
+      devScore: avgPct(devEntries), tlScore: avgPct(tlEntries), qmScore: avgPct(qmEntries), pqa1Score: avgPct(pqa1Entries),
       totalScore: avgPct(allEntries),
+      devTier12: tier12Count(devEntries), devTotal: devEntries.length,
       tlTier12: tier12Count(tlEntries), tlTotal: tlEntries.length,
       qmTier12: tier12Count(qmEntries), qmTotal: qmEntries.length,
       pqa1Tier12: tier12Count(pqa1Entries), pqa1Total: pqa1Entries.length,
@@ -998,11 +1005,11 @@ export default function Step2View({
               </Box>
               <Collapse in={!collapsed}>
                 <Box sx={{ overflowX: 'auto' }}>
-                <Table size="small" sx={{ tableLayout: 'fixed', minWidth: 980, '& th, & td': { px: 0.75 } }}>
+                <Table size="small" sx={{ tableLayout: 'fixed', minWidth: 956, '& th, & td': { px: 0.75 } }}>
                   <colgroup>
                     <col />{/* pitch: flex */}
-                    <col style={{ width: 56 }} />{/* Team priority */}
-                    <col style={{ width: 56 }} />{/* TL priority */}
+                    <col style={{ width: 44 }} />{/* Team priority — narrow, content is just "x.x" */}
+                    <col style={{ width: 44 }} />{/* TL priority */}
                     <col style={{ width: 180 }} />{/* status chips — 8px left pad on the cell + ~170px of chips */}
                     <col style={{ width: 130 }} />{/* Dev — dropdown, mirrors PQA1 column shape */}
                     <col style={{ width: 130 }} />{/* DevTL — name + interest indicator + chevron */}
@@ -1012,12 +1019,12 @@ export default function Step2View({
                   <TableHead>
                     <TableRow sx={{ '& th': { py: 0.5, fontSize: '0.72rem', color: 'text.secondary' } }}>
                       <TableCell>Pitch</TableCell>
-                      <TableCell width={56} align="center">
+                      <TableCell width={44} align="center">
                         <Tooltip title="Team priority score — hover a score to see voter breakdown" placement="top">
                           <span>Team</span>
                         </Tooltip>
                       </TableCell>
-                      <TableCell width={56} align="center">
+                      <TableCell width={44} align="center">
                         <Tooltip title="TL priority score — hover a score to see voter breakdown" placement="top">
                           <span>TL</span>
                         </Tooltip>
@@ -1289,6 +1296,7 @@ export default function Step2View({
         <InterestAlignmentPanel
           overall={{ label: 'Overall', pct: step2Stats.totalScore, tier12: step2Stats.allTier12, total: step2Stats.allTotal }}
           roles={[
+            { label: 'Dev',    pct: step2Stats.devScore,  tier12: step2Stats.devTier12,  total: step2Stats.devTotal },
             { label: 'Dev TL', pct: step2Stats.tlScore,   tier12: step2Stats.tlTier12,   total: step2Stats.tlTotal },
             { label: 'QM',     pct: step2Stats.qmScore,   tier12: step2Stats.qmTier12,   total: step2Stats.qmTotal },
             { label: 'PQA1',   pct: step2Stats.pqa1Score, tier12: step2Stats.pqa1Tier12, total: step2Stats.pqa1Total },
@@ -1517,7 +1525,10 @@ export default function Step2View({
                           key={`${currentRole}-${pid}`}
                           {...dragProps}
                           sx={{
-                            display: 'flex', alignItems: 'center', gap: 0.5, ml: 1.5, mt: 0.25,
+                            // ml matches the person row's chevron width + gap
+                            // (0.9rem + 0.5 spacing) so titles line up with
+                            // the person's name above.
+                            display: 'flex', alignItems: 'center', gap: 0.5, ml: 2.25, mt: 0.25,
                             ...dragStyle,
                           }}
                         >
@@ -1572,9 +1583,9 @@ export default function Step2View({
                       <>
                         {assignedPitchIds.map(pid => renderPitchRow(pid, primaryRole))}
                         {otherRolePitches.map(({ role: secRole, label, pitchIds }) => (
-                          <Box key={secRole} sx={{ ml: 1 }}>
-                            <Typography variant="caption" color="text.disabled" sx={{ display: 'block', ml: 1.5, mt: 0.5, mb: 0.25, fontSize: '0.6rem', letterSpacing: 0.5, textTransform: 'uppercase' }}>
-                              {label}{primaryRole === 'devTL' && secRole === 'dev' ? ' · counts ×2' : ''}
+                          <Box key={secRole}>
+                            <Typography variant="caption" color="text.disabled" sx={{ display: 'block', ml: 2.25, mt: 0.5, mb: 0.25, fontSize: '0.6rem', letterSpacing: 0.5, textTransform: 'uppercase' }}>
+                              {label}{secRole === 'dev' ? ' · counts ×2' : ''}
                             </Typography>
                             {pitchIds.map(pid => renderPitchRow(pid, secRole))}
                           </Box>
@@ -1639,36 +1650,37 @@ export default function Step2View({
                 if (catA !== catB) return catA - catB;
                 return selectedPitches.indexOf(pA) - selectedPitches.indexOf(pB);
               });
-              // Primary role for this section is PQA1 reviewer. Workload count
-              // tracks PQA1 work (the role being allocated in Stage 4); dev work
-              // from Stage 2 surfaces in an "As Dev" sub-section beneath so the
-              // TL can see this dev's total commitments without scrolling.
-              const isPrimary = (a: StaffingAssignment): boolean => a.pqa1 === name;
-              const assignedPitchIds = sortPitchIds(
-                assignments.filter(a => isPrimary(a) && pitchMap.has(a.pitchId)).map(a => a.pitchId),
-              );
+              // Render dev work first (the assignment a dev usually cares
+              // about most), then PQA1 work, then the rarer TL/QM (a dev
+              // who's also been picked up in those pools cross-quarter).
+              // Each section is labeled and aligned identically so the
+              // person row reads as a header for the indented list below.
+              // Workload count stays tied to PQA1 — that's the role Stage 4
+              // is actually allocating; dev counts live in Stage 2.
               type RoleEntry = { role: SidebarRoleView; label: string; check: (a: StaffingAssignment) => boolean };
               const allRoleDefs: RoleEntry[] = [
+                { role: 'dev',   label: 'As Dev',    check: (a) => (devByPitchId[a.pitchId] ?? null) === name },
+                { role: 'pqa1',  label: 'As PQA1',   check: (a) => a.pqa1 === name },
                 { role: 'devTL', label: 'As Dev TL', check: (a) => a.devTL === name },
                 { role: 'qm',    label: 'As QM',     check: (a) => a.qm === name },
-                { role: 'dev',   label: 'As Dev',    check: (a) => (devByPitchId[a.pitchId] ?? null) === name },
               ];
-              const otherRolePitches = allRoleDefs
+              const sectionDefs = allRoleDefs
                 .map(({ role: r, label, check }) => ({
                   role: r,
                   label,
                   pitchIds: sortPitchIds(
                     assignments
-                      .filter(a => check(a) && !isPrimary(a) && pitchMap.has(a.pitchId))
+                      .filter(a => check(a) && pitchMap.has(a.pitchId))
                       .map(a => a.pitchId),
                   ),
                 }))
                 .filter(entry => entry.pitchIds.length > 0);
+              const pqa1AssignedCount = assignments.filter(a => a.pqa1 === name && pitchMap.has(a.pitchId)).length;
               const personalIdeal = step2Stats.pqa1IdealByName[name] ?? step2Stats.pqa1Ideal;
               // Weighted workload score from step2Stats so a dev who's also
               // picked up the dev slot on a project gets that ×2 weight in
               // their PQA1 sidebar entry, matching devTL/QM behavior.
-              const workloadCount = step2Stats.pqa1Counts.find(c => c.name === name)?.count ?? assignedPitchIds.length;
+              const workloadCount = step2Stats.pqa1Counts.find(c => c.name === name)?.count ?? pqa1AssignedCount;
               const workloadColor = workloadCountColor(workloadCount, personalIdeal);
               const workloadOff = workloadColor !== 'text.secondary';
 
@@ -1766,7 +1778,10 @@ export default function Step2View({
                           key={`${currentRole}-${pid}`}
                           {...dragProps}
                           sx={{
-                            display: 'flex', alignItems: 'center', gap: 0.5, ml: 1.5, mt: 0.25,
+                            // ml matches the person row's chevron width + gap
+                            // (0.9rem + 0.5 spacing) so titles line up with
+                            // the person's name above.
+                            display: 'flex', alignItems: 'center', gap: 0.5, ml: 2.25, mt: 0.25,
                             ...dragStyle,
                           }}
                         >
@@ -1819,13 +1834,12 @@ export default function Step2View({
                     };
                     return (
                       <>
-                        {assignedPitchIds.map(pid => renderPitchRow(pid, 'pqa1'))}
-                        {otherRolePitches.map(({ role: secRole, label, pitchIds }) => (
-                          <Box key={secRole} sx={{ ml: 1 }}>
-                            <Typography variant="caption" color="text.disabled" sx={{ display: 'block', ml: 1.5, mt: 0.5, mb: 0.25, fontSize: '0.6rem', letterSpacing: 0.5, textTransform: 'uppercase' }}>
-                              {label}
+                        {sectionDefs.map(({ role: sectionRole, label, pitchIds }) => (
+                          <Box key={sectionRole}>
+                            <Typography variant="caption" color="text.disabled" sx={{ display: 'block', ml: 2.25, mt: 0.5, mb: 0.25, fontSize: '0.6rem', letterSpacing: 0.5, textTransform: 'uppercase' }}>
+                              {label}{sectionRole === 'dev' ? ' · counts ×2' : ''}
                             </Typography>
-                            {pitchIds.map(pid => renderPitchRow(pid, secRole))}
+                            {pitchIds.map(pid => renderPitchRow(pid, sectionRole))}
                           </Box>
                         ))}
                       </>
@@ -2082,8 +2096,8 @@ function Step2Row({
           </Suspense>
         )}
       </TableCell>
-      {/* Team priority score */}
-      <TableCell align="right">
+      {/* Team priority score — center-aligned to match the centered header. */}
+      <TableCell align="center">
         <Tooltip
           title={<VoteBreakdown votes={pitch.teamVotes} label="Team votes" />}
           placement="left"
@@ -2094,8 +2108,8 @@ function Step2Row({
           </Typography>
         </Tooltip>
       </TableCell>
-      {/* TL priority score */}
-      <TableCell align="right">
+      {/* TL priority score — center-aligned to match the centered header. */}
+      <TableCell align="center">
         <Tooltip
           title={<VoteBreakdown votes={pitch.tlVotes} label="TL votes" />}
           placement="left"
