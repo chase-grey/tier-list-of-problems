@@ -83,7 +83,6 @@ interface TLAllocationViewProps {
 
 const LS_STEP1_KEY = 'tl-alloc-step1-assignments';
 const LS_STEP2_KEY = 'tl-alloc-step2-assignments';
-const LS_UXD_KEY   = 'tl-alloc-uxd';
 const LS_STEP1_LOCKS_KEY = 'tl-alloc-step1-locks';
 const LS_STEP2_LOCKS_KEY = 'tl-alloc-step2-locks';
 const LS_ADHOC_KEY = 'tl-alloc-adhoc-pitches';
@@ -379,7 +378,6 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
   // Read saved state from localStorage on mount (null = no saved state yet)
   const savedStep1 = useRef(lsRead<PlanAssignment[] | null>(LS_STEP1_KEY, null));
   const savedStep2 = useRef(lsRead<StaffingAssignment[] | null>(LS_STEP2_KEY, null));
-  const savedUXD   = useRef(lsRead<Record<string, boolean>>(LS_UXD_KEY, {}));
 
   const [planAssignments, setPlanAssignments] = useState<PlanAssignment[]>(
     savedStep1.current ?? MOCK_PLAN
@@ -834,12 +832,10 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
   const [step2Assignments, setStep2Assignments] = useState<StaffingAssignment[]>(
     savedStep2.current ?? []
   );
-  const [includeUXD, setIncludeUXD] = useState<Record<string, boolean>>(savedUXD.current);
 
-  // Persist step1, step2, and UXD state to localStorage whenever they change.
+  // Persist step1 / step2 state to localStorage whenever they change.
   useEffect(() => { lsWrite(LS_STEP1_KEY, planAssignments); }, [planAssignments]);
   useEffect(() => { if (step2Assignments.length > 0) lsWrite(LS_STEP2_KEY, step2Assignments); }, [step2Assignments]);
-  useEffect(() => { lsWrite(LS_UXD_KEY, includeUXD); }, [includeUXD]);
   useEffect(() => { lsWrite(LS_ADHOC_KEY, adhocPitches); }, [adhocPitches]);
 
   const selectedPitchesRef = useRef(selectedPitches);
@@ -1434,7 +1430,6 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
         currentAssignments={currentAssignments}
         step2Assignments={step2Assignments}
         config={allocationConfig}
-        includeUXD={includeUXD}
       />
     );
   }
@@ -1498,8 +1493,6 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
             onFinalize={handleFinalize}
             devByPitchId={devByPitchId}
             devNames={allocationConfig.devNames}
-            includeUXD={includeUXD}
-            onToggleUXD={(pitchId) => setIncludeUXD(prev => ({ ...prev, [pitchId]: !prev[pitchId] }))}
             lockedPitchIds={step2Locks.pitchIds}
             lockedPersonNames={step2Locks.personNames}
             onTogglePitchLock={toggleStep2PitchLock}

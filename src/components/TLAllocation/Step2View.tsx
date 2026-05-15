@@ -3,7 +3,7 @@ import { useExclusiveSelect } from '../../hooks/useExclusiveSelect';
 import {
   Box, Typography, Paper, Table, TableBody, TableCell, TableHead, TableRow,
   Select, MenuItem, Divider, Tooltip, IconButton,
-  Checkbox, Collapse, LinearProgress, Button, Chip,
+  Collapse, LinearProgress, Button, Chip,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import {
@@ -60,8 +60,6 @@ interface Step2ViewProps {
    *  edit dialog. Omitted when status changes shouldn't be allowed. */
   onStatusChange?: (pitchId: string, newStatus: 'selected' | 'next-up' | 'cut') => void;
   onFinalize?: () => void;
-  includeUXD: Record<string, boolean>;
-  onToggleUXD: (pitchId: string) => void;
   lockedPitchIds: string[];
   lockedPersonNames: string[];
   onTogglePitchLock: (pitchId: string) => void;
@@ -238,7 +236,6 @@ function workloadCountColor(count: number, ideal: number): string {
 
 export default function Step2View({
   selectedPitches, nextUpPitches, cutPitches, assignments, phase2Interests, config, onAssign, onDevAssign, onStatusChange, devByPitchId, devNames,
-  includeUXD, onToggleUXD,
   lockedPitchIds, lockedPersonNames, onTogglePitchLock, onTogglePersonLock,
   voterName, onCapacityOverride, onAdhocAdd, onAdhocEdit, adhocPitchIds, stretchPitchIds,
 }: Step2ViewProps) {
@@ -290,20 +287,8 @@ export default function Step2View({
     return true;
   }, [committedPitchSet, lockedPitchSet, lockedPersonSet, assignmentByPitch, onAssign, showSnackbar]);
 
-  const tryToggleUXD = useCallback((pitchId: string) => {
-    if (committedPitchSet.has(pitchId)) {
-      showSnackbar('This is a committed project — it cannot be changed from this view.', 'warning');
-      return;
-    }
-    if (lockedPitchSet.has(pitchId)) {
-      showSnackbar('This row is locked. Unlock it to change.', 'warning');
-      return;
-    }
-    onToggleUXD(pitchId);
-  }, [committedPitchSet, lockedPitchSet, onToggleUXD, showSnackbar]);
-
-  // Status changes from Stage 4. Reuses the same guards as the assign /
-  // toggleUXD paths: committed rows stay Planned, locked rows refuse edits.
+  // Status changes from Stage 4. Reuses the same guards as the assign path:
+  // committed rows stay Planned, locked rows refuse edits.
   const tryStatusChange = useCallback((pitchId: string, newStatus: 'selected' | 'next-up' | 'cut') => {
     if (!onStatusChange) return;
     if (committedPitchSet.has(pitchId)) {
@@ -968,8 +953,6 @@ export default function Step2View({
                 onRef={registerRow(pitch.id)}
                 highlighted={pitch.id === highlightPitchId}
                 devName={devByPitchId[pitch.id] ?? null}
-                includeUXD={includeUXD[pitch.id] ?? false}
-                onToggleUXD={() => tryToggleUXD(pitch.id)}
                 locked={lockedPitchSet.has(pitch.id)}
                 onToggleLock={() => onTogglePitchLock(pitch.id)}
                 lockedPersonSet={lockedPersonSet}
@@ -985,7 +968,7 @@ export default function Step2View({
           };
           const subHeader = (label: string, count: number, open: boolean, onToggle: () => void, accent: 'planned' | 'nextUp' | 'cut') => (
             <TableRow sx={{ cursor: 'pointer', '&:hover': { bgcolor: 'action.hover' } }} onClick={onToggle}>
-              <TableCell colSpan={9} sx={{ py: 0.25, bgcolor: 'action.hover' }}>
+              <TableCell colSpan={8} sx={{ py: 0.25, bgcolor: 'action.hover' }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                   {open ? <CollapseIcon sx={{ fontSize: '0.8rem' }} /> : <ExpandIcon sx={{ fontSize: '0.8rem' }} />}
                   <Typography variant="caption" color={accent === 'planned' ? 'text.secondary' : 'text.disabled'} sx={{ fontStyle: 'italic' }}>
@@ -1015,13 +998,12 @@ export default function Step2View({
               </Box>
               <Collapse in={!collapsed}>
                 <Box sx={{ overflowX: 'auto' }}>
-                <Table size="small" sx={{ tableLayout: 'fixed', minWidth: 1020, '& th, & td': { px: 0.75 } }}>
+                <Table size="small" sx={{ tableLayout: 'fixed', minWidth: 980, '& th, & td': { px: 0.75 } }}>
                   <colgroup>
                     <col />{/* pitch: flex */}
                     <col style={{ width: 56 }} />{/* Team priority */}
                     <col style={{ width: 56 }} />{/* TL priority */}
                     <col style={{ width: 180 }} />{/* status chips — 8px left pad on the cell + ~170px of chips */}
-                    <col style={{ width: 36 }} />{/* UXD — snug to the checkbox; the col pad override on the cell is 0 so most of this is the checkbox's own visible bounds */}
                     <col style={{ width: 130 }} />{/* Dev — dropdown, mirrors PQA1 column shape */}
                     <col style={{ width: 130 }} />{/* DevTL — name + interest indicator + chevron */}
                     <col style={{ width: 130 }} />{/* QM */}
@@ -1041,11 +1023,6 @@ export default function Step2View({
                         </Tooltip>
                       </TableCell>
                       <TableCell width={180} />
-                      <TableCell width={36} align="center">
-                        <Tooltip title="Include UXD in project kickoff">
-                          <span>UXD</span>
-                        </Tooltip>
-                      </TableCell>
                       <TableCell width={130} align="center">Dev</TableCell>
                       <TableCell width={130} align="center">Dev TL</TableCell>
                       <TableCell width={130} align="center">QM</TableCell>
@@ -1959,8 +1936,6 @@ interface Step2RowProps {
   onRef?: (el: HTMLTableRowElement | null) => void;
   highlighted?: boolean;
   devName: string | null;
-  includeUXD: boolean;
-  onToggleUXD: () => void;
   locked: boolean;
   onToggleLock: () => void;
   lockedPersonSet: ReadonlySet<string>;
@@ -1983,7 +1958,7 @@ interface Step2RowProps {
 
 function Step2Row({
   pitch, assignment, devTLInterests, qmInterests, devTLNames, qmNames, devNames, devDropdownNames, devHasAnyData,
-  onAssign, onDevAssign, onRef, highlighted, devName, includeUXD, onToggleUXD,
+  onAssign, onDevAssign, onRef, highlighted, devName,
   locked, onToggleLock, lockedPersonSet, committed, isAdhoc, isStretch, onEdit, dimmed,
   status, onStatusChange,
 }: Step2RowProps) {
@@ -2178,16 +2153,6 @@ function Step2Row({
             </Tooltip>
           )}
         </Box>
-      </TableCell>
-      {/* UXD checkbox */}
-      <TableCell align="center" sx={{ p: 0 }}>
-        <Checkbox
-          size="small"
-          disabled={committed}
-          checked={includeUXD}
-          onChange={onToggleUXD}
-          sx={{ p: 0.5 }}
-        />
       </TableCell>
       {/* Dev — editable dropdown. Writes back to Stage 2's plan via onDevAssign. */}
       <TableCell sx={{ px: 0.5, py: 0.25 }}>

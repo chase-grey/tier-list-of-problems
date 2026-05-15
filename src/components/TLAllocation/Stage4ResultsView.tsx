@@ -26,7 +26,6 @@ interface Props {
   currentAssignments: PlanAssignment[];
   step2Assignments: StaffingAssignment[];
   config: AllocationConfig;
-  includeUXD: Record<string, boolean>;
 }
 
 function buildMailtoHref(to: string, cc: string, subject: string, body: string): string {
@@ -42,7 +41,6 @@ function buildProjectEmailBody(
   dev: string | null,
   sa: StaffingAssignment,
   config: AllocationConfig,
-  uxd?: string | null,
 ): string {
   const lastSegment = pitch.title.split('/').pop()?.trim() ?? pitch.title;
   const qmFirstName = sa.qm ? getShortName(sa.qm) : 'QM';
@@ -55,13 +53,14 @@ function buildProjectEmailBody(
     `QM: ${sa.qm ?? '—'}`,
   ];
   if (sa.pqa1) lines.push(`PQA1: ${sa.pqa1}`);
-  if (uxd) lines.push(`UXD: ${uxd}`);
+  // UXD is universal — Selina is on every kickoff.
+  lines.push(`UXD: ${UXD_NAME}`);
   if (config.testingCaptain) lines.push(`Testing Captain: ${config.testingCaptain}`);
   lines.push(`Dev TL: ${tl}`);
   return lines.join('\n');
 }
 
-export default function Stage4ResultsView({ pitches, currentAssignments, step2Assignments, config, includeUXD }: Props) {
+export default function Stage4ResultsView({ pitches, currentAssignments, step2Assignments, config }: Props) {
   const { showSnackbar } = useSnackbar();
   const [checkedItems, setCheckedItems] = useState<Record<string, boolean>>({});
 
@@ -173,7 +172,7 @@ export default function Stage4ResultsView({ pitches, currentAssignments, step2As
       `FULL ASSIGNMENT GRID (${fullGrid.length} projects)`,
       'Project | Dev | Dev TL | QM | PQA1 | UXD',
       ...fullGrid.map(({ pitch, dev, sa }) =>
-        `  ${pitch.title} | ${dev ?? '—'} | ${sa.devTL ?? '—'} | ${sa.qm ?? '—'} | ${sa.pqa1 ?? '—'} | ${includeUXD[pitch.id] ? UXD_NAME : '—'}`
+        `  ${pitch.title} | ${dev ?? '—'} | ${sa.devTL ?? '—'} | ${sa.qm ?? '—'} | ${sa.pqa1 ?? '—'} | ${UXD_NAME}`
       ),
       '',
       `UP NEXT — LIFEBOAT ORDER (${nextUp.length})`,
@@ -289,7 +288,7 @@ export default function Stage4ResultsView({ pitches, currentAssignments, step2As
               <TableCell>{sa.devTL ?? '—'}</TableCell>
               <TableCell>{sa.qm ?? '—'}</TableCell>
               <TableCell>{sa.pqa1 ?? '—'}</TableCell>
-              <TableCell>{includeUXD[pitch.id] ? UXD_NAME : '—'}</TableCell>
+              <TableCell>{UXD_NAME}</TableCell>
             </TableRow>
           ))}
         </TableBody>
@@ -360,12 +359,14 @@ export default function Stage4ResultsView({ pitches, currentAssignments, step2As
                 const ccEmail = [
                   sa.pqa1 ? (emails[sa.pqa1] ?? '') : '',
                   config.testingCaptain ? (emails[config.testingCaptain] ?? '') : '',
+                  // Selina is on every kickoff as the UXD — no per-pitch toggle.
+                  emails[UXD_NAME] ?? '',
                 ].filter(Boolean).join(',');
                 const pitchMailtoHref = buildMailtoHref(
                   toEmail || tlEmail,
                   toEmail ? ccEmail : '',
                   subject,
-                  buildProjectEmailBody(tl, pitch, dev, sa, config, includeUXD[pitch.id] ? UXD_NAME : null),
+                  buildProjectEmailBody(tl, pitch, dev, sa, config),
                 );
                 const allDone = !!checkedItems[`prj-${tl}-${pitch.id}`] && !!checkedItems[`email-${tl}-${pitch.id}`];
                 return (

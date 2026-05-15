@@ -272,17 +272,11 @@ const HelpDialog: React.FC<HelpDialogProps> = ({
               no high-interest assignments.
             </Typography>
 
-            <Typography variant="h6" gutterBottom>UXD column</Typography>
-            <Typography variant="body1" paragraph>
-              Check the UXD box for any project that needs a UXD for the kickoff meeting.
-              This adds UXD to that project's kickoff email recipients.
-            </Typography>
-
             <Typography variant="h6" gutterBottom>Kickoff emails</Typography>
             <Typography variant="body1" paragraph>
               Each pitch has a default kickoff email message. Click the <strong>✉</strong> icon to
               view and customize the message. Recipients include the Dev TL, Developer, QM,
-              Testing Captain, and UXD (if checked).
+              Testing Captain, and the UXD (Selina is cc'd on every kickoff).
             </Typography>
 
             <Typography variant="h6" gutterBottom>Auto-assign</Typography>
