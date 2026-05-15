@@ -679,7 +679,7 @@ export default function Step1View({
                           <span>TL</span>
                         </Tooltip>
                       </TableCell>
-                      <TableCell width={174} align="center" />
+                      <TableCell width={174} align="center">Status</TableCell>
                       <TableCell align="center" width={150}>Dev</TableCell>
                     </TableRow>
                   </TableHead>

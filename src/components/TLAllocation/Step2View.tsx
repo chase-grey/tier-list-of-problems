@@ -1029,7 +1029,7 @@ export default function Step2View({
                           <span>TL</span>
                         </Tooltip>
                       </TableCell>
-                      <TableCell width={174} />
+                      <TableCell width={174} align="center">Status</TableCell>
                       <TableCell width={130} align="center">Dev</TableCell>
                       <TableCell width={130} align="center">Dev TL</TableCell>
                       <TableCell width={130} align="center">QM</TableCell>
