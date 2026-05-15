@@ -663,7 +663,7 @@ export default function Step1View({
                     <col />{/* pitch: takes remaining space */}
                     <col style={{ width: 56 }} />{/* Team priority */}
                     <col style={{ width: 56 }} />{/* TL priority */}
-                    <col style={{ width: 180 }} />{/* Plan / Up Next / Not Now — 8px left pad on the cell + ~170px of chips */}
+                    <col style={{ width: 174 }} />{/* Plan / Up Next / Not Now — 8px left pad on the cell + ~166px of chips */}
                     <col style={{ width: 150 }} />{/* Dev */}
                   </colgroup>
                   <TableHead>
@@ -679,7 +679,7 @@ export default function Step1View({
                           <span>TL</span>
                         </Tooltip>
                       </TableCell>
-                      <TableCell width={180} align="center" />
+                      <TableCell width={174} align="center" />
                       <TableCell align="center" width={150}>Dev</TableCell>
                     </TableRow>
                   </TableHead>
@@ -708,7 +708,7 @@ export default function Step1View({
                               <col />{/* pitch: flex to match outer table */}
                               <col style={{ width: 56 }} />{/* Team */}
                               <col style={{ width: 56 }} />{/* TL */}
-                              <col style={{ width: 180 }} />{/* Plan / Up Next / Not Now — 8px left pad on the cell + ~170px of chips */}
+                              <col style={{ width: 174 }} />{/* Plan / Up Next / Not Now — 8px left pad on the cell + ~166px of chips */}
                               <col style={{ width: 150 }} />{/* Dev */}
                             </colgroup>
                             <TableBody>
@@ -760,7 +760,7 @@ export default function Step1View({
                               <col />{/* pitch: flex to match outer table */}
                               <col style={{ width: 56 }} />{/* Team */}
                               <col style={{ width: 56 }} />{/* TL */}
-                              <col style={{ width: 180 }} />{/* Plan / Up Next / Not Now — 8px left pad on the cell + ~170px of chips */}
+                              <col style={{ width: 174 }} />{/* Plan / Up Next / Not Now — 8px left pad on the cell + ~166px of chips */}
                               <col style={{ width: 150 }} />{/* Dev */}
                             </colgroup>
                             <TableBody>
@@ -812,7 +812,7 @@ export default function Step1View({
                               <col />{/* pitch: flex to match outer table */}
                               <col style={{ width: 56 }} />{/* Team */}
                               <col style={{ width: 56 }} />{/* TL */}
-                              <col style={{ width: 180 }} />{/* Plan / Up Next / Not Now — 8px left pad on the cell + ~170px of chips */}
+                              <col style={{ width: 174 }} />{/* Plan / Up Next / Not Now — 8px left pad on the cell + ~166px of chips */}
                               <col style={{ width: 150 }} />{/* Dev */}
                             </colgroup>
                             <TableBody>

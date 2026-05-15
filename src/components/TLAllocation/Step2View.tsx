@@ -1005,12 +1005,12 @@ export default function Step2View({
               </Box>
               <Collapse in={!collapsed}>
                 <Box sx={{ overflowX: 'auto' }}>
-                <Table size="small" sx={{ tableLayout: 'fixed', minWidth: 956, '& th, & td': { px: 0.75 } }}>
+                <Table size="small" sx={{ tableLayout: 'fixed', minWidth: 950, '& th, & td': { px: 0.75 } }}>
                   <colgroup>
                     <col />{/* pitch: flex */}
                     <col style={{ width: 44 }} />{/* Team priority — narrow, content is just "x.x" */}
                     <col style={{ width: 44 }} />{/* TL priority */}
-                    <col style={{ width: 180 }} />{/* status chips — 8px left pad on the cell + ~170px of chips */}
+                    <col style={{ width: 174 }} />{/* status chips — 8px left pad on the cell + ~166px of chips */}
                     <col style={{ width: 130 }} />{/* Dev — dropdown, mirrors PQA1 column shape */}
                     <col style={{ width: 130 }} />{/* DevTL — name + interest indicator + chevron */}
                     <col style={{ width: 130 }} />{/* QM */}
@@ -1029,7 +1029,7 @@ export default function Step2View({
                           <span>TL</span>
                         </Tooltip>
                       </TableCell>
-                      <TableCell width={180} />
+                      <TableCell width={174} />
                       <TableCell width={130} align="center">Dev</TableCell>
                       <TableCell width={130} align="center">Dev TL</TableCell>
                       <TableCell width={130} align="center">QM</TableCell>
