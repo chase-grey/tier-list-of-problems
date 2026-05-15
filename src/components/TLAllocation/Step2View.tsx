@@ -1309,7 +1309,7 @@ export default function Step2View({
           const roleGroups = [
             { label: 'Dev TLs', singular: 'Dev TL', counts: step2Stats.tlCounts, ideal: step2Stats.tlIdeal },
             { label: 'QMs',     singular: 'QM',     counts: step2Stats.qmCounts, ideal: step2Stats.qmIdeal },
-            { label: 'PQA1',    singular: 'PQA1 reviewer', counts: step2Stats.pqa1Counts, ideal: step2Stats.pqa1Ideal },
+            { label: 'Devs',    singular: 'Dev',           counts: step2Stats.pqa1Counts, ideal: step2Stats.pqa1Ideal },
           ];
           const totalFlagged = roleGroups.reduce(
             (sum, { counts, ideal }) => sum + counts.filter(({ count }) => workloadCountColor(count, ideal) !== 'text.secondary').length, 0
