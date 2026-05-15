@@ -39,14 +39,15 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ steps, onRetry, to
         {hasError ? 'Failed to load' : 'Loading…'}
       </Typography>
 
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, minWidth: 240 }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
         {steps.map((step) => (
           <Box key={step.label} sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-            <StepIcon status={step.status} />
+            <Box sx={{ width: 20, display: 'flex', justifyContent: 'center', flexShrink: 0 }}>
+              <StepIcon status={step.status} />
+            </Box>
             <Typography
               variant="body2"
               color={step.status === 'error' ? 'error' : step.status === 'done' ? 'text.secondary' : 'text.primary'}
-              sx={{ flex: 1 }}
             >
               {step.label}
             </Typography>
