@@ -148,6 +148,11 @@ function doGet(e) {
       // every TL sees the same lock state.
       case 'get-allocation-locks':
         return getAllocationLocks();
+      // Per-stage "the allocation is done" flag. Stage 4 finalized=true means
+      // every TL should see the summary view by default and edits require an
+      // extra "are you sure" confirmation.
+      case 'get-allocation-finalized':
+        return getAllocationFinalized();
       case 'set-polling-state': {
         const result = setPollingState({
           stage: e.parameter.stage,
@@ -209,6 +214,8 @@ function doPost(e) {
         return heartbeatEditLock(payload);
       case 'set-allocation-locks':
         return setAllocationLocks(payload);
+      case 'set-allocation-finalized':
+        return setAllocationFinalized(payload);
       default:
         return notFound();
     }
@@ -1124,6 +1131,60 @@ function setAllocationLocks(body) {
   all[stage] = { pitchIds: pitchIds, personNames: personNames };
   PropertiesService.getScriptProperties().setProperty(ALLOCATION_LOCKS_KEY, JSON.stringify(all));
   return json200({ saved: true, locks: all });
+}
+
+// ─── Allocation finalized flag (Stage 2 / Stage 4 "the plan is done") ────
+//
+// Shape stored under ALLOCATION_FINALIZED_KEY:
+//   { "2": boolean, "4": boolean }
+// Stage 4 finalized=true triggers UI changes for every TL viewing the page:
+// the summary view becomes the default landing page and edits require an
+// extra "are you sure" confirmation. Stage 2 is wired through the same
+// helper for symmetry, though today only Stage 4 is actively finalized.
+
+const ALLOCATION_FINALIZED_KEY = 'allocation_finalized';
+
+function emptyAllocationFinalized() {
+  return { '2': false, '4': false };
+}
+
+function readAllocationFinalized() {
+  const raw = PropertiesService.getScriptProperties().getProperty(ALLOCATION_FINALIZED_KEY);
+  if (!raw) return emptyAllocationFinalized();
+  try {
+    const parsed = JSON.parse(raw);
+    return {
+      '2': parsed['2'] === true,
+      '4': parsed['4'] === true,
+    };
+  } catch (e) {
+    return emptyAllocationFinalized();
+  }
+}
+
+function getAllocationFinalized() {
+  return json200({ finalized: readAllocationFinalized() });
+}
+
+/** Set the finalized flag for a stage. Edit-lock gated — only the TL who
+ *  currently holds the stage's edit lock can flip it (matches savePlan /
+ *  saveFinalAssignments semantics). */
+function setAllocationFinalized(body) {
+  const stage = String((body && body.stage) || '');
+  if (stage !== '2' && stage !== '4') return badRequest('Invalid stage');
+  const submittedBy = String((body && body.submittedBy) || '').trim();
+  if (!submittedBy) return badRequest('Missing submittedBy');
+  const sessionId = String((body && body.sessionId) || '').trim() || null;
+  const finalized = body && body.finalized === true;
+
+  if (!callerHoldsEditLock(stage, submittedBy, sessionId)) {
+    return json200({ error: 'edit-lock-conflict', stage: stage, lock: readEditLock(stage) });
+  }
+
+  const all = readAllocationFinalized();
+  all[stage] = finalized;
+  PropertiesService.getScriptProperties().setProperty(ALLOCATION_FINALIZED_KEY, JSON.stringify(all));
+  return json200({ saved: true, finalized: all });
 }
 
 /**

@@ -100,6 +100,7 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
     lockHolder: null,
     lockLastHeartbeat: 0,
     stageLabel: '',
+    stage4Finalized: false,
   });
 
   // Inline lock controls in the toolbar; both call into the TLAllocationView
@@ -1137,7 +1138,9 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
           onAllocationRerunRole={isTLStage && state.voterRole === 'dev TL' ? (role) => tlViewRef.current?.triggerRerunAlgorithm(role) : undefined}
           allocationSaveState={allocationSaveState}
           allocationShowResults={allocationShowResults}
-          allocationHasResults={allocationHasResults}
+          // Show View summary for every TL once the allocation is finalized
+          // on the backend — not just for the one who clicked Finish locally.
+          allocationHasResults={allocationHasResults || allocationStatus.stage4Finalized}
           onAllocationViewSummary={() => setAllocationShowResults(true)}
           onAllocationBackToEdit={() => setAllocationShowResults(false)}
           votingLoading={isSubmitting}

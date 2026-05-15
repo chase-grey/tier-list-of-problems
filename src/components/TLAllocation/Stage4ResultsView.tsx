@@ -85,30 +85,54 @@ export default function Stage4ResultsView({ pitches, currentAssignments, step2As
     () => Object.fromEntries(currentAssignments.map(a => [a.pitchId, a.assignedDev])),
     [currentAssignments],
   );
+  // Only projects with plan status='selected' (or committed pitches, which are
+  // always planned by definition) should appear in the kickoff grid. Backend
+  // can carry stale step2Assignment rows for pitches later demoted to
+  // next-up/cut — without this gate they'd leak back into the summary with
+  // missing devs and "ghost" status.
+  const plannedPitchIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const a of currentAssignments) {
+      if (a.status === 'selected') ids.add(a.pitchId);
+    }
+    for (const p of pitches) {
+      if (p.committed) ids.add(p.id);
+    }
+    return ids;
+  }, [currentAssignments, pitches]);
 
   const fullGrid = useMemo(() =>
     step2Assignments
       .map(sa => ({ sa, pitch: pitchById[sa.pitchId], dev: devByPitchId[sa.pitchId] ?? null }))
-      .filter(({ pitch }) => pitch != null)
+      .filter(({ sa, pitch }) => pitch != null && plannedPitchIds.has(sa.pitchId))
       .sort((a, b) => {
         // Committed projects float to the top, then category, then team priority.
         if (!!a.pitch.committed !== !!b.pitch.committed) return a.pitch.committed ? -1 : 1;
         return (CATEGORY_ORDER[a.pitch.category] ?? 99) - (CATEGORY_ORDER[b.pitch.category] ?? 99) ||
           a.pitch.teamPriorityScore - b.pitch.teamPriorityScore;
       }),
-    [step2Assignments, pitchById, devByPitchId],
+    [step2Assignments, pitchById, devByPitchId, plannedPitchIds],
   );
 
+  // Pitches already in the Full Assignment Grid (have a step2Assignment, so
+  // they're being kicked off this quarter) shouldn't double-appear in the
+  // Up-Next backlog list — even if their PlanAssignment.status is still
+  // 'next-up'. The kickoff list wins because the TL set a team, and a
+  // backlog reminder for the same pitch would be a duplicate task.
+  const fullGridPitchIds = useMemo(
+    () => new Set(fullGrid.map(({ pitch }) => pitch.id)),
+    [fullGrid],
+  );
   const nextUp = useMemo(() =>
     currentAssignments
-      .filter(a => a.status === 'next-up')
+      .filter(a => a.status === 'next-up' && !fullGridPitchIds.has(a.pitchId))
       .map(a => ({ assignment: a, pitch: pitchById[a.pitchId] }))
       .filter(({ pitch }) => pitch != null)
       .sort((a, b) =>
         (CATEGORY_ORDER[a.pitch.category] ?? 99) - (CATEGORY_ORDER[b.pitch.category] ?? 99) ||
         a.pitch.teamPriorityScore - b.pitch.teamPriorityScore
       ),
-    [currentAssignments, pitchById],
+    [currentAssignments, pitchById, fullGridPitchIds],
   );
 
   // Backlog PRJ records split round-robin across devTLNames
@@ -190,8 +214,8 @@ export default function Stage4ResultsView({ pitches, currentAssignments, step2As
       rows.forEach(({ pitch, dev, sa }) => {
         const shortTitle = pitch.title.replace(/^[^/]+\/\s*/, '');
         lines.push(`  ${shortTitle}`);
-        lines.push(`    [ ] Create PRJ record — Attach QAN ${pitch.id} on Associated Records tab. Dev: ${dev ?? '—'}, QM: ${sa.qm ?? '—'}${sa.pqa1 ? `, PQA1: ${sa.pqa1}` : ''}.`);
-        lines.push(`    [ ] Send kickoff email`);
+        lines.push(`    [ ] Create PRJ record/not needed — Attach QAN ${pitch.id} on Associated Records tab. Dev: ${dev ?? '—'}, QM: ${sa.qm ?? '—'}${sa.pqa1 ? `, PQA1: ${sa.pqa1}` : ''}.`);
+        lines.push(`    [ ] Send kickoff email/not needed`);
       });
       const backlog = backlogByTL[tl] ?? [];
       if (backlog.length > 0) {
@@ -405,7 +429,7 @@ export default function Stage4ResultsView({ pitches, currentAssignments, step2As
                           sx={{ mt: '-2px', mr: 1 }}
                         />
                         <Box>
-                          <Typography variant="body2">Create PRJ record</Typography>
+                          <Typography variant="body2">Create PRJ record/not needed</Typography>
                           <Typography variant="caption" color="text.secondary">
                             <Link
                               href={`https://emc2summary/GetSummaryReport.ashx/TRACK/ZQN/${pitch.id}`}
@@ -432,7 +456,7 @@ export default function Stage4ResultsView({ pitches, currentAssignments, step2As
                         }
                         label={
                           <Box component="span" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <Typography variant="body2">Send kickoff email</Typography>
+                            <Typography variant="body2">Send kickoff email/not needed</Typography>
                             <Button
                               size="small"
                               variant="outlined"

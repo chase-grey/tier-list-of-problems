@@ -273,7 +273,7 @@ export const TopBar = ({
                 View summary
               </Button>
             )}
-            {allocationLockStatus && onAllocationTakeLock && onAllocationReleaseLock && !allocationShowResults && (
+            {allocationLockStatus && onAllocationTakeLock && onAllocationReleaseLock && (
               <LockControl
                 status={allocationLockStatus}
                 holder={allocationLockHolder}

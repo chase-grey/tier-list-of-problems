@@ -506,6 +506,42 @@ export async function setAllocationLocks(
   }
 }
 
+/** "The plan is done" flag per stage. When Stage 4 finalized=true, every TL
+ *  viewing the page sees the summary view by default + an extra confirmation
+ *  before editing. Persisted in Script Properties on the backend. */
+export type AllocationFinalizedState = { '2': boolean; '4': boolean };
+
+export async function fetchAllocationFinalized(): Promise<AllocationFinalizedState> {
+  const fallback: AllocationFinalizedState = { '2': false, '4': false };
+  if (!API_BASE_URL) return fallback;
+  try {
+    const response = await fetch(`${GAS_PROXY}?route=get-allocation-finalized`);
+    if (!response.ok) return fallback;
+    const data = await response.json().catch(() => ({} as any));
+    const f = data?.finalized;
+    if (!f) return fallback;
+    return { '2': f['2'] === true, '4': f['4'] === true };
+  } catch {
+    return fallback;
+  }
+}
+
+export async function setAllocationFinalized(
+  stage: LockStage,
+  finalized: boolean,
+  submittedBy: string,
+  sessionId: string,
+): Promise<void> {
+  const data = await gasJsonPost<{ saved?: boolean; error?: string; lock?: EditLockState }>(
+    'set-allocation-finalized',
+    { stage, finalized, submittedBy, sessionId },
+    { saved: true },
+  );
+  if (data && data.error === 'edit-lock-conflict') {
+    throw new EditLockConflictError(stage, data.lock);
+  }
+}
+
 /**
  * Fetches aggregated results (admin only)
  */

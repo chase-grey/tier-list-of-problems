@@ -2228,7 +2228,7 @@ function Step2Row({
           lockedPersonSet={lockedPersonSet}
           disabled={committed && !isAdhoc}
           hideInterest={isAdhoc}
-          placeholder="Assign dev…"
+          placeholder="Assign…"
           noneLabel="None — no dev needed"
         />
       </TableCell>

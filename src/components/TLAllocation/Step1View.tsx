@@ -1634,7 +1634,7 @@ function PitchRow({ assignment, pitch, devNames, devTLNames, onDevChange, onStat
               displayEmpty
               sx={{ fontSize: '0.75rem', width: '100%', '& .MuiSelect-select': { py: 0.5, px: 1 } }}
               renderValue={val => {
-                if (!val) return <Typography variant="caption" color="text.disabled">Assign dev…</Typography>;
+                if (!val) return <Typography variant="caption" color="text.disabled">Assign…</Typography>;
                 if (val === ASSIGNMENT_NONE) {
                   return <Typography variant="caption" sx={{ fontStyle: 'italic', color: 'text.secondary' }}>None</Typography>;
                 }

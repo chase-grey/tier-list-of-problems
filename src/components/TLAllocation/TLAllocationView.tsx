@@ -1,13 +1,14 @@
 import { useState, useMemo, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
-import { Box, Typography } from '@mui/material';
+import { Box, Typography, Alert, Button, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions } from '@mui/material';
 import type { AllocationPitch, AllocationConfig, AssignmentStatus, Phase2Interest, PlanAssignment, StaffingAssignment } from '../../types/allocationTypes';
 import type { Pitch } from '../../types/models';
+import { ASSIGNMENT_NONE } from '../../types/models';
 import {
   MOCK_CONFIG, MOCK_PITCHES, MOCK_PLAN,
 } from '../../mocks/allocationMockData';
 import { fetchAllocationConfig, fetchAllocationVoteData, setCapacityOverride } from '../../services/allocationApi';
 import type { CapacityOverridePayload } from '../../services/allocationApi';
-import { savePlan, saveFinalAssignments, fetchPlanFull, fetchAdhocPitches, saveAdhocPitch as saveAdhocPitchApi, deleteAdhocPitch as deleteAdhocPitchApi, EditLockConflictError, fetchAllocationLocks, setAllocationLocks, type LockStage } from '../../services/api';
+import { savePlan, saveFinalAssignments, fetchPlanFull, fetchAdhocPitches, saveAdhocPitch as saveAdhocPitchApi, deleteAdhocPitch as deleteAdhocPitchApi, EditLockConflictError, fetchAllocationLocks, setAllocationLocks, fetchAllocationFinalized, setAllocationFinalized as setAllocationFinalizedApi, type LockStage } from '../../services/api';
 import type { PlanRow } from '../../services/api';
 import AddPitchDialog, { type AdhocPitchDraft } from './AddPitchDialog';
 import { useSnackbar } from '../../hooks/useSnackbar';
@@ -61,6 +62,9 @@ export interface AllocationStatus {
   lockLastHeartbeat: number;
   /** "Stage 2" or "Stage 4" — for labels in the toolbar control. */
   stageLabel: string;
+  /** Backend-shared "Stage 4 is done" flag. Drives the App-side default to
+   *  summary view and keeps "View summary" visible to every TL after Finish. */
+  stage4Finalized: boolean;
 }
 
 interface TLAllocationViewProps {
@@ -378,6 +382,16 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
   const [loadTrigger, setLoadTrigger] = useState(0);
   const [step2DataLoaded, setStep2DataLoaded] = useState(false);
   const [step2Ready,      setStep2Ready]      = useState(false);
+  // Backend-shared "Stage 4 is finished" flag. When true, every TL sees the
+  // summary view by default + an "are you sure" gate before editing. Set by
+  // handleFinalize after a successful Stage 4 save; cleared by a future
+  // un-finalize if we ever add one (today it's one-way).
+  const [stage4Finalized, setStage4Finalized] = useState(false);
+  // Per-tab "I want to edit the finalized plan anyway" acknowledgement. The
+  // backend flag stays true; this just lets the local TL bypass the
+  // read-only gate after explicit confirmation, scoped to this tab.
+  const [finalizedEditAck, setFinalizedEditAck] = useState(false);
+  const [finalizedEditConfirmOpen, setFinalizedEditConfirmOpen] = useState(false);
 
   const dataLoading = !pollingResolved || [pitchStatus, voteStatus, configStatus].some(s => s === 'loading');
   // For Stage 4: keep the loading screen up until Promise.all has finished writing
@@ -443,6 +457,29 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
     });
     return () => { cancelled = true; };
   }, []);
+
+  // Fetch the shared "Stage 4 is finalized" flag on mount. Drives the
+  // summary-default + edit-confirmation gate on every TL's screen.
+  useEffect(() => {
+    let cancelled = false;
+    fetchAllocationFinalized().then(state => {
+      if (cancelled) return;
+      setStage4Finalized(state['4'] === true);
+    }).catch(() => { /* ignore — defaults to false */ });
+    return () => { cancelled = true; };
+  }, []);
+
+  // When Stage 4 is finalized AND we're on the allocation step 1 (Stage 4),
+  // default to the summary view. The TL can flip to edit via the "Edit
+  // anyway" confirmation. We only force-show once per stage4Finalized
+  // transition — after that, the TL's local showResults toggle wins.
+  const summaryDefaultedRef = useRef(false);
+  useEffect(() => {
+    if (stage4Finalized && activeStep === 1 && !summaryDefaultedRef.current) {
+      summaryDefaultedRef.current = true;
+      onShowResultsChange(true);
+    }
+  }, [stage4Finalized, activeStep, onShowResultsChange]);
 
   // Debounced push of step1 / step2 locks to the backend. Backend rejects
   // non-holders with edit-lock-conflict — we swallow that, since viewers
@@ -622,7 +659,13 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
         const planFromBackend: PlanAssignment[] = planEntries
           .filter(([, row]) => row.status === 'selected' || row.status === 'next-up' || row.status === 'cut')
           .map(([pitchId, row]) => {
-            const dev = row.assignedDev != null && validDevSetFor(pitchId).has(row.assignedDev) ? row.assignedDev : null;
+            // ASSIGNMENT_NONE ('__NONE__') is an explicit "no one needed" choice
+            // the TL made in the dialog — keep it through reload, otherwise the
+            // backend round-trip loses the intent and the dropdown reverts to
+            // "Assign…".
+            const dev = row.assignedDev != null && (row.assignedDev === ASSIGNMENT_NONE || validDevSetFor(pitchId).has(row.assignedDev))
+              ? row.assignedDev
+              : null;
             const rawStatus = (row.status === 'selected' && !dev && row.assignedDev != null)
               // Original dev was on the saved row but is now off the roster — keep
               // the pitch in the plan but bump status down so the missing dev is
@@ -658,9 +701,11 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
           .filter(([, row]) => row.devTL || row.qm || row.pqa1)
           .map(([pitchId, row]) => ({
             pitchId,
-            devTL: row.devTL && devTLSet.has(row.devTL) ? row.devTL : null,
-            qm:    row.qm    && qmSet.has(row.qm)       ? row.qm    : null,
-            pqa1:  row.pqa1  && devOrTLSet.has(row.pqa1) ? row.pqa1  : null,
+            // Preserve ASSIGNMENT_NONE ('__NONE__') alongside named assignees
+            // so an explicit "no one needed" choice survives a reload.
+            devTL: row.devTL && (row.devTL === ASSIGNMENT_NONE || devTLSet.has(row.devTL)) ? row.devTL : null,
+            qm:    row.qm    && (row.qm    === ASSIGNMENT_NONE || qmSet.has(row.qm))       ? row.qm    : null,
+            pqa1:  row.pqa1  && (row.pqa1  === ASSIGNMENT_NONE || devOrTLSet.has(row.pqa1)) ? row.pqa1  : null,
           }));
         const step2BackendIds = new Set(step2FromBackend.map(s => s.pitchId));
         const mergedStep2 = [
@@ -675,7 +720,10 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
         // reload before they hit Finish.
         if (savedStep1.current) {
           const sanitized1 = savedStep1.current.map(a => {
-            if (a.assignedDev != null && !validDevSetFor(a.pitchId).has(a.assignedDev)) {
+            // ASSIGNMENT_NONE is a valid finish value (TL explicitly chose
+            // "no one needed"); only strip a dev that's neither None nor on
+            // the current roster.
+            if (a.assignedDev != null && a.assignedDev !== ASSIGNMENT_NONE && !validDevSetFor(a.pitchId).has(a.assignedDev)) {
               return { ...a, assignedDev: null, status: (a.status === 'selected' ? 'next-up' : a.status) as typeof a.status };
             }
             return a;
@@ -687,11 +735,13 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
         }
 
         if (savedStep2.current) {
+          // Preserve ASSIGNMENT_NONE — only nuke an assignee that's neither
+          // None nor on the current roster.
           const sanitized2 = savedStep2.current.map(a => ({
             ...a,
-            devTL: a.devTL != null && !devTLSet.has(a.devTL) ? null : a.devTL,
-            qm:    a.qm    != null && !qmSet.has(a.qm)       ? null : a.qm,
-            pqa1:  a.pqa1  != null && !devOrTLSet.has(a.pqa1) ? null : a.pqa1,
+            devTL: a.devTL != null && a.devTL !== ASSIGNMENT_NONE && !devTLSet.has(a.devTL) ? null : a.devTL,
+            qm:    a.qm    != null && a.qm    !== ASSIGNMENT_NONE && !qmSet.has(a.qm)       ? null : a.qm,
+            pqa1:  a.pqa1  != null && a.pqa1  !== ASSIGNMENT_NONE && !devOrTLSet.has(a.pqa1) ? null : a.pqa1,
           }));
           savedStep2.current = sanitized2;
           setStep2Assignments(sanitized2);
@@ -1239,10 +1289,27 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
     }
   };
 
-  /** Save + transition to summary view. Bails out if the save failed. */
+  /** Save + transition to summary view. Bails out if the save failed.
+   *  In Stage 4, also flips the shared finalized flag so every other TL
+   *  sees the summary view by default and an "are you sure" gate before
+   *  editing. Lock has to be held to do this (the setAllocationFinalized
+   *  endpoint is edit-lock gated on the backend). */
   const handleFinalize = async () => {
     const saved = await handleSavePlan();
     if (!saved) return;
+    if (activeStep === 1) {
+      // Stage 4 Finish → mark the allocation as finalized on the backend.
+      // Fire before lock release because the setter is edit-lock gated.
+      try {
+        await setAllocationFinalizedApi('4', true, voterName, getEditLockSessionId());
+        setStage4Finalized(true);
+      } catch (err) {
+        // Non-fatal — the save itself succeeded. Log + continue so the TL
+        // still lands on the summary view; the flag will catch up the next
+        // time someone with the lock finishes.
+        console.warn('setAllocationFinalized failed; proceeding without backend flag:', err);
+      }
+    }
     // Successful Finish — release the lock so the next TL can pick up
     // without having to force-take. Best-effort; failure is non-fatal.
     editLock.release().catch(() => { /* ignore */ });
@@ -1411,7 +1478,11 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
   // holds it) doesn't grant edits anymore — the TL has to click Take lock
   // first so saves are properly attributed and concurrent edits don't sneak
   // through without acquiring the explicit single-editor lock.
-  const isViewOnly = editLock.status !== 'editor';
+  // ALSO read-only when Stage 4 is finalized and the TL hasn't acknowledged
+  // they want to edit anyway. The backend flag is shared across TLs, so the
+  // gate consistently shows up for everyone after Finish.
+  const isViewOnly = editLock.status !== 'editor'
+    || (activeStep === 1 && stage4Finalized && !finalizedEditAck);
 
   // Stage 4 finish gate: every selected pitch needs dev TL + QM + PQA1
   // resolved — either a named person OR an explicit "None" choice. (Empty /
@@ -1438,12 +1509,13 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
       lockHolder: editLock.lock.holder,
       lockLastHeartbeat: editLock.lock.lastHeartbeat,
       stageLabel,
+      stage4Finalized,
     });
     // Intentionally don't depend on onStatusChange itself — parents pass a
     // fresh function each render and we'd loop. The values above are the
     // only meaningful triggers.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasLock, canFinish, saveStatus, editLock.status, editLock.lock.holder, editLock.lock.lastHeartbeat, stageLabel]);
+  }, [hasLock, canFinish, saveStatus, editLock.status, editLock.lock.holder, editLock.lock.lastHeartbeat, stageLabel, stage4Finalized]);
 
   // Save handler that integrates saveStatus tracking — declared as a const
   // here so the imperative handle can expose it and TopBar can call it
@@ -1518,6 +1590,52 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
         lock={editLock.lock}
         onRefresh={() => window.location.reload()}
       />
+      {/* Finalized banner — only on Stage 4 (the only stage that gets
+          finalized today) and only when the local TL hasn't acknowledged
+          they want to edit anyway. Lives outside the read-only Box so the
+          "Edit anyway" button stays clickable. */}
+      {activeStep === 1 && stage4Finalized && !finalizedEditAck && !showResults && (
+        <Alert
+          severity="info"
+          sx={{ borderRadius: 0 }}
+          action={
+            <Button
+              color="inherit"
+              size="small"
+              onClick={() => setFinalizedEditConfirmOpen(true)}
+            >
+              Edit anyway
+            </Button>
+          }
+        >
+          <strong>This allocation has been finalized.</strong> Most TLs should review the summary;
+          edits here require confirmation.
+        </Alert>
+      )}
+      <Dialog open={finalizedEditConfirmOpen} onClose={() => setFinalizedEditConfirmOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>Edit a finalized allocation?</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            This plan has been marked as finished. Other TLs see the summary view by default
+            and trust this allocation is settled. Edits you make here will still need to be
+            saved (and require the edit lock), but they'll change a plan others may have
+            already started acting on.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setFinalizedEditConfirmOpen(false)}>Cancel</Button>
+          <Button
+            color="warning"
+            variant="contained"
+            onClick={() => {
+              setFinalizedEditAck(true);
+              setFinalizedEditConfirmOpen(false);
+            }}
+          >
+            Yes, let me edit
+          </Button>
+        </DialogActions>
+      </Dialog>
       <Box
         sx={{
           flex: 1,

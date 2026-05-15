@@ -132,9 +132,15 @@ export function useEditLock(stage: LockStage, voterName: string): UseEditLock {
   }, [stage, voterName, sessionId]);
 
   const release = useCallback(async () => {
-    await releaseEditLock(stage, voterName, sessionId);
+    // Optimistic update — the Apps Script backend can take 30+ seconds to
+    // respond, and forcing the user to stare at a greyed-out "Release"
+    // button while still showing "you hold the lock" creates a "did it
+    // break?" UX. Clear local state immediately and fire the API call in
+    // the background. If the backend call fails, the next viewer poll
+    // (or the lock's 5-min TTL) reconciles.
     setLock({ holder: null, holderSession: null, acquiredAt: 0, lastHeartbeat: 0 });
     setStatus('idle');
+    releaseEditLock(stage, voterName, sessionId).catch(() => { /* see comment above */ });
   }, [stage, voterName, sessionId]);
 
   const dismissLost = useCallback(() => {
