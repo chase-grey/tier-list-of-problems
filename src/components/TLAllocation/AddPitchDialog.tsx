@@ -45,15 +45,22 @@ interface AddPitchDialogProps {
    * the parent decides whether to create or update based on context.
    */
   initial?: AdhocPitchDraft;
-  /** When true, title/category/committed render read-only (used when editing
-   *  a voting-imported project — those fields are owned by the spreadsheet,
-   *  not the TL). Status + team stay editable. Ignored on create. */
+  /** When true, title/committed render read-only (used when editing a
+   *  voting-imported project — title is owned by the spreadsheet). Category
+   *  stays editable so a TL can remap a pitch to a different category
+   *  (persisted as a PLAN-row override). Status + team stay editable.
+   *  Ignored on create. */
   lockBasicFields?: boolean;
   onSubmit: (draft: AdhocPitchDraft) => void;
   onClose: () => void;
+  /** When provided, shows a "Delete project" button in edit mode. Invoked
+   *  after a confirmation prompt. Parent is responsible for closing the
+   *  dialog after the delete completes. Only wired up for adhoc pitches —
+   *  deleting a voting-imported pitch would destroy vote history. */
+  onDelete?: () => void;
 }
 
-export default function AddPitchDialog({ open, categories, defaultCategory, devNames, devTLNames, qmNames, initial, lockBasicFields, onSubmit, onClose }: AddPitchDialogProps) {
+export default function AddPitchDialog({ open, categories, defaultCategory, devNames, devTLNames, qmNames, initial, lockBasicFields, onSubmit, onClose, onDelete }: AddPitchDialogProps) {
   const isEdit = initial != null;
   const lockBasics = isEdit && !!lockBasicFields;
 
@@ -129,7 +136,7 @@ export default function AddPitchDialog({ open, categories, defaultCategory, devN
   const statusOptions: { value: AssignmentStatus; label: string }[] = [
     { value: 'selected', label: 'Planned' },
     { value: 'next-up', label: 'Up Next' },
-    { value: 'cut',     label: 'Not Now' },
+    { value: 'cut',     label: 'Cut' },
   ];
 
   const nameSelect = (label: string, value: string, onChange: (v: string) => void, names: string[]) => (
@@ -167,7 +174,6 @@ export default function AddPitchDialog({ open, categories, defaultCategory, devN
               value={category}
               label="Category"
               onChange={e => setCategory(e.target.value)}
-              readOnly={lockBasics}
             >
               {categories.map(cat => (
                 <MenuItem key={cat} value={cat}>{cat}</MenuItem>
@@ -270,6 +276,23 @@ export default function AddPitchDialog({ open, categories, defaultCategory, devN
         </Box>
       </DialogContent>
       <DialogActions>
+        {/* Delete sits on the left, separated from Cancel/Save by a spacer,
+            so its destructive action can't be hit by accident next to Save.
+            Only rendered for adhoc pitches — the parent omits onDelete for
+            voting-imported rows since deleting those would destroy vote
+            history. */}
+        {isEdit && onDelete && (
+          <Button
+            color="error"
+            onClick={() => {
+              const ok = window.confirm(`Delete "${title}"? This removes it from the plan and the spreadsheet — can't be undone.`);
+              if (ok) onDelete();
+            }}
+          >
+            Delete project
+          </Button>
+        )}
+        <Box sx={{ flex: 1 }} />
         <Button onClick={onClose}>Cancel</Button>
         <Button onClick={handleSubmit} variant="contained" disabled={!title.trim() || !category}>
           {isEdit ? 'Save' : 'Add'}

@@ -543,7 +543,7 @@ export default function Step2View({
     return map;
   }, [nextUpPitches]);
 
-  // Not Now (cut) pitches grouped + sorted by team priority. Rendered as a
+  // Cut pitches grouped + sorted by team priority. Rendered as a
   // tertiary, default-collapsed sub-section so deprioritized work is
   // accessible but doesn't compete for visual space with the active plan.
   const cutByCategory = useMemo(() => {
@@ -557,7 +557,7 @@ export default function Step2View({
   }, [cutPitches]);
 
   // Per-category sub-section collapse state. Only Planned defaults open —
-  // Up Next and Not Now are reference info that the TL can expand when
+  // Up Next and Cut are reference info that the TL can expand when
   // needed; staffing focus stays on the active plan.
   const [planSubOpen, setPlanSubOpen] = useState<Record<string, boolean>>({});
   const [nextUpSubOpen, setNextUpSubOpen] = useState<Record<string, boolean>>({});
@@ -1000,7 +1000,7 @@ export default function Step2View({
                 <Typography variant="caption" color="text.secondary">
                   {catPitches.length} planned
                   {nextUpCatPitches.length > 0 ? ` · ${nextUpCatPitches.length} up next` : ''}
-                  {cutCatPitches.length > 0 ? ` · ${cutCatPitches.length} not now` : ''}
+                  {cutCatPitches.length > 0 ? ` · ${cutCatPitches.length} cut` : ''}
                 </Typography>
               </Box>
               <Collapse in={!collapsed}>
@@ -1041,7 +1041,7 @@ export default function Step2View({
                     {isPlanOpen(cat) && catPitches.map(pitch => renderRow(pitch, { status: 'selected' }))}
                     {nextUpCatPitches.length > 0 && subHeader('Up Next', nextUpCatPitches.length, isNextUpOpen(cat), () => toggleNextUpSub(cat), 'nextUp')}
                     {isNextUpOpen(cat) && nextUpCatPitches.map(pitch => renderRow(pitch, { dimmed: true, status: 'next-up' }))}
-                    {cutCatPitches.length > 0 && subHeader('Not Now', cutCatPitches.length, isCutOpen(cat), () => toggleCutSub(cat), 'cut')}
+                    {cutCatPitches.length > 0 && subHeader('Cut', cutCatPitches.length, isCutOpen(cat), () => toggleCutSub(cat), 'cut')}
                     {isCutOpen(cat) && cutCatPitches.map(pitch => renderRow(pitch, { dimmed: true, status: 'cut' }))}
                   </TableBody>
                 </Table>
@@ -1961,11 +1961,11 @@ interface Step2RowProps {
    *  Doesn't disable interaction — pre-staging assignments on Up Next rows is
    *  intentional, and the dim cue is enough to keep them visually secondary. */
   dimmed?: boolean;
-  /** Plan status — drives the highlighted chip among Plan / Up Next / Not Now.
+  /** Plan status — drives the highlighted chip among Plan / Up Next / Cut.
    *  Pass undefined to skip the status column entirely (when onStatusChange
    *  isn't wired). */
   status?: 'selected' | 'next-up' | 'cut';
-  /** Move this pitch between Planned / Up Next / Not Now. Pre-checked against
+  /** Move this pitch between Planned / Up Next / Cut. Pre-checked against
    *  committed/locked guards by the parent (tryStatusChange in Step2View). */
   onStatusChange?: (newStatus: 'selected' | 'next-up' | 'cut') => void;
 }
@@ -2120,14 +2120,14 @@ function Step2Row({
           </Typography>
         </Tooltip>
       </TableCell>
-      {/* Plan / Up Next / Not Now status chips. Mirror of Step1View's
+      {/* Plan / Up Next / Cut status chips. Mirror of Step1View's
           status column — committed rows show only the Plan chip (locked
           into Planned), other rows toggle between all three. */}
       <TableCell sx={{ pl: 1, pr: 0 }}>
         <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-start', flexWrap: 'nowrap' }}>
           {/* flexShrink: 0 + whiteSpace: nowrap on each chip protects their
               full label from being clipped when the row narrows — matches the
-              guard in Step1View so "Not Now" never collapses to "Not N…".
+              guard in Step1View so "Cut" never collapses to "Not N…".
               The cell overrides the table-wide px:1.25 with pl:1 pr:0 so
               the chip group has a small breath of left padding (more gap
               from the TL number) and hugs the right edge so the Plan→UXD
@@ -2157,7 +2157,7 @@ function Step2Row({
           {!committed && onStatusChange && (
             <Tooltip title="Cut from this quarter">
               <Chip
-                label="Not Now"
+                label="Cut"
                 size="small"
                 onClick={() => onStatusChange('cut')}
                 color="default"

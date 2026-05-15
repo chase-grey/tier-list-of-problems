@@ -139,7 +139,7 @@ const HelpDialog: React.FC<HelpDialogProps> = ({
             <Typography variant="body1" paragraph>
               Each pitch has three status buttons on the right: <strong>Plan</strong> (in scope this quarter),{' '}
               <strong>Up Next</strong> (backlog — an EMC2 record will be created with blank staffing),
-              and <strong>Not Now</strong> (cut). Click a button to change the status. Right-click also works.
+              and <strong>Cut</strong>. Click a button to change the status. Right-click also works.
             </Typography>
 
             <Typography variant="h6" gutterBottom>Assigning developers</Typography>

@@ -663,7 +663,7 @@ export default function Step1View({
                     <col />{/* pitch: takes remaining space */}
                     <col style={{ width: 56 }} />{/* Team priority */}
                     <col style={{ width: 56 }} />{/* TL priority */}
-                    <col style={{ width: 174 }} />{/* Plan / Up Next / Not Now — 8px left pad on the cell + ~166px of chips */}
+                    <col style={{ width: 174 }} />{/* Plan / Up Next / Cut — 8px left pad on the cell + ~166px of chips */}
                     <col style={{ width: 150 }} />{/* Dev */}
                   </colgroup>
                   <TableHead>
@@ -708,7 +708,7 @@ export default function Step1View({
                               <col />{/* pitch: flex to match outer table */}
                               <col style={{ width: 56 }} />{/* Team */}
                               <col style={{ width: 56 }} />{/* TL */}
-                              <col style={{ width: 174 }} />{/* Plan / Up Next / Not Now — 8px left pad on the cell + ~166px of chips */}
+                              <col style={{ width: 174 }} />{/* Plan / Up Next / Cut — 8px left pad on the cell + ~166px of chips */}
                               <col style={{ width: 150 }} />{/* Dev */}
                             </colgroup>
                             <TableBody>
@@ -760,7 +760,7 @@ export default function Step1View({
                               <col />{/* pitch: flex to match outer table */}
                               <col style={{ width: 56 }} />{/* Team */}
                               <col style={{ width: 56 }} />{/* TL */}
-                              <col style={{ width: 174 }} />{/* Plan / Up Next / Not Now — 8px left pad on the cell + ~166px of chips */}
+                              <col style={{ width: 174 }} />{/* Plan / Up Next / Cut — 8px left pad on the cell + ~166px of chips */}
                               <col style={{ width: 150 }} />{/* Dev */}
                             </colgroup>
                             <TableBody>
@@ -790,7 +790,7 @@ export default function Step1View({
                       </TableCell>
                     </TableRow>
 
-                    {/* ITEM 2: "Not Now" section header (always visible, clickable) */}
+                    {/* ITEM 2: "Cut" section header (always visible, clickable) */}
                     <TableRow
                       sx={{ cursor: 'pointer', '&:hover': { bgcolor: 'action.hover' } }}
                       onClick={() => toggle(cat, 'notNow')}
@@ -799,7 +799,7 @@ export default function Step1View({
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                           {isOpen(cat, 'notNow') ? <CollapseIcon sx={{ fontSize: '0.8rem' }} /> : <ExpandIcon sx={{ fontSize: '0.8rem' }} />}
                           <Typography variant="caption" color="text.disabled" sx={{ fontStyle: 'italic' }}>
-                            ── Not Now ──
+                            ── Cut ──
                           </Typography>
                         </Box>
                       </TableCell>
@@ -812,7 +812,7 @@ export default function Step1View({
                               <col />{/* pitch: flex to match outer table */}
                               <col style={{ width: 56 }} />{/* Team */}
                               <col style={{ width: 56 }} />{/* TL */}
-                              <col style={{ width: 174 }} />{/* Plan / Up Next / Not Now — 8px left pad on the cell + ~166px of chips */}
+                              <col style={{ width: 174 }} />{/* Plan / Up Next / Cut — 8px left pad on the cell + ~166px of chips */}
                               <col style={{ width: 150 }} />{/* Dev */}
                             </colgroup>
                             <TableBody>
@@ -1569,8 +1569,8 @@ function PitchRow({ assignment, pitch, devNames, devTLNames, onDevChange, onStat
           {/* ITEM 7: descriptive tooltips on status chips.
               flexShrink: 0 + whiteSpace: nowrap on each chip protects their
               full label from being clipped when the row narrows — without
-              these, MUI's flex defaults let the chips compress and "Not Now"
-              would truncate to "Not N…" on smaller screens.
+              these, MUI's flex defaults let the chips compress and
+              truncate the labels on smaller screens.
               The cell overrides the table-wide px:1.25 with pl:1 pr:0 so
               the chip group has a small breath of left padding (slightly
               more gap from the TL number) and hugs the right edge so the
@@ -1595,7 +1595,7 @@ function PitchRow({ assignment, pitch, devNames, devTLNames, onDevChange, onStat
           )}
           {!committed && (
             <Tooltip title="Cut from this quarter">
-              <Chip label="Not Now" size="small"
+              <Chip label="Cut" size="small"
                 onClick={() => onStatusChange(pitch.id, 'cut')}
                 color="default"
                 variant={highlight === 'cut' ? 'filled' : 'outlined'}
