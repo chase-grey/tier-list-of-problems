@@ -26,6 +26,11 @@ export interface AdhocPitchDraft {
    *  distinguishing icon in the sidebar and sorted below non-stretch projects.
    *  Suppressed in the dialog when committed (committed projects are firm). */
   stretch: boolean;
+  /** Full-bandwidth flag: this one project consumes the assigned team
+   *  member's entire role capacity for the quarter (e.g. a team transfer).
+   *  Auto-assign respects this — the assigned person(s) won't be assigned
+   *  to anything else in their roles, and the pitch is implicitly locked. */
+  fullBandwidth: boolean;
   /** Optional PRJ tracker ID, blank string when not provided. Trimmed
    *  on save; round-tripped through the backend PITCHES sheet. */
   prjId: string;
@@ -69,6 +74,7 @@ export default function AddPitchDialog({ open, categories, defaultCategory, devN
   const [committed, setCommitted] = useState(false);
   const [status, setStatus] = useState<AssignmentStatus>('selected');
   const [stretch, setStretch] = useState(false);
+  const [fullBandwidth, setFullBandwidth] = useState(false);
   const [prjId, setPrjId] = useState('');
   const [teamDev, setTeamDev] = useState('');
   const [teamDevTL, setTeamDevTL] = useState('');
@@ -88,6 +94,7 @@ export default function AddPitchDialog({ open, categories, defaultCategory, devN
         setCommitted(initial.committed);
         setStatus(initial.status);
         setStretch(!!initial.stretch);
+        setFullBandwidth(!!initial.fullBandwidth);
         setPrjId(initial.prjId ?? '');
         setTeamDev(initial.team.dev ?? '');
         setTeamDevTL(initial.team.devTL ?? '');
@@ -99,6 +106,7 @@ export default function AddPitchDialog({ open, categories, defaultCategory, devN
         setCommitted(false);
         setStatus('selected');
         setStretch(false);
+        setFullBandwidth(false);
         setPrjId('');
         setTeamDev('');
         setTeamDevTL('');
@@ -122,6 +130,10 @@ export default function AddPitchDialog({ open, categories, defaultCategory, devN
       // they're pre-allocated, so either flag would contradict that.
       status: committed ? 'selected' : status,
       stretch: committed ? false : stretch,
+      // Full-bandwidth only matters when someone is actually assigned —
+      // hide the flag when no team member is set so it can't drift on
+      // without effect.
+      fullBandwidth: fullBandwidth && (!!teamDev || !!teamDevTL || !!teamQM || !!teamPqa1),
       prjId: prjId.trim(),
       team: {
         dev: teamDev || null,
@@ -236,6 +248,24 @@ export default function AddPitchDialog({ open, categories, defaultCategory, devN
               />
               <Typography variant="caption" color="text.secondary" sx={{ display: 'block', pl: 4, mt: -0.5 }}>
                 Only complete if there's spare capacity. Sorts beneath non-stretch projects in the sidebar.
+              </Typography>
+            </Box>
+          )}
+
+          {/* Full-bandwidth — adhoc-only flag for projects that consume an
+              assigned person's whole role capacity (team transfer, full-
+              quarter embed, etc). The auto-assign algorithm sees the
+              assignee as fully booked and won't give them other work in
+              that role. lockBasics === true means this is a voting-imported
+              pitch — hide the flag there (no semantics for non-adhoc). */}
+          {!lockBasics && status !== 'cut' && (
+            <Box>
+              <FormControlLabel
+                control={<Checkbox checked={fullBandwidth} onChange={e => setFullBandwidth(e.target.checked)} />}
+                label="Full bandwidth"
+              />
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', pl: 4, mt: -0.5 }}>
+                This single project consumes the assigned team member's whole role capacity for the quarter (e.g. team transfer). Auto-assign won't give them other work in that role.
               </Typography>
             </Box>
           )}

@@ -1167,7 +1167,7 @@ function setPollingState(body) {
 // on adhoc pitches). Non-empty when a TL has remapped the pitch to a different
 // category from the Stage 4 edit dialog. Appended at the end so the fixed
 // column offsets in getPlanStatuses stay valid.
-const PLAN_HEADERS = ['timestamp', 'submittedBy', 'pitchId', 'pitchTitle', 'status', 'assignedDev', 'devTL', 'qm', 'pqa1', 'projectCreated', 'kickoffEmailSent', 'prjId', 'stretch', 'categoryOverride'];
+const PLAN_HEADERS = ['timestamp', 'submittedBy', 'pitchId', 'pitchTitle', 'status', 'assignedDev', 'devTL', 'qm', 'pqa1', 'projectCreated', 'kickoffEmailSent', 'prjId', 'stretch', 'categoryOverride', 'fullBandwidth'];
 
 /**
  * Upsert PLAN rows by pitchId.
@@ -1230,12 +1230,15 @@ function upsertPlanRows(updates, submittedBy) {
     const pid = String(u.pitchId);
     if (!pid) continue;
     const existing = existingByPitch[pid] || {};
-    // Stretch is boolean — write TRUE/FALSE (Apps Script renders these as
-    // sheet booleans), preserving existing value when the caller didn't
-    // touch the field.
+    // Stretch / fullBandwidth are booleans — write TRUE/FALSE (Apps Script
+    // renders these as sheet booleans), preserving existing value when the
+    // caller didn't touch the field.
     const stretchValue = Object.prototype.hasOwnProperty.call(u, 'stretch')
       ? u.stretch === true
       : existing.stretch === true;
+    const fullBandwidthValue = Object.prototype.hasOwnProperty.call(u, 'fullBandwidth')
+      ? u.fullBandwidth === true
+      : existing.fullBandwidth === true;
     existingByPitch[pid] = {
       timestamp: now,
       submittedBy: submittedBy || existing.submittedBy || '',
@@ -1251,6 +1254,7 @@ function upsertPlanRows(updates, submittedBy) {
       prjId: pick(u, 'prjId', existing, ''),
       stretch: stretchValue,
       categoryOverride: pick(u, 'categoryOverride', existing, ''),
+      fullBandwidth: fullBandwidthValue,
     };
   }
 
@@ -1336,6 +1340,8 @@ function getPlanStatuses() {
   // older sheets without the column return null and the frontend treats
   // missing as "no override → use source category".
   const catOverrideIdx = pidIdx + 11;
+  // fullBandwidth sits one column past categoryOverride.
+  const fullBandwidthIdx = pidIdx + 12;
 
   const rows = sh.getRange(2, 1, sh.getLastRow() - 1, numCols).getValues();
   const statuses = {};
@@ -1354,6 +1360,7 @@ function getPlanStatuses() {
       pqa1: safe(pqa1Idx, row),
       stretch: stretchIdx < numCols && row[stretchIdx] === true,
       categoryOverride: safe(catOverrideIdx, row),
+      fullBandwidth: fullBandwidthIdx < numCols && row[fullBandwidthIdx] === true,
     };
   }
   return json200({ statuses, assignments });

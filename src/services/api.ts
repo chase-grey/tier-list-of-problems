@@ -290,6 +290,10 @@ export interface PlanAssignmentPayload {
    *  Persisted on the PLAN sheet alongside status so the flag survives
    *  refreshes / hand-offs between TLs. */
   stretch?: boolean;
+  /** Full-bandwidth flag — adhoc pitches where the assigned person(s) are
+   *  fully consumed by this one project (e.g. team transfer). Algorithm
+   *  reads this on load to clamp the assignee's effective cap. */
+  fullBandwidth?: boolean;
   /** TL-set category override. Non-empty means the pitch should display in
    *  this category instead of its source value (only meaningful for
    *  non-adhoc pitches; adhocs persist category on PITCHES directly). */
@@ -549,6 +553,7 @@ export type PlanRow = {
   qm: string | null;
   pqa1: string | null;
   stretch?: boolean;
+  fullBandwidth?: boolean;
   /** TL-set category override. Non-empty means the TL has remapped this
    *  pitch in Stage 4; the frontend should display it in this category
    *  instead of the source value. Empty/null = use source category. */

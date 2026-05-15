@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
-import { Box, CircularProgress, Typography, Button } from '@mui/material';
+import { Box, Typography } from '@mui/material';
 import type { AllocationPitch, AllocationConfig, AssignmentStatus, Phase2Interest, PlanAssignment, StaffingAssignment } from '../../types/allocationTypes';
 import type { Pitch } from '../../types/models';
 import {
@@ -111,11 +111,17 @@ function autoAssignStep2(
     lockedPitchIds?: ReadonlySet<string>;
     lockedPersonNames?: ReadonlySet<string>;
     currentAssignments?: StaffingAssignment[];
+    /** PitchIds flagged full-bandwidth (consume their TL/QM's whole role
+     *  capacity for the quarter). These pitches are auto-locked and their
+     *  assigned TL/QM have their effective cap clamped to the count of
+     *  full-bandwidth pitches they hold. */
+    fullBandwidthPitchIds?: ReadonlySet<string>;
   } = {},
 ): StaffingAssignment[] {
   const lockedPitchIds = options.lockedPitchIds ?? new Set<string>();
   const lockedPersons = options.lockedPersonNames ?? new Set<string>();
   const currentAssignments = options.currentAssignments ?? [];
+  const fullBandwidthPitchIds = options.fullBandwidthPitchIds ?? new Set<string>();
   const currentByPitch = new Map(currentAssignments.map(a => [a.pitchId, a]));
 
   // Person-locks freeze any pitch where they currently hold either role, so
@@ -126,22 +132,39 @@ function autoAssignStep2(
       effLocked.add(a.pitchId);
     }
   });
+  // Full-bandwidth pitches are auto-locked. Tally per-person counts so we
+  // can clamp their caps below.
+  const fullBandwidthTLCount: Record<string, number> = {};
+  const fullBandwidthQMCount: Record<string, number> = {};
+  fullBandwidthPitchIds.forEach(pid => {
+    effLocked.add(pid);
+    const a = currentByPitch.get(pid);
+    if (!a) return;
+    if (a.devTL) fullBandwidthTLCount[a.devTL] = (fullBandwidthTLCount[a.devTL] ?? 0) + 1;
+    if (a.qm) fullBandwidthQMCount[a.qm] = (fullBandwidthQMCount[a.qm] ?? 0) + 1;
+  });
 
   const unavailableSet = new Set(config.unavailableNames ?? []);
   const devTLNames = config.devTLNames.filter(n => !unavailableSet.has(n));
   const qmNames = config.qmNames.filter(n => !unavailableSet.has(n));
 
   // Per-person caps: baseline = fair share of total pitches, shifted by
-  // capacityByName tier ('above-avg' = +1, 'fewer' = -1, 'none' = 0).
+  // capacityByName tier ('above-avg' = +1, 'fewer' = -1, 'none' = 0). A TL
+  // or QM holding any full-bandwidth pitch has their cap collapsed to that
+  // count — those projects ARE their quarter.
   const tlBaseline = devTLNames.length > 0 ? Math.ceil(pitches.length / devTLNames.length) : 0;
   const qmBaseline = qmNames.length > 0 ? Math.ceil(pitches.length / qmNames.length) : 0;
   const devTLCapByName: Record<string, number> = {};
   const qmCapByName: Record<string, number> = {};
   devTLNames.forEach(n => {
-    devTLCapByName[n] = capForPerson(tlBaseline, config.capacityByName?.[n], 'capacity');
+    devTLCapByName[n] = fullBandwidthTLCount[n] != null
+      ? fullBandwidthTLCount[n]
+      : capForPerson(tlBaseline, config.capacityByName?.[n], 'capacity');
   });
   qmNames.forEach(n => {
-    qmCapByName[n] = capForPerson(qmBaseline, config.capacityByName?.[n], 'capacity');
+    qmCapByName[n] = fullBandwidthQMCount[n] != null
+      ? fullBandwidthQMCount[n]
+      : capForPerson(qmBaseline, config.capacityByName?.[n], 'capacity');
   });
 
   const devTLLoad: Record<string, number> = {};
@@ -614,6 +637,7 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
               status: status as PlanAssignment['status'],
               assignedDev: dev,
               stretch: row.stretch === true,
+              fullBandwidth: row.fullBandwidth === true,
               categoryOverride: row.categoryOverride ? String(row.categoryOverride) : undefined,
             };
           });
@@ -802,6 +826,16 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
         return { ...a, status: newStatus, assignedDev };
       })
     );
+    // Cut / next-up projects shouldn't carry stale team assignments — clear
+    // devTL / QM / PQA1 so the next save persists the project with no people
+    // marked. Re-selecting later starts from a clean slate.
+    if (newStatus !== 'selected') {
+      setStep2Assignments(prev =>
+        prev.map(a =>
+          a.pitchId === pitchId ? { ...a, devTL: null, qm: null, pqa1: null } : a
+        )
+      );
+    }
   };
 
   // ── Step 2 state ──────────────────────────────────────────────────────────
@@ -909,12 +943,14 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
       devInterest: {},
     };
     setAdhocPitches(prev => [...prev, pitch]);
-    setPlanAssignments(prev => [...prev, { pitchId: id, assignedDev: team.dev, status, stretch }]);
+    setPlanAssignments(prev => [...prev, { pitchId: id, assignedDev: team.dev, status, stretch, fullBandwidth }]);
     // Always add to step2Assignments so pre-filled team data survives step2 init.
     setStep2Assignments(prev => [...prev, { pitchId: id, devTL: team.devTL, qm: team.qm, pqa1: team.pqa1 }]);
-    if (committed) {
-      setStep1Locks(prev => ({ ...prev, pitchIds: [...prev.pitchIds, id] }));
-      setStep2Locks(prev => ({ ...prev, pitchIds: [...prev.pitchIds, id] }));
+    // Committed AND full-bandwidth pitches both pin to their assignees, so
+    // lock them on both stages — auto-assign should never reshuffle them.
+    if (committed || fullBandwidth) {
+      setStep1Locks(prev => prev.pitchIds.includes(id) ? prev : { ...prev, pitchIds: [...prev.pitchIds, id] });
+      setStep2Locks(prev => prev.pitchIds.includes(id) ? prev : { ...prev, pitchIds: [...prev.pitchIds, id] });
     }
     // Persist to backend so other TLs see this on next refresh. Local state +
     // localStorage cache stay authoritative on failure — the user keeps their
@@ -926,7 +962,7 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
 
   const handleEditAdhocPitch = (id: string, draft: AdhocPitchDraft) => {
     markDirty();
-    const { title, category, committed, team, status, stretch, prjId } = draft;
+    const { title, category, committed, team, status, stretch, fullBandwidth, prjId } = draft;
     const trimmedPrjId = prjId.trim();
     setAdhocPitches(prev => prev.map(p => p.id === id ? {
       ...p,
@@ -940,17 +976,18 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
     // entries), append a fresh entry rather than silently dropping the edit.
     setPlanAssignments(prev => {
       const idx = prev.findIndex(a => a.pitchId === id);
-      if (idx === -1) return [...prev, { pitchId: id, assignedDev: team.dev, status, stretch }];
-      return prev.map(a => a.pitchId === id ? { ...a, assignedDev: team.dev, status, stretch } : a);
+      if (idx === -1) return [...prev, { pitchId: id, assignedDev: team.dev, status, stretch, fullBandwidth }];
+      return prev.map(a => a.pitchId === id ? { ...a, assignedDev: team.dev, status, stretch, fullBandwidth } : a);
     });
     setStep2Assignments(prev => {
       const idx = prev.findIndex(a => a.pitchId === id);
       if (idx === -1) return [...prev, { pitchId: id, devTL: team.devTL, qm: team.qm, pqa1: team.pqa1 }];
       return prev.map(a => a.pitchId === id ? { ...a, devTL: team.devTL, qm: team.qm, pqa1: team.pqa1 } : a);
     });
-    // Lock state follows committed: add locks when becoming committed, remove
-    // them when un-committing. Only touches the locks for this pitch.
-    if (committed) {
+    // Lock state follows (committed || fullBandwidth): add locks when either
+    // flag is on, remove them when both are off. Only touches the locks for
+    // this pitch.
+    if (committed || fullBandwidth) {
       setStep1Locks(prev => prev.pitchIds.includes(id) ? prev : { ...prev, pitchIds: [...prev.pitchIds, id] });
       setStep2Locks(prev => prev.pitchIds.includes(id) ? prev : { ...prev, pitchIds: [...prev.pitchIds, id] });
     } else {
@@ -1158,6 +1195,7 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
           assignedDev: a.assignedDev,
           prjId: pitchPrjIdById[a.pitchId] ?? '',
           stretch: !!a.stretch,
+          fullBandwidth: !!a.fullBandwidth,
           categoryOverride: a.categoryOverride ?? '',
         }));
         await savePlan(payload, voterName, getEditLockSessionId());
@@ -1182,6 +1220,7 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
             pqa1: sa?.pqa1 ?? null,
             prjId: pitchPrjIdById[plan.pitchId] ?? '',
             stretch: !!plan.stretch,
+            fullBandwidth: !!plan.fullBandwidth,
             categoryOverride: plan.categoryOverride ?? '',
           };
         });
@@ -1257,6 +1296,7 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
           lockedPitchIds: lockedPitchSet,
           lockedPersonNames: lockedPersonSet,
           currentAssignments: step2Assignments,
+          fullBandwidthPitchIds,
         })
       : step2Assignments;
 
@@ -1271,6 +1311,7 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
       ? autoAssignPqa1(selectedPitches, devByPitchId, availDevNames2, allocationConfig, {
           lockedPitchIds: lockedPitchSet,
           lockedPersonNames: lockedPersonSet,
+          fullBandwidthPitchIds,
           currentPqa1ByPitch,
         })
       : currentPqa1ByPitch;
@@ -1539,6 +1580,7 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
             onAdhocEdit={isViewOnly ? undefined : openProjectEdit}
             adhocPitchIds={adhocPitchIds}
             stretchPitchIds={stretchPitchIds}
+            fullBandwidthPitchIds={fullBandwidthPitchIds}
           />
         )}
       </Box>

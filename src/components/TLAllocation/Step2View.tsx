@@ -79,6 +79,9 @@ interface Step2ViewProps {
    *  in the sidebar and sorted beneath non-stretch projects within each
    *  person's primary-role list. */
   stretchPitchIds?: ReadonlySet<string>;
+  /** IDs of pitches flagged full-bandwidth — render a "FULL BW" chip in
+   *  the pitch row and respect the cap-clamping in the auto-assign passes. */
+  fullBandwidthPitchIds?: ReadonlySet<string>;
 }
 
 const CAPACITY_LABEL: Record<NonNullable<PersonCapacity['devCapacity']>, string> = {
@@ -237,9 +240,10 @@ function workloadCountColor(count: number, ideal: number): string {
 export default function Step2View({
   selectedPitches, nextUpPitches, cutPitches, assignments, phase2Interests, config, onAssign, onDevAssign, onStatusChange, devByPitchId, devNames,
   lockedPitchIds, lockedPersonNames, onTogglePitchLock, onTogglePersonLock,
-  voterName, onCapacityOverride, onAdhocAdd, onAdhocEdit, adhocPitchIds, stretchPitchIds,
+  voterName, onCapacityOverride, onAdhocAdd, onAdhocEdit, adhocPitchIds, stretchPitchIds, fullBandwidthPitchIds,
 }: Step2ViewProps) {
   const stretchSet = stretchPitchIds ?? new Set<string>();
+  const fullBandwidthSet = fullBandwidthPitchIds ?? new Set<string>();
   const committedPitchSet = useMemo(
     () => new Set(selectedPitches.filter(p => p.committed).map(p => p.id)),
     [selectedPitches],
@@ -973,6 +977,7 @@ export default function Step2View({
                 committed={committedPitchSet.has(pitch.id)}
                 isAdhoc={adhocPitchIds?.has(pitch.id)}
                 isStretch={stretchSet.has(pitch.id)}
+                isFullBandwidth={fullBandwidthSet.has(pitch.id)}
                 onEdit={onAdhocEdit ? () => onAdhocEdit(pitch.id) : undefined}
                 dimmed={opts?.dimmed}
                 status={opts?.status}
@@ -1417,17 +1422,23 @@ export default function Step2View({
               const isPrimary = (a: StaffingAssignment): boolean => (
                 primaryRole === 'devTL' ? a.devTL === name : a.qm === name
               );
+              // Primary-role list shows pitches where this person is the
+              // devTL/QM AND is NOT also the dev on that pitch. Pitches
+              // where they're both fall through to the "As Dev" sub-section
+              // below — the dev work counts ×2 in workload, and surfacing it
+              // there (instead of here) makes the heavier weighting visible.
+              // Common on adhoc projects where a dev TL takes both slots.
               const assignedPitchIds = sortPitchIds(
-                assignments.filter(a => isPrimary(a) && pitchMap.has(a.pitchId)).map(a => a.pitchId),
+                assignments
+                  .filter(a => isPrimary(a) && (devByPitchId[a.pitchId] ?? null) !== name && pitchMap.has(a.pitchId))
+                  .map(a => a.pitchId),
               );
               // Every other role this person fills on selected pitches. Surfaced
               // beneath their primary-role pitches with a sub-section divider so
               // the TL using the screen can see a person's full responsibilities
               // (e.g. a dev TL who's also assigned as a dev or PQA1 reviewer on
               // some pitch shows up here, instead of being invisible until you
-              // scroll to a different section). Workload count + warnings stay
-              // scoped to primary-role pitches; the secondary roles are
-              // informational.
+              // scroll to a different section).
               type RoleEntry = { role: SidebarRoleView; label: string; check: (a: StaffingAssignment) => boolean };
               const allRoleDefs: RoleEntry[] = [
                 { role: 'devTL', label: 'As Dev TL', check: (a) => a.devTL === name },
@@ -1437,15 +1448,24 @@ export default function Step2View({
               ];
               const otherRolePitches = allRoleDefs
                 .filter(d => d.role !== primaryRole)
-                .map(({ role: r, label, check }) => ({
-                  role: r,
-                  label,
-                  pitchIds: sortPitchIds(
-                    assignments
-                      .filter(a => check(a) && !isPrimary(a) && pitchMap.has(a.pitchId))
-                      .map(a => a.pitchId),
-                  ),
-                }))
+                .map(({ role: r, label, check }) => {
+                  // 'As Dev' includes pitches where this person is also the
+                  // primary role — the dev weighting (×2) wins over the
+                  // primary in countFor, so surfacing the pitch here keeps
+                  // the UI consistent with the math. Other secondary roles
+                  // keep the !isPrimary filter so the same pitch can't show
+                  // up in two places at once.
+                  const includePrimary = r === 'dev';
+                  return {
+                    role: r,
+                    label,
+                    pitchIds: sortPitchIds(
+                      assignments
+                        .filter(a => check(a) && (includePrimary || !isPrimary(a)) && pitchMap.has(a.pitchId))
+                        .map(a => a.pitchId),
+                    ),
+                  };
+                })
                 .filter(entry => entry.pitchIds.length > 0);
               const pi = interests.find(p => p.personName === name);
               const personHasNoData = !pi || Object.keys(pi.interestByPitchId).length === 0;
@@ -1963,6 +1983,10 @@ interface Step2RowProps {
   committed?: boolean;
   isAdhoc?: boolean;
   isStretch?: boolean;
+  /** True when the pitch is flagged full-bandwidth — the assigned person(s)
+   *  are fully consumed by this one project. Drives a "FULL BW" chip in
+   *  the pitch row and is honored by every Stage 4 algorithm. */
+  isFullBandwidth?: boolean;
   onEdit?: () => void;
   /** Reduce row opacity to signal this isn't a planned project (e.g. Up Next).
    *  Doesn't disable interaction — pre-staging assignments on Up Next rows is
@@ -1980,7 +2004,7 @@ interface Step2RowProps {
 function Step2Row({
   pitch, assignment, devTLInterests, qmInterests, devTLNames, qmNames, devNames, devDropdownNames, devHasAnyData,
   onAssign, onDevAssign, onRef, highlighted, devName,
-  locked, onToggleLock, lockedPersonSet, committed, isAdhoc, isStretch, onEdit, dimmed,
+  locked, onToggleLock, lockedPersonSet, committed, isAdhoc, isStretch, isFullBandwidth, onEdit, dimmed,
   status, onStatusChange,
 }: Step2RowProps) {
   const [detailsAnchor, setDetailsAnchor] = useState<HTMLButtonElement | null>(null);
@@ -2041,6 +2065,20 @@ function Step2Row({
           {isStretch && (
             <Tooltip title="Stretch goal — only completed if there's spare capacity">
               <StretchIcon sx={{ fontSize: '0.95rem', color: 'warning.main', flexShrink: 0, mr: 0.25 }} />
+            </Tooltip>
+          )}
+          {isFullBandwidth && (
+            <Tooltip title="Full bandwidth — consumes the assigned person's whole role capacity for the quarter. Auto-assign won't give them other work in that role.">
+              <Box
+                component="span"
+                sx={{
+                  display: 'inline-flex', alignItems: 'center', height: 16, px: 0.75, mr: 0.25,
+                  borderRadius: 8, fontSize: '0.6rem', fontWeight: 700,
+                  bgcolor: 'info.main', color: 'info.contrastText',
+                }}
+              >
+                FULL BW
+              </Box>
             </Tooltip>
           )}
           <Tooltip title={pitch.title} placement="top-start">

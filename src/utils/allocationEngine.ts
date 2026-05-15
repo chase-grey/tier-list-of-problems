@@ -69,6 +69,20 @@ export function generateDefaultPlan(
   currentPlan.forEach(a => {
     if (a.assignedDev && lockedPersons.has(a.assignedDev)) effLocked.add(a.pitchId);
   });
+  // Full-bandwidth pitches: the assignee's entire role capacity is consumed
+  // by this one project. Add them to effLocked so re-running keeps them in
+  // place, and tally per-dev so we can override that dev's effective cap
+  // below (cap = fullBandwidth pitch count, not the normal baseline-shifted
+  // value).
+  const fullBandwidthDevCount: Record<string, number> = {};
+  currentPlan.forEach(a => {
+    if (a.fullBandwidth) {
+      effLocked.add(a.pitchId);
+      if (a.assignedDev) {
+        fullBandwidthDevCount[a.assignedDev] = (fullBandwidthDevCount[a.assignedDev] ?? 0) + 1;
+      }
+    }
+  });
 
   const { bandwidth, nextUpCount } = config;
   // Stage 2 dev pool excludes both fully-unavailable people AND devs who said
@@ -101,10 +115,17 @@ export function generateDefaultPlan(
 
   // Baseline of 2 projects per dev, shifted per-person via capacityByName.
   // Total slots = sum of per-dev caps (people with 'none' contribute 0).
+  // Devs on a full-bandwidth pitch have their cap collapsed to the count of
+  // such pitches — that one (or rare few) project is their entire quarter,
+  // and the algorithm shouldn't try to give them more work.
   const DEV_BASELINE = 2;
   const devCapByName: Record<string, number> = {};
   devNames.forEach(d => {
-    devCapByName[d] = capForPerson(DEV_BASELINE, config.capacityByName?.[d], 'devCapacity');
+    if (fullBandwidthDevCount[d] != null) {
+      devCapByName[d] = fullBandwidthDevCount[d];
+    } else {
+      devCapByName[d] = capForPerson(DEV_BASELINE, config.capacityByName?.[d], 'devCapacity');
+    }
   });
   const totalSlots = devNames.reduce((s, d) => s + devCapByName[d], 0);
   const totalPct = categories.reduce((s, c) => s + bandwidth[c], 0);
@@ -299,16 +320,30 @@ export function autoAssignPqa1(
     lockedPitchIds?: ReadonlySet<string>;
     lockedPersonNames?: ReadonlySet<string>;
     currentPqa1ByPitch?: Record<string, string | null>;
+    /** PitchIds flagged full-bandwidth (consume their PQA1's whole role
+     *  capacity for the quarter). These pitches are auto-locked and the
+     *  assigned PQA1's effective cap is clamped to the count of full-
+     *  bandwidth pitches they hold. */
+    fullBandwidthPitchIds?: ReadonlySet<string>;
   } = {},
 ): Record<string, string | null> {
   const lockedPitchIds = options.lockedPitchIds ?? new Set<string>();
   const lockedPersons = options.lockedPersonNames ?? new Set<string>();
   const currentPqa1 = options.currentPqa1ByPitch ?? {};
+  const fullBandwidthPitchIds = options.fullBandwidthPitchIds ?? new Set<string>();
 
   // Person-locks freeze any pitch where they're currently the PQA1 reviewer.
   const effLocked = new Set(lockedPitchIds);
   Object.entries(currentPqa1).forEach(([pid, reviewer]) => {
     if (reviewer && lockedPersons.has(reviewer)) effLocked.add(pid);
+  });
+  // Full-bandwidth pitches are auto-locked. Tally PQA1 counts so we can
+  // clamp those reviewers' caps below.
+  const fullBandwidthPqa1Count: Record<string, number> = {};
+  fullBandwidthPitchIds.forEach(pid => {
+    effLocked.add(pid);
+    const reviewer = currentPqa1[pid];
+    if (reviewer) fullBandwidthPqa1Count[reviewer] = (fullBandwidthPqa1Count[reviewer] ?? 0) + 1;
   });
 
   const result: Record<string, string | null> = {};
@@ -342,10 +377,14 @@ export function autoAssignPqa1(
 
   // Baseline = fair share of total. Per-person caps shift this baseline via
   // capacityByName. 'none' (cap=0) excludes the dev from candidacy entirely.
+  // A reviewer holding any full-bandwidth pitch has their cap collapsed to
+  // that count — they're booked for the quarter on just those projects.
   const baselineCap = devNames.length > 0 ? Math.ceil(pitches.length / devNames.length) : 0;
   const capByName: Record<string, number> = {};
   devNames.forEach(d => {
-    capByName[d] = capForPerson(baselineCap, config.capacityByName?.[d], 'pqa1Capacity');
+    capByName[d] = fullBandwidthPqa1Count[d] != null
+      ? fullBandwidthPqa1Count[d]
+      : capForPerson(baselineCap, config.capacityByName?.[d], 'pqa1Capacity');
   });
 
   // Absent key = unrated (no opinion expressed) → neutral 2.5, preferred over medium interest (3).

@@ -37,6 +37,13 @@ export interface PlanAssignment {
    *  capacity. They render with a distinguishing icon and sort beneath
    *  non-stretch projects in the Stage 4 sidebar. */
   stretch?: boolean;
+  /** Full-bandwidth flag for adhoc pitches: this single project consumes the
+   *  assigned person's entire role capacity for the quarter (e.g. a team
+   *  transfer where the dev is leaving). Auto-assign treats every role on
+   *  this pitch (dev / devTL / qm / pqa1) as fully booked, so no other work
+   *  lands on them. The pitch is also implicitly locked — re-running won't
+   *  reshuffle it. */
+  fullBandwidth?: boolean;
   /** TL-set category override for non-adhoc pitches. Non-empty means the
    *  pitch should display under this category instead of its source value;
    *  empty/undefined falls back to the pitch's original category. Adhoc

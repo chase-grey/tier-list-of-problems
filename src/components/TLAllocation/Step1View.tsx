@@ -1493,6 +1493,16 @@ function PitchRow({ assignment, pitch, devNames, devTLNames, onDevChange, onStat
               <StretchIcon sx={{ fontSize: '0.95rem', color: 'warning.main', flexShrink: 0, mr: 0.25 }} />
             </Tooltip>
           )}
+          {assignment.fullBandwidth && (
+            <Tooltip title="Full bandwidth — consumes the assigned dev's whole capacity for the quarter. Auto-assign won't give them other work.">
+              <Chip
+                label="FULL BW"
+                size="small"
+                color="info"
+                sx={{ height: 16, fontSize: '0.6rem', fontWeight: 700, mr: 0.25, '& .MuiChip-label': { px: 0.75 } }}
+              />
+            </Tooltip>
+          )}
           <Tooltip title={pitch.title} placement="top-start">
             <Typography variant="caption" color={textColor} sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {pitch.title.replace(/^[^/]+\/\s*/, '')}
