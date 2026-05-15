@@ -20,6 +20,12 @@ interface LoadingScreenProps {
    * content stays put once the TopBar appears.
    */
   topReserve?: number;
+  /**
+   * Render at 100% of the parent's height (so it can fill a flex slot below
+   * an already-mounted TopBar) rather than the default 100vh full-viewport
+   * mode used for the pre-mount loading screen.
+   */
+  embedded?: boolean;
 }
 
 const StepIcon: React.FC<{ status: StepStatus }> = ({ status }) => {
@@ -29,12 +35,12 @@ const StepIcon: React.FC<{ status: StepStatus }> = ({ status }) => {
   return <Box sx={{ width: 20, height: 20, borderRadius: '50%', border: '2px solid', borderColor: 'text.disabled' }} />;
 };
 
-export const LoadingScreen: React.FC<LoadingScreenProps> = ({ steps, onRetry, topReserve = 0 }) => {
+export const LoadingScreen: React.FC<LoadingScreenProps> = ({ steps, onRetry, topReserve = 0, embedded = false }) => {
   const hasError = steps.some(s => s.status === 'error');
   const errorStep = steps.find(s => s.status === 'error');
 
   return (
-    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', flexDirection: 'column', gap: 2, pt: `${topReserve}px`, boxSizing: 'border-box' }}>
+    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: embedded ? '100%' : '100vh', flexDirection: 'column', gap: 2, pt: `${topReserve}px`, boxSizing: 'border-box' }}>
       <Typography variant="h6" color="text.secondary">
         {hasError ? 'Failed to load' : 'Loading…'}
       </Typography>

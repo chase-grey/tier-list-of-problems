@@ -1,7 +1,5 @@
 import { useState, useMemo, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { Box, CircularProgress, Typography, Button } from '@mui/material';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import ErrorIcon from '@mui/icons-material/Error';
 import type { AllocationPitch, AllocationConfig, AssignmentStatus, Phase2Interest, PlanAssignment, StaffingAssignment } from '../../types/allocationTypes';
 import type { Pitch } from '../../types/models';
 import {
@@ -23,6 +21,7 @@ import Step1View from './Step1View';
 import Step2View from './Step2View';
 import Stage2ResultsView from './Stage2ResultsView';
 import Stage4ResultsView from './Stage4ResultsView';
+import { LoadingScreen } from '../LoadingScreen/LoadingScreen';
 
 /**
  * Auto-assign scope. Stage 2 has only a dev role, so the parameter is ignored
@@ -1435,37 +1434,12 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
       { label: 'Loading team config',   status: configStatus, error: configError },
       ...(activeStep === 1 && step2DataLoaded && !step2Ready ? [{ label: 'Preparing assignments', status: 'loading' as const, error: undefined }] : []),
     ];
-    const firstError = steps.find(s => s.status === 'error');
     return (
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', flexDirection: 'column', gap: 2 }}>
-        <Typography variant="h6" color="text.secondary">
-          {hasLoadError ? 'Failed to load' : 'Loading…'}
-        </Typography>
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, minWidth: 240 }}>
-          {steps.map(step => (
-            <Box key={step.label} sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-              {step.status === 'done'    && <CheckCircleIcon sx={{ color: 'success.main', fontSize: 20 }} />}
-              {step.status === 'error'   && <ErrorIcon sx={{ color: 'error.main', fontSize: 20 }} />}
-              {step.status === 'loading' && <CircularProgress size={18} />}
-              <Typography variant="body2" color={step.status === 'error' ? 'error' : step.status === 'done' ? 'text.secondary' : 'text.primary'}>
-                {step.label}
-              </Typography>
-            </Box>
-          ))}
-        </Box>
-        {hasLoadError && (
-          <Box sx={{ textAlign: 'center', mt: 1 }}>
-            {firstError?.error && (
-              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.5, maxWidth: 360 }}>
-                {firstError.error}
-              </Typography>
-            )}
-            <Button variant="outlined" size="small" onClick={() => setLoadTrigger(n => n + 1)}>
-              Retry
-            </Button>
-          </Box>
-        )}
-      </Box>
+      <LoadingScreen
+        embedded
+        steps={steps}
+        onRetry={hasLoadError ? () => setLoadTrigger(n => n + 1) : undefined}
+      />
     );
   }
 
