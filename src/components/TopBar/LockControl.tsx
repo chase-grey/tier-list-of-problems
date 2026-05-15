@@ -14,6 +14,10 @@ interface Props {
   holder: string | null;
   lastHeartbeat: number;
   stageLabel: string;
+  /** Current voter name. Used to detect the "same user, different tab" case:
+   *  when status='viewer' AND holder === voterName, the lock is held by
+   *  another tab from this user — the chip reflects that more precisely. */
+  voterName?: string | null;
   /**
    * Acquire the lock. `force=true` overrides an active foreign holder; the
    * dialog disclaims the data-loss risk before this is called.
@@ -34,7 +38,7 @@ interface Props {
  *   - lost:   minimal chip; the full-width banner explains and offers refresh.
  *   - loading: small spinner while the initial fetch resolves.
  */
-export default function LockControl({ status, holder, lastHeartbeat, stageLabel, onTake, onRelease }: Props) {
+export default function LockControl({ status, holder, lastHeartbeat, stageLabel, voterName, onTake, onRelease }: Props) {
   const [forceDialogOpen, setForceDialogOpen] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -111,14 +115,23 @@ export default function LockControl({ status, holder, lastHeartbeat, stageLabel,
   }
 
   if (status === 'viewer') {
+    // Same name as the current voter means the lock is held by another tab
+    // from this user, not a different person. Signal that more clearly so the
+    // TL doesn't get a confusing "Chase is editing" chip while sitting at
+    // their own keyboard.
+    const isSelfElsewhere = !!voterName && holder === voterName;
+    const chipLabel = isSelfElsewhere ? 'Open in another tab' : `${getShortName(holder ?? '')} is editing`;
+    const tooltipText = isSelfElsewhere
+      ? `You have ${stageLabel} open in another tab. Take the lock here to switch — the other tab will go view-only.`
+      : `${holder ?? 'Someone'} is editing ${stageLabel}. You're in view-only mode.`;
     return (
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mr: 1 }}>
-        <Tooltip title={`${holder ?? 'Someone'} is editing ${stageLabel}. You're in view-only mode.`}>
+        <Tooltip title={tooltipText}>
           <Chip
             icon={<VisibilityIcon />}
-            label={`${getShortName(holder ?? '')} is editing`}
+            label={chipLabel}
             size="small"
-            color="info"
+            color={isSelfElsewhere ? 'warning' : 'info'}
             sx={{ '& .MuiChip-icon': { fontSize: 16 } }}
           />
         </Tooltip>

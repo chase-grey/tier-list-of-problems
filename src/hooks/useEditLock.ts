@@ -7,6 +7,7 @@ import {
   type EditLockState,
   type LockStage,
 } from '../services/api';
+import { getEditLockSessionId } from './editLockSession';
 
 // Must match the backend's EDIT_LOCK_TTL_MS so we agree on what "stale" means.
 // A lock whose lastHeartbeat is older than this is treated as up-for-grabs and
@@ -18,7 +19,7 @@ const VIEWER_POLL_INTERVAL_MS = 30 * 1000;
 export type EditLockStatus =
   | 'loading' // initial fetch in flight
   | 'editor'  // caller currently holds the lock
-  | 'viewer'  // someone else holds an active lock
+  | 'viewer'  // someone else holds an active lock (incl. same user from another tab)
   | 'idle'    // no holder (or holder is stale)
   | 'lost';   // caller used to hold the lock, but a force-grab took it away
 
@@ -33,11 +34,18 @@ export interface UseEditLock {
   isEditor: boolean;
   /** Manually clear the 'lost' banner — e.g. after the user navigates away. */
   dismissLost: () => void;
+  /** Per-tab session id used for the lock. Passed through to savePlan /
+   *  saveFinalAssignments / setAllocationLocks so the backend can verify the
+   *  caller is the actual lock holder (not just same-named in another tab). */
+  sessionId: string;
 }
 
-function deriveStatus(lock: EditLockState, voterName: string, now: number): EditLockStatus {
+function deriveStatus(lock: EditLockState, voterName: string, sessionId: string, now: number): EditLockStatus {
   if (!lock.holder) return 'idle';
-  if (lock.holder === voterName) return 'editor';
+  // Same user AND same tab session → we hold the lock. Same name from a
+  // different tab falls through to 'viewer' so the UI shows the read-only
+  // gate and prompts to take the lock here (with a force-take dialog).
+  if (lock.holder === voterName && lock.holderSession === sessionId) return 'editor';
   if (now - lock.lastHeartbeat > EDIT_LOCK_TTL_MS) return 'idle';
   return 'viewer';
 }
@@ -50,12 +58,18 @@ function deriveStatus(lock: EditLockState, voterName: string, now: number): Edit
  * so an external acquire/release becomes visible without a page refresh. If a
  * heartbeat returns a different holder, transitions to `'lost'` and the caller
  * is expected to render a banner telling the user to refresh.
+ *
+ * The lock is per-tab — see {@link getSessionId}. Two tabs from the same user
+ * see each other as separate "viewers" and can force-take from each other.
  */
 export function useEditLock(stage: LockStage, voterName: string): UseEditLock {
-  const [lock, setLock] = useState<EditLockState>({ holder: null, acquiredAt: 0, lastHeartbeat: 0 });
+  const [lock, setLock] = useState<EditLockState>({ holder: null, holderSession: null, acquiredAt: 0, lastHeartbeat: 0 });
   const [status, setStatus] = useState<EditLockStatus>('loading');
   const voterNameRef = useRef(voterName);
   voterNameRef.current = voterName;
+  // sessionId is stable across renders of this hook in a given tab.
+  const sessionIdRef = useRef<string>(getEditLockSessionId());
+  const sessionId = sessionIdRef.current;
 
   // Initial fetch on mount + stage change. Resets back to 'loading' first so
   // a stale state from the prior stage doesn't flash.
@@ -65,7 +79,7 @@ export function useEditLock(stage: LockStage, voterName: string): UseEditLock {
     fetchEditLock(stage).then(s => {
       if (cancelled) return;
       setLock(s);
-      setStatus(deriveStatus(s, voterNameRef.current, Date.now()));
+      setStatus(deriveStatus(s, voterNameRef.current, sessionIdRef.current, Date.now()));
     }).catch(() => {
       if (cancelled) return;
       // Backend unreachable — fall back to idle so the user can at least try
@@ -79,16 +93,19 @@ export function useEditLock(stage: LockStage, voterName: string): UseEditLock {
   useEffect(() => {
     if (status !== 'editor' || !voterName) return;
     const tick = () => {
-      heartbeatEditLock(stage, voterName).then(s => {
+      heartbeatEditLock(stage, voterName, sessionId).then(s => {
         setLock(s);
-        if (s.holder && s.holder !== voterName) {
+        // Lost if someone else holds the lock OR another tab from this same
+        // user has taken it (holder matches but session differs).
+        const sameClient = s.holder === voterName && s.holderSession === sessionId;
+        if (s.holder && !sameClient) {
           setStatus('lost');
         }
       }).catch(() => { /* ignore — next tick will retry */ });
     };
     const handle = window.setInterval(tick, HEARTBEAT_INTERVAL_MS);
     return () => window.clearInterval(handle);
-  }, [status, stage, voterName]);
+  }, [status, stage, voterName, sessionId]);
 
   // Poll while viewer or idle so external changes show up.
   useEffect(() => {
@@ -99,7 +116,7 @@ export function useEditLock(stage: LockStage, voterName: string): UseEditLock {
         setStatus(prev => {
           // Don't override 'lost' if some race set it; otherwise re-derive.
           if (prev === 'lost') return prev;
-          return deriveStatus(s, voterNameRef.current, Date.now());
+          return deriveStatus(s, voterNameRef.current, sessionIdRef.current, Date.now());
         });
       }).catch(() => { /* ignore */ });
     };
@@ -108,17 +125,17 @@ export function useEditLock(stage: LockStage, voterName: string): UseEditLock {
   }, [status, stage]);
 
   const take = useCallback(async (force = false) => {
-    const result = await acquireEditLock(stage, voterName, force);
+    const result = await acquireEditLock(stage, voterName, sessionId, force);
     setLock(result.lock);
     if (result.acquired) setStatus('editor');
     return result;
-  }, [stage, voterName]);
+  }, [stage, voterName, sessionId]);
 
   const release = useCallback(async () => {
-    await releaseEditLock(stage, voterName);
-    setLock({ holder: null, acquiredAt: 0, lastHeartbeat: 0 });
+    await releaseEditLock(stage, voterName, sessionId);
+    setLock({ holder: null, holderSession: null, acquiredAt: 0, lastHeartbeat: 0 });
     setStatus('idle');
-  }, [stage, voterName]);
+  }, [stage, voterName, sessionId]);
 
   const dismissLost = useCallback(() => {
     setStatus(prev => prev === 'lost' ? 'idle' : prev);
@@ -131,5 +148,6 @@ export function useEditLock(stage: LockStage, voterName: string): UseEditLock {
     release,
     isEditor: status === 'editor',
     dismissLost,
+    sessionId,
   };
 }

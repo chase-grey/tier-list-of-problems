@@ -37,6 +37,12 @@ export interface PlanAssignment {
    *  capacity. They render with a distinguishing icon and sort beneath
    *  non-stretch projects in the Stage 4 sidebar. */
   stretch?: boolean;
+  /** TL-set category override for non-adhoc pitches. Non-empty means the
+   *  pitch should display under this category instead of its source value;
+   *  empty/undefined falls back to the pitch's original category. Adhoc
+   *  pitches persist their own category on the PITCHES sheet and don't use
+   *  this override path. */
+  categoryOverride?: string;
 }
 
 /** Phase 2 interest: a dev TL or QM's interest ratings across the selected projects. */

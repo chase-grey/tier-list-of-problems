@@ -279,6 +279,7 @@ export const TopBar = ({
                 holder={allocationLockHolder}
                 lastHeartbeat={allocationLockLastHeartbeat}
                 stageLabel={allocationLockStageLabel}
+                voterName={voterName}
                 onTake={onAllocationTakeLock}
                 onRelease={onAllocationReleaseLock}
               />

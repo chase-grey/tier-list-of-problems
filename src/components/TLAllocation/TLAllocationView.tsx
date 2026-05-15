@@ -9,11 +9,12 @@ import {
 } from '../../mocks/allocationMockData';
 import { fetchAllocationConfig, fetchAllocationVoteData, setCapacityOverride } from '../../services/allocationApi';
 import type { CapacityOverridePayload } from '../../services/allocationApi';
-import { savePlan, saveFinalAssignments, fetchPlanFull, fetchAdhocPitches, saveAdhocPitch as saveAdhocPitchApi, EditLockConflictError, fetchAllocationLocks, setAllocationLocks, type LockStage } from '../../services/api';
+import { savePlan, saveFinalAssignments, fetchPlanFull, fetchAdhocPitches, saveAdhocPitch as saveAdhocPitchApi, deleteAdhocPitch as deleteAdhocPitchApi, EditLockConflictError, fetchAllocationLocks, setAllocationLocks, type LockStage } from '../../services/api';
 import type { PlanRow } from '../../services/api';
 import AddPitchDialog, { type AdhocPitchDraft } from './AddPitchDialog';
 import { useSnackbar } from '../../hooks/useSnackbar';
 import { useEditLock } from '../../hooks/useEditLock';
+import { getEditLockSessionId } from '../../hooks/editLockSession';
 import EditLockBanner from './EditLockBanner';
 import { generateDefaultPlan, autoAssignPqa1, capForPerson, hungarianMinCost } from '../../utils/allocationEngine';
 import { fetchPitches } from '../../services/api';
@@ -402,13 +403,20 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
     let cancelled = false;
     fetchAllocationLocks().then(remote => {
       if (cancelled) return;
-      skipNextLockPushRef.current = { step1: true, step2: true };
-      setStep1Locks(remote['2']);
-      setStep2Locks(remote['4']);
+      if (remote) {
+        // Backend is the source of truth — overwrite local with remote.
+        // `skipNextLockPushRef` blocks the push effect from echoing the
+        // fetched values straight back to the server.
+        skipNextLockPushRef.current = { step1: true, step2: true };
+        setStep1Locks(remote['2']);
+        setStep2Locks(remote['4']);
+      }
+      // remote === null → backend route not deployed / unreachable. Keep
+      // whatever LS gave us as the seed; subsequent toggles still try to
+      // push (the failed POST gets swallowed silently) so once the backend
+      // is redeployed the locks sync up on the next change.
       locksLoadedRef.current = true;
     }).catch(() => {
-      // Network failure — keep LS state, allow pushes (viewer toggles will
-      // fail and be silently dropped; editor toggles will sync on retry).
       locksLoadedRef.current = true;
     });
     return () => { cancelled = true; };
@@ -426,7 +434,7 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
     }
     if (!voterName) return;
     const handle = window.setTimeout(() => {
-      setAllocationLocks('2', step1Locks, voterName).catch(err => {
+      setAllocationLocks('2', step1Locks, voterName, getEditLockSessionId()).catch(err => {
         if (!(err instanceof EditLockConflictError)) {
           console.warn('Failed to persist Stage 2 locks:', err);
         }
@@ -442,7 +450,7 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
     }
     if (!voterName) return;
     const handle = window.setTimeout(() => {
-      setAllocationLocks('4', step2Locks, voterName).catch(err => {
+      setAllocationLocks('4', step2Locks, voterName, getEditLockSessionId()).catch(err => {
         if (!(err instanceof EditLockConflictError)) {
           console.warn('Failed to persist Stage 4 locks:', err);
         }
@@ -606,6 +614,8 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
               pitchId,
               status: status as PlanAssignment['status'],
               assignedDev: dev,
+              stretch: row.stretch === true,
+              categoryOverride: row.categoryOverride ? String(row.categoryOverride) : undefined,
             };
           });
         const planBackendIds = new Set(planFromBackend.map(p => p.pitchId));
@@ -692,7 +702,19 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
         setPhase2Interests(derivePhase2Interests(MOCK_PITCHES, effectiveConfig));
       } else {
         const enriched = enrichPitches(pitches, voteData);
-        setAllocationPitches(enriched);
+        // Apply TL category overrides from the PLAN sheet so a pitch a TL
+        // remapped in Stage 4 lands in the new category on reload. Overrides
+        // only exist for non-adhoc pitches (adhocs persist category on the
+        // PITCHES sheet directly), and an empty/missing override falls back
+        // to the source category.
+        const categoryOverrideById: Record<string, string> = {};
+        planEntries.forEach(([id, row]) => {
+          if (row.categoryOverride) categoryOverrideById[id] = String(row.categoryOverride);
+        });
+        const enrichedWithOverrides = enriched.map(p =>
+          categoryOverrideById[p.id] ? { ...p, category: categoryOverrideById[p.id] } : p
+        );
+        setAllocationPitches(enrichedWithOverrides);
         // Derive phase2Interests from vote data — interest is column G in the VOTES tab,
         // returned as devInterest per pitch by getAllocationData().
         setPhase2Interests(derivePhase2Interests(enriched, effectiveConfig));
@@ -956,17 +978,43 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
   // cut, matching handleStatusChange's behavior); team updates step2.
   const handleEditNonAdhocPitch = (id: string, draft: AdhocPitchDraft) => {
     markDirty();
-    const { team, status, stretch } = draft;
+    const { team, status, stretch, category } = draft;
+    // If the TL picked a different category, mutate the local pitch in
+    // allocationPitches so all downstream views (Stage 2/4 lists + sidebar)
+    // immediately render in the new category. The override flag below
+    // captures the same value for persistence; loaders apply it on reload.
+    setAllocationPitches(prev => prev.map(p => p.id === id ? { ...p, category } : p));
     setPlanAssignments(prev => {
       const idx = prev.findIndex(a => a.pitchId === id);
       const nextDev = status === 'selected' ? team.dev : null;
-      if (idx === -1) return [...prev, { pitchId: id, assignedDev: nextDev, status, stretch }];
-      return prev.map(a => a.pitchId === id ? { ...a, assignedDev: nextDev, status, stretch } : a);
+      // Only persist the category override when it actually differs from the
+      // source pitch's category — empty means "fall back to source", which is
+      // the right behavior for the common case where the TL didn't remap.
+      const sourcePitch = allocationPitches.find(p => p.id === id);
+      const categoryOverride = sourcePitch && sourcePitch.category !== category ? category : '';
+      if (idx === -1) return [...prev, { pitchId: id, assignedDev: nextDev, status, stretch, categoryOverride }];
+      return prev.map(a => a.pitchId === id ? { ...a, assignedDev: nextDev, status, stretch, categoryOverride } : a);
     });
     setStep2Assignments(prev => {
       const idx = prev.findIndex(a => a.pitchId === id);
       if (idx === -1) return [...prev, { pitchId: id, devTL: team.devTL, qm: team.qm, pqa1: team.pqa1 }];
       return prev.map(a => a.pitchId === id ? { ...a, devTL: team.devTL, qm: team.qm, pqa1: team.pqa1 } : a);
+    });
+  };
+
+  // Hard-delete an adhoc pitch: drop it from local state (adhocPitches +
+  // plan + step2 + both lock lists) and remove the backend PITCHES row.
+  // Voting-imported pitches don't get this — the parent doesn't pass
+  // onDelete for them, so the button never renders.
+  const handleDeleteAdhocPitch = (id: string) => {
+    markDirty();
+    setAdhocPitches(prev => prev.filter(p => p.id !== id));
+    setPlanAssignments(prev => prev.filter(a => a.pitchId !== id));
+    setStep2Assignments(prev => prev.filter(a => a.pitchId !== id));
+    setStep1Locks(prev => ({ ...prev, pitchIds: prev.pitchIds.filter(x => x !== id) }));
+    setStep2Locks(prev => ({ ...prev, pitchIds: prev.pitchIds.filter(x => x !== id) }));
+    deleteAdhocPitchApi(id).catch((err: any) => {
+      showSnackbar(`Deleted locally — failed to remove from sheet: ${err?.message ?? 'unknown error'}`, 'warning');
     });
   };
 
@@ -1105,8 +1153,10 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
           status: a.status,
           assignedDev: a.assignedDev,
           prjId: pitchPrjIdById[a.pitchId] ?? '',
+          stretch: !!a.stretch,
+          categoryOverride: a.categoryOverride ?? '',
         }));
-        await savePlan(payload, voterName);
+        await savePlan(payload, voterName, getEditLockSessionId());
         showSnackbar('Plan saved — dev assignments recorded in the sheet', 'success');
       } else {
         // Iterate planAssignments rather than step2Assignments so status
@@ -1127,9 +1177,11 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
             qm: sa?.qm ?? null,
             pqa1: sa?.pqa1 ?? null,
             prjId: pitchPrjIdById[plan.pitchId] ?? '',
+            stretch: !!plan.stretch,
+            categoryOverride: plan.categoryOverride ?? '',
           };
         });
-        await saveFinalAssignments(payload, voterName);
+        await saveFinalAssignments(payload, voterName, getEditLockSessionId());
         showSnackbar('Team assignments saved to the sheet', 'success');
       }
       return true;
@@ -1517,6 +1569,11 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
         lockBasicFields={editingPitchId != null && !editingIsAdhoc}
         onSubmit={handleDialogSubmit}
         onClose={closeAdhocDialog}
+        // Only adhoc pitches get a real delete — voting-imported rows would
+        // lose their vote history. For those, status='cut' is the right tool.
+        onDelete={editingPitchId != null && editingIsAdhoc
+          ? () => { const id = editingPitchId; closeAdhocDialog(); handleDeleteAdhocPitch(id); }
+          : undefined}
       />
 
       {usingMockData && (

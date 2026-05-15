@@ -182,9 +182,9 @@ function doPost(e) {
       case 'interest-vote':
         return recordInterestVote(payload);
       case 'save-plan':
-        return savePlan(payload.assignments || [], payload.submittedBy || '');
+        return savePlan(payload.assignments || [], payload.submittedBy || '', payload.sessionId || '');
       case 'save-final-assignments':
-        return saveFinalAssignments(payload.assignments || [], payload.submittedBy || '');
+        return saveFinalAssignments(payload.assignments || [], payload.submittedBy || '', payload.sessionId || '');
       case 'feedback':
         return recordFeedback(payload);
       case 'send-kickoff-email':
@@ -918,38 +918,46 @@ function readEditLock(stage) {
   const key = editLockKey(stage);
   if (!key) return null;
   const raw = PropertiesService.getScriptProperties().getProperty(key);
-  if (!raw) return { holder: null, acquiredAt: 0, lastHeartbeat: 0 };
+  if (!raw) return { holder: null, holderSession: null, acquiredAt: 0, lastHeartbeat: 0 };
   try {
     const parsed = JSON.parse(raw);
     return {
       holder: parsed.holder || null,
+      // holderSession was added when the lock became per-tab. Older records
+      // without it fall back to null; the caller will treat any session it
+      // owns as not-matching and trigger a force-take dialog, which is the
+      // correct upgrade path.
+      holderSession: parsed.holderSession || null,
       acquiredAt: parsed.acquiredAt || 0,
       lastHeartbeat: parsed.lastHeartbeat || 0,
     };
   } catch (e) {
-    return { holder: null, acquiredAt: 0, lastHeartbeat: 0 };
+    return { holder: null, holderSession: null, acquiredAt: 0, lastHeartbeat: 0 };
   }
 }
 
-function writeEditLock(stage, holder) {
+function writeEditLock(stage, holder, holderSession) {
   const key = editLockKey(stage);
   if (!key) return null;
   if (holder == null || holder === '') {
     PropertiesService.getScriptProperties().deleteProperty(key);
-    return { holder: null, acquiredAt: 0, lastHeartbeat: 0 };
+    return { holder: null, holderSession: null, acquiredAt: 0, lastHeartbeat: 0 };
   }
   const now = Date.now();
-  const record = { holder: holder, acquiredAt: now, lastHeartbeat: now };
+  const record = { holder: holder, holderSession: holderSession || null, acquiredAt: now, lastHeartbeat: now };
   PropertiesService.getScriptProperties().setProperty(key, JSON.stringify(record));
   return record;
 }
 
-function bumpEditLockHeartbeat(stage, holder) {
+function bumpEditLockHeartbeat(stage, holder, holderSession) {
   const key = editLockKey(stage);
   if (!key) return null;
   const existing = readEditLock(stage);
-  if (!existing || existing.holder !== holder) return existing;
-  const record = { holder: holder, acquiredAt: existing.acquiredAt || Date.now(), lastHeartbeat: Date.now() };
+  // Heartbeat only refreshes when BOTH name and session match — otherwise the
+  // caller is a different tab from the same user and doesn't actually hold
+  // the lock, so we leave the existing record alone.
+  if (!existing || existing.holder !== holder || existing.holderSession !== (holderSession || null)) return existing;
+  const record = { holder: holder, holderSession: holderSession || null, acquiredAt: existing.acquiredAt || Date.now(), lastHeartbeat: Date.now() };
   PropertiesService.getScriptProperties().setProperty(key, JSON.stringify(record));
   return record;
 }
@@ -987,53 +995,66 @@ function getEditLock(stage) {
 function acquireEditLock(body) {
   const stage = String(body.stage || '');
   const voterName = String(body.voterName || '').trim();
+  const sessionId = String(body.sessionId || '').trim() || null;
   const force = body.force === true;
   if (!editLockKey(stage)) return badRequest('Invalid stage');
   if (!voterName) return badRequest('Missing voterName');
 
   const current = readEditLock(stage);
-  const canGrant = !current.holder || current.holder === voterName || isEditLockStale(current) || force;
+  // Grant when: no holder, the same (user, tab session) is re-acquiring,
+  // the lock is stale, or force=true. Same user from a different tab is
+  // explicitly NOT auto-granted — that path returns acquired=false so the
+  // UI can prompt with the force-take dialog ("You're editing in another
+  // tab. Take the lock here?").
+  const sameClient = current.holder === voterName && current.holderSession === sessionId;
+  const canGrant = !current.holder || sameClient || isEditLockStale(current) || force;
   if (!canGrant) {
     return json200({ acquired: false, lock: current });
   }
-  const updated = writeEditLock(stage, voterName);
-  return json200({ acquired: true, lock: updated, force: force && current.holder && current.holder !== voterName });
+  const updated = writeEditLock(stage, voterName, sessionId);
+  return json200({ acquired: true, lock: updated, force: force && current.holder && !sameClient });
 }
 
-/** Release the lock if caller currently holds it. */
+/** Release the lock if caller currently holds it (matched by name + session). */
 function releaseEditLock(body) {
   const stage = String(body.stage || '');
   const voterName = String(body.voterName || '').trim();
+  const sessionId = String(body.sessionId || '').trim() || null;
   if (!editLockKey(stage)) return badRequest('Invalid stage');
   const current = readEditLock(stage);
-  if (current.holder && current.holder !== voterName) {
+  // Release is gated on session too — another tab from the same user
+  // shouldn't be able to drop a lock it doesn't actually hold.
+  if (current.holder && (current.holder !== voterName || current.holderSession !== sessionId)) {
     return json200({ released: false, lock: current });
   }
   writeEditLock(stage, null);
-  return json200({ released: true, lock: { holder: null, acquiredAt: 0, lastHeartbeat: 0 } });
+  return json200({ released: true, lock: { holder: null, holderSession: null, acquiredAt: 0, lastHeartbeat: 0 } });
 }
 
 /**
  * Bump the heartbeat. Returns the current lock state so the frontend can
- * detect when it's been force-grabbed by someone else (holder no longer
- * matches the caller's voterName).
+ * detect when it's been force-grabbed by someone else (holder or session
+ * no longer matches the caller).
  */
 function heartbeatEditLock(body) {
   const stage = String(body.stage || '');
   const voterName = String(body.voterName || '').trim();
+  const sessionId = String(body.sessionId || '').trim() || null;
   if (!editLockKey(stage)) return badRequest('Invalid stage');
-  bumpEditLockHeartbeat(stage, voterName);
+  bumpEditLockHeartbeat(stage, voterName, sessionId);
   return json200({ lock: readEditLock(stage) });
 }
 
-/** Check that a caller holds (or could claim) the lock for a save. */
-function callerHoldsEditLock(stage, voterName) {
+/** Check that a caller holds (or could claim) the lock for a save. The save
+ *  path matches on session too — a second tab from the same user can't sneak
+ *  a save through while the first tab holds the lock. */
+function callerHoldsEditLock(stage, voterName, sessionId) {
   const key = editLockKey(stage);
   if (!key) return true;
   const current = readEditLock(stage);
   if (!current.holder) return true;            // unowned — accept the save
   if (isEditLockStale(current)) return true;   // stale — accept
-  return current.holder === voterName;
+  return current.holder === voterName && current.holderSession === (sessionId || null);
 }
 
 // ─── Allocation locks (per-stage pitch/person locks for auto-assign) ──────
@@ -1082,9 +1103,12 @@ function setAllocationLocks(body) {
   if (stage !== '2' && stage !== '4') return badRequest('Invalid stage');
   const submittedBy = String((body && body.submittedBy) || '').trim();
   if (!submittedBy) return badRequest('Missing submittedBy');
+  const sessionId = String((body && body.sessionId) || '').trim() || null;
 
-  // Edit-lock check — only the stage's current editor can write.
-  if (!callerHoldsEditLock(stage, submittedBy)) {
+  // Edit-lock check — only the stage's current editor (same name AND tab
+  // session) can write. Older clients without sessionId fall back to the
+  // pre-session "any tab from this user" semantics.
+  if (!callerHoldsEditLock(stage, submittedBy, sessionId)) {
     return json200({ error: 'edit-lock-conflict', stage: stage, lock: readEditLock(stage) });
   }
 
@@ -1138,7 +1162,12 @@ function setPollingState(body) {
 // (statusIdx = pidIdx + 2, devIdx = pidIdx + 3, etc.) stay valid. Adhoc pitches
 // carry a project tracker ID through their PITCHES row; this column surfaces
 // that ID on the PLAN sheet so downstream consumers don't have to join.
-const PLAN_HEADERS = ['timestamp', 'submittedBy', 'pitchId', 'pitchTitle', 'status', 'assignedDev', 'devTL', 'qm', 'pqa1', 'projectCreated', 'kickoffEmailSent', 'prjId'];
+// categoryOverride: empty string when the pitch should use its source category
+// (the spreadsheet's value for voting-imported pitches, or the saved category
+// on adhoc pitches). Non-empty when a TL has remapped the pitch to a different
+// category from the Stage 4 edit dialog. Appended at the end so the fixed
+// column offsets in getPlanStatuses stay valid.
+const PLAN_HEADERS = ['timestamp', 'submittedBy', 'pitchId', 'pitchTitle', 'status', 'assignedDev', 'devTL', 'qm', 'pqa1', 'projectCreated', 'kickoffEmailSent', 'prjId', 'stretch', 'categoryOverride'];
 
 /**
  * Upsert PLAN rows by pitchId.
@@ -1201,6 +1230,12 @@ function upsertPlanRows(updates, submittedBy) {
     const pid = String(u.pitchId);
     if (!pid) continue;
     const existing = existingByPitch[pid] || {};
+    // Stretch is boolean — write TRUE/FALSE (Apps Script renders these as
+    // sheet booleans), preserving existing value when the caller didn't
+    // touch the field.
+    const stretchValue = Object.prototype.hasOwnProperty.call(u, 'stretch')
+      ? u.stretch === true
+      : existing.stretch === true;
     existingByPitch[pid] = {
       timestamp: now,
       submittedBy: submittedBy || existing.submittedBy || '',
@@ -1214,6 +1249,8 @@ function upsertPlanRows(updates, submittedBy) {
       projectCreated: existing.projectCreated === true,
       kickoffEmailSent: existing.kickoffEmailSent === true,
       prjId: pick(u, 'prjId', existing, ''),
+      stretch: stretchValue,
+      categoryOverride: pick(u, 'categoryOverride', existing, ''),
     };
   }
 
@@ -1241,11 +1278,11 @@ function upsertPlanRows(updates, submittedBy) {
  * @param {Array} assignments
  * @return {TextOutput} JSON { saved: number, preserved: number }
  */
-function savePlan(assignments, submittedBy) {
+function savePlan(assignments, submittedBy, sessionId) {
   if (!Array.isArray(assignments) || assignments.length === 0) {
     return badRequest('assignments must be a non-empty array');
   }
-  if (!callerHoldsEditLock('2', submittedBy)) {
+  if (!callerHoldsEditLock('2', submittedBy, sessionId || null)) {
     return json200({ error: 'edit-lock-conflict', stage: '2', lock: readEditLock('2') });
   }
   return withLock(() => json200(upsertPlanRows(assignments, submittedBy)));
@@ -1262,11 +1299,11 @@ function savePlan(assignments, submittedBy) {
  * @param {Array} assignments
  * @return {TextOutput} JSON { saved: number, preserved: number }
  */
-function saveFinalAssignments(assignments, submittedBy) {
+function saveFinalAssignments(assignments, submittedBy, sessionId) {
   if (!Array.isArray(assignments) || assignments.length === 0) {
     return badRequest('assignments must be a non-empty array');
   }
-  if (!callerHoldsEditLock('4', submittedBy)) {
+  if (!callerHoldsEditLock('4', submittedBy, sessionId || null)) {
     return json200({ error: 'edit-lock-conflict', stage: '4', lock: readEditLock('4') });
   }
   return withLock(() => json200(upsertPlanRows(assignments, submittedBy)));
@@ -1290,6 +1327,15 @@ function getPlanStatuses() {
   const tlIdx      = pidIdx + 4;
   const qmIdx      = pidIdx + 5;
   const pqa1Idx    = pidIdx + 6;
+  // Stretch lives at PLAN_HEADERS index 12 ('timestamp' .. 'stretch'); when
+  // hasSubmittedBy=true that maps to col offset (pidIdx + 10) = 12. Older
+  // sheets without submittedBy don't have a stretch col — safe() returns
+  // null when the index is past numCols, so the field just won't appear.
+  const stretchIdx = pidIdx + 10;
+  // categoryOverride sits one column past stretch. Same fallback semantics:
+  // older sheets without the column return null and the frontend treats
+  // missing as "no override → use source category".
+  const catOverrideIdx = pidIdx + 11;
 
   const rows = sh.getRange(2, 1, sh.getLastRow() - 1, numCols).getValues();
   const statuses = {};
@@ -1306,6 +1352,8 @@ function getPlanStatuses() {
       devTL: safe(tlIdx, row),
       qm: safe(qmIdx, row),
       pqa1: safe(pqa1Idx, row),
+      stretch: stretchIdx < numCols && row[stretchIdx] === true,
+      categoryOverride: safe(catOverrideIdx, row),
     };
   }
   return json200({ statuses, assignments });

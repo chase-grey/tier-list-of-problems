@@ -286,6 +286,14 @@ export interface PlanAssignmentPayload {
    *  (their static dataset doesn't carry a prjId). Surfaced on the PLAN
    *  sheet's prjId column so downstream consumers don't have to join. */
   prjId?: string;
+  /** Stretch goal flag — projects we'll only complete with spare capacity.
+   *  Persisted on the PLAN sheet alongside status so the flag survives
+   *  refreshes / hand-offs between TLs. */
+  stretch?: boolean;
+  /** TL-set category override. Non-empty means the pitch should display in
+   *  this category instead of its source value (only meaningful for
+   *  non-adhoc pitches; adhocs persist category on PITCHES directly). */
+  categoryOverride?: string;
 }
 
 export interface FinalAssignmentPayload extends PlanAssignmentPayload {
@@ -300,10 +308,10 @@ export interface FinalAssignmentPayload extends PlanAssignmentPayload {
  * pitches not in the payload aren't touched. Throws EditLockConflictError if
  * caller doesn't hold the stage-2 edit lock.
  */
-export async function savePlan(assignments: PlanAssignmentPayload[], submittedBy: string): Promise<number> {
+export async function savePlan(assignments: PlanAssignmentPayload[], submittedBy: string, sessionId: string): Promise<number> {
   const data = await gasJsonPost<{ saved?: number; error?: string; lock?: EditLockState }>(
     'save-plan',
-    { assignments, submittedBy },
+    { assignments, submittedBy, sessionId },
     { saved: assignments.length },
   );
   if (data && data.error === 'edit-lock-conflict') {
@@ -317,10 +325,10 @@ export async function savePlan(assignments: PlanAssignmentPayload[], submittedBy
  * saves preserve untouched pitches. Throws EditLockConflictError if caller
  * doesn't hold the stage-4 edit lock.
  */
-export async function saveFinalAssignments(assignments: FinalAssignmentPayload[], submittedBy: string): Promise<number> {
+export async function saveFinalAssignments(assignments: FinalAssignmentPayload[], submittedBy: string, sessionId: string): Promise<number> {
   const data = await gasJsonPost<{ saved?: number; error?: string; lock?: EditLockState }>(
     'save-final-assignments',
-    { assignments, submittedBy },
+    { assignments, submittedBy, sessionId },
     { saved: assignments.length },
   );
   if (data && data.error === 'edit-lock-conflict') {
@@ -341,6 +349,11 @@ export type LockStage = '2' | '4';
 
 export interface EditLockState {
   holder: string | null;
+  /** Per-tab session ID of the current holder. The lock is now scoped to a
+   *  single tab, so a second tab from the same user sees `holder` match its
+   *  voterName but `holderSession` differ — that's treated as "viewer" by
+   *  the frontend. Null on legacy records written before sessions existed. */
+  holderSession?: string | null;
   acquiredAt: number;
   lastHeartbeat: number;
 }
@@ -357,12 +370,13 @@ export class EditLockConflictError extends Error {
 }
 
 export async function fetchEditLock(stage: LockStage): Promise<EditLockState> {
-  if (!API_BASE_URL) return { holder: null, acquiredAt: 0, lastHeartbeat: 0 };
+  const empty: EditLockState = { holder: null, holderSession: null, acquiredAt: 0, lastHeartbeat: 0 };
+  if (!API_BASE_URL) return empty;
   const url = `${GAS_PROXY}?route=get-edit-lock&stage=${encodeURIComponent(stage)}`;
   const response = await fetch(url);
-  if (!response.ok) return { holder: null, acquiredAt: 0, lastHeartbeat: 0 };
+  if (!response.ok) return empty;
   const data = await response.json().catch(() => ({} as any));
-  return (data?.lock as EditLockState) ?? { holder: null, acquiredAt: 0, lastHeartbeat: 0 };
+  return (data?.lock as EditLockState) ?? empty;
 }
 
 /**
@@ -371,55 +385,47 @@ export async function fetchEditLock(stage: LockStage): Promise<EditLockState> {
  * "Force take" path that re-calls with force=true (the previous holder's
  * unsaved work is lost; the UI should disclaim this).
  */
-export async function acquireEditLock(stage: LockStage, voterName: string, force = false): Promise<{ acquired: boolean; lock: EditLockState }> {
+export async function acquireEditLock(stage: LockStage, voterName: string, sessionId: string, force = false): Promise<{ acquired: boolean; lock: EditLockState }> {
   const synthetic = {
     acquired: true,
-    lock: { holder: voterName, acquiredAt: Date.now(), lastHeartbeat: Date.now() } as EditLockState,
+    lock: { holder: voterName, holderSession: sessionId, acquiredAt: Date.now(), lastHeartbeat: Date.now() } as EditLockState,
   };
   try {
     const data = await gasJsonPost<{ acquired?: boolean; lock?: EditLockState }>(
       'acquire-edit-lock',
-      { stage, voterName, force },
+      { stage, voterName, sessionId, force },
       synthetic,
     );
-    // Backend didn't return the expected shape (proxy returned empty body, or
-    // the response shape changed) — treat as "backend unreachable" and grant
-    // the lock locally so dev work isn't blocked.
     if (data.acquired === undefined) return synthetic;
     return {
       acquired: !!data.acquired,
-      lock: data.lock ?? { holder: null, acquiredAt: 0, lastHeartbeat: 0 },
+      lock: data.lock ?? { holder: null, holderSession: null, acquiredAt: 0, lastHeartbeat: 0 },
     };
   } catch (err) {
-    // gasJsonPost throws when the proxy returns an `error` field (e.g.
-    // VITE_API_URL not configured) or the response body fails to parse.
-    // Neither case represents a real "someone else holds the lock" refusal —
-    // it means we can't reach the backend at all. Fall back to the synthetic
-    // grant so the TL can keep working locally, and rethrow as a tagged
-    // marker so callers that care can surface a snackbar.
     console.warn('acquireEditLock: backend unreachable, granting locally', err);
     return synthetic;
   }
 }
 
-/** Release the lock. Caller must be the current holder; otherwise no-op. */
-export async function releaseEditLock(stage: LockStage, voterName: string): Promise<void> {
-  await gasJsonPost('release-edit-lock', { stage, voterName }, { released: true });
+/** Release the lock. Caller must be the current holder for this session;
+ *  another tab from the same user can't drop a lock it doesn't actually hold. */
+export async function releaseEditLock(stage: LockStage, voterName: string, sessionId: string): Promise<void> {
+  await gasJsonPost('release-edit-lock', { stage, voterName, sessionId }, { released: true });
 }
 
 /**
  * Bump the lock heartbeat. The returned state lets the caller detect when
- * the lock was force-taken — if `holder !== voterName`, the UI should
- * transition to view-only and warn the user that their unsaved changes
- * cannot be saved.
+ * the lock was force-taken or grabbed by another tab — if `holder` or
+ * `holderSession` no longer matches the caller, the UI should transition to
+ * view-only.
  */
-export async function heartbeatEditLock(stage: LockStage, voterName: string): Promise<EditLockState> {
+export async function heartbeatEditLock(stage: LockStage, voterName: string, sessionId: string): Promise<EditLockState> {
   const data = await gasJsonPost<{ lock?: EditLockState }>(
     'heartbeat-edit-lock',
-    { stage, voterName },
-    { lock: { holder: voterName, acquiredAt: 0, lastHeartbeat: Date.now() } as EditLockState },
+    { stage, voterName, sessionId },
+    { lock: { holder: voterName, holderSession: sessionId, acquiredAt: 0, lastHeartbeat: Date.now() } as EditLockState },
   );
-  return data.lock ?? { holder: null, acquiredAt: 0, lastHeartbeat: 0 };
+  return data.lock ?? { holder: null, holderSession: null, acquiredAt: 0, lastHeartbeat: 0 };
 }
 
 // ─── Allocation locks (per-stage auto-assign skip flags) ────────────────────
@@ -438,11 +444,6 @@ export interface AllocationLocks {
   '4': AllocationLockSet;
 }
 
-const EMPTY_ALLOCATION_LOCKS: AllocationLocks = {
-  '2': { pitchIds: [], personNames: [] },
-  '4': { pitchIds: [], personNames: [] },
-};
-
 function normalizeLockSet(obj: any): AllocationLockSet {
   return {
     pitchIds: Array.isArray(obj?.pitchIds) ? obj.pitchIds.map(String) : [],
@@ -450,18 +451,33 @@ function normalizeLockSet(obj: any): AllocationLockSet {
   };
 }
 
-export async function fetchAllocationLocks(): Promise<AllocationLocks> {
-  if (!API_BASE_URL) return EMPTY_ALLOCATION_LOCKS;
+/**
+ * Returns the shared lock state, or `null` when the backend can't be reached
+ * (no API URL, network error, non-OK response, or the GAS route hasn't been
+ * deployed yet — that route returns `{error:"NOT_FOUND"}` rather than HTTP
+ * 404, so we can't rely on response.ok alone). Callers should treat `null`
+ * as "keep whatever local state you already have" rather than overwriting
+ * the user's in-progress locks with empty arrays.
+ */
+export async function fetchAllocationLocks(): Promise<AllocationLocks | null> {
+  if (!API_BASE_URL) return null;
   try {
     const response = await fetch(`${GAS_PROXY}?route=get-allocation-locks`);
-    if (!response.ok) return EMPTY_ALLOCATION_LOCKS;
-    const data = await response.json().catch(() => ({}));
+    if (!response.ok) return null;
+    const data = await response.json().catch(() => null);
+    if (!data || typeof data !== 'object') return null;
+    // GAS notFound() returns 200 + { error: "NOT_FOUND" } — detect it and
+    // bail out instead of normalizing into empty lock sets.
+    if ('error' in data) return null;
+    // Real responses always have at least one stage key. If both are
+    // missing the route returned something we don't recognize.
+    if (!('2' in data) && !('4' in data)) return null;
     return {
-      '2': normalizeLockSet(data?.['2']),
-      '4': normalizeLockSet(data?.['4']),
+      '2': normalizeLockSet((data as any)['2']),
+      '4': normalizeLockSet((data as any)['4']),
     };
   } catch {
-    return EMPTY_ALLOCATION_LOCKS;
+    return null;
   }
 }
 
@@ -474,10 +490,11 @@ export async function setAllocationLocks(
   stage: LockStage,
   locks: AllocationLockSet,
   submittedBy: string,
+  sessionId: string,
 ): Promise<void> {
   const data = await gasJsonPost<{ saved?: boolean; error?: string; lock?: EditLockState }>(
     'set-allocation-locks',
-    { stage, locks, submittedBy },
+    { stage, locks, submittedBy, sessionId },
     { saved: true },
   );
   if (data && data.error === 'edit-lock-conflict') {
@@ -531,6 +548,11 @@ export type PlanRow = {
   devTL: string | null;
   qm: string | null;
   pqa1: string | null;
+  stretch?: boolean;
+  /** TL-set category override. Non-empty means the TL has remapped this
+   *  pitch in Stage 4; the frontend should display it in this category
+   *  instead of the source value. Empty/null = use source category. */
+  categoryOverride?: string | null;
 };
 
 /**
