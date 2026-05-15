@@ -888,7 +888,7 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
 
   const handleAddAdhocPitch = (draft: AdhocPitchDraft) => {
     const id = `adhoc-${Date.now()}`;
-    const { title, category, committed, team, status, stretch, prjId } = draft;
+    const { title, category, committed, team, status, stretch, fullBandwidth, prjId } = draft;
     const trimmedPrjId = prjId.trim();
     const pitch: AllocationPitch = {
       id,
@@ -1036,6 +1036,7 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
       committed: !!pitch.committed,
       status: plan?.status ?? 'selected',
       stretch: !!plan?.stretch,
+      fullBandwidth: !!plan?.fullBandwidth,
       prjId: pitch.prjId ?? '',
       team: {
         dev: plan?.assignedDev ?? null,
@@ -1048,6 +1049,10 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
 
   const stretchPitchIds = useMemo(
     () => new Set(currentAssignments.filter(a => a.stretch).map(a => a.pitchId)),
+    [currentAssignments],
+  );
+  const fullBandwidthPitchIds = useMemo(
+    () => new Set(currentAssignments.filter(a => a.fullBandwidth).map(a => a.pitchId)),
     [currentAssignments],
   );
 
@@ -1225,17 +1230,26 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
     // dev assignment that drives Stage 4's read of devByPitchId.
     const lockedPitchSet = new Set(step2Locks.pitchIds);
     const lockedPersonSet = new Set(step2Locks.personNames);
+    // Adhoc pitches have no interest data, so the Hungarian cost matrix would
+    // score every candidate equally and shuffle the manual team. Preserve any
+    // role the TL set in the Add-Project dialog; the algorithm only fills
+    // slots that are still null.
+    const adhocSet = new Set(adhocPitches.map(p => p.id));
     const runDev = role === 'all' || role === 'dev';
     const runDevTL = role === 'all' || role === 'devTL';
     const runQm = role === 'all' || role === 'qm';
     const runPqa1 = role === 'all' || role === 'pqa1';
 
     if (runDev) {
-      setPlanAssignments(generateDefaultPlan(allocationPitches, allocationConfig, {
+      // generateDefaultPlan only knows about voting-imported pitches; preserve
+      // the adhoc plan rows so their assignedDev/status/stretch don't vanish.
+      const newPlan = generateDefaultPlan(allocationPitches, allocationConfig, {
         lockedPitchIds: lockedPitchSet,
         lockedPersonNames: lockedPersonSet,
         currentPlan: planAssignments,
-      }));
+      });
+      const adhocPlan = planAssignments.filter(a => adhocSet.has(a.pitchId));
+      setPlanAssignments([...newPlan, ...adhocPlan]);
     }
 
     const base = (runDevTL || runQm)
@@ -1265,11 +1279,14 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
       const existingByPitch = new Map(step2Assignments.map(a => [a.pitchId, a]));
       setStep2Assignments(base.map(a => {
         const existing = existingByPitch.get(a.pitchId);
+        const isAdhoc = adhocSet.has(a.pitchId);
+        // Adhoc preservation: never overwrite a role the TL set manually.
+        // Empty (null) slots can still be filled by the algorithm.
         return {
           pitchId: a.pitchId,
-          devTL: runDevTL ? a.devTL : (existing?.devTL ?? a.devTL),
-          qm: runQm ? a.qm : (existing?.qm ?? a.qm),
-          pqa1: pqa1Map[a.pitchId] ?? null,
+          devTL: (isAdhoc && existing?.devTL) ? existing.devTL : (runDevTL ? a.devTL : (existing?.devTL ?? a.devTL)),
+          qm:    (isAdhoc && existing?.qm)    ? existing.qm    : (runQm    ? a.qm    : (existing?.qm    ?? a.qm)),
+          pqa1:  (isAdhoc && existing?.pqa1)  ? existing.pqa1  : (pqa1Map[a.pitchId] ?? null),
         };
       }));
     }
@@ -1357,19 +1374,12 @@ const TLAllocationView = forwardRef<TLAllocationViewHandle, TLAllocationViewProp
 
   // Stage 4 finish gate: every selected pitch needs dev TL + QM + PQA1
   // resolved — either a named person OR an explicit "None" choice. (Empty /
-  // null means "still undecided" and blocks Finish.) Stage 2 has no
-  // all-fields-filled requirement — devs can stay unassigned until the next
-  // round; Finish on Stage 2 just records the plan as-is.
-  const isReadyToFinish = (): boolean => {
-    if (activeStep === 0) return true;
-    if (selectedPitches.length === 0) return false;
-    const byPitch = new Map(step2Assignments.map(a => [a.pitchId, a]));
-    const filled = (v: string | null | undefined) => v != null && v !== '';
-    return selectedPitches.every(p => {
-      const sa = byPitch.get(p.id);
-      return !!(sa && filled(sa.devTL) && filled(sa.qm) && filled(sa.pqa1));
-    });
-  };
+  // Finish is always enabled — neither stage gates the button on completeness.
+  // Stage 2 records the plan as-is; Stage 4 lets a TL hit Finish mid-staffing
+  // (with partial assignments) so they can save & exit when they need to,
+  // and pick up where they left off later. The Stage 4 "complete" warnings
+  // still live in the sidebar so missing roles aren't invisible.
+  const isReadyToFinish = (): boolean => true;
 
   // Push status up to App.tsx on every change so TopBar can render the
   // Save/Finish/Take-lock controls. The watched values are:
