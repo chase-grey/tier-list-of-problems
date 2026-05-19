@@ -613,9 +613,11 @@ export async function fetchPlanFull(): Promise<Record<string, PlanRow>> {
 }
 
 /**
- * Fetches current follow-up completion state (projectCreated, kickoffEmailSent) from the PLAN sheet.
+ * Fetches current follow-up completion state (projectCreated, kickoffEmailSent,
+ * backlogPrjCreated) from the PLAN sheet. backlogPrjCreated comes back false
+ * for pitches in sheets that predate the column.
  */
-export async function getFollowups(): Promise<Record<string, { projectCreated: boolean; kickoffEmailSent: boolean }>> {
+export async function getFollowups(): Promise<Record<string, { projectCreated: boolean; kickoffEmailSent: boolean; backlogPrjCreated: boolean }>> {
   const response = await fetch(`${GAS_PROXY}?route=get-followups`);
   if (!response.ok) {
     throw new ApiError(`Get followups failed (${response.status})`, response.status);
@@ -625,11 +627,11 @@ export async function getFollowups(): Promise<Record<string, { projectCreated: b
 }
 
 /**
- * Updates a single follow-up checkbox (projectCreated or kickoffEmailSent) for a pitch in the PLAN sheet.
+ * Updates a single follow-up checkbox for a pitch in the PLAN sheet.
  */
 export async function updateFollowup(
   pitchId: string,
-  field: 'projectCreated' | 'kickoffEmailSent',
+  field: 'projectCreated' | 'kickoffEmailSent' | 'backlogPrjCreated',
   value: boolean,
 ): Promise<void> {
   const params = new URLSearchParams({ route: 'update-followup', pitchId, field, value: String(value) });

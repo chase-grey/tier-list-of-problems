@@ -72,6 +72,10 @@ export default function Stage4ResultsView({ pitches, currentAssignments, step2As
         const tl = sa?.devTL ?? '';
         if (state.projectCreated) loaded[`prj-${tl}-${pitchId}`] = true;
         if (state.kickoffEmailSent) loaded[`email-${tl}-${pitchId}`] = true;
+        // Backlog state is keyed by pitchId only — there's one PRJ per pitch
+        // and the round-robin TL assignment is computed deterministically
+        // client-side, so no TL prefix is needed for the persisted state.
+        if (state.backlogPrjCreated) loaded[`backlog-${pitchId}`] = true;
       }
       setCheckedItems(loaded);
     }).catch(() => {});
@@ -164,7 +168,7 @@ export default function Stage4ResultsView({ pitches, currentAssignments, step2As
     [fullGrid],
   );
 
-  const toggleCheck = (key: string, pitchId: string, field: 'projectCreated' | 'kickoffEmailSent') => {
+  const toggleCheck = (key: string, pitchId: string, field: 'projectCreated' | 'kickoffEmailSent' | 'backlogPrjCreated') => {
     setCheckedItems(prev => {
       const next = { ...prev, [key]: !prev[key] };
       updateFollowup(pitchId, field, next[key]).catch(() =>
@@ -225,10 +229,11 @@ export default function Stage4ResultsView({ pitches, currentAssignments, step2As
     const projectsDone = rows.every(({ pitch }) =>
       !!checkedItems[`prj-${tl}-${pitch.id}`] && !!checkedItems[`email-${tl}-${pitch.id}`]
     );
-    // Backlog checkboxes are keyed per-pitch (`backlog-${tl}-${pitchId}`), so
-    // completion needs to verify every backlog row, not a single aggregate key.
+    // Backlog checkboxes are keyed per-pitch (`backlog-${pitchId}`) — there's
+    // one PRJ per pitch regardless of which TL the round-robin assigns it to,
+    // so completion needs to verify every backlog row.
     const backlogDone = backlog.every(({ pitch }) =>
-      !!checkedItems[`backlog-${tl}-${pitch.id}`]
+      !!checkedItems[`backlog-${pitch.id}`]
     );
     return rows.length > 0 && projectsDone && backlogDone;
   };
@@ -451,8 +456,8 @@ export default function Stage4ResultsView({ pitches, currentAssignments, step2As
                       key={pitch.id}
                       control={
                         <Checkbox
-                          checked={!!checkedItems[`backlog-${tl}-${pitch.id}`]}
-                          onChange={() => setCheckedItems(prev => ({ ...prev, [`backlog-${tl}-${pitch.id}`]: !prev[`backlog-${tl}-${pitch.id}`] }))}
+                          checked={!!checkedItems[`backlog-${pitch.id}`]}
+                          onChange={() => toggleCheck(`backlog-${pitch.id}`, pitch.id, 'backlogPrjCreated')}
                           size="small"
                         />
                       }

@@ -1228,7 +1228,7 @@ function setPollingState(body) {
 // on adhoc pitches). Non-empty when a TL has remapped the pitch to a different
 // category from the Stage 4 edit dialog. Appended at the end so the fixed
 // column offsets in getPlanStatuses stay valid.
-const PLAN_HEADERS = ['timestamp', 'submittedBy', 'pitchId', 'pitchTitle', 'status', 'assignedDev', 'devTL', 'qm', 'pqa1', 'projectCreated', 'kickoffEmailSent', 'prjId', 'stretch', 'categoryOverride', 'fullBandwidth'];
+const PLAN_HEADERS = ['timestamp', 'submittedBy', 'pitchId', 'pitchTitle', 'status', 'assignedDev', 'devTL', 'qm', 'pqa1', 'projectCreated', 'kickoffEmailSent', 'prjId', 'stretch', 'categoryOverride', 'fullBandwidth', 'backlogPrjCreated'];
 
 /**
  * Upsert PLAN rows by pitchId.
@@ -1316,6 +1316,7 @@ function upsertPlanRows(updates, submittedBy) {
       stretch: stretchValue,
       categoryOverride: pick(u, 'categoryOverride', existing, ''),
       fullBandwidth: fullBandwidthValue,
+      backlogPrjCreated: existing.backlogPrjCreated === true,
     };
   }
 
@@ -1429,7 +1430,7 @@ function getPlanStatuses() {
 
 /**
  * Returns follow-up completion state for all pitches in the PLAN sheet.
- * @return {TextOutput} JSON { followups: { [pitchId]: { projectCreated, kickoffEmailSent } } }
+ * @return {TextOutput} JSON { followups: { [pitchId]: { projectCreated, kickoffEmailSent, backlogPrjCreated } } }
  */
 function getFollowups() {
   const sh = ss.getSheetByName('PLAN');
@@ -1441,6 +1442,10 @@ function getFollowups() {
   const pidIdx = hasSubmittedBy ? 2 : 1;
   const pcIdx  = hasSubmittedBy ? 9 : (hasTitle ? 8 : 7);
   const keIdx  = hasSubmittedBy ? 10 : (hasTitle ? 9 : 8);
+  // backlogPrjCreated lives at PLAN_HEADERS index 15 (with submittedBy) or 14
+  // (legacy). Older sheets that haven't been re-written since this column was
+  // added will be shorter — guard the read with numCols.
+  const backlogIdx = hasSubmittedBy ? 15 : 14;
 
   const data = sh.getRange(2, 1, sh.getLastRow() - 1, numCols).getValues();
   const followups = {};
@@ -1450,19 +1455,23 @@ function getFollowups() {
     followups[pitchId] = {
       projectCreated: row[pcIdx] === true,
       kickoffEmailSent: row[keIdx] === true,
+      backlogPrjCreated: backlogIdx < numCols ? row[backlogIdx] === true : false,
     };
   }
   return json200({ followups });
 }
 
 /**
- * Updates a single follow-up field (projectCreated or kickoffEmailSent) for a pitch.
+ * Updates a single follow-up field (projectCreated, kickoffEmailSent, or
+ * backlogPrjCreated) for a pitch.
  * @param {Object} params - { pitchId, field, value }
  */
 function updateFollowup(params) {
   const { pitchId, field, value } = params;
   if (!pitchId || !field) return badRequest('pitchId and field required');
-  if (field !== 'projectCreated' && field !== 'kickoffEmailSent') return badRequest('field must be projectCreated or kickoffEmailSent');
+  if (field !== 'projectCreated' && field !== 'kickoffEmailSent' && field !== 'backlogPrjCreated') {
+    return badRequest('field must be projectCreated, kickoffEmailSent, or backlogPrjCreated');
+  }
 
   return withLock(() => {
     const sh = ss.getSheetByName('PLAN');
@@ -1474,7 +1483,17 @@ function updateFollowup(params) {
     const rowIdx = ids.indexOf(pitchId);
     if (rowIdx === -1) return notFound();
 
-    const col = field === 'projectCreated' ? (hasSubmittedBy ? 10 : 9) : (hasSubmittedBy ? 11 : 10);
+    // 1-indexed sheet column numbers for each field. backlogPrjCreated is at
+    // PLAN_HEADERS index 15 (with submittedBy) / 14 (legacy) → +1 for 1-indexed.
+    let col;
+    if (field === 'projectCreated') col = hasSubmittedBy ? 10 : 9;
+    else if (field === 'kickoffEmailSent') col = hasSubmittedBy ? 11 : 10;
+    else col = hasSubmittedBy ? 16 : 15;
+    // If the sheet predates the new column (e.g. before this commit was
+    // deployed), extend the row before writing so the value doesn't fall off.
+    if (col > sh.getLastColumn()) {
+      sh.getRange(1, col).setValue(field);
+    }
     sh.getRange(rowIdx + 2, col).setValue(value === 'true' || value === true);
     return json200({ updated: 1 });
   });
