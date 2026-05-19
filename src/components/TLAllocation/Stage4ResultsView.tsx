@@ -453,9 +453,20 @@ export default function Stage4ResultsView({ pitches, currentAssignments, step2As
                         />
                       }
                       label={
-                        <Typography variant="body2" color="text.secondary">
-                          {pitch.title}
-                        </Typography>
+                        <Box component="span" sx={{ display: 'flex', alignItems: 'baseline', gap: 1 }}>
+                          <Typography variant="body2" color="text.secondary">
+                            {pitch.title}
+                          </Typography>
+                          <Link
+                            href={`https://emc2summary/GetSummaryReport.ashx/TRACK/ZQN/${pitch.id}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            onClick={e => e.stopPropagation()}
+                            variant="caption"
+                          >
+                            QAN {pitch.id}
+                          </Link>
+                        </Box>
                       }
                       sx={{ display: 'flex', alignItems: 'center', mb: 0.25 }}
                     />
