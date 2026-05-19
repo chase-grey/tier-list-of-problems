@@ -4,7 +4,7 @@ import {
   Button, Divider, Link, Paper, Checkbox, FormControlLabel, Chip, Tooltip,
 } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
-import { Star as StarIcon, CheckCircle as OkIcon, Warning as WarnIcon } from '@mui/icons-material';
+import { Star as StarIcon } from '@mui/icons-material';
 import type {
   AllocationPitch, PlanAssignment, StaffingAssignment, AllocationConfig,
 } from '../../types/allocationTypes';
@@ -164,20 +164,6 @@ export default function Stage4ResultsView({ pitches, currentAssignments, step2As
     [fullGrid],
   );
 
-  const authorshipItems = useMemo(() => {
-    const items: { pitch: AllocationPitch; assignedAs: string; interest: number | null }[] = [];
-    fullGrid.forEach(({ pitch, dev, sa }) => {
-      if (!pitch.author) return;
-      const author = pitch.author;
-      if (dev === author)
-        items.push({ pitch, assignedAs: 'Dev', interest: pitch.devInterest[author] ?? null });
-      if (sa.pqa1 === author)
-        items.push({ pitch, assignedAs: 'PQA1', interest: pitch.devInterest[author] ?? null });
-    });
-    return items;
-  }, [fullGrid]);
-  const authorNotTier1Items = authorshipItems.filter(item => item.interest !== 1);
-
   const toggleCheck = (key: string, pitchId: string, field: 'projectCreated' | 'kickoffEmailSent') => {
     setCheckedItems(prev => {
       const next = { ...prev, [key]: !prev[key] };
@@ -194,9 +180,9 @@ export default function Stage4ResultsView({ pitches, currentAssignments, step2As
       `Team Matching Results${q}`,
       '',
       `FULL ASSIGNMENT GRID (${fullGrid.length} projects)`,
-      'Project | Dev | Dev TL | QM | PQA1 | UXD',
+      'Project | Dev | Dev TL | QM | PQA1',
       ...fullGrid.map(({ pitch, dev, sa }) =>
-        `  ${pitch.title} | ${dev ?? '—'} | ${sa.devTL ?? '—'} | ${sa.qm ?? '—'} | ${sa.pqa1 ?? '—'} | ${UXD_NAME}`
+        `  ${pitch.title} | ${dev ?? '—'} | ${sa.devTL ?? '—'} | ${sa.qm ?? '—'} | ${sa.pqa1 ?? '—'}`
       ),
       '',
       `UP NEXT — LIFEBOAT ORDER (${nextUp.length})`,
@@ -260,30 +246,9 @@ export default function Stage4ResultsView({ pitches, currentAssignments, step2As
       </Box>
 
       {/* Full assignment grid */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-        <Typography variant="h6" fontWeight="bold">Full Assignment Grid ({fullGrid.length} projects)</Typography>
-        {authorshipItems.length > 0 && (
-          <Tooltip
-            title={authorNotTier1Items.length === 0
-              ? 'All pitch authors rated their own pitch tier 1'
-              : authorNotTier1Items.map(({ pitch, assignedAs }) =>
-                  `${pitch.author} (${assignedAs}): ${pitch.title.replace(/^[^/]+\/\s*/, '')} — interest tier ${pitch.devInterest[pitch.author!] ?? 'no data'}`
-                ).join('\n')
-            }
-            slotProps={{ tooltip: { sx: { whiteSpace: 'pre-line' } } }}
-          >
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, cursor: 'default' }}>
-              {authorNotTier1Items.length === 0
-                ? <OkIcon sx={{ fontSize: '0.9rem', color: 'success.main' }} />
-                : <WarnIcon sx={{ fontSize: '0.9rem', color: 'warning.main' }} />
-              }
-              <Typography variant="caption" color="text.secondary">
-                {authorshipItems.length} on {authorshipItems.length === 1 ? 'a pitch' : 'pitches'} they wrote
-              </Typography>
-            </Box>
-          </Tooltip>
-        )}
-      </Box>
+      <Typography variant="h6" fontWeight="bold" sx={{ mb: 1 }}>
+        Full Assignment Grid ({fullGrid.length} projects)
+      </Typography>
       <Table size="small" sx={{ mb: 4, tableLayout: 'fixed' }}>
         <TableHead>
           <TableRow>
@@ -293,7 +258,6 @@ export default function Stage4ResultsView({ pitches, currentAssignments, step2As
             <TableCell>Dev TL</TableCell>
             <TableCell>QM</TableCell>
             <TableCell>PQA1</TableCell>
-            <TableCell>UXD</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
@@ -312,7 +276,6 @@ export default function Stage4ResultsView({ pitches, currentAssignments, step2As
               <TableCell>{sa.devTL ?? '—'}</TableCell>
               <TableCell>{sa.qm ?? '—'}</TableCell>
               <TableCell>{sa.pqa1 ?? '—'}</TableCell>
-              <TableCell>{UXD_NAME}</TableCell>
             </TableRow>
           ))}
         </TableBody>

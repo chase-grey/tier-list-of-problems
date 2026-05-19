@@ -4,7 +4,7 @@ import {
   Button, Divider, Chip, Tabs, Tab, Paper, Tooltip,
 } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
-import { Star as StarIcon, CheckCircle as OkIcon, Warning as WarnIcon } from '@mui/icons-material';
+import { Star as StarIcon } from '@mui/icons-material';
 import type { AllocationPitch, PlanAssignment, AllocationConfig } from '../../types/allocationTypes';
 import { useSnackbar } from '../../hooks/useSnackbar';
 
@@ -71,16 +71,6 @@ export default function Stage2ResultsView({ pitches, currentAssignments, config 
     return { byDev: map, unassigned };
   }, [selected, config.devNames]);
 
-  const authorshipItems = useMemo(() =>
-    selected.flatMap(({ pitch, assignment }) => {
-      if (!pitch.author || assignment.assignedDev !== pitch.author) return [];
-      const interest = pitch.devInterest[pitch.author] ?? null;
-      return [{ pitch, interest }];
-    }),
-    [selected],
-  );
-  const authorNotTier1Items = authorshipItems.filter(item => item.interest !== 1);
-
   const handleCopy = () => {
     const q = config.quarterLabel ? ` — Q${config.quarterLabel}` : '';
     const lines: string[] = [
@@ -133,30 +123,9 @@ export default function Stage2ResultsView({ pitches, currentAssignments, config 
         </Button>
       </Box>
 
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-        <Typography variant="h6" fontWeight="bold">Selected Projects ({selected.length})</Typography>
-        {authorshipItems.length > 0 && (
-          <Tooltip
-            title={authorNotTier1Items.length === 0
-              ? 'All pitch authors rated their own pitch tier 1'
-              : authorNotTier1Items.map(({ pitch }) =>
-                  `${pitch.author}: ${pitch.title.replace(/^[^/]+\/\s*/, '')} — interest tier ${pitch.devInterest[pitch.author!] ?? 'no data'}`
-                ).join('\n')
-            }
-            slotProps={{ tooltip: { sx: { whiteSpace: 'pre-line' } } }}
-          >
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, cursor: 'default' }}>
-              {authorNotTier1Items.length === 0
-                ? <OkIcon sx={{ fontSize: '0.9rem', color: 'success.main' }} />
-                : <WarnIcon sx={{ fontSize: '0.9rem', color: 'warning.main' }} />
-              }
-              <Typography variant="caption" color="text.secondary">
-                {authorshipItems.length} on {authorshipItems.length === 1 ? 'a pitch' : 'pitches'} they wrote
-              </Typography>
-            </Box>
-          </Tooltip>
-        )}
-      </Box>
+      <Typography variant="h6" fontWeight="bold" sx={{ mb: 1 }}>
+        Selected Projects ({selected.length})
+      </Typography>
 
       <Tabs value={viewTab} onChange={(_, v) => setViewTab(v)} sx={{ mb: 2 }}>
         <Tab label="Team Plan" />

@@ -19,6 +19,7 @@ import { isDevelopmentMode } from '../utils/testUtils';
 import type { DropResult } from '@hello-pangea/dnd';
 import type { AppState, Capacity, Pitch, Tier, InterestLevel } from '../types/models';
 import { isContributorRole, canRankInterestStage1, canRankInterestStage2, isDevRole } from '../types/models';
+import { fetchAllocationFinalized } from '../services/api';
 import { useVoteManagement } from '../hooks/useVoteManagement';
 import { useKeyboardNav } from '../hooks/useKeyboardNav';
 import { getPollingCycleId, isStage2, isTLAllocationStage, getPollingStage } from '../utils/config';
@@ -90,6 +91,10 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
   const [allocationSaveState, setAllocationSaveState] = useState<'idle' | 'waiting' | 'saving' | 'done'>('idle');
   const [allocationShowResults, setAllocationShowResults] = useState(false);
   const [allocationHasResults, setAllocationHasResults] = useState(false);
+  // Read-only Stage 4 summary for TCAP/TLTL: backend-fetched once we know the
+  // voter's role. Null while unfetched / fetch in flight. The role check
+  // happens below after useVoteManagement provides `state`.
+  const [allocationViewerFinalized, setAllocationViewerFinalized] = useState<boolean | null>(null);
   // Pushed up from TLAllocationView. Drives Save/Finish disabled state and
   // the Save button's "dirty"/"saved" visual flag in TopBar.
   const [allocationStatus, setAllocationStatus] = useState<AllocationStatus>({
@@ -340,6 +345,24 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
     setAvailability,
     getCompletionStats
   } = useVoteManagement(completeState);
+
+  // TCAP/TLTL get a read-only Stage 4 summary once the plan is finalized on the
+  // backend. Before finalization they keep seeing the "Allocation in Progress"
+  // wait screen. Fetched once per session for these roles.
+  const isAllocationViewerRole = isTLStage
+    && allocationStep === 1
+    && (state.voterRole === 'TCap' || state.voterRole === 'TLTL');
+  useEffect(() => {
+    if (!isAllocationViewerRole) return;
+    let cancelled = false;
+    fetchAllocationFinalized().then(s => {
+      if (!cancelled) setAllocationViewerFinalized(s['4'] === true);
+    }).catch(() => {
+      if (!cancelled) setAllocationViewerFinalized(false);
+    });
+    return () => { cancelled = true; };
+  }, [isAllocationViewerRole]);
+  const allocationViewerMode = isAllocationViewerRole && allocationViewerFinalized === true;
 
   // Persist state to localStorage on every change so refreshes don't lose progress.
   useEffect(() => {
@@ -1141,20 +1164,27 @@ const AppContent: React.FC<{ themeMode: 'dark' | 'light'; onToggleTheme: () => v
           // Show View summary for every TL once the allocation is finalized
           // on the backend — not just for the one who clicked Finish locally.
           allocationHasResults={allocationHasResults || allocationStatus.stage4Finalized}
-          onAllocationViewSummary={() => setAllocationShowResults(true)}
-          onAllocationBackToEdit={() => setAllocationShowResults(false)}
+          // View-summary / back-to-edit are dev-TL only. TCAP/TLTL viewers are
+          // locked to the summary view — the back-to-edit button would just
+          // show them a disabled editor, which is confusing.
+          onAllocationViewSummary={state.voterRole === 'dev TL' ? (() => setAllocationShowResults(true)) : undefined}
+          onAllocationBackToEdit={state.voterRole === 'dev TL' ? (() => setAllocationShowResults(false)) : undefined}
           votingLoading={isSubmitting}
           submitState={submitState}
         />
         
         <Box component="main" sx={{ flexGrow: 1, overflow: 'hidden', p: 0, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-          {/* TL Allocation stage: dev TLs see the allocation view; everyone else waits */}
-          {isTLStage && state.voterRole === 'dev TL' ? (
+          {/* TL Allocation stage: dev TLs see the editor; TCAP/TLTL see the
+              read-only summary once the plan is finalized; everyone else waits. */}
+          {(isTLStage && state.voterRole === 'dev TL') || allocationViewerMode ? (
             <TLAllocationView
               key={allocationResetKey}
               ref={tlViewRef}
               activeStep={allocationStep}
-              showResults={allocationShowResults}
+              // Viewer-mode users (TCAP/TLTL post-finalize) are pinned to the
+              // summary view — onAllocationBackToEdit is undefined for them,
+              // so they can't toggle this off.
+              showResults={allocationViewerMode ? true : allocationShowResults}
               onShowResultsChange={(v) => { setAllocationShowResults(v); if (v) setAllocationHasResults(true); }}
               onFinalize={() => setAllocationSaveState('done')}
               onAllocationChange={() => setAllocationSaveState('idle')}
