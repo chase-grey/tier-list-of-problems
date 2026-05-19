@@ -225,7 +225,11 @@ export default function Stage4ResultsView({ pitches, currentAssignments, step2As
     const projectsDone = rows.every(({ pitch }) =>
       !!checkedItems[`prj-${tl}-${pitch.id}`] && !!checkedItems[`email-${tl}-${pitch.id}`]
     );
-    const backlogDone = backlog.length === 0 || !!checkedItems[`backlog-${tl}`];
+    // Backlog checkboxes are keyed per-pitch (`backlog-${tl}-${pitchId}`), so
+    // completion needs to verify every backlog row, not a single aggregate key.
+    const backlogDone = backlog.every(({ pitch }) =>
+      !!checkedItems[`backlog-${tl}-${pitch.id}`]
+    );
     return rows.length > 0 && projectsDone && backlogDone;
   };
 
