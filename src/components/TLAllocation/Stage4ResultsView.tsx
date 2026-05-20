@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import {
   Box, Typography, Table, TableBody, TableCell, TableHead, TableRow,
-  Button, Divider, Link, Paper, Checkbox, FormControlLabel, Chip, Tooltip,
+  TableSortLabel, Button, Divider, Link, Paper, Checkbox, FormControlLabel, Chip, Tooltip,
 } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import { Star as StarIcon } from '@mui/icons-material';
@@ -60,9 +60,31 @@ function buildProjectEmailBody(
   return lines.join('\n');
 }
 
+// User-selectable sort columns on the Full Assignment Grid. `null` falls back
+// to the default committed/category/team-priority ordering.
+type SortField = 'project' | 'dev' | 'devTL' | 'qm' | 'pqa1' | 'uxd';
+type SortDirection = 'asc' | 'desc';
+
 export default function Stage4ResultsView({ pitches, currentAssignments, step2Assignments, config }: Props) {
   const { showSnackbar } = useSnackbar();
   const [checkedItems, setCheckedItems] = useState<Record<string, boolean>>({});
+  const [sortField, setSortField] = useState<SortField | null>(null);
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+
+  // Three-state cycle on each header click: asc → desc → cleared (back to
+  // default ordering). Matches MUI's typical sort UX without trapping the user
+  // in a sorted state they have to refresh out of.
+  const handleSort = (field: SortField) => {
+    if (sortField !== field) {
+      setSortField(field);
+      setSortDirection('asc');
+    } else if (sortDirection === 'asc') {
+      setSortDirection('desc');
+    } else {
+      setSortField(null);
+      setSortDirection('asc');
+    }
+  };
 
   useEffect(() => {
     getFollowups().then(followups => {
@@ -105,18 +127,47 @@ export default function Stage4ResultsView({ pitches, currentAssignments, step2As
     return ids;
   }, [currentAssignments, pitches]);
 
-  const fullGrid = useMemo(() =>
+  // Default ordering: committed projects float to the top, then category, then
+  // team priority. Each row's `priorityIndex` is baked in so the `#` column
+  // and the per-TL follow-up numbering stay stable even when the user sorts
+  // the grid by an alphabetical column.
+  const defaultSortedGrid = useMemo(() =>
     step2Assignments
       .map(sa => ({ sa, pitch: pitchById[sa.pitchId], dev: devByPitchId[sa.pitchId] ?? null }))
       .filter(({ sa, pitch }) => pitch != null && plannedPitchIds.has(sa.pitchId))
       .sort((a, b) => {
-        // Committed projects float to the top, then category, then team priority.
         if (!!a.pitch.committed !== !!b.pitch.committed) return a.pitch.committed ? -1 : 1;
         return (CATEGORY_ORDER[a.pitch.category] ?? 99) - (CATEGORY_ORDER[b.pitch.category] ?? 99) ||
           a.pitch.teamPriorityScore - b.pitch.teamPriorityScore;
-      }),
+      })
+      .map((row, i) => ({ ...row, priorityIndex: i + 1 })),
     [step2Assignments, pitchById, devByPitchId, plannedPitchIds],
   );
+
+  // Display ordering: applies the user's column sort on top of the default
+  // ordering. Missing values (—) sort to the end regardless of direction.
+  const fullGrid = useMemo(() => {
+    if (!sortField) return defaultSortedGrid;
+    const valueFor = (row: typeof defaultSortedGrid[number]): string => {
+      switch (sortField) {
+        case 'project': return row.pitch.title;
+        case 'dev':     return row.dev ?? '';
+        case 'devTL':   return row.sa.devTL ?? '';
+        case 'qm':      return row.sa.qm ?? '';
+        case 'pqa1':    return row.sa.pqa1 ?? '';
+        case 'uxd':     return UXD_NAME;
+      }
+    };
+    const dirMul = sortDirection === 'asc' ? 1 : -1;
+    return [...defaultSortedGrid].sort((a, b) => {
+      const va = valueFor(a);
+      const vb = valueFor(b);
+      if (!va && !vb) return 0;
+      if (!va) return 1;
+      if (!vb) return -1;
+      return dirMul * va.localeCompare(vb);
+    });
+  }, [defaultSortedGrid, sortField, sortDirection]);
 
   // Pitches already in the Full Assignment Grid (have a step2Assignment, so
   // they're being kicked off this quarter) shouldn't double-appear in the
@@ -163,9 +214,11 @@ export default function Stage4ResultsView({ pitches, currentAssignments, step2As
     return map;
   }, [fullGrid, config.devTLNames]);
 
+  // Anchor numbering to the default order so the # column + per-TL follow-up
+  // indices don't shuffle when the user clicks a column header to sort.
   const pitchIndexById = useMemo(
-    () => new Map(fullGrid.map(({ pitch }, i) => [pitch.id, i + 1])),
-    [fullGrid],
+    () => new Map(defaultSortedGrid.map(({ pitch, priorityIndex }) => [pitch.id, priorityIndex])),
+    [defaultSortedGrid],
   );
 
   const toggleCheck = (key: string, pitchId: string, field: 'projectCreated' | 'kickoffEmailSent' | 'backlogPrjCreated') => {
@@ -184,9 +237,9 @@ export default function Stage4ResultsView({ pitches, currentAssignments, step2As
       `Team Matching Results${q}`,
       '',
       `FULL ASSIGNMENT GRID (${fullGrid.length} projects)`,
-      'Project | Dev | Dev TL | QM | PQA1',
+      'Project | Dev | Dev TL | QM | PQA1 | UXD',
       ...fullGrid.map(({ pitch, dev, sa }) =>
-        `  ${pitch.title} | ${dev ?? '—'} | ${sa.devTL ?? '—'} | ${sa.qm ?? '—'} | ${sa.pqa1 ?? '—'}`
+        `  ${pitch.title} | ${dev ?? '—'} | ${sa.devTL ?? '—'} | ${sa.qm ?? '—'} | ${sa.pqa1 ?? '—'} | ${UXD_NAME}`
       ),
       '',
       `UP NEXT — LIFEBOAT ORDER (${nextUp.length})`,
@@ -262,17 +315,30 @@ export default function Stage4ResultsView({ pitches, currentAssignments, step2As
         <TableHead>
           <TableRow>
             <TableCell sx={{ width: '2.5rem' }}>#</TableCell>
-            <TableCell sx={{ width: '33%' }}>Project</TableCell>
-            <TableCell>Dev</TableCell>
-            <TableCell>Dev TL</TableCell>
-            <TableCell>QM</TableCell>
-            <TableCell>PQA1</TableCell>
+            {([
+              ['project', 'Project', '28%'],
+              ['dev', 'Dev', undefined],
+              ['devTL', 'Dev TL', undefined],
+              ['qm', 'QM', undefined],
+              ['pqa1', 'PQA1', undefined],
+              ['uxd', 'UXD', undefined],
+            ] as const).map(([field, label, width]) => (
+              <TableCell key={field} sx={width ? { width } : undefined} sortDirection={sortField === field ? sortDirection : false}>
+                <TableSortLabel
+                  active={sortField === field}
+                  direction={sortField === field ? sortDirection : 'asc'}
+                  onClick={() => handleSort(field)}
+                >
+                  {label}
+                </TableSortLabel>
+              </TableCell>
+            ))}
           </TableRow>
         </TableHead>
         <TableBody>
-          {fullGrid.map(({ pitch, dev, sa }, i) => (
+          {fullGrid.map(({ pitch, dev, sa, priorityIndex }) => (
             <TableRow key={pitch.id}>
-              <TableCell sx={{ color: 'text.secondary', fontSize: '0.75rem' }}>{i + 1}</TableCell>
+              <TableCell sx={{ color: 'text.secondary', fontSize: '0.75rem' }}>{priorityIndex}</TableCell>
               <TableCell sx={{ overflow: 'hidden' }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, minWidth: 0 }}>
                   {pitch.committed && (
@@ -285,6 +351,7 @@ export default function Stage4ResultsView({ pitches, currentAssignments, step2As
               <TableCell>{sa.devTL ?? '—'}</TableCell>
               <TableCell>{sa.qm ?? '—'}</TableCell>
               <TableCell>{sa.pqa1 ?? '—'}</TableCell>
+              <TableCell>{UXD_NAME}</TableCell>
             </TableRow>
           ))}
         </TableBody>
