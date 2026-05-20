@@ -61,8 +61,10 @@ function buildProjectEmailBody(
 }
 
 // User-selectable sort columns on the Full Assignment Grid. `null` falls back
-// to the default committed/category/team-priority ordering.
-type SortField = 'project' | 'dev' | 'devTL' | 'qm' | 'pqa1' | 'uxd';
+// to the default committed/category/team-priority ordering. 'priority' sorts
+// numerically by priorityIndex — primarily a one-click way to undo an
+// alphabetical sort and restore the default ordering.
+type SortField = 'priority' | 'project' | 'dev' | 'devTL' | 'qm' | 'pqa1' | 'uxd';
 type SortDirection = 'asc' | 'desc';
 
 export default function Stage4ResultsView({ pitches, currentAssignments, step2Assignments, config }: Props) {
@@ -148,6 +150,10 @@ export default function Stage4ResultsView({ pitches, currentAssignments, step2As
   // ordering. Missing values (—) sort to the end regardless of direction.
   const fullGrid = useMemo(() => {
     if (!sortField) return defaultSortedGrid;
+    const dirMul = sortDirection === 'asc' ? 1 : -1;
+    if (sortField === 'priority') {
+      return [...defaultSortedGrid].sort((a, b) => dirMul * (a.priorityIndex - b.priorityIndex));
+    }
     const valueFor = (row: typeof defaultSortedGrid[number]): string => {
       switch (sortField) {
         case 'project': return row.pitch.title;
@@ -158,7 +164,6 @@ export default function Stage4ResultsView({ pitches, currentAssignments, step2As
         case 'uxd':     return UXD_NAME;
       }
     };
-    const dirMul = sortDirection === 'asc' ? 1 : -1;
     return [...defaultSortedGrid].sort((a, b) => {
       const va = valueFor(a);
       const vb = valueFor(b);
@@ -314,8 +319,8 @@ export default function Stage4ResultsView({ pitches, currentAssignments, step2As
       <Table size="small" sx={{ mb: 4, tableLayout: 'fixed' }}>
         <TableHead>
           <TableRow>
-            <TableCell sx={{ width: '2.5rem' }}>#</TableCell>
             {([
+              ['priority', '#', '2.5rem'],
               ['project', 'Project', '28%'],
               ['dev', 'Dev', undefined],
               ['devTL', 'Dev TL', undefined],
