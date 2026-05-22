@@ -94,6 +94,11 @@ function doGet(e) {
         return getFollowups();
       case 'update-followup':
         return updateFollowup(e.parameter);
+      // Persist per-pitch backlog TL ownership so cutting / adding a backlog
+      // pitch doesn't shift round-robin assignments off TLs who've already
+      // started creating those PRJs.
+      case 'set-backlog-tl':
+        return setBacklogTL(e.parameter);
       case 'feedback': {
         const feedbackResult = recordFeedback({
           voterName: e.parameter.voterName,
@@ -1228,7 +1233,7 @@ function setPollingState(body) {
 // on adhoc pitches). Non-empty when a TL has remapped the pitch to a different
 // category from the Stage 4 edit dialog. Appended at the end so the fixed
 // column offsets in getPlanStatuses stay valid.
-const PLAN_HEADERS = ['timestamp', 'submittedBy', 'pitchId', 'pitchTitle', 'status', 'assignedDev', 'devTL', 'qm', 'pqa1', 'projectCreated', 'kickoffEmailSent', 'prjId', 'stretch', 'categoryOverride', 'fullBandwidth', 'backlogPrjCreated'];
+const PLAN_HEADERS = ['timestamp', 'submittedBy', 'pitchId', 'pitchTitle', 'status', 'assignedDev', 'devTL', 'qm', 'pqa1', 'projectCreated', 'kickoffEmailSent', 'prjId', 'stretch', 'categoryOverride', 'fullBandwidth', 'backlogPrjCreated', 'backlogTL'];
 
 /**
  * Upsert PLAN rows by pitchId.
@@ -1317,6 +1322,9 @@ function upsertPlanRows(updates, submittedBy) {
       categoryOverride: pick(u, 'categoryOverride', existing, ''),
       fullBandwidth: fullBandwidthValue,
       backlogPrjCreated: existing.backlogPrjCreated === true,
+      // backlogTL: who owns the next-up backlog PRJ for this pitch. Preserved
+      // through plan upserts — the only writer is set-backlog-tl.
+      backlogTL: existing.backlogTL != null ? existing.backlogTL : '',
     };
   }
 
@@ -1430,7 +1438,7 @@ function getPlanStatuses() {
 
 /**
  * Returns follow-up completion state for all pitches in the PLAN sheet.
- * @return {TextOutput} JSON { followups: { [pitchId]: { projectCreated, kickoffEmailSent, backlogPrjCreated } } }
+ * @return {TextOutput} JSON { followups: { [pitchId]: { projectCreated, kickoffEmailSent, backlogPrjCreated, backlogTL } } }
  */
 function getFollowups() {
   const sh = ss.getSheetByName('PLAN');
@@ -1446,6 +1454,8 @@ function getFollowups() {
   // (legacy). Older sheets that haven't been re-written since this column was
   // added will be shorter — guard the read with numCols.
   const backlogIdx = hasSubmittedBy ? 15 : 14;
+  // backlogTL is one column past backlogPrjCreated.
+  const backlogTLIdx = hasSubmittedBy ? 16 : 15;
 
   const data = sh.getRange(2, 1, sh.getLastRow() - 1, numCols).getValues();
   const followups = {};
@@ -1456,6 +1466,7 @@ function getFollowups() {
       projectCreated: row[pcIdx] === true,
       kickoffEmailSent: row[keIdx] === true,
       backlogPrjCreated: backlogIdx < numCols ? row[backlogIdx] === true : false,
+      backlogTL: backlogTLIdx < numCols ? String(row[backlogTLIdx] || '') : '',
     };
   }
   return json200({ followups });
@@ -1495,6 +1506,37 @@ function updateFollowup(params) {
       sh.getRange(1, col).setValue(field);
     }
     sh.getRange(rowIdx + 2, col).setValue(value === 'true' || value === true);
+    return json200({ updated: 1 });
+  });
+}
+
+/**
+ * Sets the backlogTL ownership for a pitch — who's responsible for creating
+ * the backlog PRJ. Persisted so round-robin reassignment doesn't shift work
+ * off a TL who's already started on their backlog PRJs.
+ * @param {Object} params - { pitchId, tl }  (empty tl clears the assignment)
+ */
+function setBacklogTL(params) {
+  const { pitchId, tl } = params;
+  if (!pitchId) return badRequest('pitchId required');
+
+  return withLock(() => {
+    const sh = ss.getSheetByName('PLAN');
+    if (!sh || sh.getLastRow() <= 1) return notFound();
+
+    const hasSubmittedBy = sh.getRange(1, 2).getValue() === 'submittedBy';
+    const pitchIdCol = hasSubmittedBy ? 3 : 2;
+    const ids = sh.getRange(2, pitchIdCol, sh.getLastRow() - 1, 1).getValues().flat();
+    const rowIdx = ids.indexOf(pitchId);
+    if (rowIdx === -1) return notFound();
+
+    // backlogTL is PLAN_HEADERS index 16 (with submittedBy) → 1-indexed col 17,
+    // or index 15 / col 16 in legacy sheets without submittedBy.
+    const col = hasSubmittedBy ? 17 : 16;
+    if (col > sh.getLastColumn()) {
+      sh.getRange(1, col).setValue('backlogTL');
+    }
+    sh.getRange(rowIdx + 2, col).setValue(tl || '');
     return json200({ updated: 1 });
   });
 }

@@ -614,16 +614,30 @@ export async function fetchPlanFull(): Promise<Record<string, PlanRow>> {
 
 /**
  * Fetches current follow-up completion state (projectCreated, kickoffEmailSent,
- * backlogPrjCreated) from the PLAN sheet. backlogPrjCreated comes back false
- * for pitches in sheets that predate the column.
+ * backlogPrjCreated, backlogTL) from the PLAN sheet. Returns empty string /
+ * false for fields whose column predates this commit on the deployed sheet.
  */
-export async function getFollowups(): Promise<Record<string, { projectCreated: boolean; kickoffEmailSent: boolean; backlogPrjCreated: boolean }>> {
+export async function getFollowups(): Promise<Record<string, { projectCreated: boolean; kickoffEmailSent: boolean; backlogPrjCreated: boolean; backlogTL: string }>> {
   const response = await fetch(`${GAS_PROXY}?route=get-followups`);
   if (!response.ok) {
     throw new ApiError(`Get followups failed (${response.status})`, response.status);
   }
   const data = await response.json();
   return data.followups ?? {};
+}
+
+/**
+ * Persists the backlog-TL ownership for a pitch. Once a backlog pitch is shown
+ * under a TL, this lock-in prevents round-robin reshuffles from moving it off
+ * that TL when a sibling pitch gets cut.
+ */
+export async function setBacklogTL(pitchId: string, tl: string): Promise<void> {
+  const params = new URLSearchParams({ route: 'set-backlog-tl', pitchId, tl });
+  const response = await fetch(`${GAS_PROXY}?${params.toString()}`);
+  if (!response.ok) {
+    const text = await response.text().catch(() => '');
+    throw new ApiError(`Set backlog TL failed (${response.status})${text ? ': ' + text : ''}`, response.status);
+  }
 }
 
 /**

@@ -9,7 +9,7 @@ import type {
   AllocationPitch, PlanAssignment, StaffingAssignment, AllocationConfig,
 } from '../../types/allocationTypes';
 import { useSnackbar } from '../../hooks/useSnackbar';
-import { getFollowups, updateFollowup } from '../../services/api';
+import { getFollowups, updateFollowup, setBacklogTL } from '../../services/api';
 import { getShortName } from '../../data/teamRoster';
 
 const UXD_NAME = 'Selina Li';
@@ -70,6 +70,10 @@ type SortDirection = 'asc' | 'desc';
 export default function Stage4ResultsView({ pitches, currentAssignments, step2Assignments, config }: Props) {
   const { showSnackbar } = useSnackbar();
   const [checkedItems, setCheckedItems] = useState<Record<string, boolean>>({});
+  // Persisted backlog-TL assignments keyed by pitchId. Loaded from the PLAN
+  // sheet's backlogTL column on mount and updated locally whenever we
+  // auto-persist a fresh assignment so the next render uses the stable map.
+  const [persistedBacklogTL, setPersistedBacklogTL] = useState<Record<string, string>>({});
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
 
@@ -91,6 +95,7 @@ export default function Stage4ResultsView({ pitches, currentAssignments, step2As
   useEffect(() => {
     getFollowups().then(followups => {
       const loaded: Record<string, boolean> = {};
+      const loadedBacklogTL: Record<string, string> = {};
       for (const [pitchId, state] of Object.entries(followups)) {
         const sa = step2Assignments.find(a => a.pitchId === pitchId);
         const tl = sa?.devTL ?? '';
@@ -100,8 +105,10 @@ export default function Stage4ResultsView({ pitches, currentAssignments, step2As
         // and the round-robin TL assignment is computed deterministically
         // client-side, so no TL prefix is needed for the persisted state.
         if (state.backlogPrjCreated) loaded[`backlog-${pitchId}`] = true;
+        if (state.backlogTL) loadedBacklogTL[pitchId] = state.backlogTL;
       }
       setCheckedItems(loaded);
+      setPersistedBacklogTL(loadedBacklogTL);
     }).catch(() => {});
   }, [step2Assignments]);
 
@@ -195,17 +202,60 @@ export default function Stage4ResultsView({ pitches, currentAssignments, step2As
     [currentAssignments, pitchById, fullGridPitchIds],
   );
 
-  // Backlog PRJ records split round-robin across devTLNames
+  // Backlog PRJ records: prefer the persisted backlogTL when set so a TL who
+  // started creating their PRJs doesn't lose them when a sibling pitch gets
+  // cut. New / unassigned pitches go to the TL with the fewest current backlog
+  // items (tie → first in devTLNames order); those auto-assignments are
+  // persisted by the effect below so the next render sees them as stable.
   const backlogByTL = useMemo(() => {
     const tls = config.devTLNames;
     const map: Record<string, typeof nextUp> = {};
     tls.forEach(tl => { map[tl] = []; });
-    nextUp.forEach((item, i) => {
-      const tl = tls[i % tls.length];
-      if (tl) map[tl].push(item);
+
+    const unassigned: typeof nextUp = [];
+    nextUp.forEach(item => {
+      const persisted = persistedBacklogTL[item.pitch.id];
+      if (persisted && map[persisted]) map[persisted].push(item);
+      else unassigned.push(item);
     });
+
+    unassigned.forEach(item => {
+      let chosen = tls[0];
+      let minCount = chosen ? (map[chosen]?.length ?? 0) : Infinity;
+      for (const tl of tls) {
+        const count = map[tl]?.length ?? 0;
+        if (count < minCount) {
+          minCount = count;
+          chosen = tl;
+        }
+      }
+      if (chosen) map[chosen].push(item);
+    });
+
     return map;
-  }, [nextUp, config.devTLNames]);
+  }, [nextUp, config.devTLNames, persistedBacklogTL]);
+
+  // Persist any newly auto-assigned backlog pitches so future renders use the
+  // stable mapping. Updates local state first so the derived backlogByTL stops
+  // treating these as unassigned — this terminates the effect cycle in one
+  // pass (the post-update render sees `persistedBacklogTL` already populated).
+  useEffect(() => {
+    const toPersist: Array<{ pitchId: string; tl: string }> = [];
+    for (const [tl, items] of Object.entries(backlogByTL)) {
+      for (const { pitch } of items) {
+        if (!persistedBacklogTL[pitch.id]) toPersist.push({ pitchId: pitch.id, tl });
+      }
+    }
+    if (toPersist.length === 0) return;
+    setPersistedBacklogTL(prev => {
+      const next = { ...prev };
+      toPersist.forEach(({ pitchId, tl }) => { next[pitchId] = tl; });
+      return next;
+    });
+    toPersist.forEach(({ pitchId, tl }) => {
+      setBacklogTL(pitchId, tl).catch(() => { /* best-effort */ });
+    });
+  }, [backlogByTL, persistedBacklogTL]);
 
   const byTL = useMemo(() => {
     const map: Record<string, typeof fullGrid> = {};
