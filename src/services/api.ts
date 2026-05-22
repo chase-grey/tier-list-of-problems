@@ -627,21 +627,47 @@ export async function getFollowups(): Promise<Record<string, { projectCreated: b
 }
 
 /**
- * Persists the backlog-TL ownership for a pitch. Once a backlog pitch is shown
- * under a TL, this lock-in prevents round-robin reshuffles from moving it off
- * that TL when a sibling pitch gets cut.
+ * Retry helper for the small "fire-and-forget"-style writes (follow-up
+ * checkboxes, backlog-TL ownership). GAS occasionally returns transient 5xx /
+ * "server busy" responses under load and network blips happen; without retry,
+ * a single failure drops the write silently and the optimistic UI starts
+ * lying. Three attempts with exponential backoff covers virtually all
+ * transient failures while keeping worst-case latency under ~2s. 4xx errors
+ * (bad request, etc.) fail fast — retrying won't help.
  */
-export async function setBacklogTL(pitchId: string, tl: string): Promise<void> {
-  const params = new URLSearchParams({ route: 'set-backlog-tl', pitchId, tl });
-  const response = await fetch(`${GAS_PROXY}?${params.toString()}`);
-  if (!response.ok) {
-    const text = await response.text().catch(() => '');
-    throw new ApiError(`Set backlog TL failed (${response.status})${text ? ': ' + text : ''}`, response.status);
+async function fetchWithRetry(url: string, errorLabel: string): Promise<void> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const response = await fetch(url);
+      if (response.ok) return;
+      const text = await response.text().catch(() => '');
+      const err = new ApiError(`${errorLabel} (${response.status})${text ? ': ' + text : ''}`, response.status);
+      if (response.status >= 400 && response.status < 500) throw err;
+      lastError = err;
+    } catch (err) {
+      if (err instanceof ApiError && err.status >= 400 && err.status < 500) throw err;
+      lastError = err;
+    }
+    if (attempt < 2) await new Promise(r => setTimeout(r, 400 * Math.pow(2, attempt)));
   }
+  throw lastError;
 }
 
 /**
- * Updates a single follow-up checkbox for a pitch in the PLAN sheet.
+ * Persists the backlog-TL ownership for a pitch. Once a backlog pitch is shown
+ * under a TL, this lock-in prevents round-robin reshuffles from moving it off
+ * that TL when a sibling pitch gets cut. Retries transient failures.
+ */
+export async function setBacklogTL(pitchId: string, tl: string): Promise<void> {
+  const params = new URLSearchParams({ route: 'set-backlog-tl', pitchId, tl });
+  await fetchWithRetry(`${GAS_PROXY}?${params.toString()}`, 'Set backlog TL failed');
+}
+
+/**
+ * Updates a single follow-up checkbox for a pitch in the PLAN sheet. Retries
+ * transient failures — callers should treat a thrown error as definitive and
+ * revert the optimistic local update.
  */
 export async function updateFollowup(
   pitchId: string,
@@ -649,11 +675,7 @@ export async function updateFollowup(
   value: boolean,
 ): Promise<void> {
   const params = new URLSearchParams({ route: 'update-followup', pitchId, field, value: String(value) });
-  const response = await fetch(`${GAS_PROXY}?${params.toString()}`);
-  if (!response.ok) {
-    const text = await response.text().catch(() => '');
-    throw new ApiError(`Update followup failed (${response.status})${text ? ': ' + text : ''}`, response.status);
-  }
+  await fetchWithRetry(`${GAS_PROXY}?${params.toString()}`, 'Update followup failed');
 }
 
 export interface SubmitFeedbackPayload {

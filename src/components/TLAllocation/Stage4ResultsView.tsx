@@ -277,12 +277,18 @@ export default function Stage4ResultsView({ pitches, currentAssignments, step2As
   );
 
   const toggleCheck = (key: string, pitchId: string, field: 'projectCreated' | 'kickoffEmailSent' | 'backlogPrjCreated') => {
-    setCheckedItems(prev => {
-      const next = { ...prev, [key]: !prev[key] };
-      updateFollowup(pitchId, field, next[key]).catch(() =>
-        showSnackbar('Failed to save follow-up status', 'error')
-      );
-      return next;
+    const previous = checkedItems[key] === true;
+    const next = !previous;
+    setCheckedItems(prev => ({ ...prev, [key]: next }));
+    // updateFollowup retries transient failures internally; a throw here means
+    // the write definitively didn't land, so revert the optimistic update and
+    // tell the user instead of leaving the UI lying about what the backend has.
+    updateFollowup(pitchId, field, next).catch(() => {
+      setCheckedItems(prev => ({ ...prev, [key]: previous }));
+      const label = field === 'projectCreated' ? 'PRJ creation'
+        : field === 'kickoffEmailSent' ? 'kickoff email'
+        : 'backlog PRJ';
+      showSnackbar(`Couldn't save ${label} status — please try again`, 'error');
     });
   };
 
